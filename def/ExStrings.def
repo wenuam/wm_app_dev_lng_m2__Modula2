@@ -1,0 +1,217 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE ExStrings;
+(* this module adds additional functionality to the ISO Strings module. *)
+(* ISO does not allow the Strings module to be extended, hence the *)
+(* existence of this module. *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+<*/COPYATTRIBUTES*>
+
+IMPORT Strings;
+
+TYPE
+    CompareResults      = Strings.CompareResults;
+
+(* case insensitive versions of ISO Strings functions *)
+
+PROCEDURE CompareI(stringVal1, stringVal2 : ARRAY OF CHAR)
+                                    : CompareResults [Invariant];
+
+PROCEDURE EqualI(stringVal1, stringVal2 : ARRAY OF CHAR) : BOOLEAN [Invariant];
+
+PROCEDURE FindNextI(pattern, stringToSearch : ARRAY OF CHAR;
+                    startIndex : CARDINAL;
+                    VAR OUT patternFound : BOOLEAN;
+                    VAR OUT posOfPattern : CARDINAL);
+
+PROCEDURE FindPrevI(pattern, stringToSearch : ARRAY OF CHAR;
+                    startIndex : CARDINAL;
+                    VAR OUT patternFound : BOOLEAN;
+                    VAR OUT posOfPattern : CARDINAL);
+
+PROCEDURE FindDiffI(stringVal1, stringVal2 : ARRAY OF CHAR;
+                    VAR OUT differenceFound : BOOLEAN;
+                    VAR OUT posOfDifference : CARDINAL);
+
+(* Misc other useful stuff *)
+(* follows ISO parameter convensions *)
+
+PROCEDURE AssignNullTerm(source : ARRAY OF CHAR; VAR OUT destination : ARRAY OF CHAR);
+(* copies source to destination.
+   the destination will always be null terminated.
+*)
+
+PROCEDURE NullTerminate(VAR str : ARRAY OF CHAR);
+(* this will make sure the string is null terminated by placing *)
+(* a null character in the high bound of the string *)
+(* harmless if the string is already null terminated, and will truncate *)
+(* the last character if it is not null terminated *)
+
+PROCEDURE Lowercase(VAR INOUT stringVar : ARRAY OF CHAR);
+(* the reverse of Strings.Capitalize *)
+
+PROCEDURE AnsiToUnicode(strA : ARRAY OF ACHAR; VAR OUT strU : ARRAY OF UCHAR);
+(* convert an Ansi(8-bit) string to a Unicode string *)
+
+PROCEDURE UnicodeToAnsi(strU : ARRAY OF UCHAR;
+                        VAR OUT strA : ARRAY OF ACHAR;
+                        replaceChar : ACHAR);
+(* convert an Unicode string to a Ansi(8-bit) string
+   some Unicode characters may be "lost" and replaced with the
+   replaceChar character.
+   for example converting Kanji to Ansi will not work.
+*)
+
+PROCEDURE Utf8Length(strU : ARRAY OF UCHAR) : CARDINAL;
+(*
+  returns the number of character ACHAR characters needed to translate the UCHAR
+  unicode string to UTF-8 format.
+  the length returned does not include a null terminator character byte.
+*)
+
+PROCEDURE LengthUtf8(strA : ARRAY OF ACHAR) : CARDINAL;
+(*
+   return the length in characters, not bytes, of a UTF-8 sequence.
+   Using LENGTH or Strings.Length will return the number of byte characters.
+*)
+
+PROCEDURE IsValidUtf8(strA : ARRAY OF ACHAR) : BOOLEAN;
+(*
+  returns true if the character sequence is a valid UTF-8 sequence.
+
+  what this procedure is checking for are "over long" character encodings and
+  truncated characters at the end of a string.
+  UTF-8 encoding allows only the shortest possible encoding to exist in a
+  valid UTF-8 character string.
+*)
+
+PROCEDURE UnicodeToUtf8(strU : ARRAY OF UCHAR; VAR OUT strA : ARRAY OF ACHAR);
+(*
+  convert a two byte Unicode character to a multibyte UTF-8 sequence.
+  the ACHAR character string will be 1-3x the number of UCHAR characters.
+  so a 3x ACHAR string will *always* be able to accept a conversion of
+  a UCHAR character string.
+*)
+
+PROCEDURE Utf8ToUnicode(strA : ARRAY OF ACHAR;
+                        VAR OUT strU : ARRAY OF UCHAR;
+                        replaceChar : UCHAR);
+(*
+  convert a multibyte UTF-8 sequence to a two byte unicode character array.
+  if the UTF-8 sequence contains a character that cannot be contained within
+  a UCHAR unicode character (> 65535), then replaceChar will be inserted into
+  the destination string for the unsupported character.
+*)
+
+PROCEDURE Utf8ToAnsi(utf8 : ARRAY OF ACHAR;
+                     VAR OUT strA : ARRAY OF ACHAR;
+                     replaceChar : ACHAR);
+(*
+  convert a UTF-8 sequence to an ACHAR character sequence.
+  for characters > MAX(ACHAR) then replaceChar is inserted for the
+  out of range character.
+
+  you can pass the same string to the utf8 and strA parameters.
+*)
+
+PROCEDURE FindAndReplace(find, replace : ARRAY OF CHAR;
+                         VAR INOUT str : ARRAY OF CHAR) : BOOLEAN;
+(*
+  find the string find in the string str and if found then replace
+  the string find in str with replace.
+  the string comparison is case sensitive.
+  returns TRUE if find was found and a replace occurred, otherwise false.
+*)
+
+PROCEDURE FindAndReplaceI(find, replace : ARRAY OF CHAR;
+                          VAR INOUT str : ARRAY OF CHAR) : BOOLEAN;
+(*
+  find the string find in the string str and if found then replace
+  the string find in str with replace.
+  the string comparison is NOT case sensitive.
+  returns TRUE if find was found and a replace occurred, otherwise false.
+*)
+
+PROCEDURE AppendWithLengths(source : ARRAY OF CHAR;
+                            srcLen : CARDINAL;
+                            VAR INOUT destination : ARRAY OF CHAR;
+                            destLen : CARDINAL) : CARDINAL;
+(* source is appended to destination *)
+(* this is a very specialied Append procedure that can be used *)
+(* where you are appending many different strings to a single string *)
+(* this function will be faster than using Append since it is your job *)
+(* to keep track of the string lengths *)
+(* the result is the length of the result which is placed in destination *)
+
+PROCEDURE AppendChar(ch : CHAR; VAR INOUT str : ARRAY OF CHAR);
+(* appends the character, ch, to the end of the string str *)
+(* if there is no space left in the string nothing happens *)
+
+PROCEDURE AppendCharCond(ch : CHAR; VAR INOUT str : ARRAY OF CHAR);
+(* same as AppendChar, except it will not append the character *)
+(* if the character already exists at the end of the string *)
+
+PROCEDURE AppendNum (num : CARDINAL64; VAR INOUT str : ARRAY OF CHAR);
+(* append a decimal number to the end of the string *)
+(* the number may be truncated if not enough space exists in the string *)
+
+PROCEDURE AppendHex (num : CARDINAL64; digits : CARDINAL; VAR INOUT str : ARRAY OF CHAR);
+(* append a hex number with at most digits characters *)
+(* to the end of the string *)
+(* the number may be truncated if not enough space exists in the string *)
+
+(* the following procedure are used for parsing a string *)
+(* with a set of characters that are separators of individual items *)
+(* within the main string *)
+(* individual items should not be greater than 128 characters *)
+
+PROCEDURE GetNextItem(list : ARRAY OF CHAR;
+                      VAR INOUT i : CARDINAL;
+                      VAR OUT item : ARRAY OF CHAR;
+                      sep : ARRAY OF CHAR) : BOOLEAN;
+(* list = the main string contains the various items *)
+(* i = the index position to start scanning list for next item *)
+(*     upon return i will have been advanced beyond the item returned *)
+(* item = the item extracted from the list *)
+(* sep = characters that are considered as separators, *)
+(* separating the individual items within the list *)
+(* example of use *)
+(*
+    i := 0;
+    WHILE GetNextItem(list, i, item, ";,") DO
+        (* do something *)
+    END;
+*)
+
+PROCEDURE InList(item, list : ARRAY OF CHAR; sep : ARRAY OF CHAR) : BOOLEAN;
+(* item = the item to scan for *)
+(* list = the list if items *)
+(* sep = a string contains characters that are considered as separators *)
+(* separating the items within the list *)
+(* returns TRUE is item is in list *)
+
+PROCEDURE AddItem(item : ARRAY OF CHAR;
+                  VAR INOUT list : ARRAY OF CHAR;
+                  ch : CHAR);
+(* add the item to the list using the character ch *)
+(* as the separator character *)
+
+PROCEDURE RemoveItem(item : ARRAY OF CHAR;
+                     VAR INOUT list : ARRAY OF CHAR;
+                     sep : ARRAY OF CHAR);
+(* removes an item from the list if it exists in the list *)
+(* item = the item to remove *)
+(* list = the list if items *)
+(* sep = a string contains characters that are considered as separators *)
+(* separating the items within the list *)
+
+END ExStrings.

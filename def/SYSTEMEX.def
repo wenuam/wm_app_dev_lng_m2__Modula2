@@ -1,0 +1,258 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMEX;
+
+<*/VALIDVER:Win32SEH*>
+%IF Windows %THEN
+    <*/VER:Win32SEH*>
+%END
+
+IMPORT SYSTEM;
+
+(* stuff for module EXCEPTIONS *)
+
+TYPE
+    ExceptionSource = POINTER TO CARDINAL;
+
+    ExceptionNumber     = CARDINAL;
+
+VAR
+    NextSource  ["EXCEPTIONS_NextSource"] : ExceptionSource;
+
+PROCEDURE AllocateSource ["EXCEPTIONS_AllocateSource"]
+            (VAR OUT src : ExceptionSource);
+
+PROCEDURE RAISE ["EXCEPTIONS_RAISE"] (src : ExceptionSource;
+                num : ExceptionNumber;
+                mess : ARRAY OF CHAR) [NEVERRETURNS];
+
+PROCEDURE RaiseRTL ["EXCEPTIONS_RaiseRTL"] (src : ExceptionSource;
+                num : ExceptionNumber;
+                mess : ARRAY OF CHAR) [NEVERRETURNS];
+(* The same as RAISE, to be called in the real time library code *)
+
+PROCEDURE CurrentNumber ["EXCEPTIONS_CurrentNumber"]
+            (src : ExceptionSource) : ExceptionNumber [FRAME];
+
+PROCEDURE GetMessage ["EXCEPTIONS_GetMessage"]
+            (VAR OUT text : ARRAY OF CHAR) [FRAME];
+
+PROCEDURE IsCurrentSource ["EXCEPTIONS_IsCurrentSource"]
+            (src : ExceptionSource) : BOOLEAN [FRAME];
+
+PROCEDURE IsExceptionalExecution ["EXCEPTIONS_IsExceptionalExecution"]
+            () : BOOLEAN [FRAME];
+
+PROCEDURE RERAISE ["EXCEPTIONS_RERAISE"] (state : SYSTEM.ADDRESS) [FRAME, NEVERRETURNS];
+
+PROCEDURE Unhandled ["EXCEPTIONS_UNHANDLED"]
+                   (src : ExceptionSource;
+                    num : ExceptionNumber;
+                    mess : ARRAY OF CHAR;
+                    addr : SYSTEM.ADDRESS;
+                    checking : SYSTEM.ADDRESS) [NEVERRETURNS];
+
+PROCEDURE UnhandledException ["EXCEPTIONS_UNHANDLEDEXCEPTION"]()
+            [FRAME, NEVERRETURNS];
+
+PROCEDURE EXCEPTADR ["EXCEPTIONS_EXCEPTADR"] () : SYSTEM.ADDRESS [FRAME];
+
+PROCEDURE EXCEPT_INFO ["EXCEPTIONS_EXCEPT_INFO"]
+            (VAR OUT addr : SYSTEM.ADDRESS;
+             VAR OUT line : CARDINAL;
+             VAR OUT name : ARRAY OF CHAR);
+
+PROCEDURE SetUnhandledExceptionProc ["EXCEPTIONS_SetUnhandledExceptionProc"]
+            (proc : PROC);
+
+TYPE
+    AttachDebuggerOpt = (DoNotAttach, AttachExternal, AttachAll);
+
+PROCEDURE AttachDebugger ["EXCEPTIONS_AttachDebugger"]
+                                (opt : AttachDebuggerOpt);
+
+%IF Windows %THEN
+
+%IF Bits32 %THEN
+PROCEDURE Win32ExceptFilter ["EXCEPTIONS_Win32ExceptFilter"]
+                (info, frame, context, dispatch : SYSTEM.ADDRESS) : CARDINAL
+                    [RightToLeft, LEAVES];
+%ELSE
+PROCEDURE WinExceptTableHandler ["EXCEPTIONS_WinExceptTableHandler"]
+                (info, frame, context, dispatch : SYSTEM.ADDRESS) : CARDINAL;
+%END
+
+%END
+
+PROCEDURE EnableCallTrace ["EXCEPTIONS_EnableCallTrace"] (version : ARRAY OF CHAR);
+
+PROCEDURE OutputCallTrace ["EXCEPTIONS_OutputCallTrace"] ();
+
+PROCEDURE OutputUserPMD ["EXCEPTIONS_OutputUserPMD"] ();
+
+%IF UNIX %THEN
+PROCEDURE TrapAccessViolations ["EXCEPTIONS_TrapAccessViolations"] ();
+%END
+
+PROCEDURE InitSystemEx ["EXCEPTIONS_InitSystemEx"] ();
+
+PROCEDURE DeinitSystemEx ["EXCEPTIONS_DeinitSystemEx"] ();
+
+(* stuff for module M2EXCEPTION *)
+
+TYPE
+    M2Exceptions =
+        (indexException,
+         rangeException,
+         caseSelectException,
+         invalidLocation,
+         functionException,
+         wholeValueException,
+         wholeDivException,
+         realValueException,
+         realDivException,
+         protException,
+         sysException,
+         coException,
+         exException
+        );
+
+VAR
+    M2Except    ["M2EXCEPTION_M2Except"] : ExceptionSource;
+
+PROCEDURE M2Exception ["M2EXCEPTION_M2Exception"] () : M2Exceptions;
+
+PROCEDURE IsM2Exception ["M2EXCEPTION_IsM2Exception"] () : BOOLEAN;
+
+PROCEDURE RaiseM2Exception ["M2EXCEPTION_RaiseM2Exception"]
+            (ex : M2Exceptions; mess : ARRAY OF CHAR) [NEVERRETURNS];
+
+(* runtime checking procs *)
+
+PROCEDURE RANGEERROR ["M2EXCEPTION_RANGEERROR"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE INDEXERROR ["M2EXCEPTION_INDEXERROR"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE OVERFLOW ["M2EXCEPTION_OVERFLOW"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+
+%IF IA32 %OR AMD64 %THEN
+%ELSE
+PROCEDURE REALOVERFLOW ["M2EXCEPTION_REALOVERFLOW"](dummy : CARDINAL) [LEAVES];
+%END
+
+PROCEDURE NILPOINTER ["M2EXCEPTION_NILPOINTER"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE NILPROCCALLED ["M2EXCEPTION_NILPROCCALLED"]();
+
+PROCEDURE WRONGVARIANT ["M2EXCEPTION_WRONGVARIANT"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE DIVZERO ["M2EXCEPTION_DIVZERO"](dummy : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            ;
+                                            %END
+
+%IF IA32 %THEN
+
+PROCEDURE CHECKREAL_X87 ["M2EXCEPTION_CHECKREAL_X87"](dummy : CARDINAL) [ALTERS(AX), LEAVES];
+
+PROCEDURE CHECKLONGREAL_X87 ["M2EXCEPTION_CHECKLONGREAL_X87"](dummy : CARDINAL) [ALTERS(AX), LEAVES];
+
+%ELSIF AMD64 %THEN
+
+PROCEDURE CHECKREAL_SSE ["M2EXCEPTION_CHECKREAL_SSE"](dummy : CARDINAL) [ALTERS(AX), LEAVES];
+
+PROCEDURE CHECKLONGREAL_SSE ["M2EXCEPTION_CHECKLONGREAL_SSE"](dummy : CARDINAL) [ALTERS(AX), LEAVES];
+%END
+
+PROCEDURE CASERANGE ["M2EXCEPTION_CASERANGE"] (dummy : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSIF AMD64 %THEN
+												%IF Windows %THEN
+                                            	[LEAVES, ALTERS(AX,CX,DX,R8,R9)];
+												%ELSE
+                                            	[LEAVES, ALTERS(AX,CX,DX,SI,DI)];
+												%END
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+TYPE
+    M2OOExceptions =
+        (
+         emptyException,
+         abstractException,
+         immutableException,
+         guardException,
+
+         (* sb extensions *)
+
+         excludedMethodException
+        );
+
+VAR
+    M2OOExcept  ["M2OOEXCEPT_M2OOExcept"] : ExceptionSource;
+
+PROCEDURE M2OOException ["M2OOEXCEPTION_M2OOException"] () : M2OOExceptions;
+
+PROCEDURE IsM2OOException ["M2OOEXCEPTION_IsM2OOException"] () : BOOLEAN;
+
+PROCEDURE EMPTYCLASS ["M2OOEXCEPTION_EMPTYCLASS"](dummy : CARDINAL)
+                                            %IF IA32 %OR AMD64 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE GUARDEXCEPTION ["M2OOEXCEPTION_GUARDEXCEPTION"] (dummy : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [LEAVES, ALTERS(AX,DX)];
+                                            %ELSIF AMD64 %THEN
+												%IF Windows %THEN
+                                            	[LEAVES, ALTERS(AX,CX,DX,R8,R9)];
+												%ELSE
+                                            	[LEAVES, ALTERS(AX,CX,DX,SI,DI)];
+												%END
+                                            %ELSE
+                                            [LEAVES];
+                                            %END
+
+PROCEDURE RaiseM2OOException ["M2OOEXCEPTION_RaiseM2OOException"]
+            (ex : M2OOExceptions; mess : ARRAY OF CHAR) [NEVERRETURNS];
+
+END SYSTEMEX.

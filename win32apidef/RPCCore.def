@@ -1,0 +1,203 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE RPCCore;
+
+IMPORT WIN32;
+
+FROM WIN32 IMPORT
+    LONG, ULONG, USHORT, BYTE, DWORD, LPSTR, WINT;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+TYPE
+
+    LPLPSTR              = POINTER TO LPSTR; (* STONY BROOK *)
+
+    I_RPC_HANDLE         = ADDRESS;
+    RPC_STATUS           = LONG;
+
+    byte                 = BYTE;
+    boolean              = BOOLEAN;
+    wchar_t              = UCHAR;
+    size_t               = DWORD;
+
+    RPC_BINDING_HANDLE   = I_RPC_HANDLE;
+    handle_t             = RPC_BINDING_HANDLE;
+    rpc_binding_handle_t = RPC_BINDING_HANDLE;
+
+    GUID                = WIN32.GUID;
+    UUID                = WIN32.UUID;
+    IID                 = WIN32.IID;
+    CLSID               = WIN32.CLSID;
+    LPIID               = WIN32.LPIID;
+    LPCLSID             = WIN32.LPCLSID;
+    REFGUID             = WIN32.REFGUID;
+    REFIID              = WIN32.REFIID;
+    REFCLSID            = WIN32.REFCLSID;
+
+    RPC_BINDING_VECTOR = RECORD
+          Count          : ULONG;
+          BindingH       : ARRAY [0..1 - 1] OF RPC_BINDING_HANDLE;
+    END;
+    LPRPC_BINDING_VECTOR = POINTER TO RPC_BINDING_VECTOR;
+
+    rpc_binding_vector_t = RPC_BINDING_VECTOR;
+
+    UUID_VECTOR = RECORD
+          Count          : ULONG;
+          Uuid           : ARRAY [0..1 - 1] OF POINTER TO UUID;
+    END;
+
+    uuid_vector_t        = UUID_VECTOR;
+
+    RPC_IF_HANDLE        = ADDRESS;
+    RPC_IF_ID = RECORD
+          Uuid           : UUID;
+          VersMajor      : USHORT;
+          VersMinor      : USHORT;
+    END;
+
+
+CONST
+    RPC_C_BINDING_INFINITE_TIMEOUT      = 10;
+    RPC_C_BINDING_MIN_TIMEOUT           = 0;
+    RPC_C_BINDING_DEFAULT_TIMEOUT       = 5;
+    RPC_C_BINDING_MAX_TIMEOUT           = 9;
+
+    RPC_C_CANCEL_INFINITE_TIMEOUT       = -1;
+    RPC_C_LISTEN_MAX_CALLS_DEFAULT      = 1234;
+    RPC_C_PROTSEQ_MAX_REQS_DEFAULT      = 10;
+
+TYPE
+    RPC_PROTSEQ_VECTORA = RECORD
+          Count          : DWORD;
+          Protseq        : ARRAY [0..1 - 1] OF POINTER TO BYTE;
+    END;
+    LPRPC_PROTSEQ_VECTORA = POINTER TO RPC_PROTSEQ_VECTORA;
+
+    RPC_PROTSEQ_VECTORW = RECORD
+          Count          : DWORD;
+          Protseq        : ARRAY [0..1 - 1] OF POINTER TO USHORT;
+    END;
+    LPRPC_PROTSEQ_VECTORW = POINTER TO RPC_PROTSEQ_VECTORW;
+
+%IF UNICODE %THEN
+    RPC_PROTSEQ_VECTOR = RPC_PROTSEQ_VECTORW;
+%ELSE
+    RPC_PROTSEQ_VECTOR = RPC_PROTSEQ_VECTORA;
+%END
+
+
+TYPE
+    RPC_OBJECT_INQ_FN = PROCEDURE (UUID, VAR UUID, VAR RPC_STATUS);
+
+    RPC_STATS_VECTOR = RECORD
+          Count          : DWORD;
+          Stats          : ARRAY [0..1 - 1] OF ULONG;
+    END;
+    LPRPC_STATS_VECTOR =  POINTER TO RPC_STATS_VECTOR;
+
+
+CONST
+    RPC_C_STATS_CALLS_IN = 0;
+    RPC_C_STATS_CALLS_OUT= 1;
+    RPC_C_STATS_PKTS_IN  = 2;
+    RPC_C_STATS_PKTS_OUT = 3;
+
+TYPE
+    RPC_IF_ID_VECTOR = RECORD
+          Count          : ULONG;
+          IfId           : ARRAY [0..1 - 1] OF POINTER TO RPC_IF_ID;
+    END;
+    LPRPC_IF_ID_VECTOR = POINTER TO RPC_IF_ID_VECTOR;
+
+RPC_VERSION = RECORD
+          MajorVersion   : USHORT;
+          MinorVersion   : USHORT;
+    END;
+
+    RPC_SYNTAX_IDENTIFIER = RECORD
+          SyntaxGUID     : GUID;
+          SyntaxVersion  : RPC_VERSION;
+    END;
+    PRPC_SYNTAX_IDENTIFIER= POINTER TO RPC_SYNTAX_IDENTIFIER;
+
+    RPC_MESSAGE = RECORD
+          Handle         : RPC_BINDING_HANDLE;
+          DataRepresentation: ULONG;
+          Buffer         : ADDRESS;
+          BufferLength   : DWORD;
+          ProcNum        : DWORD;
+          TransferSyntax : PRPC_SYNTAX_IDENTIFIER;
+          RpcInterfaceInformation: ADDRESS;
+          ReservedForRuntime: ADDRESS;
+          ManagerEpv     : ADDRESS;
+          ImportContext  : ADDRESS;
+          RpcFlags       : ULONG;
+    END;
+    PRPC_MESSAGE         = POINTER TO RPC_MESSAGE;
+
+    RPC_FORWARD_FUNCTION = PROCEDURE (UUID, RPC_VERSION, UUID, ARRAY OF ACHAR,
+                                      ADDRESS) : RPC_STATUS;
+
+CONST
+    RPC_NCA_FLAGS_DEFAULT       = 000000000h;
+    RPC_NCA_FLAGS_IDEMPOTENT    = 000000001h;
+    RPC_NCA_FLAGS_BROADCAST     = 000000002h;
+    RPC_NCA_FLAGS_MAYBE         = 000000004h;
+    RPCFLG_ASYNCHRONOUS         = 040000000h;
+    RPCFLG_INPUT_SYNCHRONOUS    = 020000000h;
+
+    RPC_FLAGS_VALID_BIT         = 000008000h;
+
+TYPE
+    RPC_DISPATCH_FUNCTION= PROCEDURE (PRPC_MESSAGE);
+
+    RPC_DISPATCH_TABLE = RECORD
+          DispatchTableCount: DWORD;
+          DispatchTable  : POINTER TO ARRAY [0..0] OF RPC_DISPATCH_FUNCTION;
+          Reserved       : WINT;
+    END;
+    PRPC_DISPATCH_TABLE  = POINTER TO  RPC_DISPATCH_TABLE;
+
+    RPC_PROTSEQ_ENDPOINT = RECORD
+          RpcProtocolSequence   : POINTER TO ARRAY [0..0] OF ACHAR;
+          Endpoint              : POINTER TO ACHAR;
+    END;
+    PRPC_PROTSEQ_ENDPOINT= POINTER TO RPC_PROTSEQ_ENDPOINT;
+
+    RPC_SERVER_INTERFACE = RECORD
+          Length                : DWORD;
+          InterfaceId           : RPC_SYNTAX_IDENTIFIER;
+          TransferSyntax        : RPC_SYNTAX_IDENTIFIER;
+          DispatchTable         : PRPC_DISPATCH_TABLE;
+          RpcProtseqEndpointCount: DWORD;
+          RpcProtseqEndpoint    : PRPC_PROTSEQ_ENDPOINT;
+          DefaultManagerEpv     : ADDRESS;
+          InterpreterInfo       : ADDRESS;
+    END;
+    PRPC_SERVER_INTERFACE= POINTER TO RPC_SERVER_INTERFACE;
+
+    RPC_CLIENT_INTERFACE = RECORD
+          Length                : DWORD;
+          InterfaceId           : RPC_SYNTAX_IDENTIFIER;
+          TransferSyntax        : RPC_SYNTAX_IDENTIFIER;
+          DispatchTable         : PRPC_DISPATCH_TABLE;
+          RpcProtseqEndpointCount: DWORD;
+          RpcProtseqEndpoint    : PRPC_PROTSEQ_ENDPOINT;
+          Reserved              : ULONG;
+          InterpreterInfo       : ADDRESS;
+    END;
+    PRPC_CLIENT_INTERFACE= POINTER TO RPC_CLIENT_INTERFACE;
+
+TYPE
+    RPC_NS_HANDLE        = ADDRESS;
+
+END RPCCore.

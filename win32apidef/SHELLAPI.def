@@ -1,0 +1,780 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE SHELLAPI;
+
+FROM WIN32 IMPORT
+    UINT, POINT, BOOL, HWND, HINSTANCE, HICON, WINT, WORD, WCHAR, MAX_PATH,
+    LPSTR, LPWSTR, DWORD, RECT, LPARAM, LPCSTR, LPVOID, HANDLE, ULONG, LPCWSTR,
+    HRESULT, DWORDLONG, UINT_PTR, DWORD_PTR, USHORT, BYTE;
+
+FROM WINREG IMPORT
+    HKEY;
+
+FROM WINUSER IMPORT
+    WM_USER;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+TYPE
+    HDROP               =  POINTER TO RECORD END;
+
+PROCEDURE DragQueryFileW(a : HDROP;
+                         b : UINT;
+                         VAR c : ARRAY OF UCHAR;
+                         d : UINT) : UINT;
+
+PROCEDURE DragQueryFileA(a : HDROP;
+                         b : UINT;
+                         VAR c : ARRAY OF ACHAR;
+                         d : UINT) : UINT;
+
+%IF UNICODE %THEN
+PROCEDURE DragQueryFile = DragQueryFileW;
+%ELSE
+PROCEDURE DragQueryFile = DragQueryFileA;
+%END
+
+PROCEDURE DragQueryPoint(a : HDROP;
+                         VAR b : POINT) : BOOL;
+
+PROCEDURE DragFinish(a : HDROP);
+
+PROCEDURE DragAcceptFiles(a : HWND;
+                          b : BOOL);
+
+PROCEDURE ExtractIconW(hInst : HINSTANCE;
+                       lpszExeFileName : ARRAY OF UCHAR;
+                       nIconIndex : UINT) : HICON;
+
+PROCEDURE ExtractIconA(hInst : HINSTANCE;
+                       lpszExeFileName : ARRAY OF ACHAR;
+                       nIconIndex : UINT) : HICON;
+
+%IF UNICODE %THEN
+PROCEDURE ExtractIcon = ExtractIconW;
+%ELSE
+PROCEDURE ExtractIcon = ExtractIconA;
+%END
+
+
+TYPE
+    DRAGINFOA =
+		RECORD
+			uSize   : UINT;
+			pt      : POINT;
+			fNC     : BOOL;
+			lpFileList : LPSTR;
+			grfKeyState: DWORD;
+		END;
+    LPDRAGINFOA = POINTER TO DRAGINFOA;
+
+    DRAGINFOW =
+RECORD
+	uSize   : UINT;
+	pt      : POINT;
+	fNC     : BOOL;
+	lpFileList : LPWSTR;
+	grfKeyState: DWORD;
+END;
+    LPDRAGINFOW = POINTER TO DRAGINFOA;
+
+%IF UNICODE %THEN
+    DRAGINFO =  DRAGINFOW;
+    LPDRAGINFO = LPDRAGINFOW;
+%ELSE
+    DRAGINFO =  DRAGINFOA;
+    LPDRAGINFO = LPDRAGINFOA;
+%END
+
+CONST
+    ABM_NEW           = 00000000h;
+    ABM_REMOVE        = 00000001h;
+    ABM_QUERYPOS      = 00000002h;
+    ABM_SETPOS        = 00000003h;
+    ABM_GETSTATE      = 00000004h;
+    ABM_GETTASKBARPOS = 00000005h;
+    ABM_ACTIVATE      = 00000006h;
+    ABM_GETAUTOHIDEBAR = 00000007h;
+    ABM_SETAUTOHIDEBAR = 00000008h;
+
+    ABM_WINDOWPOSCHANGED = 0000009h;
+
+    ABN_STATECHANGE    = 0000000h;
+    ABN_POSCHANGED     = 0000001h;
+    ABN_FULLSCREENAPP  = 0000002h;
+    ABN_WINDOWARRANGE  = 0000003h;
+
+    ABS_AUTOHIDE    = 0000001h;
+    ABS_ALWAYSONTOP = 0000002h;
+
+    ABE_LEFT        = 0;
+    ABE_TOP         = 1;
+    ABE_RIGHT       = 2;
+    ABE_BOTTOM      = 3;
+
+TYPE
+    APPBARDATA =
+		RECORD
+			cbSize          : DWORD;
+			hWnd            : HWND;
+			uCallbackMessage: UINT;
+			uEdge           : UINT;
+			rc              : RECT;
+			lParam          : LPARAM;
+		END;
+    PAPPBARDATA = POINTER TO APPBARDATA;
+
+PROCEDURE SHAppBarMessage(dwMessage : DWORD; VAR pData : APPBARDATA) : UINT_PTR;
+
+PROCEDURE DoEnvironmentSubstA(VAR szString : ARRAY OF ACHAR;
+                              cbString :  UINT) : DWORD;
+
+PROCEDURE DoEnvironmentSubstW(VAR szString : ARRAY OF UCHAR;
+                              cbString :  UINT) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE DoEnvironmentSubst = DoEnvironmentSubstW;
+%ELSE
+PROCEDURE DoEnvironmentSubst = DoEnvironmentSubstA;
+%END
+
+PROCEDURE FindEnvironmentStringA(VAR szEnvVar : ARRAY OF ACHAR) : LPSTR;
+
+PROCEDURE FindEnvironmentStringW(VAR szEnvVar : ARRAY OF UCHAR) : LPWSTR;
+
+%IF UNICODE %THEN
+PROCEDURE FindEnvironmentString = FindEnvironmentStringW;
+%ELSE
+PROCEDURE FindEnvironmentString = FindEnvironmentStringA;
+%END
+
+TYPE
+    PHICON = POINTER TO HICON;
+
+PROCEDURE ExtractIconExA(lpszFile : ARRAY OF ACHAR;
+                        nIconIndex : WINT;
+                        VAR phiconLarge : HICON;(*??ARRAY*)
+                        VAR phiconSmall : HICON;
+                        nIcons : UINT) : UINT;
+
+PROCEDURE ExtractIconExW(lpszFile : ARRAY OF UCHAR;
+                        nIconIndex : WINT;
+                        VAR phiconLarge : HICON;(*??ARRAY*)
+                        VAR phiconSmall : HICON;
+                        nIcons : UINT) : UINT;
+
+%IF UNICODE %THEN
+PROCEDURE ExtractIconEx = ExtractIconExW;
+%ELSE
+PROCEDURE ExtractIconEx = ExtractIconExA;
+%END
+
+CONST
+     FO_MOVE           = 0001h;
+     FO_COPY           = 0002h;
+     FO_DELETE         = 0003h;
+     FO_RENAME         = 0004h;
+
+     FOF_MULTIDESTFILES         = 0001h;
+     FOF_CONFIRMMOUSE           = 0002h;
+     FOF_SILENT                 = 0004h;
+     FOF_RENAMEONCOLLISION      = 0008h;
+     FOF_NOCONFIRMATION         = 0010h;
+     FOF_WANTMAPPINGHANDLE      = 0020h;
+
+     FOF_ALLOWUNDO              = 0040h;
+     FOF_FILESONLY              = 0080h;
+     FOF_SIMPLEPROGRESS         = 0100h;
+     FOF_NOCONFIRMMKDIR         = 0200h;
+    FOF_NOERRORUI              = 0400h;(* don't put up error UI*)
+    FOF_NOCOPYSECURITYATTRIBS  = 0800h; (* dont copy NT file Security Attributes*)
+
+     PO_DELETE          = 0013h;
+     PO_RENAME          = 0014h;
+     PO_PORTCHANGE      = 0020h;
+
+     PO_REN_PORT        = 0034h;
+
+TYPE
+    FILEOP_FLAGS = WORD;
+
+    PRINTEROP_FLAGS = WORD;
+
+    SHFILEOPSTRUCTA = RECORD
+        hwnd    : HWND;
+        wFunc   : UINT;
+        pFrom   : LPCSTR;
+        pTo     : LPCSTR;
+        fFlags  : FILEOP_FLAGS;
+        fAnyOperationsAborted : BOOL;
+        hNameMappings : LPVOID;
+        lpszProgressTitle : LPCSTR;
+    END;
+    LPSHFILEOPSTRUCTA = POINTER TO SHFILEOPSTRUCTA;
+
+    SHFILEOPSTRUCTW = RECORD
+        hwnd    : HWND;
+        wFunc   : UINT;
+        pFrom   : LPCWSTR;
+        pTo     : LPCWSTR;
+        fFlags  : FILEOP_FLAGS;
+        fAnyOperationsAborted : BOOL;
+        hNameMappings : LPVOID;
+        lpszProgressTitle : LPCWSTR;
+    END;
+    LPSHFILEOPSTRUCTW   = POINTER TO SHFILEOPSTRUCTW;
+%IF UNICODE %THEN
+    SHFILEOPSTRUCT      = SHFILEOPSTRUCTW;
+    LPSHFILEOPSTRUCT    = LPSHFILEOPSTRUCTW;
+%ELSE
+    SHFILEOPSTRUCT      = SHFILEOPSTRUCTA;
+    LPSHFILEOPSTRUCT    = LPSHFILEOPSTRUCTA;
+%END
+
+PROCEDURE SHFileOperationA(VAR lpFileOp : SHFILEOPSTRUCTA) : WINT;
+
+PROCEDURE SHFileOperationW(VAR lpFileOp : SHFILEOPSTRUCTW) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE SHFileOperation = SHFileOperationW;
+%ELSE
+PROCEDURE SHFileOperation = SHFileOperationA;
+%END
+
+PROCEDURE SHFreeNameMappings(hNameMappings : HANDLE);
+
+TYPE
+    SHNAMEMAPPINGA = RECORD
+        pszOldPath : LPSTR;
+        pszNewPath : LPSTR;
+        cchOldPath : WINT;
+        cchNewPath : WINT;
+    END;
+    LPSHNAMEMAPPINGA = POINTER TO SHNAMEMAPPINGA;
+
+    SHNAMEMAPPINGW = RECORD
+        pszOldPath : LPWSTR;
+        pszNewPath : LPWSTR;
+        cchOldPath : WINT;
+        cchNewPath : WINT;
+    END;
+    LPSHNAMEMAPPINGW = POINTER TO SHNAMEMAPPINGW;
+
+%IF UNICODE %THEN
+    SHNAMEMAPPING       = SHNAMEMAPPINGW;
+    LPSHNAMEMAPPING     = LPSHNAMEMAPPINGW;
+%ELSE
+    SHNAMEMAPPING       = SHNAMEMAPPINGA;
+    LPSHNAMEMAPPING     = LPSHNAMEMAPPINGA;
+%END
+
+CONST
+    SE_ERR_FNF              = 2;
+    SE_ERR_PNF              = 3;
+    SE_ERR_ACCESSDENIED     = 5;
+    SE_ERR_OOM              = 8;
+    SE_ERR_DLLNOTFOUND      = 32;
+
+
+CONST
+    SE_ERR_SHARE         = 26;
+    SE_ERR_ASSOCINCOMPLETE= 27;
+    SE_ERR_DDETIMEOUT    = 28;
+    SE_ERR_DDEFAIL       = 29;
+    SE_ERR_DDEBUSY       = 30;
+    SE_ERR_NOASSOC       = 31;
+
+PROCEDURE ShellExecuteA(hwnd : HWND;
+                        lpOperation : ARRAY OF ACHAR;
+                        lpFile : ARRAY OF ACHAR;
+                        lpParameters : ARRAY OF ACHAR;
+                        lpDirectory : ARRAY OF ACHAR;
+                        nShowCmd : WINT) : HINSTANCE;
+
+PROCEDURE ShellExecuteW(hwnd : HWND;
+                        lpOperation : ARRAY OF UCHAR;
+                        lpFile : ARRAY OF UCHAR;
+                        lpParameters : ARRAY OF UCHAR;
+                        lpDirectory : ARRAY OF UCHAR;
+                        nShowCmd : WINT) : HINSTANCE;
+
+%IF UNICODE %THEN
+PROCEDURE ShellExecute = ShellExecuteW;
+%ELSE
+PROCEDURE ShellExecute = ShellExecuteA;
+%END
+
+PROCEDURE FindExecutableA(lpFile : ARRAY OF ACHAR;
+                          lpDirectory : ARRAY OF ACHAR;
+                          VAR lpResult : ARRAY OF ACHAR) : HINSTANCE;
+
+PROCEDURE FindExecutableW(lpFile : ARRAY OF UCHAR;
+                          lpDirectory : ARRAY OF UCHAR;
+                          VAR lpResult : ARRAY OF UCHAR) : HINSTANCE;
+
+%IF UNICODE %THEN
+PROCEDURE FindExecutable = FindExecutableW;
+%ELSE
+PROCEDURE FindExecutable = FindExecutableA;
+%END
+
+(*95*)
+TYPE
+    PPWCHAR = POINTER TO POINTER TO WCHAR;
+(*95*)
+PROCEDURE CommandLineToArgvW(VAR lpCmdLine : ARRAY OF WCHAR;
+                             VAR pNumArgs : WINT) : PPWCHAR;
+
+PROCEDURE ShellAboutA(hWnd : HWND;
+                      szApp : ARRAY OF ACHAR;
+                      szOtherStuff : ARRAY OF ACHAR;
+                      hIcon : HICON) : WINT;
+
+PROCEDURE ShellAboutW(hWnd : HWND;
+                      szApp : ARRAY OF UCHAR;
+                      szOtherStuff : ARRAY OF UCHAR;
+                      hIcon : HICON) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE ShellAbout = ShellAboutW;
+%ELSE
+PROCEDURE ShellAbout = ShellAboutA;
+%END
+
+PROCEDURE DuplicateIcon(hInst : HINSTANCE;
+                        hIcon : HICON) : HICON;
+
+PROCEDURE ExtractAssociatedIconA(hInst : HINSTANCE;
+                                 lpIconPath : ARRAY OF ACHAR;
+                                 VAR lpiIcon : WORD) : HICON;
+
+PROCEDURE ExtractAssociatedIconW(hInst : HINSTANCE;
+                                 lpIconPath : ARRAY OF UCHAR;
+                                 VAR lpiIcon : WORD) : HICON;
+
+%IF UNICODE %THEN
+PROCEDURE ExtractAssociatedIcon = ExtractAssociatedIconW;
+%ELSE
+PROCEDURE ExtractAssociatedIcon = ExtractAssociatedIconA;
+%END
+
+
+CONST
+    SEE_MASK_CLASSNAME  = 00000001h;
+    SEE_MASK_CLASSKEY   = 00000003h;
+
+    SEE_MASK_IDLIST             = 00000004h;
+    SEE_MASK_INVOKEIDLIST       = 0000000ch;
+    SEE_MASK_ICON               = 00000010h;
+    SEE_MASK_HOTKEY             = 00000020h;
+    SEE_MASK_NOCLOSEPROCESS     = 00000040h;
+    SEE_MASK_CONNECTNETDRV      = 00000080h;
+    SEE_MASK_FLAG_DDEWAIT       = 00000100h;
+    SEE_MASK_DOENVSUBST         = 00000200h;
+    SEE_MASK_FLAG_NO_UI         = 00000400h;
+    SEE_MASK_UNICODE            = 00010000h;
+
+    SEE_MASK_NO_CONSOLE       = 00008000h;
+    SEE_MASK_ASYNCOK          = 00100000h;
+    SEE_MASK_HMONITOR         = 00200000h;
+    SEE_MASK_FLAG_LOG_USAGE   = 004000000h;
+
+TYPE
+    SHELLEXECUTEINFOA = RECORD
+        cbSize  : DWORD;
+        fMask   : ULONG;
+        hwnd    : HWND;
+        lpVerb  : LPCSTR;
+        lpFile  : LPCSTR;
+        lpParameters    : LPCSTR;
+        lpDirectory     : LPCSTR;
+        nShow           : WINT;
+        hInstApp        : HINSTANCE;
+
+        lpIDList        : LPVOID;
+        lpClass         : LPCSTR;
+        hkeyClass       : HKEY;
+        dwHotKey        : DWORD;
+        CASE : BOOLEAN OF
+        FALSE: hIcon    : HANDLE;|
+        TRUE: hMonitor  : HANDLE;
+        END;
+        hProcess        : HANDLE;
+    END;
+    LPSHELLEXECUTEINFOA = POINTER TO SHELLEXECUTEINFOA;
+
+    SHELLEXECUTEINFOW = RECORD
+        cbSize  : DWORD;
+        fMask   : ULONG;
+        hwnd    : HWND;
+        lpVerb  : LPCWSTR;
+        lpFile  : LPCWSTR;
+        lpParameters    : LPCWSTR;
+        lpDirectory     : LPCWSTR;
+        nShow           : WINT;
+        hInstApp        : HINSTANCE;
+
+        lpIDList        : LPVOID;
+        lpClass         : LPCWSTR;
+        hkeyClass       : HKEY;
+        dwHotKey        : DWORD;
+        CASE : BOOLEAN OF
+        FALSE: hIcon    : HANDLE;|
+        TRUE: hMonitor  : HANDLE;
+        END;
+        hProcess        : HANDLE;
+    END;
+    LPSHELLEXECUTEINFOW = POINTER TO SHELLEXECUTEINFOW;
+%IF UNICODE %THEN
+    SHELLEXECUTEINFO    = SHELLEXECUTEINFOW;
+    LPSHELLEXECUTEINFO  = LPSHELLEXECUTEINFOW;
+%ELSE
+    SHELLEXECUTEINFO    = SHELLEXECUTEINFOA;
+    LPSHELLEXECUTEINFO  = LPSHELLEXECUTEINFOA;
+%END
+
+PROCEDURE ShellExecuteExA(VAR lpExecInfo : SHELLEXECUTEINFOA) : BOOL;
+
+PROCEDURE ShellExecuteExW(VAR lpExecInfo : SHELLEXECUTEINFOW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ShellExecuteEx = ShellExecuteExW;
+%ELSE
+PROCEDURE ShellExecuteEx = ShellExecuteExA;
+%END
+
+PROCEDURE WinExecErrorA(hwnd : HWND;
+                       error : WINT;
+                       lpstrFileName : ARRAY OF ACHAR;
+                       lpstrTitle : ARRAY OF ACHAR);
+
+PROCEDURE WinExecErrorW(hwnd : HWND;
+                       error : WINT;
+                       lpstrFileName : ARRAY OF UCHAR;
+                       lpstrTitle : ARRAY OF UCHAR);
+%IF UNICODE %THEN
+PROCEDURE WinExecError = WinExecErrorW;
+%ELSE
+PROCEDURE WinExecError = WinExecErrorA;
+%END
+
+
+(* struct for query recycle bin info*)
+TYPE
+    SHQUERYRBINFO = RECORD
+    cbSize      : DWORD;
+    i64Size     : DWORDLONG;
+    i64NumItems : DWORDLONG;
+    END;
+    LPSHQUERYRBINFO = POINTER TO SHQUERYRBINFO;
+
+(* flags for SHEmptyRecycleBin *)
+CONST
+    SHERB_NOCONFIRMATION    =00000001h;
+    SHERB_NOPROGRESSUI      =00000002h;
+    SHERB_NOSOUND           =00000004h;
+
+
+PROCEDURE SHQueryRecycleBinA(pszRootPath : ARRAY OF ACHAR;
+                             SHQueryRBInfo : SHQUERYRBINFO) : HRESULT;
+
+PROCEDURE SHQueryRecycleBinW(pszRootPath : ARRAY OF UCHAR;
+                             SHQueryRBInfo : SHQUERYRBINFO) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE SHQueryRecycleBin = SHQueryRecycleBinW;
+%ELSE
+PROCEDURE SHQueryRecycleBin = SHQueryRecycleBinA;
+%END
+
+PROCEDURE SHEmptyRecycleBinA(hwnd : HWND;
+                             pszRootPath : ARRAY OF ACHAR;
+                             dwFlags : DWORD) : HRESULT;
+
+PROCEDURE SHEmptyRecycleBinW(hwnd : HWND;
+                             pszRootPath : ARRAY OF UCHAR;
+                             dwFlags : DWORD) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE SHEmptyRecycleBin = SHEmptyRecycleBinW;
+%ELSE
+PROCEDURE SHEmptyRecycleBin = SHEmptyRecycleBinA;
+%END
+
+TYPE
+    NOTIFYICONDATAA = RECORD
+        cbSize  : DWORD;
+        hWnd    : HWND;
+        uID     : UINT;
+
+        uFlags  : UINT;
+        uCallbackMessage : UINT;
+        hIcon   : HICON;
+        szTip   : ARRAY [0..64-1] OF ACHAR;
+    END;
+    PNOTIFYICONDATAA = POINTER TO NOTIFYICONDATAA;
+
+    NOTIFYICONDATAW = RECORD
+        cbSize  : DWORD;
+        hWnd    : HWND;
+        uID     : UINT;
+
+        uFlags  : UINT;
+        uCallbackMessage : UINT;
+        hIcon   : HICON;
+        szTip   : ARRAY [0..64-1] OF UCHAR;
+    END;
+    PNOTIFYICONDATAW    = POINTER TO NOTIFYICONDATAW;
+%IF UNICODE %THEN
+    NOTIFYICONDATA      = NOTIFYICONDATAW;
+    PNOTIFYICONDATA     = PNOTIFYICONDATAW;
+%ELSE
+    NOTIFYICONDATA      = NOTIFYICONDATAA;
+    PNOTIFYICONDATA     = PNOTIFYICONDATAA;
+%END
+
+
+CONST
+    NIM_ADD     = 0;
+    NIM_MODIFY  = 1;
+    NIM_DELETE  = 2;
+
+    NIF_MESSAGE = 1;
+    NIF_ICON    = 2;
+    NIF_TIP     = 4;
+
+PROCEDURE Shell_NotifyIconA(dwMessage : DWORD;
+                           VAR lpData : NOTIFYICONDATAA) : BOOL;
+
+PROCEDURE Shell_NotifyIconW(dwMessage : DWORD;
+                           VAR lpData : NOTIFYICONDATAW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE Shell_NotifyIcon = Shell_NotifyIconW;
+%ELSE
+PROCEDURE Shell_NotifyIcon = Shell_NotifyIconA;
+%END
+
+TYPE
+    SHFILEINFOA = RECORD
+        hIcon   : HICON;
+        iIcon   : WINT;
+        dwAttributes    : DWORD;
+        szDisplayName   : ARRAY [0..MAX_PATH-1] OF ACHAR;
+        szTypeName      : ARRAY [0..80-1] OF ACHAR;
+    END;
+    PSHFILEINFOA = POINTER TO SHFILEINFOA;
+
+    SHFILEINFOW = RECORD
+        hIcon   : HICON;
+        iIcon   : WINT;
+        dwAttributes    : DWORD;
+        szDisplayName   : ARRAY [0..MAX_PATH-1] OF UCHAR;
+        szTypeName      : ARRAY [0..80-1] OF UCHAR;
+    END;
+    PSHFILEINFOW = POINTER TO SHFILEINFOW;
+%IF UNICODE %THEN
+    SHFILEINFO  = SHFILEINFOW;
+    PSHFILEINFO = PSHFILEINFOW;
+%ELSE
+    SHFILEINFO  = SHFILEINFOA;
+    PSHFILEINFO = PSHFILEINFOA;
+%END
+
+CONST
+    SHGFI_ICON              = 000000100h;
+    SHGFI_DISPLAYNAME       = 000000200h;
+    SHGFI_TYPENAME          = 000000400h;
+    SHGFI_ATTRIBUTES        = 000000800h;
+    SHGFI_ICONLOCATION      = 000001000h;
+    SHGFI_EXETYPE           = 000002000h;
+    SHGFI_SYSICONINDEX      = 000004000h;
+    SHGFI_LINKOVERLAY       = 000008000h;
+    SHGFI_SELECTED          = 000010000h;
+    SHGFI_LARGEICON         = 000000000h;
+    SHGFI_SMALLICON         = 000000001h;
+    SHGFI_OPENICON          = 000000002h;
+    SHGFI_SHELLICONSIZE     = 000000004h;
+    SHGFI_PIDL              = 000000008h;
+    SHGFI_USEFILEATTRIBUTES = 000000010h;
+
+PROCEDURE SHGetFileInfoA(pszPath : ARRAY OF ACHAR;
+                        dwFileAttributes : DWORD;
+                        psfi : PSHFILEINFOA;
+                        cbFileInfo : UINT;
+                        uFlags :  UINT) : DWORD_PTR;
+
+PROCEDURE SHGetFileInfoW(pszPath : ARRAY OF UCHAR;
+                        dwFileAttributes : DWORD;
+                        psfi : PSHFILEINFOW;
+                        cbFileInfo : UINT;
+                        uFlags :  UINT) : DWORD_PTR;
+
+%IF UNICODE %THEN
+PROCEDURE SHGetFileInfo = SHGetFileInfoW;
+%ELSE
+PROCEDURE SHGetFileInfo = SHGetFileInfoA;
+%END
+
+PROCEDURE SHGetNewLinkInfoA(pszLinkTo : ARRAY OF ACHAR;
+                           pszDir : ARRAY OF ACHAR;
+                           VAR pszName : ARRAY OF ACHAR;
+                           VAR pfMustCopy : BOOL;
+                           uFlags : UINT) : BOOL;
+
+PROCEDURE SHGetNewLinkInfoW(pszLinkTo : ARRAY OF UCHAR;
+                           pszDir : ARRAY OF UCHAR;
+                           VAR pszName : ARRAY OF UCHAR;
+                           VAR pfMustCopy : BOOL;
+                           uFlags : UINT) : BOOL;
+%IF UNICODE %THEN
+PROCEDURE SHGetNewLinkInfo = SHGetNewLinkInfoW;
+%ELSE
+PROCEDURE SHGetNewLinkInfo = SHGetNewLinkInfoA;
+%END
+
+CONST
+    SHGNLI_PIDL         = 000000001h;
+    SHGNLI_PREFIXNAME   = 000000002h;
+
+PROCEDURE EIRESID(x : WINT): WINT;(* MACRO *)
+
+(* ADW stuff *)
+
+TYPE
+(*
+ SHITEMID -- Item ID
+*)
+SHITEMID =        (* mkid *)
+    RECORD
+    cb : USHORT;             (* Size of the ID (including cb itself) *)
+    abID : ARRAY [0..0] OF BYTE;        (* The item ID (variable length) *)
+    END;
+    LPSHITEMID = POINTER TO SHITEMID;
+
+    ITEMIDLIST =      (* idl *)
+    RECORD
+    mkid : SHITEMID;
+    END;
+    LPITEMIDLIST = POINTER TO ITEMIDLIST;
+    LPCITEMIDLIST = LPITEMIDLIST;
+
+TYPE
+  BFFCALLBACK = PROCEDURE( HWND, UINT, LPARAM, LPARAM ) : INTEGER;
+
+  BROWSEINFOA = RECORD
+                  hwndOwner    : HWND;
+                  pidlRoot     : LPCITEMIDLIST;
+                  pszDisplayName,
+                  lpszTitle    : LPSTR;
+                  ulFlags      : UINT;
+                  lpfn         : BFFCALLBACK;
+                  lParam       : LPARAM;
+                  iImage       : INTEGER;
+                END;
+
+  BROWSEINFOW = RECORD
+                  hwndOwner    : HWND;
+                  pidlRoot     : LPCITEMIDLIST;
+                  pszDisplayName,
+                  lpszTitle    : LPWSTR;
+                  ulFlags      : UINT;
+                  lpfn         : BFFCALLBACK;
+                  lParam       : LPARAM;
+                  iImage       : INTEGER;
+                END;
+
+%IF UNICODE %THEN
+  BROWSEINFO   = BROWSEINFOW;
+%ELSE
+  BROWSEINFO   = BROWSEINFOA;
+%END
+
+CONST
+  BIF_RETURNONLYFSDIRS   = 00001H;
+  BIF_DONTGOBELOWDOMAIN  = 00002H;
+  BIF_STATUSTEXT         = 00004H;
+  BIF_RETURNFSANCESTORS  = 00008H;
+  BIF_EDITBOX            = 00010H;
+  BIF_VALIDATE           = 00020H;
+
+  BIF_NEWDIALOGSTYLE     = 00040H;
+  BIF_USENEWUI           = (BIF_NEWDIALOGSTYLE BOR BIF_EDITBOX);
+  BIF_BROWSEINCLUDEURLS  = 00080H;
+
+  BIF_BROWSEFORCOMPUTER  = 01000H;
+  BIF_BROWSEFORPRINTER   = 02000H;
+  BIF_BROWSEINCLUDEFILES = 04000H;
+
+  BIF_SHAREABLE          = 08000H;
+
+  BFFM_INITIALIZED       = 1;
+  BFFM_SELCHANGED        = 2;
+  BFFM_VALIDATEFAILEDA   = 3;
+  BFFM_VALIDATEFAILEDW   = 4;
+
+  BFFM_SETSTATUSTEXTA    = (WM_USER + 100);
+  BFFM_ENABLEOK          = (WM_USER + 101);
+  BFFM_SETSELECTIONA     = (WM_USER + 102);
+  BFFM_SETSELECTIONW     = (WM_USER + 103);
+  BFFM_SETSTATUSTEXTW    = (WM_USER + 104);
+
+PROCEDURE SHBrowseForFolderA( VAR INOUT lpbi : BROWSEINFOA ) : LPITEMIDLIST;
+PROCEDURE SHBrowseForFolderW( VAR INOUT lpbi : BROWSEINFOW ) : LPITEMIDLIST;
+
+%IF UNICODE %THEN
+PROCEDURE SHBrowseForFolder = SHBrowseForFolderW;
+
+CONST
+  BFFM_SETSTATUSTEXT  = BFFM_SETSTATUSTEXTW;
+  BFFM_SETSELECTION   = BFFM_SETSELECTIONW;
+  BFFM_VALIDATEFAILED = BFFM_VALIDATEFAILEDW;
+
+%ELSE
+PROCEDURE SHBrowseForFolder = SHBrowseForFolderA;
+
+CONST
+  BFFM_SETSTATUSTEXT  = BFFM_SETSTATUSTEXTA;
+  BFFM_SETSELECTION   = BFFM_SETSELECTIONA;
+  BFFM_VALIDATEFAILED = BFFM_VALIDATEFAILEDA;
+
+%END
+
+PROCEDURE SHGetPathFromIDListA( pidl : LPCITEMIDLIST; VAR OUT pszPath : ARRAY OF ACHAR ) : BOOLEAN;
+PROCEDURE SHGetPathFromIDListW( pidl : LPCITEMIDLIST; VAR OUT pszPath : ARRAY OF UCHAR ) : BOOLEAN;
+
+%IF UNICODE %THEN
+PROCEDURE SHGetPathFromIDList = SHGetPathFromIDListW;
+%ELSE
+PROCEDURE SHGetPathFromIDList = SHGetPathFromIDListA;
+%END
+
+CONST
+  MIMEASSOCDLG_FL_REGISTER_ASSOC         = 0001H;
+
+PROCEDURE MIMEAssociationDialogA(         hwndParent          : HWND;
+                                          dwInFlags           : DWORD;
+                                  CONST   pcszFile,
+                                          pcszMIMEContentType : ARRAY OF CHAR;
+                                  VAR OUT pszAppBuf           : ARRAY OF CHAR;
+                                          ucAppBufLen         : UINT ) : HRESULT;
+
+PROCEDURE MIMEAssociationDialogW(         hwndParent          : HWND;
+                                          dwInFlags           : DWORD;
+                                  CONST   pcszFile,
+                                          pcszMIMEContentType : ARRAY OF UCHAR;
+                                  VAR OUT pszAppBuf           : ARRAY OF UCHAR;
+                                          ucAppBufLen         : UINT ) : HRESULT;
+
+%IF UNICODE %THEN
+  PROCEDURE MIMEAssociationDialog    = MIMEAssociationDialogW;
+%ELSE
+  PROCEDURE MIMEAssociationDialog    = MIMEAssociationDialogA;
+%END
+END SHELLAPI.

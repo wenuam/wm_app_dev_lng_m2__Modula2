@@ -1,0 +1,248 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE NamedPipes;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+TYPE
+    NamedPipe;
+
+    NamedPipeType       = (NpBytePipe, NpMessagePipe);
+    NamedPipeReadMode   = (NpReadBytes, NpReadMessages);
+
+    (* Byte pipes are simply a block of memory used like a disk file *)
+    (* you read and write X number of bytes of data *)
+    (* Message pipes however each write is assumed to be a data *)
+    (* entity X bytes in size, you read and write these entities *)
+    (* nothing less, nothing more *)
+    (* each entity can be a different size *)
+    (* they need not be uniform in size *)
+
+    NamedPipeStatus     = (
+                           NpSuccess,
+                           NpPipeNotFound,
+                           NpAccessDenied,
+                           NpPipeBusy,
+                           NpMoreData,
+                           NpBrokenPipe,
+                           NpError
+                          );
+
+CONST
+    UnlimitedPipes      = 255;
+
+    NpWaitDefault       = 0;
+    NpWaitNone          = 1;
+    NpWaitForever       = MAX(CARDINAL32);
+
+(* the following functions are only used by a NamedPipe server *)
+
+PROCEDURE ServerCreateNamedPipe(VAR OUT np : NamedPipe;
+                                pipeName : ARRAY OF CHAR;
+                                typ : NamedPipeType;
+                                readMode : NamedPipeReadMode;
+                                numInstances : CARDINAL;
+                                bufSize : CARDINAL) : BOOLEAN;
+(* creates a named pipe *)
+(* name is the identifier of the named pipe *)
+(* do not supply operating specific designators in this name *)
+(* the implementation of this module will handle these specifics *)
+(* for example if an operating system designates the server pipe name as *)
+(* "\\.\PIPE\PipeName" *)
+(* then you would pass "PipeName" to the pipeName parameter. *)
+(* "\\.\PIPE\" is specific to the operating environment, in this case Win32 *)
+(* typ = the type of the named pipe *)
+(* readMode = how the pipe is to be accessed *)
+(* numInstances = how many instances of the named pipe are allowed *)
+(* valid values are 1..UnlimitedPipes *)
+(* each client that connects to the pipe takes one instance *)
+(* of the server end of the pipe *)
+(* bufSize = the buffer size used for information transmission on the pipe *)
+(* return TRUE is the pipe is created *)
+
+(* The way a server handles multiple clients is to have one thread *)
+(* for each instance of the pipe. *)
+(* Create is called for each thread(instance), the first time the named *)
+(* pipe is created the numInstances parameter is used, thereafter it is *)
+(* ignored *)
+(* example of the logic of a main thread of a server
+    Connected := 0;
+    LOOP
+        (* your server may not have a limited number of connections *)
+        (* in this case you would create as many pipes as there are *)
+        (* clients requesting access and look at the result of the create *)
+        (* to find out when the system can no longer create pipes *)
+
+        IF Connected < MaxClients THEN
+            IF NOT ServerCreateNamedPipe(ThisPipe, ...) THEN
+                (* Ouch *)
+                EXIT;
+            END;
+            stat := ServerConnectNamedPipe(ThisPipe);
+            IF stat = NpSuccess THEN
+                INC(Connected);
+
+                (* create the thread that will process the client *)
+                (* pass the named pipe to the thread via its parameter *)
+                (* the thread will close the named pipe before it *)
+                (* terminates. It will also decrement Connected *)
+
+                (* by creating the thread after connecting the pipe *)
+                (* we do not have any threads waiting around doing *)
+                (* nothing but waiting for a connection and wasting *)
+                (* operating system resources *)
+                (* we also do not have excess pipes created wasting *)
+                (* system resources, only stuff in use actually exists *)
+
+                CreateThread();
+            ELSE
+                (* could not connect, just close the pipe and reloop *)
+
+                ServerCloseNamedPipe(ThisPipe);
+            END;
+        ELSE
+            (* we have maxed out on the number of clients we *)
+            (* can handle, wait for a client to disconnect *)
+            (* an event semaphore could be used for this *)
+
+            (* or you could just have this thread go to sleep *)
+            (* for some period of time *)
+        END;
+    END;
+*)
+
+PROCEDURE ServerCloseNamedPipe(VAR INOUT np : NamedPipe);
+(* reverses ServerCreateNamedPipe procedure call *)
+(* it close the NamedPipe *)
+
+PROCEDURE ServerConnectNamedPipe(np : NamedPipe) : NamedPipeStatus;
+(* connects the server to a client *)
+(* this call waits until a client tries to connect to the pipe *)
+
+PROCEDURE ServerDisconnectNamedPipe(np : NamedPipe) : BOOLEAN;
+(* after communication is done between the server and client, the *)
+(* server must call this, and then if it wants to again try to connect to *)
+(* another client it calls ServerConnectNamedPipe *)
+(* return TRUE if the operation succeds *)
+
+(* the following functions are only used by a NamedPipe client *)
+
+PROCEDURE ClientOpenNamedPipe(VAR OUT np : NamedPipe;
+                              serverName : ARRAY OF CHAR;
+                              pipeName : ARRAY OF CHAR;
+                              readMode : NamedPipeReadMode
+                             ) : NamedPipeStatus;
+(* client connect to a named pipe *)
+(* serverName is the path designator for the server on the network *)
+(* pipeName is the name of the pipe *)
+(* for example if an operating system designates the server pipe name as *)
+(* "\\ServerName\PIPE\PipeName" *)
+(* you would would pass "\\ServerName" to the serverName parameter *)
+(* you would pass "PipeName" to the pipeName parameter *)
+(* the "\PIPE\" is specific to the operating environment, in this case Win32 *)
+(* readMode = how the pipe is to be accessed *)
+(* the return value signifies the success or failure of the call *)
+(* This call will wait until the pipe is available *)
+
+PROCEDURE ClientCloseNamedPipe(VAR INOUT np : NamedPipe);
+(* Reverses ClientOpenNamedPipe, closes the client connection *)
+(* to the pipe *)
+
+PROCEDURE ClientWaitForNamedPipe(serverName : ARRAY OF CHAR;
+                                 pipeName : ARRAY OF CHAR;
+                                 time : CARDINAL) : NamedPipeStatus;
+(* check to see if the named pipe is available *)
+(* see ClientOpenNamedPipe for the meanings of the *)
+(* serverName and pipeName parameters *)
+(* time = the time in milliseconds to wait for the pipe to become available *)
+(* or pass one of the NpWait constants *)
+
+PROCEDURE ClientCallNamedPipe(serverName : ARRAY OF CHAR;
+                              pipeName : ARRAY OF CHAR;
+                              writeData : ADDRESS;
+                              sizeWrite : CARDINAL;
+                              readData : ADDRESS;
+                              sizeRead : CARDINAL;
+                              VAR OUT numRead : CARDINAL
+                             ) : NamedPipeStatus;
+(* this function does three things *)
+(* it first opens the pipe *)
+(* then it uses the TransactNamedPipe procedure *)
+(* finally it closes the pipe and returns *)
+(* the return value signifies the success or failure of the call *)
+(* see ClientOpenNamedPipe for the meanings of the *)
+(* serverName and pipeName parameters *)
+
+(* the following functions used by both server and client *)
+
+PROCEDURE WriteNamedPipe(np : NamedPipe;
+                         data : ADDRESS;
+                         size : CARDINAL;
+                         VAR OUT numWritten : CARDINAL
+                        ) : NamedPipeStatus;
+(* writes data to the named pipe *)
+(* size = the number of byte to write *)
+(* if the pipe is a message pipe, the write is considered the entire *)
+(* contents of the message *)
+(* numWritten is the size in bytes of the actual amount of data written *)
+(* the return value signifies the success or failure of the call *)
+
+PROCEDURE ReadNamedPipe(np :  NamedPipe;
+                        data : ADDRESS;
+                        size : CARDINAL;
+                        VAR OUT numRead : CARDINAL
+                       ) : NamedPipeStatus;
+(* reads data from the named pipe *)
+(* if no data is in the pipe, this calls waits for data to enter the pipe *)
+(* size is the size in bytes of the data to be read *)
+(* if the pipe contains less data than size then only that amount *)
+(* of data is read *)
+(* if the pipe is a message pipe, and size is greater than the message *)
+(* about to be read only the size of the message is read *)
+(* if size is not large enough for the message the return status will *)
+(* be NpMoreData *)
+(* numRead = the amount of data in bytes that was actually read *)
+(* the return value signifies the success or failure of the call *)
+
+PROCEDURE TransactNamedPipe(np : NamedPipe;
+                            writeData : ADDRESS;
+                            sizeWrite : CARDINAL;
+                            readData : ADDRESS;
+                            sizeRead : CARDINAL;
+                            VAR OUT numRead : CARDINAL
+                           ) : NamedPipeStatus;
+(* this function does two things *)
+(* a write followed by a read of the pipe *)
+(* this may be more efficient/easier than individual calls *)
+(* the serparate read and write parameters operate the same as their *)
+(* respective parameters in the individual ReadNamedPipe and WriteNamedPipe *)
+(* procedure calls *)
+
+PROCEDURE PeekNamedPipe(np :  NamedPipe;
+                        data : ADDRESS;
+                        size : CARDINAL;
+                        VAR OUT numRead : CARDINAL
+                       ) : NamedPipeStatus;
+(* read data in pipe without removing the data from the pipe *)
+(* the parameters operate the same as for ReadNamedPipe *)
+
+PROCEDURE NamedPipeIsEmpty(np : NamedPipe) : BOOLEAN;
+(* returns TRUE is the pipe does not contain any data *)
+(* otherwise it return FALSE *)
+
+PROCEDURE GetOSError(np : NamedPipe) : CARDINAL;
+(* returns the operating system dependent error code for the *)
+(* last named pipe call *)
+
+END NamedPipes.

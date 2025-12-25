@@ -1,0 +1,8 @@
+UNSAFEGUARDED IMPLEMENTATION MODULE OleDlg;
+
+<*/NOWARN:I*>
+(*MVN+*)
+<*/Foreign*>
+(*MVN-*)
+
+END OleDlg.

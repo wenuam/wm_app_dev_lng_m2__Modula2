@@ -1,0 +1,1191 @@
+(*
+Name:     OleC
+Creation: 23-02-2000
+LastEdit: 04-03-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  Copyright (C) Microsoft Corporation, 1993 - 1997.
+          Conversion from Microsoft olectl, ocidl, servprov and urlmon IDL sources to Modula-2 source,
+          copyright (c) 2000, Egbert J. van der Haring. All rights reserved.
+*)
+
+UNSAFEGUARDED DEFINITION MODULE OleC;
+
+IMPORT WIN32;
+IMPORT WINGDI;
+IMPORT WINUSER;
+IMPORT Ole2;
+IMPORT Bstr;
+
+(*MVN+*)
+<*/Foreign*>
+(*MVN-*)
+
+<*/CALLS:WIN32SYSTEM*>
+<*/NOHIGH*>
+<*/ALIGN:8*>
+<*/NOPACK*>
+
+VAR
+	%IF IA32 %THEN
+		IID_IEnumConnections ['_IID_IEnumConnections' EXTERNAL]: WIN32.IID;
+		IID_IConnectionPoint ['_IID_IConnectionPoint' EXTERNAL]: WIN32.IID;
+		IID_IEnumConnectionPoints ['_IID_IEnumConnectionPoints' EXTERNAL]: WIN32.IID;
+		IID_IConnectionPointContainer ['_IID_IConnectionPointContainer' EXTERNAL]: WIN32.IID;
+		IID_IClassFactory2 ['_IID_IClassFactory2' EXTERNAL]: WIN32.IID;
+		IID_IProvideClassInfo ['_IID_IProvideClassInfo' EXTERNAL]: WIN32.IID;
+		IID_IProvideClassInfo2 ['_IID_IProvideClassInfo2' EXTERNAL]: WIN32.IID;
+		IID_IProvideMultipleClassInfo ['_IID_IProvideMultipleClassInfo' EXTERNAL]: WIN32.IID;
+		IID_IOleControlSite ['_IID_IOleControlSite' EXTERNAL]: WIN32.IID;
+		IID_IOleControl ['_IID_IOleControl' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPageSite ['_IID_IPropertyPageSite' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPage ['_IID_IPropertyPage' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPage2 ['_IID_IPropertyPage2' EXTERNAL]: WIN32.IID;
+		IID_IPropertyNotifySink ['_IID_IPropertyNotifySink' EXTERNAL]: WIN32.IID;
+		IID_ISpecifyPropertyPages ['_IID_ISpecifyPropertyPages' EXTERNAL]: WIN32.IID;
+		IID_IPersistMemory ['_IID_IPersistMemory' EXTERNAL]: WIN32.IID;
+		IID_IPersistPropertyBag ['_IID_IPersistPropertyBag' EXTERNAL]: WIN32.IID;
+		IID_IPersistPropertyBag2 ['_IID_IPersistPropertyBag2' EXTERNAL]: WIN32.IID;
+		IID_IErrorLog ['_IID_IErrorLog' EXTERNAL]: WIN32.IID;
+		IID_IPropertyBag ['_IID_IPropertyBag' EXTERNAL]: WIN32.IID;
+		IID_IPropertyBag2 ['_IID_IPropertyBag2' EXTERNAL]: WIN32.IID;
+		IID_ISimpleFrameSite ['_IID_ISimpleFrameSite' EXTERNAL]: WIN32.IID;
+		IID_IFont ['_IID_IFont' EXTERNAL]: WIN32.IID;
+		IID_IPicture ['_IID_IPicture' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceObjectWindowless ['_IID_IOleInPlaceObjectWindowless' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceSiteEx ['_IID_IOleInPlaceSiteEx' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceSiteWindowless ['_IID_IOleInPlaceSiteWindowless' EXTERNAL]: WIN32.IID;
+		IID_IViewObjectEx ['_IID_IViewObjectEx' EXTERNAL]: WIN32.IID;
+		IID_IOleUndoUnit ['_IID_IOleUndoUnit' EXTERNAL]: WIN32.IID;
+		IID_IOleParentUndoUnit ['_IID_IOleParentUndoUnit' EXTERNAL]: WIN32.IID;
+		IID_IEnumOleUndoUnits ['_IID_IEnumOleUndoUnits' EXTERNAL]: WIN32.IID;
+		IID_IOleUndoManager ['_IID_IOleUndoManager' EXTERNAL]: WIN32.IID;
+		IID_IPointerInactive ['_IID_IPointerInactive' EXTERNAL]: WIN32.IID;
+		IID_IObjectWithSite ['_IID_IObjectWithSite' EXTERNAL]: WIN32.IID;
+		IID_IPerPropertyBrowsing ['_IID_IPerPropertyBrowsing' EXTERNAL]: WIN32.IID;
+		IID_IAdviseSinkEx ['_IID_IAdviseSinkEx' EXTERNAL]: WIN32.IID;
+		IID_IServiceProvider ['_IID_IServiceProvider' EXTERNAL]: WIN32.IID;
+		IID_IQuickActivate ['_IID_IQuickActivate' EXTERNAL]: WIN32.IID;
+		IID_IBindHost ['_IID_IBindHost' EXTERNAL]: WIN32.IID;
+	%ELSE
+		IID_IEnumConnections ['IID_IEnumConnections' EXTERNAL]: WIN32.IID;
+		IID_IConnectionPoint ['IID_IConnectionPoint' EXTERNAL]: WIN32.IID;
+		IID_IEnumConnectionPoints ['IID_IEnumConnectionPoints' EXTERNAL]: WIN32.IID;
+		IID_IConnectionPointContainer ['IID_IConnectionPointContainer' EXTERNAL]: WIN32.IID;
+		IID_IClassFactory2 ['IID_IClassFactory2' EXTERNAL]: WIN32.IID;
+		IID_IProvideClassInfo ['IID_IProvideClassInfo' EXTERNAL]: WIN32.IID;
+		IID_IProvideClassInfo2 ['IID_IProvideClassInfo2' EXTERNAL]: WIN32.IID;
+		IID_IProvideMultipleClassInfo ['IID_IProvideMultipleClassInfo' EXTERNAL]: WIN32.IID;
+		IID_IOleControlSite ['IID_IOleControlSite' EXTERNAL]: WIN32.IID;
+		IID_IOleControl ['IID_IOleControl' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPageSite ['IID_IPropertyPageSite' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPage ['IID_IPropertyPage' EXTERNAL]: WIN32.IID;
+		IID_IPropertyPage2 ['IID_IPropertyPage2' EXTERNAL]: WIN32.IID;
+		IID_IPropertyNotifySink ['IID_IPropertyNotifySink' EXTERNAL]: WIN32.IID;
+		IID_ISpecifyPropertyPages ['IID_ISpecifyPropertyPages' EXTERNAL]: WIN32.IID;
+		IID_IPersistMemory ['IID_IPersistMemory' EXTERNAL]: WIN32.IID;
+		IID_IPersistPropertyBag ['IID_IPersistPropertyBag' EXTERNAL]: WIN32.IID;
+		IID_IPersistPropertyBag2 ['IID_IPersistPropertyBag2' EXTERNAL]: WIN32.IID;
+		IID_IErrorLog ['IID_IErrorLog' EXTERNAL]: WIN32.IID;
+		IID_IPropertyBag ['IID_IPropertyBag' EXTERNAL]: WIN32.IID;
+		IID_IPropertyBag2 ['IID_IPropertyBag2' EXTERNAL]: WIN32.IID;
+		IID_ISimpleFrameSite ['IID_ISimpleFrameSite' EXTERNAL]: WIN32.IID;
+		IID_IFont ['IID_IFont' EXTERNAL]: WIN32.IID;
+		IID_IPicture ['IID_IPicture' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceObjectWindowless ['IID_IOleInPlaceObjectWindowless' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceSiteEx ['IID_IOleInPlaceSiteEx' EXTERNAL]: WIN32.IID;
+		IID_IOleInPlaceSiteWindowless ['IID_IOleInPlaceSiteWindowless' EXTERNAL]: WIN32.IID;
+		IID_IViewObjectEx ['IID_IViewObjectEx' EXTERNAL]: WIN32.IID;
+		IID_IOleUndoUnit ['IID_IOleUndoUnit' EXTERNAL]: WIN32.IID;
+		IID_IOleParentUndoUnit ['IID_IOleParentUndoUnit' EXTERNAL]: WIN32.IID;
+		IID_IEnumOleUndoUnits ['IID_IEnumOleUndoUnits' EXTERNAL]: WIN32.IID;
+		IID_IOleUndoManager ['IID_IOleUndoManager' EXTERNAL]: WIN32.IID;
+		IID_IPointerInactive ['IID_IPointerInactive' EXTERNAL]: WIN32.IID;
+		IID_IObjectWithSite ['IID_IObjectWithSite' EXTERNAL]: WIN32.IID;
+		IID_IPerPropertyBrowsing ['IID_IPerPropertyBrowsing' EXTERNAL]: WIN32.IID;
+		IID_IAdviseSinkEx ['IID_IAdviseSinkEx' EXTERNAL]: WIN32.IID;
+		IID_IServiceProvider ['IID_IServiceProvider' EXTERNAL]: WIN32.IID;
+		IID_IQuickActivate ['IID_IQuickActivate' EXTERNAL]: WIN32.IID;
+		IID_IBindHost ['IID_IBindHost' EXTERNAL]: WIN32.IID;
+	%END
+
+TYPE PCONNECTDATA= POINTER TO CONNECTDATA;
+     CONNECTDATA=  RECORD
+                     iUnknown: Ole2.IUnknown;
+                     dwCookie: WIN32.DWORD;
+                   END; (* record *)
+
+ABSTRACT CLASS IEnumConnectionPoints; FORWARD;
+ABSTRACT CLASS IConnectionPoint; FORWARD;
+
+ABSTRACT CLASS IConnectionPointContainer;
+  INHERIT Ole2.IUnknown;
+  REVEAL EnumConnectionPoints,
+         FindConnectionPoint;
+
+  ABSTRACT PROCEDURE EnumConnectionPoints(VAR iEnumConnectionPoints: IEnumConnectionPoints): WIN32.HRESULT;
+  ABSTRACT PROCEDURE FindConnectionPoint(    iid: WIN32.IID;
+                                         VAR iConnectionPoint: IConnectionPoint): WIN32.HRESULT;
+END IConnectionPointContainer;
+
+
+ABSTRACT CLASS IEnumConnections;
+  INHERIT Ole2.IUnknown;
+  REVEAL Next,
+         Skip,
+         Reset,
+         Clone;
+
+  ABSTRACT PROCEDURE Next(    cConnections: CARDINAL;
+                          VAR connectdata:  ARRAY OF CONNECTDATA;
+                          VAR cFetched:     CARDINAL): WIN32.HRESULT;
+  (* do not call the RemoteNext method, but only use Next *)
+  ABSTRACT PROCEDURE RemoteNext(    cConnections: CARDINAL;
+                                VAR connectdata:  ARRAY OF CONNECTDATA;
+                                VAR cFetched:     CARDINAL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Skip(cConnections: CARDINAL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Reset(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumConnections: IEnumConnections): WIN32.HRESULT;
+END IEnumConnections;
+
+
+ABSTRACT CLASS IConnectionPoint;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetConnectionInterface,
+         GetConnectionPointContainer,
+         Advise,
+         Unadvise,
+         EnumConnections;
+
+  ABSTRACT PROCEDURE GetConnectionInterface(VAR iid: WIN32.IID): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetConnectionPointContainer(VAR iConnectionPointContainer: IConnectionPointContainer): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Advise(    iSink:    Ole2.IUnknown;
+                            VAR dwCookie: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Unadvise(dwCookie: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE EnumConnections(VAR iEnumConnections: IEnumConnections): WIN32.HRESULT;
+END IConnectionPoint;
+
+
+ABSTRACT CLASS IEnumConnectionPoints;
+  INHERIT Ole2.IUnknown;
+  REVEAL Next,
+         Skip,
+         Reset,
+         Clone;
+
+  ABSTRACT PROCEDURE Next(    cConnections:     CARDINAL;
+                          VAR iConnectionPoint: ARRAY OF IConnectionPoint;
+                          VAR cFetched:         CARDINAL): WIN32.HRESULT;
+  (* do not call the RemoteNext method, but only use Next *)
+  ABSTRACT PROCEDURE RemoteNext(    cConnections:     CARDINAL;
+                                VAR iConnectionPoint: ARRAY OF IConnectionPoint;
+                                VAR cFetched:         CARDINAL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Skip(cConnections: CARDINAL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Reset(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumConnectionPoints: IEnumConnectionPoints): WIN32.HRESULT;
+END IEnumConnectionPoints;
+
+
+TYPE LICINFO= RECORD
+                cbLicInfo:        WIN32.LONG;
+                fRuntimeKeyAvail: WIN32.BOOL;
+                fLicVerified:     WIN32.BOOL;
+              END; (* record *)
+
+ABSTRACT CLASS IClassFactory2;
+  INHERIT Ole2.IClassFactory;
+  REVEAL GetLicInfo,
+         RequestLicKey,
+         CreateInstanceLic;
+
+  ABSTRACT PROCEDURE GetLicInfo(VAR licinfo: LICINFO): WIN32.HRESULT;
+  ABSTRACT PROCEDURE RequestLicKey(    dwReserved: WIN32.DWORD;
+                                   VAR bstrKey:    Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE CreateInstanceLic(    iOuter:    Ole2.IUnknown;
+                                           iReserved: Ole2.IUnknown;
+                                           iid:       WIN32.IID;
+                                           bstrKey:   Bstr.T;
+                                       VAR iUnknown:  Ole2.IUnknown): WIN32.HRESULT;
+END IClassFactory2;
+
+
+ABSTRACT CLASS IProvideClassInfo;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetClassInfo;
+
+  ABSTRACT PROCEDURE GetClassInfo(VAR iTypeInfo: Ole2.ITypeInfo): WIN32.HRESULT;
+END IProvideClassInfo;
+
+
+CONST GUIDKIND_DEFAULT_SOURCE_DISP_IID= 1; (* GUIDKIND *)
+
+ABSTRACT CLASS IProvideClassInfo2;
+  INHERIT IProvideClassInfo;
+  REVEAL GetGUID;
+
+  ABSTRACT PROCEDURE GetGUID(    dwGuidKind: WIN32.DWORD;
+                             VAR guid:       WIN32.GUID):WIN32.HRESULT;
+END IProvideClassInfo2;
+
+
+CONST MULTICLASSINFO_GETTYPEINFO=           1;
+      MULTICLASSINFO_GETNUMRESERVEDDISPIDS= 2;
+      MULTICLASSINFO_GETIIDPRIMARY=         4;
+      MULTICLASSINFO_GETIIDSOURCE=          8;
+      TIFLAGS_EXTENDDISPATCHONLY=           1;
+
+ABSTRACT CLASS IProvideMultipleClassInfo;
+  INHERIT IProvideClassInfo2;
+  REVEAL GetMultiTypeInfoCount,
+         GetInfoOfIndex;
+
+  ABSTRACT PROCEDURE GetMultiTypeInfoCount(VAR cti: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetInfoOfIndex(    iti:            WIN32.ULONG;
+                                        dwFlags:        WIN32.DWORD;
+                                    VAR iTypeInfo:      Ole2.ITypeInfo;
+                                    VAR dwTIFlags:      WIN32.DWORD;
+                                    VAR dispIdReserved: WIN32.ULONG;
+                                    VAR iidPrimary:     WIN32.IID;
+                                    VAR iidSource:      WIN32.IID): WIN32.HRESULT;
+END IProvideMultipleClassInfo;
+
+
+CONST CTRLINFO_EATS_RETURN= 1; (* flags for CONTROLINFO *)
+      CTRLINFO_EATS_ESCAPE= 2;
+
+TYPE CONTROLINFO= RECORD
+                    cb:      WIN32.ULONG;   (* size of CONTROLINFO record *)
+                    hAccel:  WIN32.HACCEL;  (* accelerator table *)
+                    cAccel:  WIN32.USHORT;  (* number of accelerators *)
+                    dwFlags: WIN32.DWORD;   (* keyboard behaviour *)
+                  END; (* record *)
+
+ABSTRACT CLASS IOleControl;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetControlInfo,
+         OnMnemonic,
+         OnAmbientPropertyChange,
+         FreezeEvents;
+
+  ABSTRACT PROCEDURE GetControlInfo(VAR pCI: CONTROLINFO): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnMnemonic(msg: WINUSER.MSG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnAmbientPropertyChange(dispId: Ole2.DISPID): WIN32.HRESULT;
+  ABSTRACT PROCEDURE FreezeEvents(bFreeze: WIN32.BOOL): WIN32.HRESULT;
+END IOleControl;
+
+
+CONST XFORMCOORDS_POSITION=            0; (* these are bits *)
+      XFORMCOORDS_SIZE=                1; (* that may be set *)
+      XFORMCOORDS_HIMETRICTOCONTAINER= 2; (* in bsFlags of *)
+      XFORMCOORDS_CONTAINERTOHIMETRIC= 3; (* TransformCoords *)
+      XFORMCOORDS_EVENTCOMPAT=         4;
+
+TYPE POINTF= RECORD
+               x: REAL;
+               y: REAL;
+             END; (* record *)
+
+ABSTRACT CLASS IOleControlSite;
+  INHERIT Ole2.IUnknown;
+  REVEAL OnControlInfoChanged,
+         LockInPlaceActive,
+         GetExtendedControl,
+         TransformCoords,
+         TranslateAccelerator,
+         OnFocus,
+         ShowPropertyFrame;
+
+  ABSTRACT PROCEDURE OnControlInfoChanged(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE LockInPlaceActive(fLock: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetExtendedControl(VAR iDispatch: Ole2.IDispatch): WIN32.HRESULT;
+  ABSTRACT PROCEDURE TransformCoords(VAR INOUT pPtlHimetric:  WIN32.POINTL;
+                                     VAR INOUT pPtfContainer: POINTF;
+                                               bsFlags:       BITSET32): WIN32.HRESULT;
+  ABSTRACT PROCEDURE TranslateAccelerator(msg: WINUSER.MSG;
+                                          grfModifiers: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnFocus(fGotFocus: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE ShowPropertyFrame(): WIN32.HRESULT;
+END IOleControlSite;
+
+
+TYPE PROPPAGEINFO= RECORD
+                     cb:            WIN32.ULONG;
+                     pszTitle:      Ole2.LPOLESTR;
+                     size:          WIN32.WSIZE;
+                     pszDocString:  Ole2.LPOLESTR;
+                     pszHelpFile:   Ole2.LPOLESTR;
+                     dwHelpContext: WIN32.DWORD;
+                   END; (* record *)
+
+CONST PROPPAGESTATUS_DIRTY=    1; (* PROPPAGESTATUS *)
+      PROPPAGESTATUS_VALIDATE= 2;
+      PROPPAGESTATUS_CLEAN=    4;
+
+ABSTRACT CLASS IPropertyPageSite;
+  INHERIT Ole2.IUnknown;
+  REVEAL OnStatusChange,
+         GetLocaleID,
+         GetPageContainer,
+         TranslateAccelerator;
+
+  ABSTRACT PROCEDURE OnStatusChange(dwFlags: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetLocaleID( VAR lcidLocale: WIN32.LCID): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPageContainer(VAR iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+  ABSTRACT PROCEDURE TranslateAccelerator(msg: WINUSER.MSG): WIN32.HRESULT;
+END IPropertyPageSite;
+
+
+ABSTRACT CLASS IPropertyPage;
+  INHERIT Ole2.IUnknown;
+  REVEAL SetPageSite,
+         Activate,
+         Deactivate,
+         GetPageInfo,
+         SetObjects,
+         Show,
+         Move,
+         IsPageDirty,
+         Apply,
+         Help,
+         TranslateAccelerator;
+
+  ABSTRACT PROCEDURE SetPageSite(iPropertyPageSite: IPropertyPageSite): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Activate(hwndParent: WIN32.HWND;
+                              rect:       WIN32.RECT;
+                              bModal:     WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Deactivate(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPageInfo(VAR pageinfo: PROPPAGEINFO): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetObjects(cObjects: WIN32.ULONG;
+                                iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Show(nCmdShow: WIN32.UINT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Move(rect: WIN32.RECT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE IsPageDirty(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Apply(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Help(pszHelpDir: Ole2.LPCOLESTR): WIN32.HRESULT;
+  ABSTRACT PROCEDURE TranslateAccelerator(msg: WINUSER.MSG): WIN32.HRESULT;
+END IPropertyPage;
+
+
+ABSTRACT CLASS IPropertyPage2;
+  INHERIT IPropertyPage;
+  REVEAL EditProperty;
+
+  ABSTRACT PROCEDURE EditProperty(dispId: Ole2.DISPID): WIN32.HRESULT;
+END IPropertyPage2;
+
+
+ABSTRACT CLASS IPropertyNotifySink;
+  INHERIT Ole2.IUnknown;
+  REVEAL OnChanged,
+         OnRequestEdit;
+
+  ABSTRACT PROCEDURE OnChanged(dispId: Ole2.DISPID): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnRequestEdit(dispId: Ole2.DISPID): WIN32.HRESULT;
+END IPropertyNotifySink;
+
+
+TYPE CAUUID= RECORD
+               cElems: WIN32.ULONG;
+               guid:   ARRAY [0..0] OF WIN32.GUID;
+             END; (* record *)
+
+ABSTRACT CLASS ISpecifyPropertyPages;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetPages;
+
+  ABSTRACT PROCEDURE GetPages(VAR caUUID: CAUUID): WIN32.HRESULT;
+END ISpecifyPropertyPages;
+
+
+ABSTRACT CLASS IPersistMemory;
+  INHERIT Ole2.IPersist;
+  REVEAL IsDirty,
+         Load,
+         Save,
+         GetSizeMax,
+         InitNew;
+
+  ABSTRACT PROCEDURE IsDirty(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Load(pMem:   WIN32.LPVOID;
+                          cbSize: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Save(VAR pMem: WIN32.LPVOID;
+                              fClearDirty: WIN32.BOOL;
+                              cbSize:      WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetSizeMax(VAR cbSize: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE InitNew(): WIN32.HRESULT;
+END IPersistMemory;
+
+
+ABSTRACT CLASS IErrorLog;
+  INHERIT Ole2.IUnknown;
+  REVEAL AddError;
+
+  ABSTRACT PROCEDURE AddError(pszPropName: Ole2.LPCOLESTR;
+                              excepinfo:   Ole2.EXCEPINFO): WIN32.HRESULT;
+END IErrorLog;
+
+
+ABSTRACT CLASS IPropertyBag;
+  INHERIT Ole2.IUnknown;
+  REVEAL Read,
+         Write;
+
+  ABSTRACT PROCEDURE Read(    pszPropName: Ole2.LPCOLESTR;
+                          VAR INOUT variant: Ole2.VARIANT;
+                              iErrorLog:     IErrorLog): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Write(pszPropName: Ole2.LPCOLESTR;
+                           variant:     Ole2.VARIANT): WIN32.HRESULT;
+END IPropertyBag;
+
+
+CONST PROPBAG2_TYPE_UNDEFINED= 0; (* PROPBAG2_TYPE *)
+      PROPBAG2_TYPE_DATA=      1;
+      PROPBAG2_TYPE_URL=       2;
+      PROPBAG2_TYPE_OBJECT=    3;
+      PROPBAG2_TYPE_STREAM=    4;
+      PROPBAG2_TYPE_STORAGE=   5;
+      PROPBAG2_TYPE_MONIKER=   6;
+
+TYPE PROPBAG2= RECORD
+                 dwType:   WIN32.DWORD;
+                 vt:       Ole2.VARTYPE;
+                 cfType:   Ole2.CLIPFORMAT;
+                 dwHint:   WIN32.DWORD;
+                 pstrName: Ole2.LPOLESTR;
+                 clsid:    WIN32.CLSID;
+               END; (* record *)
+
+ABSTRACT CLASS IPropertyBag2;
+  INHERIT Ole2.IUnknown;
+  REVEAL Read,
+         Write,
+         CountProperties,
+         GetPropertyInfo,
+         LoadObject;
+
+  ABSTRACT PROCEDURE Read(    cProperties: WIN32.ULONG;
+                              propbag:     PROPBAG2;
+                              iErrorLog:   IErrorLog;
+                          VAR varValue:    Ole2.VARIANT;
+                          VAR hrError:     WIN32.HRESULT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Write(cProperties: WIN32.ULONG;
+                           propbag:     PROPBAG2;
+                           varValue:    Ole2.VARIANT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE CountProperties(VAR cProperties: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPropertyInfo(    cProperty:   WIN32.ULONG;
+                                         cProperties: WIN32.ULONG;
+                                     VAR propbag:     PROPBAG2;
+                                     VAR cProperties: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE LoadObject(pstrName:  Ole2.LPCOLESTR;
+                                dwHint:    WIN32.DWORD;
+                                iUnknown:  Ole2.IUnknown;
+                                iErrorLog: IErrorLog): WIN32.HRESULT;
+END IPropertyBag2;
+
+
+ABSTRACT CLASS IPersistPropertyBag;
+  INHERIT Ole2.IPersist;
+  REVEAL InitNew,
+         Load,
+         Save;
+
+  ABSTRACT PROCEDURE InitNew(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Load(iPropertyBag: IPropertyBag;
+                          iErrorLog:    IErrorLog): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Save(iPropertyBag:       IPropertyBag;
+                          fClearDirty:        WIN32.BOOL;
+                          fSaveAllProperties: WIN32.BOOL): WIN32.HRESULT;
+END IPersistPropertyBag;
+
+
+ABSTRACT CLASS IPersistPropertyBag2;
+  INHERIT Ole2.IPersist;
+  REVEAL InitNew,
+         Load,
+         Save,
+         IsDirty;
+
+  ABSTRACT PROCEDURE InitNew(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Load(iPropertyBag2: IPropertyBag2;
+                          iErrorLog:     IErrorLog): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Save(iPropertyBag2:      IPropertyBag2;
+                          fClearDirty:        WIN32.BOOL;
+                          fSaveAllProperties: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE IsDirty(): WIN32.HRESULT;
+END IPersistPropertyBag2;
+
+
+ABSTRACT CLASS ISimpleFrameSite;
+  INHERIT Ole2.IUnknown;
+  REVEAL PreMessageFilter,
+         PostMessageFilter;
+
+  ABSTRACT PROCEDURE PreMessageFilter(    hwnd:     WIN32.HWND;
+                                          cMsg:     WIN32.UINT;
+                                          wParam:   WIN32.WPARAM;
+                                          lParam:   WIN32.LPARAM;
+                                      VAR lresult:  WIN32.LRESULT;
+                                      VAR dwCookie: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE PostMessageFilter(    hwnd:     WIN32.HWND;
+                                           cMsg:     WIN32.UINT;
+                                           wParam:   WIN32.WPARAM;
+                                           lParam:   WIN32.LPARAM;
+                                       VAR lresult:  WIN32.LRESULT;
+                                           dwCookie: WIN32.DWORD): WIN32.HRESULT;
+END ISimpleFrameSite;
+
+
+TYPE TEXTMETRICOLE= WINGDI.TEXTMETRICW;
+
+ABSTRACT CLASS IFont;
+  INHERIT Ole2.IUnknown;
+  REVEAL get_Name,
+         put_Name,
+         get_Size,
+         put_Size,
+         get_Bold,
+         put_Bold,
+         get_Italic,
+         put_Italic,
+         get_Underline,
+         put_Underline,
+         get_Strikethrough,
+         put_Strikethrough,
+         get_Weight,
+         put_Weight,
+         get_Charset,
+         put_Charset,
+         get_hFont,
+         Clone,
+         IsEqual,
+         SetRatio,
+         QueryTextMetrics,
+         AddRefHfont,
+         ReleaseHfont,
+         SetHdc;
+
+  ABSTRACT PROCEDURE get_Name(VAR bstr: Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Name(bstr: Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Size(VAR cySize: Ole2.CY): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Size(cySize: Ole2.CY): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Bold(VAR bBold: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Bold(bBold: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Italic(VAR bItalic: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Italic(bItalic: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Underline(VAR bUnderline: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Underline(bUnderline: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Strikethrough(VAR bStrikethrough: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Strikethrough(bStrikethrough: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Weight(VAR nWeight: WIN32.SHORT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Weight(nWeight: WIN32.SHORT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Charset(VAR nCharset: WIN32.SHORT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_Charset(nCharset: WIN32.SHORT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_hFont(VAR hFont: WIN32.HFONT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iFont: IFont): WIN32.HRESULT;
+  ABSTRACT PROCEDURE IsEqual(iFont: IFont): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetRatio(cyLogical:  WIN32.LONG;
+                              cyHimetric: WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE QueryTextMetrics(VAR tm: TEXTMETRICOLE): WIN32.HRESULT;
+  ABSTRACT PROCEDURE AddRefHfont(hFont: WIN32.HFONT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE ReleaseHfont(hFont: WIN32.HFONT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetHdc(hdc: WIN32.HDC): WIN32.HRESULT;
+END IFont;
+
+
+CONST PICTURE_SCALABLE=    1; (* tagPictureAttributes *)
+      PICTURE_TRANSPARENT= 2;
+
+TYPE OLE_HANDLE=         WIN32.UINT;
+     OLE_XPOS_HIMETRIC=  WIN32.LONG;
+     OLE_YPOS_HIMETRIC=  WIN32.LONG;
+     OLE_XSIZE_HIMETRIC= WIN32.LONG;
+     OLE_YSIZE_HIMETRIC= WIN32.LONG;
+     OLE_XPOS_PIXELS=    WIN32.LONG;
+     OLE_YPOS_PIXELS=    WIN32.LONG;
+     OLE_XSIZE_PIXELS=   WIN32.LONG;
+     OLE_YSIZE_PIXELS=   WIN32.LONG;
+
+     OLE_XPOS_CONTAINER=  WIN32.WFLOAT;
+     OLE_YPOS_CONTAINER=  WIN32.WFLOAT;
+     OLE_XSIZE_CONTAINER= WIN32.WFLOAT;
+     OLE_YSIZE_CONTAINER= WIN32.WFLOAT;
+
+ABSTRACT CLASS IPicture;
+  INHERIT Ole2.IUnknown;
+  REVEAL get_Handle,
+         get_hPal,
+         get_Type,
+         get_Width,
+         get_Height,
+         Render,
+         set_hPal,
+         get_CurDC,
+         SelectPicture,
+         get_KeepOriginalFormat,
+         put_KeepOriginalFormat,
+         PictureChanged,
+         SaveAsFile,
+         get_Attributes;
+
+  ABSTRACT PROCEDURE get_Handle(VAR handle: OLE_HANDLE): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_hPal(VAR hPal: OLE_HANDLE): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Type(VAR nType: WIN32.SHORT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Width(VAR lWidth: OLE_XSIZE_HIMETRIC): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Height(VAR lHeight: OLE_YSIZE_HIMETRIC): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Render(hdc: WIN32.HDC;
+                            x:   WIN32.LONG;
+                            y:   WIN32.LONG;
+                            cx:  WIN32.LONG;
+                            cy:  WIN32.LONG;
+                            xSrc:  OLE_XPOS_HIMETRIC;
+                            ySrc:  OLE_YPOS_HIMETRIC;
+                            cxSrc: OLE_XSIZE_HIMETRIC;
+                            cySrc: OLE_YSIZE_HIMETRIC;
+                            rectBounds: WIN32.RECT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE set_hPal(hPal: OLE_HANDLE): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_CurDC(VAR hdc: WIN32.HDC): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SelectPicture(    hdcIn:   WIN32.HDC;
+                                   VAR hdcOut:  WIN32.HDC;
+                                   VAR hBitmap: OLE_HANDLE): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_KeepOriginalFormat(VAR bKeep: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE put_KeepOriginalFormat(bKeep: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE PictureChanged(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SaveAsFile(    iStream: Ole2.IStream;
+                                    fSaveMemCopy: Ole2.VARIANT_BOOL;
+                                VAR cbSize:       WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE get_Attributes(VAR dwAttr: WIN32.DWORD): WIN32.HRESULT;
+END IPicture;
+
+
+ABSTRACT CLASS IOleInPlaceObjectWindowless;
+  INHERIT Ole2.IOleInPlaceObject;
+  REVEAL OnWindowMessage,
+         GetDropTarget;
+
+  ABSTRACT PROCEDURE OnWindowMessage(    msg:     WIN32.UINT;
+                                         wParam:  WIN32.WPARAM;
+                                         lParam:  WIN32.LPARAM;
+                                     VAR lresult: WIN32.LRESULT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetDropTarget(VAR iDropTarget: Ole2.IDropTarget): WIN32.HRESULT;
+
+END IOleInPlaceObjectWindowless;
+
+
+CONST ACTIVATE_WINDOWLESS= 1; (* ACTIVATEFLAGS *)
+
+ABSTRACT CLASS IOleInPlaceSiteEx;
+  INHERIT Ole2.IOleInPlaceSite;
+  REVEAL OnInPlaceActivateEx,
+         OnInPlaceDeactivateEx,
+         RequestUIActivate;
+
+  ABSTRACT PROCEDURE OnInPlaceActivateEx(VAR bNoRedraw: WIN32.BOOL;
+                                             dwFlags:   WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnInPlaceDeactivateEx(bNoRedraw: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE RequestUIActivate(): WIN32.HRESULT;
+END IOleInPlaceSiteEx;
+
+
+CONST OLEDC_NODRAW=     1; (* OLEDCFLAGS *)
+      OLEDC_PAINTBKGND= 2;
+      OLEDC_OFFSCREEN=  4;
+
+ABSTRACT CLASS IOleInPlaceSiteWindowless;
+  INHERIT IOleInPlaceSiteEx;
+  REVEAL CanWindowlessActivate,
+         GetCapture,
+         SetCapture,
+         GetFocus,
+         SetFocus,
+         GetDC,
+         ReleaseDC,
+         InvalidateRect,
+         InvalidateRgn,
+         ScrollRect,
+         AdjustRect,
+         OnDefWindowMessage;
+
+  ABSTRACT PROCEDURE CanWindowlessActivate(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetCapture(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetCapture(bCapture: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetFocus(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetFocus(bFocus: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetDC(    rect:     WIN32.RECT;
+                               grfFlags: WIN32.DWORD;
+                           VAR hdc:      WIN32.HDC): WIN32.HRESULT;
+  ABSTRACT PROCEDURE ReleaseDC(hdc: WIN32.HDC): WIN32.HRESULT;
+  ABSTRACT PROCEDURE InvalidateRect(rect:   WIN32.RECT;
+                                    bErase: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE InvalidateRgn(hrgn:   WIN32.HRGN;
+                                   bErase: WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE ScrollRect(dx: WIN32.WINT;
+                                dy: WIN32.WINT;
+                                rectScroll: WIN32.RECT;
+                                rectClip:   WIN32.RECT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE AdjustRect(VAR INOUT rect: WIN32.RECT): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnDefWindowMessage(    cMsg:    WIN32.UINT;
+                                            wParam:  WIN32.WPARAM;
+                                            lParam:  WIN32.LPARAM;
+                                        VAR lresult: WIN32.LRESULT): WIN32.HRESULT;
+END IOleInPlaceSiteWindowless;
+
+
+CONST VIEWSTATUS_OPAQUE=              1; (* VIEWSTATUS *)
+      VIEWSTATUS_SOLIDBKGND=          2;
+      VIEWSTATUS_DVASPECTOPAQUE=      4;
+      VIEWSTATUS_DVASPECTTRANSPARENT= 8;
+      VIEWSTATUS_SURFACE=             16;
+      VIEWSTATUS_3DSURFACE=           32;
+
+CONST HITRESULT_OUTSIDE=     0; (* HITRESULT *)
+      HITRESULT_TRANSPARENT= 1;
+      HITRESULT_CLOSE=       2;
+      HITRESULT_HIT=         3;
+
+CONST DVASPECT_OPAQUE=      16; (* DVASPECT2 *)
+      DVASPECT_TRANSPARENT= 32;
+
+TYPE DVEXTENTINFO= RECORD
+                     cb: WIN32.ULONG;
+                     dwExtentMode:  WIN32.DWORD;
+                     sizelProposed: WIN32.SIZEL;
+                 END; (* record *)
+
+CONST DVEXTENT_CONTENT=  0; (* ExtentMode *)
+      DVEXTENT_INTEGRAL= DVEXTENT_CONTENT + 1;
+
+CONST DVASPECTINFOFLAG_CANOPTIMIZE= 1; (* AspectInfoFlag *)
+
+TYPE DVASPECTINFO= RECORD
+                     cb: WIN32.ULONG;
+                     dwFlags: WIN32.DWORD;
+                   END; (* record *)
+
+ABSTRACT CLASS IViewObjectEx;
+  INHERIT Ole2.IViewObject2;
+  REVEAL GetRect,
+         GetViewStatus,
+         QueryHitPoint,
+         GetNaturalExtent;
+
+  ABSTRACT PROCEDURE GetRect(    dwAspect: WIN32.DWORD;
+                             VAR rect:     WIN32.RECTL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetViewStatus(VAR dwStatus:    WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE QueryHitPoint(    dwAspect:    WIN32.DWORD;
+                                       rectBounds:  WIN32.RECT;
+                                       ptLoc:       WIN32.POINT;
+                                       lCloseHint:  WIN32.LONG;
+                                   VAR dwHitResult: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE QueryHitRect(    dwAspect:    WIN32.DWORD;
+                                      rectBounds:  WIN32.RECT;
+                                      rectLoc:     WIN32.RECT;
+                                      lCloseHint:  WIN32.LONG;
+                                  VAR dwHitResult: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetNaturalExtent(    dwAspect:     WIN32.DWORD;
+                                          lindex:       WIN32.LONG;
+                                          targetdevice: Ole2.DVTARGETDEVICE;
+                                          hdcTargetDev: WIN32.HDC;
+                                          extentinfo:   DVEXTENTINFO;
+                                      VAR sizel:        WIN32.SIZEL): WIN32.HRESULT;
+END IViewObjectEx;
+
+
+ABSTRACT CLASS IOleUndoManager; FORWARD;
+
+ABSTRACT CLASS IOleUndoUnit;
+  INHERIT Ole2.IUnknown;
+  REVEAL Do,
+         GetDescription,
+         GetUnitType,
+         OnNextAdd;
+
+  ABSTRACT PROCEDURE Do(iOleUndoManager: IOleUndoManager): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetDescription(VAR bstr: Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetUnitType(VAR clsid: WIN32.CLSID;
+                                 VAR lID:   WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnNextAdd(): WIN32.HRESULT;
+END IOleUndoUnit;
+
+
+ABSTRACT CLASS IOleParentUndoUnit;
+  INHERIT IOleUndoUnit;
+  REVEAL Open,
+         Close,
+         Add,
+         FindUnit,
+         GetParentState;
+
+  ABSTRACT PROCEDURE Open(iOleParentUndoUnit: IOleParentUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Close(iOleParentUndoUnit: IOleParentUndoUnit;
+                           fCommit:            WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Add(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE FindUnit(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetParentState(VAR dwState: WIN32.DWORD): WIN32.HRESULT;
+END IOleParentUndoUnit;
+
+
+ABSTRACT CLASS IEnumOleUndoUnits;
+  INHERIT Ole2.IUnknown;
+  REVEAL Next,
+         Skip,
+         Reset,
+         Clone;
+
+  ABSTRACT PROCEDURE Next(    cElt:         WIN32.ULONG;
+                          VAR iOleUndoUnit: IOleUndoUnit;
+                          VAR cFetched:     WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Skip(cElt: WIN32.ULONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Reset(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumOleUndoUnits: IEnumOleUndoUnits): WIN32.HRESULT;
+END IEnumOleUndoUnits;
+
+
+ABSTRACT CLASS IOleUndoManager;
+  INHERIT Ole2.IUnknown;
+  REVEAL Open,
+         Close,
+         Add,
+         GetOpenParentState,
+         DiscardFrom,
+         UndoTo,
+         RedoTo,
+         EnumUndoable,
+         EnumRedoable,
+         GetLastUndoDescription,
+         GetLastRedoDescription,
+         Enable;
+
+  ABSTRACT PROCEDURE Open(iOleParentUndoUnit: IOleParentUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Close(iOleParentUndoUnit: IOleParentUndoUnit;
+                           fCommit:            WIN32.BOOL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Add(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetOpenParentState(VAR dwState: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE DiscardFrom(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE UndoTo(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE RedoTo(iOleUndoUnit: IOleUndoUnit): WIN32.HRESULT;
+  ABSTRACT PROCEDURE EnumUndoable(VAR iEnumOleUndoUnits: IEnumOleUndoUnits): WIN32.HRESULT;
+  ABSTRACT PROCEDURE EnumRedoable(VAR iEnumOleUndoUnits: IEnumOleUndoUnits): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetLastUndoDescription(VAR bstr: Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetLastRedoDescription(VAR bstr: Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Enable(fEnable: WIN32.BOOL): WIN32.HRESULT;
+END IOleUndoManager;
+
+
+CONST POINTERINACTIVE_ACTIVATEONENTRY=   1; (* POINTERINACTIVE *)
+      POINTERINACTIVE_DEACTIVATEONLEAVE= 2;
+      POINTERINACTIVE_ACTIVATEONDRAG=    4;
+
+ABSTRACT CLASS IPointerInactive;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetActivationPolicy,
+         OnInactiveMouseMove,
+         OnInactiveSetCursor;
+
+  ABSTRACT PROCEDURE GetActivationPolicy(VAR dwPolicy: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnInactiveMouseMove(rectBounds:  WIN32.RECT;
+                                         x, y:        WIN32.LONG;
+                                         grfKeyState: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnInactiveSetCursor(rectBounds:  WIN32.RECT;
+                                         x, y:        WIN32.LONG;
+                                         dwMouseMsg:  WIN32.DWORD;
+                                         fSetAlways:  WIN32.BOOL): WIN32.HRESULT;
+END IPointerInactive;
+
+
+ABSTRACT CLASS IObjectWithSite;
+  INHERIT Ole2.IUnknown;
+  REVEAL SetSite,
+         GetSite;
+
+  ABSTRACT PROCEDURE SetSite(iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetSite(    iid: WIN32.IID;
+                             VAR iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+END IObjectWithSite;
+
+
+TYPE CALPOLESTR= RECORD
+                   cElems: WIN32.ULONG;
+                   pElems: ARRAY [0..0] OF Ole2.LPOLESTR;
+                 END; (* record *)
+
+TYPE CADWORD= RECORD
+                cElems: WIN32.ULONG;
+                pElems: ARRAY [0..0] OF WIN32.DWORD;
+              END; (* record *)
+
+ABSTRACT CLASS IPerPropertyBrowsing;
+  INHERIT Ole2.IUnknown;
+  REVEAL GetDisplayString,
+         MapPropertyToPage,
+         GetPredefinedStrings,
+         GetPredefinedValue;
+
+  ABSTRACT PROCEDURE GetDisplayString(    dispId: Ole2.DISPID;
+                                      VAR bstr:   Bstr.T): WIN32.HRESULT;
+  ABSTRACT PROCEDURE MapPropertyToPage(    dispId: Ole2.DISPID;
+                                       VAR clsid:  WIN32.CLSID): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPredefinedStrings(    dispId: Ole2.DISPID;
+                                          VAR caStringsOut: CALPOLESTR;
+                                          VAR caCookiesOut: CADWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPredefinedValue(    dispId:   Ole2.DISPID;
+                                            dwCookie: WIN32.DWORD;
+                                        VAR varOut:   Ole2.VARIANT): WIN32.HRESULT;
+END IPerPropertyBrowsing;
+
+
+ABSTRACT CLASS IAdviseSinkEx;
+  INHERIT Ole2.IAdviseSink;
+  REVEAL OnViewStatusChange;
+
+  ABSTRACT PROCEDURE OnViewStatusChange(dwViewStatus: WIN32.DWORD): WIN32.HRESULT;
+END IAdviseSinkEx;
+
+
+ABSTRACT CLASS IServiceProvider;
+  INHERIT Ole2.IUnknown;
+  REVEAL QueryService;
+
+  ABSTRACT PROCEDURE QueryService(    guidService: WIN32.GUID;
+                                      iid:         WIN32.IID;
+                                  VAR iUnknown:    Ole2.IUnknown): WIN32.HRESULT;
+END IServiceProvider;
+
+
+ABSTRACT CLASS IBindHost; FORWARD;
+
+CONST QACONTAINER_SHOWHATCHING=      1; (* ACONTAINERFLAGS *)
+      QACONTAINER_SHOWGRABHANDLES=   2;
+      QACONTAINER_USERMODE=          4;
+      QACONTAINER_DISPLAYASDEFAULT=  8;
+      QACONTAINER_UIDEAD=            10H;
+      QACONTAINER_AUTOCLIP=          20H;
+      QACONTAINER_MESSAGEREFLECT=    40H;
+      QACONTAINER_SUPPORTSMNEMONICS= 80H;
+
+TYPE OLE_COLOR= WIN32.DWORD;
+
+TYPE QACONTAINER= RECORD
+                    cbSize:              WIN32.ULONG;
+                    iOleClientSite:      Ole2.IOleClientSite;
+                    iAdviseSinkEx:       IAdviseSinkEx;
+                    iPropertyNotifySink: IPropertyNotifySink;
+                    iUnknownEventSink:   Ole2.IUnknown;
+                    dwAmbientFlags:      WIN32.DWORD;
+                    colorFore:           OLE_COLOR;
+                    colorBack:           OLE_COLOR;
+                    iFont:               IFont;
+                    iOleUndoManager:     IOleUndoManager;
+                    dwAppearance:        WIN32.DWORD;
+                    lcid:                WIN32.LONG;
+                    hpal:                WIN32.HPALETTE;
+                    iBindHost:           IBindHost;
+                    iOleControlSite:     IOleControlSite;
+                    iServiceProvider:    IServiceProvider;
+                  END; (* record *)
+
+TYPE QACONTROL= RECORD
+                  cbSize:                    WIN32.ULONG;
+                  dwMiscStatus:              WIN32.DWORD;
+                  dwViewStatus:              WIN32.DWORD;
+                  dwEventCookie:             WIN32.DWORD;
+                  dwPropNotifyCookie:        WIN32.DWORD;
+                  dwPointerActivationPolicy: WIN32.DWORD;
+                END; (* record *)
+
+ABSTRACT CLASS IQuickActivate;
+  INHERIT Ole2.IUnknown;
+  REVEAL QuickActivate,
+         SetContentExtent,
+         GetContentExtent;
+
+  ABSTRACT PROCEDURE QuickActivate(    qaContainer: QACONTAINER;
+                               VAR INOUT qaControl: QACONTROL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetContentExtent(sizel: WIN32.SIZEL): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetContentExtent(VAR sizel: WIN32.SIZEL): WIN32.HRESULT;
+END IQuickActivate;
+
+
+(* next classes from urlmon *)
+ABSTRACT CLASS IBinding;
+  INHERIT Ole2.IUnknown;
+  REVEAL Abort,
+         Suspend,
+         Resume,
+         SetPriority,
+         GetPriority,
+         GetBindResult;
+
+  ABSTRACT PROCEDURE Abort(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Suspend(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE Resume(): WIN32.HRESULT;
+  ABSTRACT PROCEDURE SetPriority(nPriority: WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPriority(VAR nPriority: WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetBindResult(VAR clsidProtocol: WIN32.CLSID;
+                                   VAR dwResult:      WIN32.DWORD;
+                                   VAR szResult:      Ole2.LPOLESTR;
+                                   VAR INOUT dwReserved: WIN32.DWORD): WIN32.HRESULT;
+END IBinding;
+
+
+CONST BINDVERB_GET=    0;
+      BINDVERB_POST=   0;
+      BINDVERB_PUT=    0;
+      BINDVERB_CUSTOM= 0;
+
+CONST BINDINFOF_URLENCODESTGMEDDATA= 1;
+      BINDINFOF_URLENCODEDEXTRAINFO= 2;
+
+CONST BINDF_ASYNCHRONOUS=             1;
+      BINDF_ASYNCSTORAGE=             2;
+      BINDF_NOPROGRESSIVERENDERING=   4;
+      BINDF_OFFLINEOPERATION=         8;
+      BINDF_GETNEWESTVERSION=         10H;
+      BINDF_NOWRITECACHE=             20H;
+      BINDF_NEEDFILE=                 40H;
+      BINDF_PULLDATA=                 80H;
+      BINDF_IGNORESECURITYPROBLEM=    100H;
+      BINDF_RESYNCHRONIZE=            200H;
+      BINDF_HYPERLINK=                400H;
+      BINDF_NO_UI=                    800H;
+      BINDF_SILENTOPERATION=          1000H;
+      BINDF_PRAGMA_NO_CACHE=          2000H;
+      BINDF_FREE_THREADED=            10000H;
+      BINDF_DIRECT_READ=              20000H;
+      BINDF_FORMS_SUBMIT=             40000H;
+      BINDF_GETFROMCACHE_IF_NET_FAIL= 80000H;
+
+TYPE BINDINFO= RECORD
+                 cbSize:             WIN32.ULONG;
+                 szExtraInfo:        WIN32.LPWSTR;
+                 stgmedData:         Ole2.STGMEDIUM;
+                 grfBindInfoF:       WIN32.DWORD;
+                 dwBindVerb:         WIN32.DWORD;
+                 szCustomVerb:       WIN32.LPWSTR;
+                 cbstgmedData:       WIN32.DWORD;
+                 dwOptions:          WIN32.DWORD;
+                 dwOptionsFlags:     WIN32.DWORD;
+                 dwCodePage:         WIN32.DWORD;
+                 securityAttributes: WIN32.SECURITY_ATTRIBUTES;
+                 iid:                WIN32.IID;
+                 iUnknown:           Ole2.IUnknown;
+                 dwReserved:         WIN32.DWORD;
+               END; (* record *)
+
+TYPE REMSECURITY_ATTRIBUTES= RECORD
+                               nLength:              WIN32.DWORD;
+                               lpSecurityDescriptor: WIN32.DWORD;
+                               bInheritHandle:       WIN32.BOOL;
+                             END; (* record *)
+
+TYPE RemBINDINFO= RECORD
+                    cbSize:             WIN32.ULONG;
+                    szExtraInfo:        WIN32.LPWSTR;
+                    grfBindInfoF:       WIN32.DWORD;
+                    dwBindVerb:         WIN32.DWORD;
+                    szCustomVerb:       WIN32.LPWSTR;
+                    cbstgmedData:       WIN32.DWORD;
+                    dwOptions:          WIN32.DWORD;
+                    dwOptionsFlags:     WIN32.DWORD;
+                    dwCodePage:         WIN32.DWORD;
+                    securityAttributes: REMSECURITY_ATTRIBUTES;
+                    iid:                WIN32.IID;
+                    iUnknown:           Ole2.IUnknown;
+                    dwReserved:         WIN32.DWORD;
+                  END; (* record *)
+
+TYPE RemFORMATETC= RECORD
+                     cfFormat: WIN32.DWORD;
+                     ptd:      WIN32.DWORD;
+                     dwAspect: WIN32.DWORD;
+                     lindex:   WIN32.LONG;
+                     tymed:    WIN32.DWORD;
+                   END; (* record *)
+
+CONST BSCF_FIRSTDATANOTIFICATION=        1;
+      BSCF_INTERMEDIATEDATANOTIFICATION= 2;
+      BSCF_LASTDATANOTIFICATION=         4;
+      BSCF_DATAFULLYAVAILABLE=           8;
+      BSCF_AVAILABLEDATASIZEUNKNOWN=    10H;
+
+CONST BINDSTATUS_FINDINGRESOURCE=           1;
+      BINDSTATUS_CONNECTING=                2;
+      BINDSTATUS_REDIRECTING=               3;
+      BINDSTATUS_BEGINDOWNLOADDATA=         4;
+      BINDSTATUS_DOWNLOADINGDATA=           5;
+      BINDSTATUS_ENDDOWNLOADDATA=           6;
+      BINDSTATUS_BEGINDOWNLOADCOMPONENTS=   7;
+      BINDSTATUS_INSTALLINGCOMPONENTS=      8;
+      BINDSTATUS_ENDDOWNLOADCOMPONENTS=     9;
+      BINDSTATUS_USINGCACHEDCOPY=           10;
+      BINDSTATUS_SENDINGREQUEST=            11;
+      BINDSTATUS_CLASSIDAVAILABLE=          12;
+      BINDSTATUS_MIMETYPEAVAILABLE=         13;
+      BINDSTATUS_CACHEFILENAMEAVAILABLE=    14;
+      BINDSTATUS_BEGINSYNCOPERATION=        15;
+      BINDSTATUS_ENDSYNCOPERATION=          16;
+      BINDSTATUS_BEGINUPLOADDATA=           17;
+      BINDSTATUS_UPLOADINGDATA=             18;
+      BINDSTATUS_ENDUPLOADDATA=             19;
+      BINDSTATUS_PROTOCOLCLASSID=           20;
+      BINDSTATUS_ENCODING=                  21;
+      BINDSTATUS_VERIFIEDMIMETYPEAVAILABLE= 22;
+      BINDSTATUS_CLASSINSTALLLOCATION=      23;
+      BINDSTATUS_DECODING=                  24;
+      BINDSTATUS_LOADINGMIMEHANDLER=        25;
+
+ABSTRACT CLASS IBindStatusCallback;
+  INHERIT Ole2.IUnknown;
+  REVEAL OnStartBinding,
+         GetPriority,
+         OnLowResource,
+         OnProgress,
+         OnStopBinding,
+         GetBindInfo,
+         OnDataAvailable,
+         OnObjectAvailable;
+
+  ABSTRACT PROCEDURE OnStartBinding(dwReserved: WIN32.DWORD;
+                                    iBinding:   IBinding): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetPriority(VAR nPriority: WIN32.LONG): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnLowResource(dwReserved: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnProgress(ulProgress:    WIN32.ULONG;
+                                ulProgressMax: WIN32.ULONG;
+                                ulStatusCode:  WIN32.ULONG;
+                                szStatusText:  WIN32.LPCWSTR): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnStopBinding(hresult: WIN32.HRESULT;
+                                   szError: WIN32.LPCWSTR): WIN32.HRESULT;
+  ABSTRACT PROCEDURE GetBindInfo(VAR grfBINDF: WIN32.DWORD;
+                                 VAR INOUT bindinfo: BINDINFO): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnDataAvailable(grfBSCF: WIN32.DWORD;
+                                     dwSize:  WIN32.DWORD;
+                                     formatetc: Ole2.FORMATETC;
+                                     stgmed:    Ole2.STGMEDIUM): WIN32.HRESULT;
+  ABSTRACT PROCEDURE OnObjectAvailable(iid: WIN32.IID;
+                                       iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+END IBindStatusCallback;
+
+
+ABSTRACT CLASS IBindHost;
+  INHERIT Ole2.IUnknown;
+  REVEAL CreateMoniker,
+         MonikerBindToStorage,
+         MonikerBindToObject;
+
+  ABSTRACT PROCEDURE CreateMoniker(    szName:     Ole2.LPOLESTR;
+                                       iBindCtx:   Ole2.IBindCtx;
+                                   VAR iMoniker:   Ole2.IMoniker;
+                                       dwReserved: WIN32.DWORD): WIN32.HRESULT;
+  ABSTRACT PROCEDURE MonikerBindToStorage(    iMoniker:            Ole2.IMoniker;
+                                              iBindCtx:            Ole2.IBindCtx;
+                                              iBindStatusCallback: IBindStatusCallback;
+                                              iid:                 WIN32.IID;
+                                          VAR iUnknown:            Ole2.IUnknown): WIN32.HRESULT;
+  ABSTRACT PROCEDURE MonikerBindToObject(    iMoniker:            Ole2.IMoniker;
+                                             iBindCtx:            Ole2.IBindCtx;
+                                             iBindStatusCallback: IBindStatusCallback;
+                                             iid:                 WIN32.IID;
+                                         VAR iUnknown:            Ole2.IUnknown): WIN32.HRESULT;
+END IBindHost;
+
+
+END OleC.

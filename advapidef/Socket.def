@@ -1,0 +1,390 @@
+(*
+Name:     Socket
+Creation: 21-09-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+DEFINITION MODULE Socket;
+(* this module provides a portable sockets implementation.
+   this a very thin encapsulation of the "sockets api", therefore
+   if you know sockets you know this module.
+   The encapsulation can be so thin because the sockets api is so
+   very portable.
+   There can be minor differences, hence the usefulness of this module.
+*)
+
+FROM SYSTEM IMPORT
+    DWORD, LOC, BIGENDIAN;
+%IF LittleEndian %THEN
+FROM SYSTEM IMPORT
+    SWAPENDIAN;
+%END
+
+%IF Windows %THEN
+	IMPORT WINSOCK2;
+%ELSE
+	IMPORT UNIX, UnixSock;
+%END
+
+%IF Windows %THEN
+CONST
+    FD_SETSIZE= WINSOCK2.FD_SETSIZE;
+
+TYPE
+    Socket = WINSOCK2.SOCKET;
+    fd_set = WINSOCK2.fd_set;
+
+CONST
+    SOCK_STREAM    = WINSOCK2.SOCK_STREAM;  (* Sequenced, reliable, connection-based byte streams.  *)
+    SOCK_DGRAM     = WINSOCK2.SOCK_DGRAM;   (* Connectionless, unreliable datagrams of fixed maximum length.  *)
+    SOCK_RAW       = WINSOCK2.SOCK_RAW;     (* Raw protocol interface. *)
+    SOCK_RDM       = WINSOCK2.SOCK_RDM;     (* Reliably-delivered messages.  *)
+    SOCK_SEQPACKET = WINSOCK2.SOCK_SEQPACKET;(* Sequenced, reliable, connection-based, datagrams of fixed maximum length.  *)
+
+    (* Protocol families. *)
+    PF_UNSPEC      = WINSOCK2.PF_UNSPEC;     (* Unspecified.  *)
+    PF_UNIX        = WINSOCK2.PF_UNIX;       (* Old BSD name for PF_LOCAL.  *)
+    PF_INET        = WINSOCK2.PF_INET;       (* IP protocol family.  *)
+    PF_IPX         = WINSOCK2.PF_IPX;        (* Novell Internet Protocol.  *)
+    PF_APPLETALK   = WINSOCK2.PF_APPLETALK;  (* Appletalk DDP.  *)
+    PF_INET6       = WINSOCK2.PF_INET6;      (* IP version 6.  *)
+    PF_DECnet      = WINSOCK2.PF_DECnet;     (* Reserved for DECnet project.  *)
+    PF_SNA         = WINSOCK2.PF_SNA;        (* Linux SNA Project *)
+    PF_MAX         = WINSOCK2.PF_MAX;        (* For now..  *)
+
+    (* Address families.  *)
+    AF_UNSPEC      = WINSOCK2.AF_UNSPEC;
+    AF_UNIX        = WINSOCK2.AF_UNIX;
+    AF_INET        = WINSOCK2.AF_INET;
+    AF_IPX         = WINSOCK2.AF_IPX;
+    AF_APPLETALK   = WINSOCK2.AF_APPLETALK;
+    AF_INET6       = WINSOCK2.AF_INET6;
+    AF_DECnet      = WINSOCK2.AF_DECnet;
+    AF_SNA         = WINSOCK2.AF_SNA;
+    AF_MAX         = WINSOCK2.AF_MAX;
+
+    (* Maximum queue length specifiable by listen.  *)
+    SOMAXCONN      = WINSOCK2.SOMAXCONN;
+
+    (* The following constants should be used for the second *)
+    (* parameter of shutdown. *)
+    SHUT_RD   = WINSOCK2.SD_RECEIVE; (* No more receptions.  *)
+    SHUT_WR   = WINSOCK2.SD_SEND; (* No more transmissions.  *)
+    SHUT_RDWR = WINSOCK2.SD_BOTH; (* No more receptions or transmissions.  *)
+
+    INADDR_ANY=        WINSOCK2.INADDR_ANY;
+    INADDR_BROADCAST=  WINSOCK2.INADDR_BROADCAST; (* Address to send to all hosts. *)
+    INADDR_NONE=       WINSOCK2.INADDR_NONE; (* Address indicating an error return. *)
+
+%ELSIF UNIX %THEN
+
+CONST
+    FD_SETSIZE= UNIX.FD_SETSIZE;
+
+TYPE
+    Socket = INTEGER;
+    fd_set =
+        RECORD
+        last    : Socket;
+        set     : UNIX.fd_set;
+        END;
+
+CONST
+    SOCK_STREAM    = UnixSock.SOCK_STREAM;  (* Sequenced, reliable, connection-based byte streams.  *)
+    SOCK_DGRAM     = UnixSock.SOCK_DGRAM;  (* Connectionless, unreliable datagrams of fixed maximum length.  *)
+    SOCK_RAW       = UnixSock.SOCK_RAW;  (* Raw protocol interface. *)
+    SOCK_RDM       = UnixSock.SOCK_RDM;  (* Reliably-delivered messages.  *)
+    SOCK_SEQPACKET = UnixSock.SOCK_SEQPACKET;  (* Sequenced, reliable, connection-based, datagrams of fixed maximum length.  *)
+
+    (* Protocol families. *)
+    PF_UNSPEC      = UnixSock.PF_UNSPEC;       (* Unspecified.  *)
+    PF_UNIX        = UnixSock.PF_UNIX; (* Old BSD name for PF_LOCAL.  *)
+    PF_INET        = UnixSock.PF_INET;       (* IP protocol family.  *)
+    PF_IPX         = UnixSock.PF_IPX;       (* Novell Internet Protocol.  *)
+    PF_APPLETALK   = UnixSock.PF_APPLETALK;       (* Appletalk DDP.  *)
+    PF_INET6       = UnixSock.PF_INET6;      (* IP version 6.  *)
+    PF_DECnet      = UnixSock.PF_DECnet;      (* Reserved for DECnet project.  *)
+    PF_SNA         = UnixSock.PF_SNA;      (* Linux SNA Project *)
+    PF_MAX         = UnixSock.PF_MAX;      (* For now..  *)
+
+    (* Address families.  *)
+    AF_UNSPEC      = UnixSock.AF_UNSPEC;
+    AF_UNIX        = UnixSock.AF_UNIX;
+    AF_INET        = UnixSock.AF_INET;
+    AF_IPX         = UnixSock.AF_IPX;
+    AF_APPLETALK   = UnixSock.AF_APPLETALK;
+    AF_INET6       = UnixSock.AF_INET6;
+    AF_DECnet      = UnixSock.AF_DECnet;
+    AF_SNA         = UnixSock.AF_SNA;
+    AF_MAX         = UnixSock.AF_MAX;
+
+    (* Maximum queue length specifiable by listen.  *)
+    SOMAXCONN      = UnixSock.SOMAXCONN;
+
+    (* The following constants should be used for the second *)
+    (* parameter of shutdown. *)
+    SHUT_RD   = UnixSock.SHUT_RD; (* No more receptions.  *)
+    SHUT_WR   = UnixSock.SHUT_WR; (* No more transmissions.  *)
+    SHUT_RDWR = UnixSock.SHUT_RDWR; (* No more receptions or transmissions.  *)
+
+    INADDR_ANY=        UnixSock.INADDR_ANY;
+    INADDR_BROADCAST=  UnixSock.INADDR_BROADCAST; (* Address to send to all hosts. *)
+    INADDR_NONE=       UnixSock.INADDR_NONE; (* Address indicating an error return. *)
+
+%ELSE
+    fix me;
+%END
+
+TYPE
+    IP= DWORD;(*data for this must be in network byte order*)
+
+CONST
+    ipANY= 0;
+
+
+PROCEDURE Create(       nDomain: INTEGER;
+                          nType: INTEGER;
+                      nProtocol: INTEGER;
+                 VAR OUT socket: Socket): BOOLEAN;
+(* creates a new socket of nType in nDomain, using nProtocol. *)
+(* If nProtocol is zero, one is chosen automatically. *)
+
+PROCEDURE Close(VAR INOUT socket: Socket);
+(* closes socket *)
+
+PROCEDURE Bind(socket:  Socket;
+               nFamily: CARDINAL16;
+               cPort:   CARDINAL16;
+               ip:      IP): BOOLEAN;
+(* binds socket to the local address *)
+
+PROCEDURE Connect(socket:  Socket;
+                  nFamily: CARDINAL16;
+                  cPort:   CARDINAL16;
+                  ip:      IP): BOOLEAN;
+(* connects socket to host *)
+
+PROCEDURE Listen(socket: Socket): BOOLEAN;
+(* listens on socket, first use bind to bind the socket to an address *)
+
+PROCEDURE Accept(         sListen: Socket;
+                 VAR OUT sConnect: Socket): BOOLEAN;
+(* accepts incoming connection of sListen *)
+
+PROCEDURE Accept2(         sListen: Socket;
+                  VAR OUT sConnect: Socket;
+                  VAR OUT ip:       IP;
+                  VAR OUT cPort:    CARDINAL16): BOOLEAN;
+(* same as Accept *)
+(* returns ip and port of sConnect *)
+
+TYPE
+    SocketOptions       = (SoDebug,
+                           SoBroadcast,
+                           SoReuseAddr,
+                           SoSendBufSize,
+                           SoReceiveBufSize,
+                           SoSendTimeout,
+                           SoReceiveTimeout,
+                           So_IP_AddMembership,
+                           So_IP_DropMembership);
+
+    <*/PUSH/NOPACK*>
+    SocketOptionRecord =
+        RECORD
+        CASE opt : SocketOptions OF
+        SoSendBufSize, SoReceiveBufSize:
+            bufSize     : CARDINAL;(*bytes*)
+        |
+        SoReuseAddr, SoBroadcast, SoDebug:
+            boolean     : DWORDBOOL;
+        |
+        SoSendTimeout, SoReceiveTimeout:
+            timeout     : CARDINAL;(*milliseconds, 0=no timeout*)
+        |
+        So_IP_AddMembership, So_IP_DropMembership:
+            groupIP     : IP;
+            localIP     : IP;
+        END;
+        END;
+    <*/POP*>
+
+PROCEDURE SetSocketOptions(socket : Socket; opt : SocketOptionRecord) : BOOLEAN;
+(* set an option for the socket. the option is specified in the .opt field of the
+   option record.
+*)
+
+PROCEDURE Send(socket: Socket;
+               btData: ARRAY OF LOC;
+               cSize:  CARDINAL): INTEGER;
+(* sends data over socket *)
+(* returns number of bytes sent *)
+
+PROCEDURE SendText(socket: Socket;
+                   szText: ARRAY OF CHAR): BOOLEAN;
+(* sends text over socket *)
+
+PROCEDURE SendTo(socket: Socket;
+                 btData: ARRAY OF LOC;
+                 cSize:  CARDINAL;
+                 nFamily: CARDINAL16;
+                 cPort:   CARDINAL16;
+                 ip:      IP): INTEGER;
+(* sends text over socket to a specific address *)
+(* returns number of bytes sent *)
+
+PROCEDURE Receive(        socket: Socket;
+                  VAR OUT btData: ARRAY OF LOC;
+                           cSize: CARDINAL): INTEGER;
+(* receives data over socket *)
+(* returns number of bytes received *)
+
+PROCEDURE ReceiveText(        socket: Socket;
+                      VAR OUT szText: ARRAY OF CHAR): BOOLEAN;
+(* receives text over socket *)
+
+PROCEDURE ReceiveFrom(socket:  Socket;
+                      VAR OUT btData: ARRAY OF LOC;
+                      cSize: CARDINAL;
+                      VAR OUT port: CARDINAL16;
+                      VAR OUT ip: IP): INTEGER;
+(* receive text over a socket from *)
+(* returns number of bytes received and port and ip of sender *)
+
+PROCEDURE Shutdown(socket: Socket;
+                     nHow: INTEGER): BOOLEAN;
+(* Shut down all or part of the connection open on socket FD. *)
+(* nHow determines what to shut down: *)
+(*   SHUT_RD   = No more receptions; *)
+(*   SHUT_WR   = No more transmissions; *)
+(*   SHUT_RDWR = No more receptions or transmissions. *)
+(* Returns TRUE on success. *)
+
+PROCEDURE GetHostAddr(    szHost: ARRAY OF CHAR;
+                      VAR OUT ip: IP): BOOLEAN;
+(* GetHostAddr -- gets host's internet address. Interprets argument first *)
+(* as dotted internet address string, and failing that, as a DNS host name. *)
+
+PROCEDURE GetHostName(VAR OUT hostName : ARRAY OF CHAR) : BOOLEAN;
+(* gets a null terminated string of the host name of the machine.
+   returns TRUE if successful
+*)
+PROCEDURE GetServicePort(    szService: ARRAY OF ACHAR;
+                         VAR cPort:     CARDINAL): BOOLEAN;
+
+PROCEDURE IPtoStr(            ip: IP;
+                  VAR OUT szText: ARRAY OF CHAR);
+(* converts IP number to text *)
+
+PROCEDURE FD_ZERO(VAR OUT set: fd_set);
+(* set the set as empty *)
+
+PROCEDURE FD_ISZERO(set: fd_set) : BOOLEAN;
+(* returns true if the set is empty *)
+
+%IF Windows %THEN
+
+PROCEDURE FD_SET(       socket: Socket;
+                 VAR INOUT set:   fd_set); MACRO;
+(* include the socket in the set *)
+BEGIN
+    WINSOCK2.FD_SET(socket,set);
+END FD_SET;
+
+PROCEDURE FD_CLR(     socket: Socket;
+                 VAR OUT set: fd_set); MACRO;
+(* remove the socket from the set *)
+BEGIN
+    WINSOCK2.FD_CLR(socket,set);
+END FD_CLR;
+
+PROCEDURE FD_ISSET(socket: Socket;
+                      set:    fd_set): BOOLEAN; MACRO;
+(*  is the socket in the set *)
+BEGIN
+    RETURN WINSOCK2.FD_ISSET(socket,set);
+END FD_ISSET;
+
+%ELSIF UNIX %THEN
+
+PROCEDURE FD_SET(       socket: Socket;
+                 VAR INOUT set:   fd_set); MACRO;
+(* include the socket in the set *)
+BEGIN
+    IF socket > set.last THEN
+        set.last := socket;
+    END;
+    UNIX.FD_SET(socket, set.set);
+END FD_SET;
+
+PROCEDURE FD_CLR(     socket: Socket;
+                 VAR OUT set: fd_set); MACRO;
+(* remove the socket from the set *)
+BEGIN
+    IF set.last = socket THEN
+        DEC(set.last);
+    END;
+    UNIX.FD_CLR(socket, set.set);
+END FD_CLR;
+
+PROCEDURE FD_ISSET(socket: Socket;
+                      set: fd_set): BOOLEAN; MACRO;
+(*  is the socket in the set *)
+BEGIN
+    RETURN UNIX.FD_ISSET(socket, set.set);
+END FD_ISSET;
+
+%END
+
+PROCEDURE Select(VAR INOUT readfds, writefds, exceptfds  : fd_set;
+                 timeout : INTEGER) : INTEGER;
+(* timeout < 0, means an infinite timeout *)
+(* otherwise the timeout value is the time in milliseconds *)
+
+PROCEDURE Select2(readfds_in, writefds_in, exceptfds_in : fd_set;
+                  VAR OUT readfds_out, writefds_out, exceptfds_out : fd_set;
+                  timeout : INTEGER) : INTEGER;
+(* as Select except the input sets are not altered by this call,
+   and the Select results are in the output sets.
+*)
+
+PROCEDURE TCPlisten(    cPort:   CARDINAL;
+                    VAR OUT sListen: Socket): BOOLEAN;
+(* creates a TCP socket that listens on cPort *)
+
+PROCEDURE TCPconnect(    szHost:   ARRAY OF CHAR;
+                         cPort:    CARDINAL;
+                     VAR OUT sConnect: Socket): BOOLEAN;
+(* creates a TCP socket connected to szHost *)
+
+PROCEDURE NetToHost32(x: CARDINAL32): CARDINAL32; MACRO;
+BEGIN
+    %IF LittleEndian %THEN
+        RETURN SWAPENDIAN(x);
+    %ELSE
+        RETURN x;
+    %END
+END NetToHost32;
+
+PROCEDURE NetToHost16(x: CARDINAL16): CARDINAL16; MACRO;
+BEGIN
+    %IF LittleEndian %THEN
+        RETURN SWAPENDIAN(x);
+    %ELSE
+        RETURN x;
+    %END
+END NetToHost16;
+
+PROCEDURE HostToNet32(x: CARDINAL32): CARDINAL32; MACRO;
+BEGIN
+    RETURN BIGENDIAN(x);
+END HostToNet32;
+
+PROCEDURE HostToNet16(x: CARDINAL16): CARDINAL16; MACRO;
+BEGIN
+    RETURN BIGENDIAN(x);
+END HostToNet16;
+
+END Socket.

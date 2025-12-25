@@ -1,0 +1,1225 @@
+UNSAFEGUARDED DEFINITION MODULE WinCodec;
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2019, ADW Software. All rights reserved. *)
+
+FROM SYSTEM IMPORT
+	ADDRESS;
+
+FROM WINERROR IMPORT
+	E_FAIL, E_INVALIDARG, E_OUTOFMEMORY, E_NOTIMPL, E_ABORT, E_ACCESSDENIED, INTSAFE_E_ARITHMETIC_OVERFLOW;
+
+FROM WIN32 IMPORT
+	GUID, REFGUID, CLSID, REFCLSID, IID, HANDLE, HBITMAP, HPALETTE, HICON,
+	UINT32, WINT, PVOID, ULARGE_INTEGER, ULONG, ULONG_PTR, UINT, BOOL, BYTE, DWORD, HRESULT;
+
+FROM OOle2 IMPORT
+    IUnknown, IStream, IEnumUnknown, IEnumString;
+
+FROM PropIdl IMPORT
+	PROPVARIANT, PROPVARIANTARRAY;
+
+FROM OCIdl IMPORT
+	IPropertyBag2, PPPROPERTYBAG2;
+
+<*/CALLS:WINDOWSCALL/DLLDEF/Foreign*>
+<*/NOHIGH/ENUMSIZE:BIG*>
+<*/ALIGN:8/NOPACK*>
+
+(* this file contains the definitions for the interfaces *)
+
+CONST
+	WINCODEC_SDK_VERSION = 0236H;
+
+	CLSID_WICImagingFactory				= GUID {0cacaf262H, 09370H, 04615H, {0a1H,03bH,09fH,055H,039H,0daH,04cH,00aH}};
+	GUID_VendorMicrosoft				= GUID {0f0e749caH, 0edefH, 04589H, {0a7H,03aH,0eeH,00eH,062H,06aH,02aH,02bH}};
+	GUID_VendorMicrosoftBuiltIn			= GUID {0257a30fdH, 006b6H, 0462bH, {0aeH,0a4H,063H,0f7H,00bH,086H,0e5H,033H}};
+	CLSID_WICPngDecoder					= GUID {0e018945bH, 0aa86H, 04008H, {09bH,0d4H,067H,077H,0a1H,0e4H,00cH,011H}};
+	CLSID_WICBmpDecoder					= GUID {06b462062H, 07cbfH, 0400dH, {09fH,0dbH,081H,03dH,0d1H,00fH,027H,078H}};
+	CLSID_WICIcoDecoder					= GUID {0c61bfcdfH, 02e0fH, 04aadH, {0a8H,0d7H,0e0H,06bH,0afH,0ebH,0cdH,0feH}};
+	CLSID_WICJpegDecoder				= GUID {09456a480H, 0e88bH, 043eaH, {09eH,073H,00bH,02dH,09bH,071H,0b1H,0caH}};
+	CLSID_WICGifDecoder					= GUID {0381dda3cH, 09ce9H, 04834H, {0a2H,03eH,01fH,098H,0f8H,0fcH,052H,0beH}};
+	CLSID_WICTiffDecoder				= GUID {0b54e85d9H, 0fe23H, 0499fH, {08bH,088H,06aH,0ceH,0a7H,013H,075H,02bH}};
+	CLSID_WICWmpDecoder					= GUID {0a26cec36H, 0234cH, 04950H, {0aeH,016H,0e3H,04aH,0acH,0e7H,01dH,00dH}};
+	CLSID_WICDdsDecoder					= GUID {09053699fH, 0a341H, 0429dH, {09eH,090H,0eeH,043H,07cH,0f8H,00cH,073H}};
+	CLSID_WICBmpEncoder					= GUID {069be8bb4H, 0d66dH, 047c8H, {086H,05aH,0edH,015H,089H,043H,037H,082H}};
+	CLSID_WICPngEncoder					= GUID {027949969H, 0876aH, 041d7H, {094H,047H,056H,08fH,06aH,035H,0a4H,0dcH}};
+	CLSID_WICJpegEncoder				= GUID {01a34f5c1H, 04a5aH, 046dcH, {0b6H,044H,01fH,045H,067H,0e7H,0a6H,076H}};
+	CLSID_WICGifEncoder					= GUID {0114f5598H, 00b22H, 040a0H, {086H,0a1H,0c8H,03eH,0a4H,095H,0adH,0bdH}};
+	CLSID_WICTiffEncoder				= GUID {00131be10H, 02001H, 04c5fH, {0a9H,0b0H,0ccH,088H,0faH,0b6H,04cH,0e8H}};
+	CLSID_WICWmpEncoder					= GUID {0ac4ce3cbH, 0e1c1H, 044cdH, {082H,015H,05aH,016H,065H,050H,09eH,0c2H}};
+	CLSID_WICDdsEncoder					= GUID {0a61dde94H, 066ceH, 04ac1H, {088H,01bH,071H,068H,005H,088H,089H,05eH}};
+	GUID_ContainerFormatBmp				= GUID {00af1d87eH, 0fcfeH, 04188H, {0bdH,0ebH,0a7H,090H,064H,071H,0cbH,0e3H}};
+	GUID_ContainerFormatPng				= GUID {01b7cfaf4H, 0713fH, 0473cH, {0bbH,0cdH,061H,037H,042H,05fH,0aeH,0afH}};
+	GUID_ContainerFormatIco				= GUID {0a3a860c4H, 0338fH, 04c17H, {091H,09aH,0fbH,0a4H,0b5H,062H,08fH,021H}};
+	GUID_ContainerFormatJpeg			= GUID {019e4a5aaH, 05662H, 04fc5H, {0a0H,0c0H,017H,058H,002H,08eH,010H,057H}};
+	GUID_ContainerFormatTiff			= GUID {0163bcc30H, 0e2e9H, 04f0bH, {096H,01dH,0a3H,0e9H,0fdH,0b7H,088H,0a3H}};
+	GUID_ContainerFormatGif				= GUID {01f8a5601H, 07d4dH, 04cbdH, {09cH,082H,01bH,0c8H,0d4H,0eeH,0b9H,0a5H}};
+	GUID_ContainerFormatWmp				= GUID {057a37caaH, 0367aH, 04540H, {091H,06bH,0f1H,083H,0c5H,009H,03aH,04bH}};
+	GUID_ContainerFormatDds				= GUID {09967cb95H, 02e85H, 04ac8H, {08cH,0a2H,083H,0d7H,0ccH,0d4H,025H,0c9H}};
+	CLSID_WICImagingCategories			= GUID {0fae3d380H, 0fea4H, 04623H, {08cH,075H,0c6H,0b6H,011H,010H,0b6H,081H}};
+	CATID_WICBitmapDecoders				= GUID {07ed96837H, 096f0H, 04812H, {0b2H,011H,0f1H,03cH,024H,011H,07eH,0d3H}};
+	CATID_WICBitmapEncoders				= GUID {0ac757296H, 03522H, 04e11H, {098H,062H,0c1H,07bH,0e5H,0a1H,076H,07eH}};
+	CATID_WICPixelFormats				= GUID {02b46e70fH, 0cda7H, 0473eH, {089H,0f6H,0dcH,096H,030H,0a2H,039H,00bH}};
+	CATID_WICFormatConverters			= GUID {07835eae8H, 0bf14H, 049d1H, {093H,0ceH,053H,03aH,040H,07bH,022H,048H}};
+	CATID_WICMetadataReader				= GUID {005af94d8H, 07174H, 04cd2H, {0beH,04aH,041H,024H,0b8H,00eH,0e4H,0b8H}};
+	CATID_WICMetadataWriter				= GUID {0abe3b9a4H, 0257dH, 04b97H, {0bdH,01aH,029H,04aH,0f4H,096H,022H,02eH}};
+	CLSID_WICDefaultFormatConverter		= GUID {01a3f11dcH, 0b514H, 04b17H, {08cH,05fH,021H,054H,051H,038H,052H,0f1H}};
+	CLSID_WICFormatConverterHighColor	= GUID {0ac75d454H, 09f37H, 048f8H, {0b9H,072H,04eH,019H,0bcH,085H,060H,011H}};
+	CLSID_WICFormatConverterNChannel	= GUID {0c17cabb2H, 0d4a3H, 047d7H, {0a5H,057H,033H,09bH,02eH,0fbH,0d4H,0f1H}};
+	CLSID_WICFormatConverterWMPhoto		= GUID {09cb5172bH, 0d600H, 046baH, {0abH,077H,077H,0bbH,07eH,03aH,000H,0d9H}};
+	CLSID_WICPlanarFormatConverter		= GUID {0184132b8H, 032f8H, 04784H, {091H,031H,0ddH,072H,024H,0b2H,034H,038H}};
+
+
+TYPE
+	WICColor = UINT32;
+
+	WICRect =
+    	RECORD
+			X 		: WINT;
+			Y 		: WINT;
+			Width	: WINT;
+			Height	: WINT;
+    	END;
+	PWICRect = POINTER TO WICRect;
+
+	WICInProcPointer = PVOID;
+
+	WICColorContextType =
+    	(
+			WICColorContextUninitialized	= 0,
+			WICColorContextProfile			= 1,
+			WICColorContextExifColorSpace	= 2
+    	);
+
+	WICPixelFormatGUID = GUID;
+	REFPROPVARIANT = POINTER TO PROPVARIANT;
+
+CONST
+	GUID_WICPixelFormatDontCare				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,000H}};
+	GUID_WICPixelFormatUndefined			= GUID_WICPixelFormatDontCare;
+	GUID_WICPixelFormat1bppIndexed			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,001H}};
+	GUID_WICPixelFormat2bppIndexed			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,002H}};
+	GUID_WICPixelFormat4bppIndexed			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,003H}};
+	GUID_WICPixelFormat8bppIndexed			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,004H}};
+	GUID_WICPixelFormatBlackWhite			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,005H}};
+	GUID_WICPixelFormat2bppGray				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,006H}};
+	GUID_WICPixelFormat4bppGray				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,007H}};
+	GUID_WICPixelFormat8bppGray				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,008H}};
+	GUID_WICPixelFormat8bppAlpha			= GUID {0e6cd0116H, 0eebaH, 04161H, {0aaH,085H,027H,0ddH,09fH,0b3H,0a8H,095H}};
+	GUID_WICPixelFormat16bppBGR555			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,009H}};
+	GUID_WICPixelFormat16bppBGR565			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00aH}};
+	GUID_WICPixelFormat16bppBGRA5551		= GUID {005ec7c2bH, 0f1e6H, 04961H, {0adH,046H,0e1H,0ccH,081H,00aH,087H,0d2H}};
+	GUID_WICPixelFormat16bppGray			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00bH}};
+	GUID_WICPixelFormat24bppBGR				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00cH}};
+	GUID_WICPixelFormat24bppRGB				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00dH}};
+	GUID_WICPixelFormat32bppBGR				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00eH}};
+	GUID_WICPixelFormat32bppBGRA			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,00fH}};
+	GUID_WICPixelFormat32bppPBGRA			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,010H}};
+	GUID_WICPixelFormat32bppGrayFloat		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,011H}};
+	GUID_WICPixelFormat32bppRGBA			= GUID {0f5c7ad2dH, 06a8dH, 043ddH, {0a7H,0a8H,0a2H,099H,035H,026H,01aH,0e9H}};
+	GUID_WICPixelFormat32bppPRGBA			= GUID {03cc4a650H, 0a527H, 04d37H, {0a9H,016H,031H,042H,0c7H,0ebH,0edH,0baH}};
+	GUID_WICPixelFormat48bppRGB				= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,015H}};
+	GUID_WICPixelFormat48bppBGR				= GUID {0e605a384H, 0b468H, 046ceH, {0bbH,02eH,036H,0f1H,080H,0e6H,043H,013H}};
+	GUID_WICPixelFormat64bppRGBA			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,016H}};
+	GUID_WICPixelFormat64bppBGRA			= GUID {01562ff7cH, 0d352H, 046f9H, {097H,09eH,042H,097H,06bH,079H,022H,046H}};
+	GUID_WICPixelFormat64bppPRGBA			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,017H}};
+	GUID_WICPixelFormat64bppPBGRA			= GUID {08c518e8eH, 0a4ecH, 0468bH, {0aeH,070H,0c9H,0a3H,05aH,09cH,055H,030H}};
+	GUID_WICPixelFormat16bppGrayFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,013H}};
+	GUID_WICPixelFormat32bppBGR101010		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,014H}};
+	GUID_WICPixelFormat48bppRGBFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,012H}};
+	GUID_WICPixelFormat48bppBGRFixedPoint	= GUID {049ca140eH, 0cab6H, 0493bH, {09dH,0dfH,060H,018H,07cH,037H,053H,02aH}};
+	GUID_WICPixelFormat96bppRGBFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,018H}};
+	GUID_WICPixelFormat128bppRGBAFloat		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,019H}};
+	GUID_WICPixelFormat128bppPRGBAFloat		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01aH}};
+	GUID_WICPixelFormat128bppRGBFloat		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01bH}};
+	GUID_WICPixelFormat32bppCMYK			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01cH}};
+	GUID_WICPixelFormat64bppRGBAFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01dH}};
+	GUID_WICPixelFormat64bppBGRAFixedPoint	= GUID {0356de33cH, 054d2H, 04a23H, {0bbH,004H,09bH,07bH,0f9H,0b1H,0d4H,02dH}};
+	GUID_WICPixelFormat64bppRGBFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,040H}};
+	GUID_WICPixelFormat128bppRGBAFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01eH}};
+	GUID_WICPixelFormat128bppRGBFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,041H}};
+	GUID_WICPixelFormat64bppRGBAHalf		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,03aH}};
+	GUID_WICPixelFormat64bppRGBHalf			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,042H}};
+	GUID_WICPixelFormat48bppRGBHalf			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,03bH}};
+	GUID_WICPixelFormat32bppRGBE			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,03dH}};
+	GUID_WICPixelFormat16bppGrayHalf		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,03eH}};
+	GUID_WICPixelFormat32bppGrayFixedPoint	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,03fH}};
+	GUID_WICPixelFormat32bppRGBA1010102		= GUID {025238D72H, 0FCF9H, 04522H, {0b5H,014H,055H,078H,0e5H,0adH,055H,0e0H}};
+	GUID_WICPixelFormat32bppRGBA1010102XR	= GUID {000DE6B9AH, 0C101H, 0434bH, {0b5H,002H,0d0H,016H,05eH,0e1H,012H,02cH}};
+	GUID_WICPixelFormat64bppCMYK			= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,01fH}};
+	GUID_WICPixelFormat24bpp3Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,020H}};
+	GUID_WICPixelFormat32bpp4Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,021H}};
+	GUID_WICPixelFormat40bpp5Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,022H}};
+	GUID_WICPixelFormat48bpp6Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,023H}};
+	GUID_WICPixelFormat56bpp7Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,024H}};
+	GUID_WICPixelFormat64bpp8Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,025H}};
+	GUID_WICPixelFormat48bpp3Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,026H}};
+	GUID_WICPixelFormat64bpp4Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,027H}};
+	GUID_WICPixelFormat80bpp5Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,028H}};
+	GUID_WICPixelFormat96bpp6Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,029H}};
+	GUID_WICPixelFormat112bpp7Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02aH}};
+	GUID_WICPixelFormat128bpp8Channels		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02bH}};
+	GUID_WICPixelFormat40bppCMYKAlpha		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02cH}};
+	GUID_WICPixelFormat80bppCMYKAlpha		= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02dH}};
+	GUID_WICPixelFormat32bpp3ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02eH}};
+	GUID_WICPixelFormat40bpp4ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,02fH}};
+	GUID_WICPixelFormat48bpp5ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,030H}};
+	GUID_WICPixelFormat56bpp6ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,031H}};
+	GUID_WICPixelFormat64bpp7ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,032H}};
+	GUID_WICPixelFormat72bpp8ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,033H}};
+	GUID_WICPixelFormat64bpp3ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,034H}};
+	GUID_WICPixelFormat80bpp4ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,035H}};
+	GUID_WICPixelFormat96bpp5ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,036H}};
+	GUID_WICPixelFormat112bpp6ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,037H}};
+	GUID_WICPixelFormat128bpp7ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,038H}};
+	GUID_WICPixelFormat144bpp8ChannelsAlpha	= GUID {06fddc324H, 04e03H, 04bfeH, {0b1H,085H,03dH,077H,076H,08dH,0c9H,039H}};
+
+VAR
+	%IF IA32 %THEN
+		IID_IWICPalette							["_IID_IWICPalette"							EXTERNAL] : IID;
+		IID_IWICBitmapSource					["_IID_IWICBitmapSource"					EXTERNAL] : IID;
+		IID_IWICFormatConverter					["_IID_IWICFormatConverter"					EXTERNAL] : IID;
+		IID_IWICBitmapScaler					["_IID_IWICBitmapScaler"					EXTERNAL] : IID;
+		IID_IWICBitmapClipper					["_IID_IWICBitmapClipper"					EXTERNAL] : IID;
+		IID_IWICBitmapFlipRotator				["_IID_IWICBitmapFlipRotator"				EXTERNAL] : IID;
+		IID_IWICBitmapLock						["_IID_IWICBitmapLock"						EXTERNAL] : IID;
+		IID_IWICBitmap							["_IID_IWICBitmap"							EXTERNAL] : IID;
+		IID_IWICColorContext					["_IID_IWICColorContext"					EXTERNAL] : IID;
+		IID_IWICColorTransform					["_IID_IWICColorTransform"					EXTERNAL] : IID;
+		IID_IWICFastMetadataEncoder				["_IID_IWICFastMetadataEncoder"				EXTERNAL] : IID;
+		IID_IWICStream							["_IID_IWICStream"							EXTERNAL] : IID;
+		IID_IWICEnumMetadataItem				["_IID_IWICEnumMetadataItem"				EXTERNAL] : IID;
+		IID_IWICMetadataQueryReader				["_IID_IWICMetadataQueryReader"				EXTERNAL] : IID;
+		IID_IWICMetadataQueryWriter				["_IID_IWICMetadataQueryWriter"				EXTERNAL] : IID;
+		IID_IWICBitmapEncoder					["_IID_IWICBitmapEncoder"					EXTERNAL] : IID;
+		IID_IWICBitmapFrameEncode				["_IID_IWICBitmapFrameEncode"				EXTERNAL] : IID;
+		IID_IWICBitmapDecoder					["_IID_IWICBitmapDecoder"					EXTERNAL] : IID;
+		IID_IWICBitmapSourceTransform			["_IID_IWICBitmapSourceTransform"			EXTERNAL] : IID;
+		IID_IWICBitmapFrameDecode				["_IID_IWICBitmapFrameDecode"				EXTERNAL] : IID;
+		IID_IWICProgressiveLevelControl			["_IID_IWICProgressiveLevelControl"			EXTERNAL] : IID;
+		IID_IWICProgressCallback				["_IID_IWICProgressCallback"				EXTERNAL] : IID;
+		IID_IWICBitmapCodecProgressNotification	["_IID_IWICBitmapCodecProgressNotification"	EXTERNAL] : IID;
+		IID_IWICComponentInfo					["_IID_IWICComponentInfo"					EXTERNAL] : IID;
+		IID_IWICFormatConverterInfo				["_IID_IWICFormatConverterInfo"				EXTERNAL] : IID;
+		IID_IWICBitmapCodecInfo					["_IID_IWICBitmapCodecInfo"					EXTERNAL] : IID;
+		IID_IWICBitmapEncoderInfo				["_IID_IWICBitmapEncoderInfo"				EXTERNAL] : IID;
+		IID_IWICBitmapDecoderInfo				["_IID_IWICBitmapDecoderInfo"				EXTERNAL] : IID;
+		IID_IWICPixelFormatInfo					["_IID_IWICPixelFormatInfo"					EXTERNAL] : IID;
+		IID_IWICPixelFormatInfo2				["_IID_IWICPixelFormatInfo2"				EXTERNAL] : IID;
+		IID_IWICImagingFactory					["_IID_IWICImagingFactory"					EXTERNAL] : IID;
+		IID_IWICDevelopRawNotificationCallback	["_IID_IWICDevelopRawNotificationCallback"	EXTERNAL] : IID;
+		IID_IWICDevelopRaw						["_IID_IWICDevelopRaw"						EXTERNAL] : IID;
+	%ELSE
+		IID_IWICPalette							["IID_IWICPalette"							EXTERNAL] : IID;
+		IID_IWICBitmapSource					["IID_IWICBitmapSource"						EXTERNAL] : IID;
+		IID_IWICFormatConverter					["IID_IWICFormatConverter"					EXTERNAL] : IID;
+		IID_IWICBitmapScaler					["IID_IWICBitmapScaler"						EXTERNAL] : IID;
+		IID_IWICBitmapClipper					["IID_IWICBitmapClipper"					EXTERNAL] : IID;
+		IID_IWICBitmapFlipRotator				["IID_IWICBitmapFlipRotator"				EXTERNAL] : IID;
+		IID_IWICBitmapLock						["IID_IWICBitmapLock"						EXTERNAL] : IID;
+		IID_IWICBitmap							["IID_IWICBitmap"							EXTERNAL] : IID;
+		IID_IWICColorContext					["IID_IWICColorContext"						EXTERNAL] : IID;
+		IID_IWICColorTransform					["IID_IWICColorTransform"					EXTERNAL] : IID;
+		IID_IWICFastMetadataEncoder				["IID_IWICFastMetadataEncoder"				EXTERNAL] : IID;
+		IID_IWICStream							["IID_IWICStream"							EXTERNAL] : IID;
+		IID_IWICEnumMetadataItem				["IID_IWICEnumMetadataItem"					EXTERNAL] : IID;
+		IID_IWICMetadataQueryReader				["IID_IWICMetadataQueryReader"				EXTERNAL] : IID;
+		IID_IWICMetadataQueryWriter				["IID_IWICMetadataQueryWriter"				EXTERNAL] : IID;
+		IID_IWICBitmapEncoder					["IID_IWICBitmapEncoder"					EXTERNAL] : IID;
+		IID_IWICBitmapFrameEncode				["IID_IWICBitmapFrameEncode"				EXTERNAL] : IID;
+		IID_IWICBitmapDecoder					["IID_IWICBitmapDecoder"					EXTERNAL] : IID;
+		IID_IWICBitmapSourceTransform			["IID_IWICBitmapSourceTransform"			EXTERNAL] : IID;
+		IID_IWICBitmapFrameDecode				["IID_IWICBitmapFrameDecode"				EXTERNAL] : IID;
+		IID_IWICProgressiveLevelControl			["IID_IWICProgressiveLevelControl"			EXTERNAL] : IID;
+		IID_IWICProgressCallback				["IID_IWICProgressCallback"					EXTERNAL] : IID;
+		IID_IWICBitmapCodecProgressNotification	["IID_IWICBitmapCodecProgressNotification"	EXTERNAL] : IID;
+		IID_IWICComponentInfo					["IID_IWICComponentInfo"					EXTERNAL] : IID;
+		IID_IWICFormatConverterInfo				["IID_IWICFormatConverterInfo"				EXTERNAL] : IID;
+		IID_IWICBitmapCodecInfo					["IID_IWICBitmapCodecInfo"					EXTERNAL] : IID;
+		IID_IWICBitmapEncoderInfo				["IID_IWICBitmapEncoderInfo"				EXTERNAL] : IID;
+		IID_IWICBitmapDecoderInfo				["IID_IWICBitmapDecoderInfo"				EXTERNAL] : IID;
+		IID_IWICPixelFormatInfo					["IID_IWICPixelFormatInfo"					EXTERNAL] : IID;
+		IID_IWICPixelFormatInfo2				["IID_IWICPixelFormatInfo2"					EXTERNAL] : IID;
+		IID_IWICImagingFactory					["IID_IWICImagingFactory"					EXTERNAL] : IID;
+		IID_IWICDevelopRawNotificationCallback	["IID_IWICDevelopRawNotificationCallback"	EXTERNAL] : IID;
+		IID_IWICDevelopRaw						["IID_IWICDevelopRaw"						EXTERNAL] : IID;
+	%END
+
+TYPE
+
+	WICBitmapCreateCacheOption =
+    	(
+			WICBitmapNoCache						= 0,
+			WICBitmapCacheOnDemand					= 1,
+			WICBitmapCacheOnLoad					= 2,
+			WICBITMAPCREATECACHEOPTION_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICDecodeOptions =
+		(
+    		WICDecodeMetadataCacheOnDemand		= 0,
+			WICDecodeMetadataCacheOnLoad		= 1,
+			WICMETADATACACHEOPTION_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICBitmapEncoderCacheOption =
+		(
+			WICBitmapEncoderCacheInMemory			= 0,
+			WICBitmapEncoderCacheTempFile			= 1,
+			WICBitmapEncoderNoCache					= 2,
+			WICBITMAPENCODERCACHEOPTION_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICComponentType =
+		(
+			WICDecoder						= 1H,
+			WICEncoder						= 2H,
+			WICPixelFormatConverter			= 4H,
+			WICMetadataReader				= 8H,
+			WICMetadataWriter				= 10H,
+			WICPixelFormat					= 20H,
+			WICAllComponents				= 3fH,
+			WICCOMPONENTTYPE_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICComponentEnumerateOptions =
+		(
+			WICComponentEnumerateDefault				= 00000000H,
+			WICComponentEnumerateRefresh				= 00000001H,
+			WICComponentEnumerateDisabled				= 80000000H,
+			WICComponentEnumerateUnsigned				= 40000000H,
+			WICComponentEnumerateBuiltInOnly			= 20000000H,
+			WICCOMPONENTENUMERATEOPTIONS_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICBitmapPattern =
+    	RECORD
+			Position	: ULARGE_INTEGER;
+			Length		: ULONG;
+			Pattern		: ADDRESS;
+			Mask 		: ADDRESS;
+			EndOfStream : BOOL;
+    	END;
+	WICBitmapPatternArray = POINTER TO ARRAY [0..0] OF WICBitmapPattern;
+
+	WICBitmapInterpolationMode =
+		(
+			WICBitmapInterpolationModeNearestNeighbor	= 0,
+			WICBitmapInterpolationModeLinear			= 1,
+			WICBitmapInterpolationModeCubic				= 2,
+			WICBitmapInterpolationModeFant				= 3,
+			WICBITMAPINTERPOLATIONMODE_FORCE_DWORD		= 7fffffffH
+    	);
+
+	WICBitmapPaletteType =
+    	(
+			WICBitmapPaletteTypeCustom				= 0,
+			WICBitmapPaletteTypeMedianCut			= 01H,
+			WICBitmapPaletteTypeFixedBW				= 02H,
+			WICBitmapPaletteTypeFixedHalftone8		= 03H,
+			WICBitmapPaletteTypeFixedHalftone27		= 04H,
+			WICBitmapPaletteTypeFixedHalftone64		= 05H,
+			WICBitmapPaletteTypeFixedHalftone125	= 06H,
+			WICBitmapPaletteTypeFixedHalftone216	= 07H,
+			WICBitmapPaletteTypeFixedWebPalette		= WICBitmapPaletteTypeFixedHalftone216,
+			WICBitmapPaletteTypeFixedHalftone252	= 08H,
+			WICBitmapPaletteTypeFixedHalftone256	= 09H,
+			WICBitmapPaletteTypeFixedGray4			= 0aH,
+			WICBitmapPaletteTypeFixedGray16			= 0bH,
+			WICBitmapPaletteTypeFixedGray256		= 0cH,
+			WICBITMAPPALETTETYPE_FORCE_DWORD		= 7fffffffH
+    	);
+
+	WICBitmapDitherType =
+		(
+			WICBitmapDitherTypeNone				= 0,
+			WICBitmapDitherTypeSolid			= 0,
+			WICBitmapDitherTypeOrdered4x4		= 1,
+			WICBitmapDitherTypeOrdered8x8		= 2,
+			WICBitmapDitherTypeOrdered16x16		= 3,
+			WICBitmapDitherTypeSpiral4x4		= 4,
+			WICBitmapDitherTypeSpiral8x8		= 5,
+			WICBitmapDitherTypeDualSpiral4x4	= 6,
+			WICBitmapDitherTypeDualSpiral8x8	= 7,
+			WICBitmapDitherTypeErrorDiffusion	= 8,
+			WICBITMAPDITHERTYPE_FORCE_DWORD		= 7fffffffH
+		);
+
+	WICBitmapAlphaChannelOption =
+		(
+			WICBitmapUseAlpha							= 0,
+			WICBitmapUsePremultipliedAlpha				= 1,
+			WICBitmapIgnoreAlpha						= 2,
+			WICBITMAPALPHACHANNELOPTIONS_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICBitmapTransformOptions =
+		(
+			WICBitmapTransformRotate0				= 0,
+			WICBitmapTransformRotate90				= 01H,
+			WICBitmapTransformRotate180				= 02H,
+			WICBitmapTransformRotate270				= 03H,
+			WICBitmapTransformFlipHorizontal		= 08H,
+			WICBitmapTransformFlipVertical			= 10H,
+			WICBITMAPTRANSFORMOPTIONS_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICBitmapLockFlags =
+		(
+			WICBitmapLockRead				= 1,
+			WICBitmapLockWrite				= 2,
+			WICBITMAPLOCKFLAGS_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICBitmapDecoderCapabilities =
+		(
+			WICBitmapDecoderCapabilitySameEncoder			= 01H,
+			WICBitmapDecoderCapabilityCanDecodeAllImages	= 02H,
+			WICBitmapDecoderCapabilityCanDecodeSomeImages	= 04H,
+			WICBitmapDecoderCapabilityCanEnumerateMetadata	= 08H,
+			WICBitmapDecoderCapabilityCanDecodeThumbnail	= 10H,
+			WICBITMAPDECODERCAPABILITIES_FORCE_DWORD		= 7fffffffH
+		);
+
+	WICProgressOperation =
+		(
+			WICProgressOperationCopyPixels		= 1,
+			WICProgressOperationWritePixels		= 2,
+			WICProgressOperationAll				= 0ffffH,
+			WICPROGRESSOPERATION_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICProgressNotification =
+		(
+			WICProgressNotificationBegin		= 10000H,
+			WICProgressNotificationEnd			= 20000H,
+			WICProgressNotificationFrequent		= 40000H,
+			WICProgressNotificationAll			= 0ffff0000H,
+			WICPROGRESSNOTIFICATION_FORCE_DWORD	= 07fffffffH
+		);
+
+	WICComponentSigning =
+		(
+			WICComponentSigned				= 1,
+			WICComponentUnsigned			= 2,
+			WICComponentSafe				= 4,
+			WICComponentDisabled			= 80000000H,
+			WICCOMPONENTSIGNING_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICGifLogicalScreenDescriptorProperties =
+		(
+			WICGifLogicalScreenSignature						= 1,
+			WICGifLogicalScreenDescriptorWidth					= 2,
+			WICGifLogicalScreenDescriptorHeight					= 3,
+			WICGifLogicalScreenDescriptorGlobalColorTableFlag	= 4,
+			WICGifLogicalScreenDescriptorColorResolution		= 5,
+			WICGifLogicalScreenDescriptorSortFlag				= 6,
+			WICGifLogicalScreenDescriptorGlobalColorTableSize	= 7,
+			WICGifLogicalScreenDescriptorBackgroundColorIndex	= 8,
+			WICGifLogicalScreenDescriptorPixelAspectRatio		= 9,
+			WICGifLogicalScreenDescriptorProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICGifImageDescriptorProperties =
+		(
+			WICGifImageDescriptorLeft					= 1,
+			WICGifImageDescriptorTop					= 2,
+			WICGifImageDescriptorWidth					= 3,
+			WICGifImageDescriptorHeight					= 4,
+			WICGifImageDescriptorLocalColorTableFlag	= 5,
+			WICGifImageDescriptorInterlaceFlag			= 6,
+			WICGifImageDescriptorSortFlag				= 7,
+			WICGifImageDescriptorLocalColorTableSize	= 8,
+			WICGifImageDescriptorProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICGifGraphicControlExtensionProperties =
+		(
+			WICGifGraphicControlExtensionDisposal				= 1,
+			WICGifGraphicControlExtensionUserInputFlag			= 2,
+			WICGifGraphicControlExtensionTransparencyFlag		= 3,
+			WICGifGraphicControlExtensionDelay					= 4,
+			WICGifGraphicControlExtensionTransparentColorIndex	= 5,
+			WICGifGraphicControlExtensionProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICGifApplicationExtensionProperties =
+    	(
+			WICGifApplicationExtensionApplication				= 1,
+			WICGifApplicationExtensionData						= 2,
+			WICGifApplicationExtensionProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICGifCommentExtensionProperties =
+		(
+			WICGifCommentExtensionText						= 1,
+			WICGifCommentExtensionProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICJpegCommentProperties =
+		(
+			WICJpegCommentText						= 1,
+			WICJpegCommentProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICJpegLuminanceProperties =
+		(
+			WICJpegLuminanceTable					= 1,
+			WICJpegLuminanceProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICJpegChrominanceProperties =
+		(
+			WICJpegChrominanceTable						= 1,
+			WICJpegChrominanceProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WIC8BIMIptcProperties =
+		(
+			WIC8BIMIptcPString					= 0,
+			WIC8BIMIptcEmbeddedIPTC				= 1,
+			WIC8BIMIptcProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WIC8BIMResolutionInfoProperties =
+		(
+			WIC8BIMResolutionInfoPString				= 1,
+			WIC8BIMResolutionInfoHResolution			= 2,
+			WIC8BIMResolutionInfoHResolutionUnit		= 3,
+			WIC8BIMResolutionInfoWidthUnit				= 4,
+			WIC8BIMResolutionInfoVResolution			= 5,
+			WIC8BIMResolutionInfoVResolutionUnit		= 6,
+			WIC8BIMResolutionInfoHeightUnit				= 7,
+			WIC8BIMResolutionInfoProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WIC8BIMIptcDigestProperties =
+		(
+			WIC8BIMIptcDigestPString				= 1,
+			WIC8BIMIptcDigestIptcDigest				= 2,
+			WIC8BIMIptcDigestProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICPngGamaProperties =
+		(
+			WICPngGamaGamma						= 1,
+			WICPngGamaProperties_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICPngBkgdProperties =
+		(
+    		WICPngBkgdBackgroundColor			= 1,
+			WICPngBkgdProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngItxtProperties =
+		(
+    		WICPngItxtKeyword					= 1,
+			WICPngItxtCompressionFlag			= 2,
+			WICPngItxtLanguageTag				= 3,
+			WICPngItxtTranslatedKeyword			= 4,
+			WICPngItxtText						= 5,
+			WICPngItxtProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngChrmProperties =
+    	(
+			WICPngChrmWhitePointX				= 1,
+			WICPngChrmWhitePointY				= 2,
+			WICPngChrmRedX						= 3,
+			WICPngChrmRedY						= 4,
+			WICPngChrmGreenX					= 5,
+			WICPngChrmGreenY					= 6,
+			WICPngChrmBlueX						= 7,
+			WICPngChrmBlueY						= 8,
+			WICPngChrmProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngHistProperties =
+    	(
+			WICPngHistFrequencies				= 1,
+			WICPngHistProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngIccpProperties =
+    	(
+			WICPngIccpProfileName				= 1,
+			WICPngIccpProfileData				= 2,
+			WICPngIccpProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngSrgbProperties =
+    	(
+			WICPngSrgbRenderingIntent			= 1,
+			WICPngSrgbProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngTimeProperties =
+    	(
+			WICPngTimeYear						= 1,
+			WICPngTimeMonth						= 2,
+			WICPngTimeDay						= 3,
+			WICPngTimeHour						= 4,
+			WICPngTimeMinute					= 5,
+			WICPngTimeSecond					= 6,
+			WICPngTimeProperties_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICSectionAccessLevel =
+    	(
+			WICSectionAccessLevelRead			= 1,
+			WICSectionAccessLevelReadWrite		= 3,
+			WICSectionAccessLevel_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPixelFormatNumericRepresentation =
+    	(
+			WICPixelFormatNumericRepresentationUnspecified		= 0,
+			WICPixelFormatNumericRepresentationIndexed			= 1,
+			WICPixelFormatNumericRepresentationUnsignedInteger	= 2,
+			WICPixelFormatNumericRepresentationSignedInteger	= 3,
+			WICPixelFormatNumericRepresentationFixed			= 4,
+			WICPixelFormatNumericRepresentationFloat			= 5,
+			WICPixelFormatNumericRepresentation_FORCE_DWORD		= 7fffffffH
+    	);
+
+ABSTRACT CLASS IWICBitmapSource; FORWARD;
+ABSTRACT CLASS IWICMetadataQueryWriter; FORWARD;
+ABSTRACT CLASS IWICBitmapEncoderInfo; FORWARD;
+ABSTRACT CLASS IWICBitmapFrameEncode; FORWARD;
+ABSTRACT CLASS IWICBitmapDecoderInfo; FORWARD;
+ABSTRACT CLASS IWICBitmapFrameDecode; FORWARD;
+
+ABSTRACT CLASS IWICPalette;
+INHERIT IUnknown;
+REVEAL
+	InitializePredefined, InitializeCustom, InitializeFromBitmap, InitializeFromPalette,
+	GetType, GetColorCount, GetColors, IsBlackWhite, IsGrayScale, HasAlpha;
+	ABSTRACT PROCEDURE InitializePredefined (ePaletteType : WICBitmapPaletteType; fAddTransparentColor : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE InitializeCustom	(pColors : ARRAY OF WICColor; cCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromBitmap	(pISurface : IWICBitmapSource; cCount : UINT; fAddTransparentColor : BOOL) :
+	HRESULT;
+	ABSTRACT PROCEDURE InitializeFromPalette (pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE GetType (VAR pePaletteType : WICBitmapPaletteType) : HRESULT;
+    ABSTRACT PROCEDURE GetColorCount (VAR pCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetColors (cCount : UINT; VAR pColors : ARRAY OF WICColor; VAR pcActualColors : UINT) : HRESULT;
+	ABSTRACT PROCEDURE IsBlackWhite (VAR pfIsBlackWhite : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE IsGrayScale (VAR pfIsGrayScale : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE HasAlpha (VAR pfHasAlpha : BOOL) : HRESULT;
+END IWICPalette;
+
+ABSTRACT CLASS IWICBitmapSource;
+INHERIT IUnknown;
+REVEAL GetSize, GetPixelFormat, GetResolution, CopyPalette, CopyPixels;
+	ABSTRACT PROCEDURE GetSize (VAR puiWidth : UINT; VAR puiHeight : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetPixelFormat (VAR pPixelFormat : WICPixelFormatGUID) : HRESULT;
+	ABSTRACT PROCEDURE GetResolution (VAR pDpiX : LONGREAL; VAR pDpiY : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE CopyPalette (pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE CopyPixels (prc : PWICRect; cbStride : UINT; cbBufferSize : UINT; pbBuffer : PVOID) : HRESULT;
+END IWICBitmapSource;
+
+ABSTRACT CLASS IWICFormatConverter;
+INHERIT IWICBitmapSource;
+REVEAL Initialize, CanConvert;
+	ABSTRACT PROCEDURE Initialize (pISource : IWICBitmapSource; dstFormat : WICPixelFormatGUID; dither : WICBitmapDitherType;
+		pIPalette : IWICPalette; alphaThresholdPercent : LONGREAL; paletteTranslate : WICBitmapPaletteType) : HRESULT;
+	ABSTRACT PROCEDURE CanConvert (srcPixelFormat : WICPixelFormatGUID; dstPixelFormat : WICPixelFormatGUID;
+		VAR pfCanConvert : BOOL) : HRESULT;
+END IWICFormatConverter;
+
+ABSTRACT CLASS IWICBitmapScaler;
+INHERIT IWICBitmapSource;
+REVEAL Initialize;
+	ABSTRACT PROCEDURE Initialize (pISource : IWICBitmapSource; uiWidth : UINT; uiHeight : UINT;
+		mode :	WICBitmapInterpolationMode) : HRESULT;
+END IWICBitmapScaler;
+
+ABSTRACT CLASS IWICBitmapClipper;
+INHERIT IWICBitmapSource;
+REVEAL Initialize;
+	ABSTRACT PROCEDURE Initialize (pISource : IWICBitmapSource; prc : WICRect) : HRESULT;
+END IWICBitmapClipper;
+
+ABSTRACT CLASS IWICBitmapFlipRotator;
+INHERIT IWICBitmapSource;
+REVEAL Initialize;
+	ABSTRACT PROCEDURE Initialize (pISource : IWICBitmapSource; options : WICBitmapTransformOptions) : HRESULT;
+END IWICBitmapFlipRotator;
+
+ABSTRACT CLASS IWICBitmapLock;
+INHERIT IUnknown;
+REVEAL GetSize, GetStride, GetDataPointer, GetPixelFormat;
+	ABSTRACT PROCEDURE GetSize (VAR puiWidth : UINT; VAR puiHeight : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetStride (VAR pcbStride : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetDataPointer (VAR pcbBufferSize : UINT; VAR pcbBufferSize : WICInProcPointer) : HRESULT;
+	ABSTRACT PROCEDURE GetPixelFormat (VAR pFixelFormat : WICPixelFormatGUID) : HRESULT;
+END IWICBitmapLock;
+
+ABSTRACT CLASS IWICBitmap;
+INHERIT IWICBitmapSource;
+REVEAL Lock, SetPalette, SetResolution;
+	ABSTRACT PROCEDURE Lock (prcLock : WICRect; flags : DWORD; VAR ppILock : IWICBitmapLock) : HRESULT;
+	ABSTRACT PROCEDURE SetPalette (pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE SetResolution (dpiX : LONGREAL; dpiY : LONGREAL) : HRESULT;
+END IWICBitmap;
+
+ABSTRACT CLASS IWICColorContext;
+INHERIT IUnknown;
+REVEAL InitializeFromFilename, InitializeFromMemory, InitializeFromExifColorSpace, GetType, GetProfileBytes, GetExifColorSpace;
+	ABSTRACT PROCEDURE InitializeFromFilename (wzFilename : ARRAY OF UCHAR) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromMemory (pbBuffer : PVOID; cbBufferSize : UINT) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromExifColorSpace	(value : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetType (VAR pType : WICColorContextType) : HRESULT;
+	ABSTRACT PROCEDURE GetProfileBytes (cbBuffer : UINT; pfBuffer : PVOID; VAR pcbActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetExifColorSpace (VAR pValue : UINT) : HRESULT;
+END IWICColorContext;
+
+ABSTRACT CLASS IWICColorTransform;
+INHERIT IWICBitmapSource;
+REVEAL Initialize;
+	ABSTRACT PROCEDURE Initialize (pIBitmapSource :	IWICBitmapSource;
+		pIContextSource : IWICColorContext; pIContextDest : IWICColorContext; pixelFmtDest : WICPixelFormatGUID) : HRESULT;
+END IWICColorTransform;
+
+ABSTRACT CLASS IWICFastMetadataEncoder;
+INHERIT IUnknown;
+REVEAL Commit, GetMetadataQueryWriter;
+	ABSTRACT PROCEDURE Commit () : HRESULT;
+	ABSTRACT PROCEDURE GetMetadataQueryWriter (VAR ppIMetadataQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+END IWICFastMetadataEncoder;
+
+ABSTRACT CLASS IWICStream;
+INHERIT IStream;
+REVEAL InitializeFromIStream, InitializeFromFilename, InitializeFromMemory, InitializeFromIStreamRegion;
+	ABSTRACT PROCEDURE InitializeFromIStream (pIStream : IStream) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromFilename (wzFileName : ARRAY OF UCHAR; dwDesiredAccess : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromMemory	(pbBuffer : WICInProcPointer; cbBufferSize : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE InitializeFromIStreamRegion (pIStream : IWICStream; ulOffset : ULARGE_INTEGER; ulMaxSize : ULARGE_INTEGER
+	) : HRESULT;
+END IWICStream;
+
+TYPE
+	PPROPVARIANT = POINTER TO ARRAY [0..0] OF PROPVARIANT;
+
+ABSTRACT CLASS IWICEnumMetadataItem;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+	ABSTRACT PROCEDURE Next (celt : ULONG;
+		VAR rgeltSchema : PROPVARIANTARRAY; VAR rgeltId : PROPVARIANTARRAY; VAR rgeltValue : PROPVARIANTARRAY;
+		VAR pceltFetched : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Skip	(celt : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Reset () : HRESULT;
+	ABSTRACT PROCEDURE Clone (VAR ppIEnumMetadataItem : IWICEnumMetadataItem) : HRESULT;
+END IWICEnumMetadataItem;
+
+ABSTRACT CLASS IWICMetadataQueryReader;
+INHERIT IUnknown;
+REVEAL GetContainerFormat, GetLocation, GetMetadataByName, GetEnumerator;
+	ABSTRACT PROCEDURE GetContainerFormat (VAR pguidContainerFormat : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetLocation (cchMaxLength : UINT; VAR wzNamespace : ARRAY OF UCHAR; VAR ppchActualLength : UINT) :
+	HRESULT;
+	ABSTRACT PROCEDURE GetMetadataByName (wzName : ARRAY OF UCHAR; VAR pvarValue : PROPVARIANT) : HRESULT;
+	ABSTRACT PROCEDURE GetEnumerator (VAR ppEnumString : IEnumString) : HRESULT;
+END IWICMetadataQueryReader;
+
+ABSTRACT CLASS IWICMetadataQueryWriter;
+INHERIT IWICMetadataQueryReader;
+REVEAL SetMetadataByName, RemoveMetadataByName;
+	ABSTRACT PROCEDURE SetMetadataByName (wzName : ARRAY OF UCHAR; pvarValue : PROPVARIANT) : HRESULT;
+	ABSTRACT PROCEDURE RemoveMetadataByName (wzName : ARRAY OF UCHAR) : HRESULT;
+END IWICMetadataQueryWriter;
+
+ABSTRACT CLASS IWICBitmapEncoder;
+INHERIT IUnknown;
+REVEAL
+	Initialize, GetContainerFormat, GetEncoderInfo, SetColorContexts, SetPalette, SetThumbnail, SetPreview,
+	CreateNewFrame, Commit, GetMetadataQueryWriter;
+	ABSTRACT PROCEDURE Initialize (pIStream : IStream; cacheOption : WICBitmapEncoderCacheOption) : HRESULT;
+	ABSTRACT PROCEDURE GetContainerFormat (VAR pguidContainerFormat : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetEncoderInfo (VAR ppIEncoderInfo : IWICBitmapEncoderInfo) : HRESULT;
+	ABSTRACT PROCEDURE SetColorContexts (cCount : UINT; ppIEncoderInfo : ARRAY OF IWICColorContext) : HRESULT;
+	ABSTRACT PROCEDURE SetPalette (pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE SetThumbnail (pIThumbnail : IWICBitmapSource) : HRESULT;
+	ABSTRACT PROCEDURE SetPreview (pIPreview : IWICBitmapSource) : HRESULT;
+	ABSTRACT PROCEDURE CreateNewFrame (VAR ppIFrameEncode : IWICBitmapFrameEncode; ppIEncoderOptions : PPPROPERTYBAG2) : HRESULT
+	;
+	ABSTRACT PROCEDURE Commit () : HRESULT;
+	ABSTRACT PROCEDURE GetMetadataQueryWriter (VAR ppIMetadataQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+END IWICBitmapEncoder;
+
+ABSTRACT CLASS IWICBitmapFrameEncode;
+INHERIT IUnknown;
+REVEAL
+	Initialize, SetSize, SetResolution, SetPixelFormat, SetColorContexts, SetPalette, SetThumbnail,
+	WritePixels, WriteSource, Commit, GetMetadataQueryWriter;
+	ABSTRACT PROCEDURE Initialize (pIEncoderOptions : IPropertyBag2) : HRESULT;
+	ABSTRACT PROCEDURE SetSize (uiWidth : UINT; uiHeight : UINT) : HRESULT;
+	ABSTRACT PROCEDURE SetResolution (dpiX : LONGREAL; dpiY : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetPixelFormat (VAR pPixelFormat : WICPixelFormatGUID) : HRESULT;
+	ABSTRACT PROCEDURE SetColorContexts (cCount : UINT; ppIColorContext : ARRAY OF IWICColorContext) : HRESULT;
+	ABSTRACT PROCEDURE SetPalette (VAR pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE SetThumbnail (pIThumbnail : IWICBitmapSource) : HRESULT;
+	ABSTRACT PROCEDURE WritePixels (lineCount : UINT; cbStride : UINT; cbBufferSize : UINT; pbPixels : ADDRESS) : HRESULT;
+	ABSTRACT PROCEDURE WriteSource (pIBitmapSource : IWICBitmapSource; prc : PWICRect) : HRESULT;
+	ABSTRACT PROCEDURE Commit () : HRESULT;
+	ABSTRACT PROCEDURE GetMetadataQueryWriter (VAR ppIMetadataQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+END IWICBitmapFrameEncode;
+
+ABSTRACT CLASS IWICBitmapDecoder;
+INHERIT IUnknown;
+REVEAL
+	QueryCapability, Initialize, GetContainerFormat, GetDecoderInfo, CopyPalette, GetMetadataQueryReader,
+	GetPreview, GetColorContexts, GetThumbnail, GetFrameCount, GetFrame;
+	ABSTRACT PROCEDURE QueryCapability (pIStream : IStream; VAR pdwCapability : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE Initialize (pIStream : IStream; cacheOptions : WICDecodeOptions) : HRESULT;
+	ABSTRACT PROCEDURE GetContainerFormat (VAR pguidContainerFormat : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetDecoderInfo (VAR ppIDecoderInfo : IWICBitmapDecoderInfo) : HRESULT;
+	ABSTRACT PROCEDURE CopyPalette (pIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE GetMetadataQueryReader (VAR ppIMetadatQueryReader : IWICMetadataQueryReader) : HRESULT;
+	ABSTRACT PROCEDURE GetPreview (VAR ppIBitmapSource : IWICBitmapSource) : HRESULT;
+	ABSTRACT PROCEDURE GetColorContexts (cCount : UINT; VAR ppIColorContexts : ARRAY OF IWICColorContext;
+		VAR pcActualCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetThumbnail (VAR ppIThumbnail : IWICBitmapSource) : HRESULT;
+	ABSTRACT PROCEDURE GetFrameCount (VAR pCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetFrame (index : UINT; VAR ppIBitmapFrame : IWICBitmapFrameDecode) : HRESULT;
+END IWICBitmapDecoder;
+
+ABSTRACT CLASS IWICBitmapSourceTransform;
+INHERIT IUnknown;
+REVEAL CopyPixels, GetClosestSize, GetClosestPixelFormat, DoesSupportTransform;
+	ABSTRACT PROCEDURE CopyPixels (prc : PWICRect; uiWidth : UINT; uiHeight : UINT; ppguidDstFormat : WICPixelFormatGUID;
+		dstTransform : WICBitmapTransformOptions; nStride : UINT; cbBufferSize : UINT; pBuffer : PVOID) : HRESULT;
+	ABSTRACT PROCEDURE GetClosestSize (VAR puiWidth : UINT; VAR puiHeight : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetClosestPixelFormat (VAR pguidDstFormat : WICPixelFormatGUID): HRESULT;
+	ABSTRACT PROCEDURE DoesSupportTransform (VAR pfIsSupported : BOOL): HRESULT;
+END IWICBitmapSourceTransform;
+
+ABSTRACT CLASS IWICBitmapFrameDecode;
+INHERIT IWICBitmapSource;
+REVEAL GetMetadataQueryReader, GetColorContexts, GetThumbnail;
+	ABSTRACT PROCEDURE GetMetadataQueryReader (VAR ppIMetadataQueryReader : IWICMetadataQueryReader) : HRESULT;
+	ABSTRACT PROCEDURE GetColorContexts (
+		cCount : UINT; VAR ppIColorComtexts : ARRAY OF IWICColorContext; VAR pcActualCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetThumbnail (VAR ppIThumbnail : IWICBitmapSource) : HRESULT;
+END IWICBitmapFrameDecode;
+
+ABSTRACT CLASS IWICProgressiveLevelControl;
+INHERIT IUnknown;
+REVEAL GetLevelCount, GetCurrentLevel, SetCurrentLevel;
+	ABSTRACT PROCEDURE GetLevelCount (VAR pcLevels : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetCurrentLevel (VAR pnLevel : UINT) : HRESULT;
+	ABSTRACT PROCEDURE SetCurrentLevel (nLevel : UINT) : HRESULT;
+END IWICProgressiveLevelControl;
+
+ABSTRACT CLASS IWICProgressCallback;
+INHERIT IUnknown;
+REVEAL Notify;
+	ABSTRACT PROCEDURE Notify (uFrameNum : ULONG; operation : WICProgressOperation; dblProgress : LONGREAL) : HRESULT;
+END IWICProgressCallback;
+
+TYPE
+	PFNProgressNotification =
+		PROCEDURE ((*pvData*) PVOID, (*uRfameNum*) ULONG, (*operation*) WICProgressOperation, (*dblProgress*) LONGREAL) :
+		HRESULT;
+
+ABSTRACT CLASS IWICBitmapCodecProgressNotification;
+INHERIT IUnknown;
+REVEAL RegisterProgressNotification;
+	ABSTRACT PROCEDURE RegisterProgressNotification (pfnProgressNotification : PFNProgressNotification; pvData : PVOID;
+		dwPropgressFlags : DWORD) : HRESULT;
+END IWICBitmapCodecProgressNotification;
+
+ABSTRACT CLASS IWICComponentInfo;
+INHERIT IUnknown;
+REVEAL GetComponentType, GetCLSID, GetSigningStatus, GetAuthor, GetVendorGUID, GetVersion, GetSpecVersion, GetFriendlyName;
+	ABSTRACT PROCEDURE GetComponentType (VAR pType : WICComponentType) : HRESULT;
+	ABSTRACT PROCEDURE GetCLSID (VAR pclsid : CLSID) : HRESULT;
+	ABSTRACT PROCEDURE GetSigningStatus (VAR pStatus : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE GetAuthor (cchAuthor : UINT; VAR wzAuthor : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetVendorGUID (VAR pguidVendor : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetVersion (cchVersion : UINT; VAR wzVersion : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetSpecVersion (cchSpecVersion : UINT; VAR wzSpecVersion : ARRAY OF UCHAR; VAR pcchActual : UINT) :
+	HRESULT;
+	ABSTRACT PROCEDURE GetFriendlyName (cchFriendlyName : UINT; VAR wzFriendlyName : ARRAY OF UCHAR; VAR pcchActual : UINT) :
+	HRESULT;
+END IWICComponentInfo;
+
+ABSTRACT CLASS IWICFormatConverterInfo;
+INHERIT IWICComponentInfo;
+REVEAL GetPixelFormats, CreateInstance;
+	ABSTRACT PROCEDURE GetPixelFormats (
+		cFormats : UINT; VAR pPixelFormatGUIDs : ARRAY OF WICPixelFormatGUID; VAR pcActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE CreateInstance (VAR ppIConverter : IWICFormatConverter) : HRESULT;
+END IWICFormatConverterInfo;
+
+ABSTRACT CLASS IWICBitmapCodecInfo;
+INHERIT IWICComponentInfo;
+REVEAL
+	GetContainerFormat, GetPixelFormats, GetColorManagementVersion, GetDeviceManufacturer, GetDeviceModels,
+	GetMimeTypes, GetFileExtensions,
+	DoesSupportAnimation, DoesSupportChromakey, DoesSupportLossless, DoesSupportMultiframe, MatchesMimeType;
+	ABSTRACT PROCEDURE GetContainerFormat (VAR pguidContainerFormat : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetPixelFormats (cFormats : UINT; VAR pguidPixelFormats : ARRAY OF GUID; VAR pcActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetColorManagementVersion (
+		cchColorManagementVersion : UINT; VAR wzColorManagementVersion : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetDeviceManufacturer (
+		cchDeviceManufacturer : UINT; VAR wzDeviceManufacturer : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetDeviceModels (cchDeviceModels : UINT; VAR wzDeviceModels : ARRAY OF UCHAR; VAR pcchActual : UINT) :
+	HRESULT;
+	ABSTRACT PROCEDURE GetMimeTypes (cchMimeTypes : UINT; VAR wzMimeTypes : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetFileExtensions (cchFileExtensions : UINT; VAR wzFileExtensions : ARRAY OF UCHAR; VAR pcchActual : UINT
+	) : HRESULT;
+	ABSTRACT PROCEDURE DoesSupportAnimation (VAR pfSupportAnimation : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE DoesSupportChromakey	(VAR pfSupportChromakey : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE DoesSupportLossless (VAR pfSupportLossless : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE DoesSupportMultiframe (VAR pfSupportMultiframe : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE MatchesMimeType (wzMimeType : ARRAY OF UCHAR; VAR pfMatches : BOOL) : HRESULT;
+END IWICBitmapCodecInfo;
+
+ABSTRACT CLASS IWICBitmapEncoderInfo;
+INHERIT IWICBitmapCodecInfo;
+REVEAL CreateInstance;
+	ABSTRACT PROCEDURE CreateInstance (VAR ppIBitmapEncoder : IWICBitmapEncoder) : HRESULT;
+END IWICBitmapEncoderInfo;
+
+ABSTRACT CLASS IWICBitmapDecoderInfo;
+INHERIT IWICBitmapCodecInfo;
+REVEAL GetPatterns, MatchesPattern, CreateInstance;
+	ABSTRACT PROCEDURE GetPatterns (cbSizePatterns : UINT; pPatterns : WICBitmapPatternArray;
+		VAR pcPatterns : UINT; VAR pcbPatternsActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE MatchesPattern (pIStream : IStream; VAR pfMatches : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE CreateInstance (VAR ppIBitmapDecoder : IWICBitmapDecoder) : HRESULT;
+END IWICBitmapDecoderInfo;
+
+ABSTRACT CLASS IWICPixelFormatInfo;
+INHERIT IWICComponentInfo;
+REVEAL GetFormatGUID, GetColorContext, GetBitsPerPixel, GetChannelCount, GetChannelMask;
+	ABSTRACT PROCEDURE GetFormatGUID (VAR pFormat : GUID) : HRESULT;
+	ABSTRACT PROCEDURE GetColorContext (VAR pIColorContext : IWICColorContext) : HRESULT;
+	ABSTRACT PROCEDURE GetBitsPerPixel (VAR puiBitsPerPixel : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetChannelCount (VAR puiChannelCount : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetChannelMask (uiChannelIndex : UINT;
+		cbMaskBuffer : UINT; VAR pbMaskBuffer : ARRAY OF BYTE; VAR pcbActual : UINT) : HRESULT;
+END IWICPixelFormatInfo;
+
+ABSTRACT CLASS IWICPixelFormatInfo2;
+INHERIT IWICPixelFormatInfo;
+REVEAL SupportsTransparency, GetNumericRepresentation;
+	ABSTRACT PROCEDURE SupportsTransparency (VAR pfSupportsTransparency : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE GetNumericRepresentation (VAR pNumericRepresentation : WICPixelFormatNumericRepresentation) : HRESULT;
+END IWICPixelFormatInfo2;
+
+ABSTRACT CLASS IWICImagingFactory;
+INHERIT IUnknown;
+REVEAL
+	CreateDecoderFromFilename, CreateDecoderFromStream, CreateDecoderFromFileHandle, CreateComponentInfo, CreateDecoder,
+	CreateEncoder, CreatePalette, CreateFormatConverter, CreateBitmapScaler, CreateBitmapClipper, CreateBitmapFlipRotator,
+	CreateStream, CreateColorContext, CreateColorTransformer,
+	CreateBitmap, CreateBitmapFromSource, CreateBitmapFromSourceRect, CreateBitmapFromMemory,
+	CreateBitmapFromHBITMAP, CreateBitmapFromHICON,
+	CreateComponentEnumerator, CreateFastMetadataEncoderFromDecoder, CreateFastMetadataEncoderFromFrameDecode,
+	CreateQueryWriter, CreateQueryWriterFromReader;
+	ABSTRACT PROCEDURE CreateDecoderFromFilename (wzFilename : ARRAY OF UCHAR; pguidVendor : REFGUID; dwDesiredAccess : DWORD;
+		metadataOptions : WICDecodeOptions;	VAR ppIDecoder : IWICBitmapDecoder) : HRESULT;
+	ABSTRACT PROCEDURE CreateDecoderFromStream (pIStream : IStream; pguidVendor : REFGUID; metadataOptions : WICDecodeOptions;
+		VAR ppIDecoder : IWICBitmapDecoder) : HRESULT;
+	ABSTRACT PROCEDURE CreateDecoderFromFileHandle (hFile : ULONG_PTR; pguidVendor : REFGUID;
+		metadataOptions : WICDecodeOptions;	VAR ppIDecoder : IWICBitmapDecoder) : HRESULT;
+	ABSTRACT PROCEDURE CreateComponentInfo (clsidComponent : CLSID; VAR ppIInfo : IWICComponentInfo) : HRESULT;
+	ABSTRACT PROCEDURE CreateDecoder (guidContainerFormat : GUID; pguidVendor : REFGUID; VAR ppIDecoder : IWICBitmapDecoder) :
+	HRESULT;
+	ABSTRACT PROCEDURE CreateEncoder (guidContainerFormat : GUID; pguidVendor : REFGUID; VAR ppIEncoder : IWICBitmapEncoder) :
+	HRESULT;
+	ABSTRACT PROCEDURE CreatePalette (VAR ppIPalette : IWICPalette) : HRESULT;
+	ABSTRACT PROCEDURE CreateFormatConverter (VAR ppIFormatConverter : IWICFormatConverter) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapScaler (VAR ppIBitmapScaler : IWICBitmapScaler) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapClipper (VAR ppIBitmapClipper : IWICBitmapClipper) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapFlipRotator (VAR ppIBitmapFlipRotator : IWICBitmapFlipRotator) : HRESULT;
+	ABSTRACT PROCEDURE CreateStream (VAR ppIWICStream : IWICStream) : HRESULT;
+	ABSTRACT PROCEDURE CreateColorContext (VAR ppIWICColorContext : IWICColorContext) : HRESULT;
+	ABSTRACT PROCEDURE CreateColorTransformer (VAR ppIWICColorTransform : IWICColorTransform) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmap (
+		uiWidth : UINT; uiHeight : UINT; pixelFormat : WICPixelFormatGUID; option : WICBitmapCreateCacheOption;
+		VAR ppIBitmap : IWICBitmap) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapFromSource (pIBitmapSource : IWICBitmapSource; option : WICBitmapCreateCacheOption;
+		VAR ppIBitmap : IWICBitmap) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapFromSourceRect (
+		pIBitmapSource : IWICBitmapSource; x : UINT; y : UINT; width : UINT; height : UINT; VAR pIBitmap : IWICBitmap) : HRESULT
+	;
+	ABSTRACT PROCEDURE CreateBitmapFromMemory (
+		uiWidth : UINT; uiHeight : UINT; pixelFormat : WICPixelFormatGUID; cbStride : UINT;
+		cbBufferSize : UINT; pbBuffer : ADDRESS;
+		VAR ppIBitmap : IWICBitmap
+	) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapFromHBITMAP (hBitmap : HBITMAP; hPalette : HPALETTE; options : WICBitmapAlphaChannelOption;
+		VAR ppIBitmap : IWICBitmap) : HRESULT;
+	ABSTRACT PROCEDURE CreateBitmapFromHICON (hIcon : HICON; VAR ppIBitmap : IWICBitmap) : HRESULT;
+	ABSTRACT PROCEDURE CreateComponentEnumerator (componentTypes : DWORD; options : DWORD; VAR ppIEnumUnknown : IEnumUnknown) :
+	HRESULT;
+	ABSTRACT PROCEDURE CreateFastMetadataEncoderFromDecoder (pIDecoder : IWICBitmapDecoder;
+		VAR ppIFastEncoder : IWICFastMetadataEncoder) : HRESULT;
+	ABSTRACT PROCEDURE CreateFastMetadataEncoderFromFrameDecode (pIFrameDecoder : IWICBitmapFrameDecode;
+		VAR ppIFastEncoder : IWICFastMetadataEncoder) : HRESULT;
+	ABSTRACT PROCEDURE CreateQueryWriter (guidMetadataFormat : GUID; pguidVendor : REFGUID;
+		VAR ppIQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+	ABSTRACT PROCEDURE CreateQueryWriterFromReader (pIQueryReader : IWICMetadataQueryReader; pguidVendor : REFGUID;
+		VAR ppIQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+END IWICImagingFactory;
+
+PROCEDURE WICConvertBitmapSource (dstFormat : WICPixelFormatGUID; pISrc : IWICBitmapSource; VAR ppIdst : IWICBitmapSource) :
+HRESULT;
+
+PROCEDURE WICCreateBitmapFromSection (
+	width : UINT; height : UINT; pixelFormat : WICPixelFormatGUID; hSection : HANDLE; stride : UINT; offset : UINT;
+	VAR ppIBitmap : IWICBitmap) : HRESULT;
+
+PROCEDURE WICCreateBitmapFromSectionEx (
+	width : UINT; height : UINT; pixelFormat : WICPixelFormatGUID; hSection : HANDLE; stride : UINT; offset : UINT;
+    desiredAccessLevel : WICSectionAccessLevel;
+	VAR ppIBitmap : IWICBitmap
+) : HRESULT;
+
+PROCEDURE WICMapGuidToShortName (guid : GUID; cchName : UINT; wzName : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+
+PROCEDURE WICMapShortNameToGuid (wzName : ARRAY OF UCHAR; VAR pguid : GUID) : HRESULT;
+
+PROCEDURE WICMapSchemaToName (guidMetadataFormat : GUID; pwzSchema : ARRAY OF UCHAR;
+	cchName : UINT; VAR wzName : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+
+CONST
+	WINCODEC_ERR_BASE								= 2000H;
+	WINCODEC_ERR_GENERIC_ERROR						= E_FAIL;
+	WINCODEC_ERR_INVALIDPARAMETER					= E_INVALIDARG;
+	WINCODEC_ERR_OUTOFMEMORY						= E_OUTOFMEMORY;
+	WINCODEC_ERR_NOTIMPLEMENTED						= E_NOTIMPL;
+	WINCODEC_ERR_ABORTED							= E_ABORT;
+	WINCODEC_ERR_ACCESSDENIED						= E_ACCESSDENIED;
+	WINCODEC_ERR_VALUEOVERFLOW						= INTSAFE_E_ARITHMETIC_OVERFLOW;
+	WINCODEC_ERR_WRONGSTATE							= 88982f04H;
+	WINCODEC_ERR_VALUEOUTOFRANGE                    = 88982f05H;
+	WINCODEC_ERR_UNKNOWNIMAGEFORMAT                 = 88982f07H;
+	WINCODEC_ERR_UNSUPPORTEDVERSION                 = 88982f0BH;
+	WINCODEC_ERR_NOTINITIALIZED                     = 88982f0CH;
+	WINCODEC_ERR_ALREADYLOCKED                      = 88982f0DH;
+	WINCODEC_ERR_PROPERTYNOTFOUND                   = 88982f40H;
+	WINCODEC_ERR_PROPERTYNOTSUPPORTED               = 88982f41H;
+	WINCODEC_ERR_PROPERTYSIZE                       = 88982f42H;
+	WINCODEC_ERR_CODECPRESENT                       = 88982f43H;
+	WINCODEC_ERR_CODECNOTHUMBNAIL                   = 88982f44H;
+	WINCODEC_ERR_PALETTEUNAVAILABLE                 = 88982f45H;
+	WINCODEC_ERR_CODECTOOMANYSCANLINES              = 88982f46H;
+	WINCODEC_ERR_INTERNALERROR                      = 88982f48H;
+	WINCODEC_ERR_SOURCERECTDOESNOTMATCHDIMENSIONS   = 88982f49H;
+	WINCODEC_ERR_COMPONENTNOTFOUND                  = 88982f50H;
+	WINCODEC_ERR_IMAGESIZEOUTOFRANGE                = 88982f51H;
+	WINCODEC_ERR_TOOMUCHMETADATA                    = 88982f52H;
+	WINCODEC_ERR_BADIMAGE                           = 88982f60H;
+	WINCODEC_ERR_BADHEADER                          = 88982f61H;
+	WINCODEC_ERR_FRAMEMISSING                       = 88982f62H;
+	WINCODEC_ERR_BADMETADATAHEADER                  = 88982f63H;
+	WINCODEC_ERR_BADSTREAMDATA                      = 88982f70H;
+	WINCODEC_ERR_STREAMWRITE                        = 88982f71H;
+	WINCODEC_ERR_STREAMREAD                         = 88982f72H;
+	WINCODEC_ERR_STREAMNOTAVAILABLE                 = 88982f73H;
+	WINCODEC_ERR_UNSUPPORTEDPIXELFORMAT             = 88982f80H;
+	WINCODEC_ERR_UNSUPPORTEDOPERATION               = 88982f81H;
+	WINCODEC_ERR_INVALIDREGISTRATION                = 88982f8AH;
+	WINCODEC_ERR_COMPONENTINITIALIZEFAILURE         = 88982f8BH;
+	WINCODEC_ERR_INSUFFICIENTBUFFER                 = 88982f8CH;
+	WINCODEC_ERR_DUPLICATEMETADATAPRESENT           = 88982f8DH;
+	WINCODEC_ERR_PROPERTYUNEXPECTEDTYPE             = 88982f8EH;
+	WINCODEC_ERR_UNEXPECTEDSIZE                     = 88982f8FH;
+	WINCODEC_ERR_INVALIDQUERYREQUEST                = 88982f90H;
+	WINCODEC_ERR_UNEXPECTEDMETADATATYPE             = 88982f91H;
+	WINCODEC_ERR_REQUESTONLYVALIDATMETADATAROOT     = 88982f92H;
+	WINCODEC_ERR_INVALIDQUERYCHARACTER              = 88982f93H;
+	WINCODEC_ERR_WIN32ERROR                         = 88982f94H;
+	WINCODEC_ERR_INVALIDPROGRESSIVELEVEL            = 88982f95H;
+
+TYPE
+	WICTiffCompressionOption =
+		(
+    		WICTiffCompressionDontCare			= 0,
+			WICTiffCompressionNone				= 1,
+			WICTiffCompressionCCITT3			= 2,
+			WICTiffCompressionCCITT4			= 3,
+			WICTiffCompressionLZW				= 4,
+			WICTiffCompressionRLE				= 5,
+			WICTiffCompressionZIP				= 6,
+			WICTiffCompressionLZWHDifferencing	= 7,
+			WICTIFFCOMPRESSIONOPTION_FORCE_DWORD= 7fffffffH
+    	);
+
+	WICJpegYCrCbSubsamplingOption =
+    	(
+			WICJpegYCrCbSubsamplingDefault		= 0,
+			WICJpegYCrCbSubsampling420			= 1,
+			WICJpegYCrCbSubsampling422			= 2,
+			WICJpegYCrCbSubsampling444			= 3,
+			WICJPEGYCRCBSUBSAMPLING_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICPngFilterOption =
+    	(
+			WICPngFilterUnspecified			= 0,
+			WICPngFilterNone				= 1,
+			WICPngFilterSub					= 2,
+			WICPngFilterUp					= 3,
+			WICPngFilterAverage				= 4,
+			WICPngFilterPaeth				= 5,
+			WICPngFilterAdaptive			= 6,
+			WICPNGFILTEROPTION_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICNamedWhitePoint =
+    	(
+			WICWhitePointDefault			= 001H,
+			WICWhitePointDaylight			= 002H,
+			WICWhitePointCloudy				= 004H,
+			WICWhitePointShade				= 008H,
+			WICWhitePointTungsten			= 010H,
+			WICWhitePointFluorescent		= 020H,
+			WICWhitePointFlash				= 040H,
+			WICWhitePointUnderwater			= 080H,
+			WICWhitePointCustom				= 100H,
+			WICWhitePointAutoWhiteBalance	= 200H,
+			WICWhitePointAsShot				= WICWhitePointDefault,
+			WICNAMEDWHITEPOINT_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICRawCapabilities =
+    	(
+			WICRawCapabilityNotSupported	= 0,
+			WICRawCapabilityGetSupported	= 1,
+			WICRawCapabilityFullySupported	= 2,
+			WICRAWCAPABILITIES_FORCE_DWORD	= 7fffffffH
+    	);
+
+	WICRawRotationCapabilities =
+    	(
+			WICRawRotationCapabilityNotSupported			= 0,
+			WICRawRotationCapabilityGetSupported			= 1,
+			WICRawRotationCapabilityNinetyDegreesSupported	= 2,
+			WICRawRotationCapabilityFullySupported			= 3,
+			WICRAWROTATIONCAPABILITIES_FORCE_DWORD			= 7fffffffH
+    	);
+
+	WICRawCapabilitiesInfo =
+    	RECORD
+			cbSize							: UINT;
+			CodecMajorVersion				: UINT;
+			CodecMinorVersion				: UINT;
+			ExposureCompensationSupport		: WICRawCapabilities;
+			ContrastSupport					: WICRawCapabilities;
+			RGBWhitePointSupport			: WICRawCapabilities;
+			NamedWhitePointSupport			: WICRawCapabilities;
+			NamedWhitePointSupportMask		: UINT;
+			KelvinWhitePointSupport			: WICRawCapabilities;
+			GammaSupport					: WICRawCapabilities;
+			TintSupport						: WICRawCapabilities;
+			SaturationSupport				: WICRawCapabilities;
+			SharpnessSupport				: WICRawCapabilities;
+			NoiseReductionSupport			: WICRawCapabilities;
+			DestinationColorProfileSupport	: WICRawCapabilities;
+			ToneCurveSupport				: WICRawCapabilities;
+			RotationSupport					: WICRawRotationCapabilities;
+			RenderModeSupport				: WICRawCapabilities;
+    	END;
+
+	WICRawParameterSet =
+    	(
+			WICAsShotParameterSet			= 1,
+			WICUserAdjustedParameterSet		= 2,
+			WICAutoAdjustedParameterSet		= 3,
+			WICRAWPARAMETERSET_FORCE_DWORD	= 7fffffffH
+	    );
+
+	WICRawRenderMode =
+    	(
+			WICRawRenderModeDraft			= 1,
+			WICRawRenderModeNormal			= 2,
+			WICRawRenderModeBestQuality		= 3,
+			WICRAWRENDERMODE_FORCE_DWORD	= 7fffffffH
+		);
+
+	WICRawToneCurvePoint =
+		RECORD
+			Input	: LONGREAL;
+			Output	: LONGREAL;
+		END;
+
+	WICRawToneCurve =
+		RECORD
+			cPoints	: UINT;
+			aPoints : ARRAY [0..0] OF WICRawToneCurvePoint;
+		END;
+
+CONST
+	WICRawChangeNotification_ExposureCompensation       = 00000001H;
+	WICRawChangeNotification_NamedWhitePoint            = 00000002H;
+	WICRawChangeNotification_KelvinWhitePoint           = 00000004H;
+	WICRawChangeNotification_RGBWhitePoint              = 00000008H;
+	WICRawChangeNotification_Contrast                   = 00000010H;
+	WICRawChangeNotification_Gamma                      = 00000020H;
+	WICRawChangeNotification_Sharpness                  = 00000040H;
+	WICRawChangeNotification_Saturation                 = 00000080H;
+	WICRawChangeNotification_Tint                       = 00000100H;
+	WICRawChangeNotification_NoiseReduction             = 00000200H;
+	WICRawChangeNotification_DestinationColorContext    = 00000400H;
+	WICRawChangeNotification_ToneCurve                  = 00000800H;
+	WICRawChangeNotification_Rotation                   = 00001000H;
+	WICRawChangeNotification_RenderMode                 = 00002000H;
+
+ABSTRACT CLASS IWICDevelopRawNotificationCallback;
+INHERIT IUnknown;
+REVEAL Notify;
+	ABSTRACT PROCEDURE Notify (NotificationMask : UINT) : HRESULT;
+END IWICDevelopRawNotificationCallback;
+
+ABSTRACT CLASS IWICDevelopRaw;
+INHERIT IWICBitmapFrameDecode;
+REVEAL
+	QueryRawCapabilitiesInfo, LoadParameterSet, GetCurrentParameterSet, SetExposureCompensation, GetExposureCompensation,
+	SetWhitePointRGB, GetWhitePointRGB, SetNamedWhitePoint, GetNamedWhitePoint,
+	SetNamedWhitePointKelvin, GetNamedWhitePointKelvin, GetKelvinRangeInfo, SetContrast, GetContrast, SetGamma, GetGamma,
+	SetSharpness, GetSharpness, SetSaturation, GetSaturation, SetTint, GetTint, SetNoiseReduction, GetNoiseReduction,
+	SetDestinationColorContext, SetToneCurve, GetToneCurve, SetRotation, GetRotation, SetRenderMode, GetRenderMode,
+	SetNotificationCallback;
+	ABSTRACT PROCEDURE QueryRawCapabilitiesInfo (VAR pInfo : WICRawCapabilitiesInfo) : HRESULT;
+	ABSTRACT PROCEDURE LoadParameterSet (ParameterSet : WICRawParameterSet) : HRESULT;
+	ABSTRACT PROCEDURE GetCurrentParameterSet (VAR ppCurrentParameterSet : IPropertyBag2) : HRESULT;
+	ABSTRACT PROCEDURE SetExposureCompensation (ev : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetExposureCompensation (VAR pEV : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetWhitePointRGB (Red : UINT; Green : UINT; Blue : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetWhitePointRGB (VAR Red : UINT; VAR Green : UINT; VAR Blue : UINT) : HRESULT;
+	ABSTRACT PROCEDURE SetNamedWhitePoint (WhitePoint : WICNamedWhitePoint) : HRESULT;
+	ABSTRACT PROCEDURE GetNamedWhitePoint (VAR pWhitePoint : WICNamedWhitePoint) : HRESULT;
+	ABSTRACT PROCEDURE SetNamedWhitePointKelvin (WhitePointKelvin : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetNamedWhitePointKelvin	(VAR pWhitePointKelvin : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetKelvinRangeInfo (VAR MinKelvinTemp : UINT; VAR MaxKelvinTemp : UINT; VAR KelvinTempStepValue : UINT) :
+	HRESULT;
+	ABSTRACT PROCEDURE SetContrast (Contrast : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetContrast (VAR pContrast : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetGamma (Gamma : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetGamma (VAR pGamma : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetSharpness (Sharpness : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetSharpness (VAR pSharpness : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetSaturation (Saturation : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetSaturation (VAR pSaturation : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetTint (Tint : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetTint (VAR pTint : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetNoiseReduction (NoiseReduction : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetNoiseReduction (VAR pNoiseReduction : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetDestinationColorContext (pColorContext : IWICColorContext) : HRESULT;
+	ABSTRACT PROCEDURE SetToneCurve (cbToneCurveSize : UINT; VAR pToneCurve : WICRawToneCurve) : HRESULT;
+	ABSTRACT PROCEDURE GetToneCurve (
+		cbToneCurveBufferSize : UINT; VAR pToneCurve : WICRawToneCurve; VAR pcbActualToneCurveBufferSize : UINT) : HRESULT;
+	ABSTRACT PROCEDURE SetRotation (Rotation : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE GetRotation (VAR pRotation : LONGREAL) : HRESULT;
+	ABSTRACT PROCEDURE SetRenderMode (RenderMode : WICRawRenderMode) : HRESULT;
+	ABSTRACT PROCEDURE GetRenderMode (VAR pRebderMode : WICRawRenderMode) : HRESULT;
+	ABSTRACT PROCEDURE SetNotificationCallback (pCallback : IWICDevelopRawNotificationCallback) : HRESULT;
+END IWICDevelopRaw;
+
+END WinCodec.

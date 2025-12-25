@@ -1,0 +1,930 @@
+UNSAFEGUARDED DEFINITION MODULE OCIdl;
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2020, ADW Software. All rights reserved. *)
+
+FROM WIN32 IMPORT
+	GUID, CLSID, IID, LCID,
+	PVOID, LPVOID, DWORD, SHORT, USHORT, WINT, UINT, ULONG, LONG, ULARGE_INTEGER, BOOL, WFLOAT, UINT_PTR,
+	WSIZE, SIZEL, PSIZEL, WPARAM, LPARAM, LRESULT, HRESULT, HACCEL, HWND, HRGN, HFONT, HDC, HPALETTE, POINT, RECT;
+
+FROM WINUSER IMPORT
+    MSG;
+
+FROM WINGDI IMPORT
+	TEXTMETRICW;
+
+FROM OOle2 IMPORT
+    CY, DISPID, LPBSTR, LPOLESTR, PDVTARGETDEVICE, VARIANT, VARTYPE, CLIPFORMAT,
+	IUnknown, IDispatch, IPersist, IClassFactory, ITypeInfo, IStream, IOleInPlaceObject, IOleInPlaceSite, IDropTarget,
+	IViewObject2, IAdviseSink, IOleClientSite;
+
+FROM URLMON IMPORT
+	IBindHost;
+
+FROM SHLOBJ IMPORT
+	IServiceProvider;
+
+FROM Uxtheme IMPORT
+	LPCRECT;
+
+<*/CALLS:WINDOWSCALL/DLLDEF/Foreign*>
+<*/NOHIGH/ENUMSIZE:BIG*>
+<*/ALIGN:8/NOPACK*>
+
+(* this file contains the definitions for the interfaces *)
+
+TYPE
+	UASFLAGS =
+		(
+	        UAS_NORMAL			= 0,
+	        UAS_BLOCKED			= 1,
+        	UAS_NOPARENTENABLE	= 2,
+        	UAS_MASK			= 3
+    	);
+
+	(* State values for the DISPID_READYSTATE property *)
+ 	READYSTATE =
+	    (
+			READYSTATE_UNINITIALIZED	= 0,
+			READYSTATE_LOADING			= 1,
+			READYSTATE_LOADED			= 2,
+			READYSTATE_INTERACTIVE		= 3,
+			READYSTATE_COMPLETE			= 4
+    	);
+
+VAR
+	%IF IA32 %THEN
+		IID_IEnumConnections					["_IID_IEnumConnections"					EXTERNAL] : IID;
+		IID_IConnectionPoint					["_IID_IConnectionPoint"					EXTERNAL] : IID;
+		IID_IEnumConnectionPoints				["_IID_IEnumConnectionPoints"				EXTERNAL] : IID;
+		IID_IConnectionPointContainer			["_IID_IConnectionPointContainer"			EXTERNAL] : IID;
+		IID_IClassFactory2						["_IID_IClassFactory2"						EXTERNAL] : IID;
+		IID_IProvideClassInfo					["_IID_IProvideClassInfo"					EXTERNAL] : IID;
+		IID_IProvideClassInfo2					["_IID_IProvideClassInfo2"					EXTERNAL] : IID;
+		IID_IProvideMultipleClassInfo			["_IID_IProvideMultipleClassInfo"			EXTERNAL] : IID;
+		IID_IOleControl							["_IID_IOleControl"							EXTERNAL] : IID;
+		IID_IOleControlSite						["_IID_IOleControlSite"						EXTERNAL] : IID;
+		IID_IPropertyPage						["_IID_IPropertyPage"						EXTERNAL] : IID;
+		IID_IPropertyPage2						["_IID_IPropertyPage2"						EXTERNAL] : IID;
+		IID_IPropertyPageSite					["_IID_IPropertyPageSite"					EXTERNAL] : IID;
+		IID_IPropertyNotifySink					["_IID_IPropertyNotifySink"					EXTERNAL] : IID;
+		IID_ISpecifyPropertyPages				["_IID_ISpecifyPropertyPages"				EXTERNAL] : IID;
+		IID_IPersistMemory						["_IID_IPersistMemory"						EXTERNAL] : IID;
+		IID_IPersistStreamInit					["_IID_IPersistStreamInit"					EXTERNAL] : IID;
+		IID_IPersistPropertyBag					["_IID_IPersistPropertyBag"					EXTERNAL] : IID;
+		IID_ISimpleFrameSite					["_IID_ISimpleFrameSite"					EXTERNAL] : IID;
+		IID_IFont								["_IID_IFont"								EXTERNAL] : IID;
+		IID_IPicture							["_IID_IPicture"							EXTERNAL] : IID;
+		IID_IPicture2							["_IID_IPicture2"							EXTERNAL] : IID;
+		IID_IFontEventsDisp						["_IID_IFontEventsDisp"						EXTERNAL] : IID;
+		IID_IFontDisp							["_IID_IFontDisp"							EXTERNAL] : IID;
+		IID_IPictureDisp						["_IID_IPictureDisp"						EXTERNAL] : IID;
+		IID_IOleInPlaceObjectWindowless			["_IID_IOleInPlaceObjectWindowless"			EXTERNAL] : IID;
+		IID_IOleInPlaceSiteEx					["_IID_IOleInPlaceSiteEx"					EXTERNAL] : IID;
+		IID_IOleInPlaceSiteWindowless			["_IID_IOleInPlaceSiteWindowless"			EXTERNAL] : IID;
+		IID_IViewObjectEx						["_IID_IViewObjectEx"						EXTERNAL] : IID;
+		IID_IOleUndoUnit						["_IID_IOleUndoUnit"						EXTERNAL] : IID;
+		IID_IOleParentUndoUnit					["_IID_IOleParentUndoUnit"					EXTERNAL] : IID;
+		IID_IEnumOleUndoUnits					["_IID_IEnumOleUndoUnits"					EXTERNAL] : IID;
+		IID_IOleUndoManager						["_IID_IOleUndoManager"						EXTERNAL] : IID;
+		SID_SOleUndoManager						["_IID_IOleUndoManager"						EXTERNAL] : IID;
+		IID_IPointerInactive					["_IID_IPointerIncative"					EXTERNAL] : IID;
+		IID_IObjectWithSite						["_IID_IObjectWithSite"						EXTERNAL] : IID;
+		IID_IPerPropertyBrowsing				["_IID_IPerPropertyBrowsing"				EXTERNAL] : IID;
+		IID_IPropertyBag2						["_IID_IPropertyBag2"						EXTERNAL] : IID;
+		IID_IPersistPropertyBag2				["_IID_IPersistPropertyBag2"				EXTERNAL] : IID;
+		IID_IAdviseSinkEx						["_IID_IAdviseSinkEx"						EXTERNAL] : IID;
+		IID_IQuickActivate						["_IID_IQuickActivate"						EXTERNAL] : IID;
+	%ELSE
+		IID_IEnumConnections					["IID_IEnumConnections"						EXTERNAL] : IID;
+		IID_IConnectionPoint					["IID_IConnectionPoint"						EXTERNAL] : IID;
+		IID_IEnumConnectionPoints				["IID_IEnumConnectionPoints"				EXTERNAL] : IID;
+		IID_IConnectionPointContainer			["IID_IConnectionPointContainer"			EXTERNAL] : IID;
+		IID_IProvideClassInfo					["IID_IProvideClassInfo"					EXTERNAL] : IID;
+		IID_IClassFactory2						["IID_IClassFactory2"						EXTERNAL] : IID;
+		IID_IProvideClassInfo2					["IID_IProvideClassInfo2"					EXTERNAL] : IID;
+		IID_IProvideMultipleClassInfo			["IID_IProvideMultipleClassInfo"			EXTERNAL] : IID;
+		IID_IOleControl							["IID_IOleControl"							EXTERNAL] : IID;
+		IID_IOleControlSite						["IID_IOleControlSite"						EXTERNAL] : IID;
+		IID_IPropertyPage						["IID_IPropertyPage"						EXTERNAL] : IID;
+		IID_IPropertyPage2						["IID_IPropertyPage2"						EXTERNAL] : IID;
+		IID_IPropertyPageSite					["IID_IPropertyPageSite"					EXTERNAL] : IID;
+		IID_IPropertyNotifySink					["IID_IPropertyNotifySink"					EXTERNAL] : IID;
+		IID_ISpecifyPropertyPages				["IID_ISpecifyPropertyPages"				EXTERNAL] : IID;
+		IID_IPersistMemory						["IID_IPersistMemory"						EXTERNAL] : IID;
+		IID_IPersistStreamInit					["IID_IPersistStreamInit"					EXTERNAL] : IID;
+		IID_IPersistPropertyBag					["IID_IPersistPropertyBag"					EXTERNAL] : IID;
+		IID_ISimpleFrameSite					["IID_ISimpleFrameSite"						EXTERNAL] : IID;
+		IID_IFont								["IID_IFont"								EXTERNAL] : IID;
+		IID_IPicture							["IID_IPicture"								EXTERNAL] : IID;
+		IID_IPicture2							["IID_IPicture2"							EXTERNAL] : IID;
+		IID_IFontEventsDisp						["IID_IFontEventsDisp"						EXTERNAL] : IID;
+		IID_IFontDisp							["IID_IFontDisp"							EXTERNAL] : IID;
+		IID_IPictureDisp						["IID_IPictureDisp"							EXTERNAL] : IID;
+		IID_IOleInPlaceObjectWindowless			["IID_IOleInPlaceObjectWindowless"			EXTERNAL] : IID;
+		IID_IOleInPlaceSiteEx					["IID_IOleInPlaceSiteEx"					EXTERNAL] : IID;
+		IID_IOleInPlaceSiteWindowless			["IID_IOleInPlaceSiteWindowless"			EXTERNAL] : IID;
+		IID_IViewObjectEx						["IID_IViewObjectEx"						EXTERNAL] : IID;
+		IID_IOleUndoUnit						["IID_IOleUndoUnit"							EXTERNAL] : IID;
+		IID_IOleParentUndoUnit					["IID_IOleParentUndoUnit"					EXTERNAL] : IID;
+		IID_IEnumOleUndoUnits					["IID_IEnumOleUndoUnits"					EXTERNAL] : IID;
+		IID_IOleUndoManager						["IID_IOleUndoManager"						EXTERNAL] : IID;
+		SID_SOleUndoManager						["IID_IOleUndoManager"						EXTERNAL] : IID;
+		IID_IPointerInactive					["IID_IPointerIncative"						EXTERNAL] : IID;
+		IID_IObjectWithSite						["IID_IObjectWithSite"						EXTERNAL] : IID;
+		IID_IPerPropertyBrowsing				["IID_IPerPropertyBrowsing"					EXTERNAL] : IID;
+		IID_IPropertyBag2						["IID_IPropertyBag2"						EXTERNAL] : IID;
+		IID_IPersistPropertyBag2				["IID_IPersistPropertyBag2"					EXTERNAL] : IID;
+		IID_IAdviseSinkEx						["IID_IAdviseSinkEx"						EXTERNAL] : IID;
+		IID_IQuickActivate						["IID_IQuickActivate"						EXTERNAL] : IID;
+	%END
+
+ABSTRACT CLASS IConnectionPointContainer; FORWARD;
+ABSTRACT CLASS IPropertyPageSite; FORWARD;
+ABSTRACT CLASS IOleUndoManager; FORWARD;
+
+TYPE
+	CONNECTDATA =
+		RECORD
+			pUnk : IUnknown;
+			dwCookie : DWORD;
+    	END;
+	PCONNECTDATA = POINTER TO CONNECTDATA;
+	LPCONNECTDATA = POINTER TO CONNECTDATA;
+
+ABSTRACT CLASS IEnumConnections;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+    ABSTRACT PROCEDURE Next (cConnections : ULONG; VAR rgcd : CONNECTDATA; VAR pcFetched : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Skip (cConnections : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Reset () : HRESULT;
+	ABSTRACT PROCEDURE Clone (VAR ppEnum : IEnumConnections) : HRESULT;
+END IEnumConnections;
+
+TYPE
+	PENUMCONNECTIONS = IEnumConnections;
+	LPENUMCONNECTIONS = IEnumConnections;
+
+ABSTRACT CLASS IConnectionPoint;
+INHERIT IUnknown;
+REVEAL GetConnectionInterface, GetConnectionPointContainer, Advise, Unadvise, EnumConnections;
+	ABSTRACT PROCEDURE GetConnectionInterface (VAR pIID : IID) : HRESULT;
+    ABSTRACT PROCEDURE GetConnectionPointContainer (VAR ppCPC : IConnectionPointContainer) : HRESULT;
+    ABSTRACT PROCEDURE Advise (pUnkSink : IUnknown; VAR pdwCookie : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE Unadvise (dwCookie : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE EnumConnections (VAR ppEnum : IEnumConnections) : HRESULT;
+END IConnectionPoint;
+
+TYPE
+	PCONNECTIONPOINT = IConnectionPoint;
+	LPCONNECTIONPOINT = IConnectionPoint;
+
+ABSTRACT CLASS IEnumConnectionPoints;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+    ABSTRACT PROCEDURE Next (cConnections : ULONG; VAR ppCP : LPCONNECTIONPOINT; VAR pcFetched : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Skip (cConnections : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Reset () : HRESULT;
+	ABSTRACT PROCEDURE Clone (VAR ppEnum : IEnumConnectionPoints) : HRESULT;
+END IEnumConnectionPoints;
+
+TYPE
+	PENUMCONNECTIONPOINTS = IEnumConnectionPoints;
+	LPENUMCONNECTIONPOINTS = IEnumConnectionPoints;
+
+ABSTRACT CLASS IConnectionPointContainer;
+INHERIT IUnknown;
+REVEAL EnumConnectionPoints, FindConnectionPoint;
+    ABSTRACT PROCEDURE EnumConnectionPoints (VAR ppEnum : IEnumConnectionPoints) : HRESULT;
+	ABSTRACT PROCEDURE FindConnectionPoint (riid : IID; ppCP : IEnumConnectionPoints) : HRESULT;
+END IConnectionPointContainer;
+
+TYPE
+	PCONNECTIONPOINTCONTAINER = IConnectionPointContainer;
+	LPCONNECTIONPOINTCONTAINER = IConnectionPointContainer;
+
+	LICINFO =
+		RECORD
+			cbLicInfo : LONG;
+			fRuntimeKeyAvail : BOOL;
+			fLicVerified : BOOL;
+    	END;
+	LPLICINFO = POINTER TO LICINFO;
+
+ABSTRACT CLASS IClassFactory2;
+INHERIT IClassFactory;
+REVEAL GetLicInfo, RequestLicKey, CreateInstanceLic;
+    ABSTRACT PROCEDURE GetLicInfo ((*inout*) VAR pLicInfo : LICINFO) : HRESULT;
+	ABSTRACT PROCEDURE RequestLicKey (dwReserved : DWORD; VAR pBstrKey : LPBSTR) : HRESULT;
+	ABSTRACT PROCEDURE CreateInstanceLic (pUnkOuter, pUnkReserved : IUnknown; riid : IID; bstrKey : ARRAY OF UCHAR;
+		VAR ppvObj : PVOID) : HRESULT;
+END IClassFactory2;
+
+TYPE
+	LPCLASSFACTORY2 = IClassFactory2;
+
+ABSTRACT CLASS IProvideClassInfo;
+INHERIT IUnknown;
+REVEAL GetClassInfo;
+    ABSTRACT PROCEDURE GetClassInfo (VAR ppTI : ITypeInfo) : HRESULT;
+END IProvideClassInfo;
+
+TYPE
+	LPPROVIDECLASSINFO = IProvideClassInfo;
+
+	GUIDKIND =
+		(
+	        GUIDKIND_DEFAULT_SOURCE_DISP_IID	= 1
+    	);
+
+ABSTRACT CLASS IProvideClassInfo2;
+INHERIT IProvideClassInfo;
+REVEAL GetGUID;
+    ABSTRACT PROCEDURE GetGUID (dwGuidKind : DWORD; VAR pGUID : GUID) : HRESULT;
+END IProvideClassInfo2;
+
+TYPE
+	LPPROVIDECLASSINFO2 = IProvideClassInfo2;
+
+CONST
+	MULTICLASSINFO_GETTYPEINFO           = 00000001H;
+	MULTICLASSINFO_GETNUMRESERVEDDISPIDS = 00000002H;
+	MULTICLASSINFO_GETIIDPRIMARY         = 00000004H;
+	MULTICLASSINFO_GETIIDSOURCE          = 00000008H;
+	TIFLAGS_EXTENDDISPATCHONLY           = 00000001H;
+
+ABSTRACT CLASS IProvideMultipleClassInfo;
+INHERIT IProvideClassInfo2;
+REVEAL GetMultipleTypeInfoCount, GetInfoOfIndex;
+    ABSTRACT PROCEDURE GetMultipleTypeInfoCount (VAR pcti : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE GetInfoOfIndex (iti : ULONG; dwFlags : DWORD;
+        VAR pptiCoClass : ITypeInfo; VAR pdwTIFlags : DWORD; VAR pcdispidReserved : ULONG; VAR piidPrimary, piidSource : IID) :
+	HRESULT;
+END IProvideMultipleClassInfo;
+
+TYPE
+	LPPROVIDEMULTIPLECLASSINFO = IProvideMultipleClassInfo;
+
+	CONTROLINFO =
+		RECORD
+			cb : ULONG;
+			hAccel : HACCEL;
+			cAccel : USHORT;
+			dwFlags : DWORD;
+    	END;
+	LPCONTROLINFO = POINTER TO CONTROLINFO;
+
+	CTRLINFO =
+    	(
+			CTRLINFO_EATS_RETURN	= 1,
+			CTRLINFO_EATS_ESCAPE	= 2
+    	);
+
+ABSTRACT CLASS IOleControl;
+INHERIT IUnknown;
+REVEAL GetControlInfo, OnMnemonic, OnAmbientPropertyChange, FreezeEvents;
+    ABSTRACT PROCEDURE GetControlInfo ((*inout*) VAR pCI : CONTROLINFO) : HRESULT;
+    ABSTRACT PROCEDURE OnMnemonic (pMsg : MSG) : HRESULT;
+    ABSTRACT PROCEDURE OnAmbientPropertyChange (dispId : DISPID) : HRESULT;
+    ABSTRACT PROCEDURE FreezeEvents (bFreeze : BOOL) : HRESULT;
+END IOleControl;
+
+TYPE
+	LPOLECONTROL = IOleControl;
+
+	POINTF =
+		RECORD
+			x : WFLOAT;
+			y : WFLOAT;
+    END;
+	LPPOINTF = POINTER TO POINTF;
+
+	XFORMCOORDS =
+		(
+			XFORMCOORDS_POSITION			= 1H,
+			XFORMCOORDS_SIZE				= 2H,
+			XFORMCOORDS_HIMETRICTOCONTAINER	= 4H,
+			XFORMCOORDS_CONTAINERTOHIMETRIC	= 8H,
+			XFORMCOORDS_EVENTCOMPAT			= 10H
+    	);
+
+ABSTRACT CLASS IOleControlSite;
+INHERIT IUnknown;
+REVEAL
+	OnControlInfoChanged, LockInPlaceActive, GetExtendedControl, TransformCoords, TranslateAccelerator, OnFocus,
+	ShowPropertyFrame;
+    ABSTRACT PROCEDURE OnControlInfoChanged () : HRESULT;
+    ABSTRACT PROCEDURE LockInPlaceActive (fLock : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE GetExtendedControl (VAR ppDisp : IDispatch) : HRESULT;
+    ABSTRACT PROCEDURE TransformCoords ((*inout*) VAR pPtlHimetric, pPtfContainer : POINTF; dwFlags : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE TranslateAccelerator (pMsg : MSG; grfModifiers : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE OnFocus (fGotFocus : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE ShowPropertyFrame () : HRESULT;
+END IOleControlSite;
+
+TYPE
+	LPOLECONTROLSDITE = IOleControlSite;
+
+	PROPPAGEINFO =
+		RECORD
+			cb : ULONG;
+			pszTitle : LPOLESTR;
+			size : WSIZE;
+			pszDocString : LPOLESTR;
+			pszHelpFile : LPOLESTR;
+			dwHelpContext : DWORD;
+		END;
+	LPPROPPAGEINFO = POINTER TO PROPPAGEINFO;
+
+ABSTRACT CLASS IPropertyPage;
+INHERIT IUnknown;
+REVEAL SetPageSite, Activate, Deactivate, GetPageInfo, SetObjects, Show, Move, IsPageDirty, Apply, Help, TranslateAccelerator;
+    ABSTRACT PROCEDURE SetPageSite (pPageSite : IPropertyPageSite) : HRESULT;
+    ABSTRACT PROCEDURE Activate (hWndParent : HWND; pRect : RECT; bModal : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE Deactivate () : HRESULT;
+    ABSTRACT PROCEDURE GetPageInfo (VAR pPageInfo : PROPPAGEINFO) : HRESULT;
+    ABSTRACT PROCEDURE SetObjects (cObjects : ULONG; ppUnk : ARRAY OF IUnknown) : HRESULT;
+    ABSTRACT PROCEDURE Show (nCmdShow : UINT) : HRESULT;
+    ABSTRACT PROCEDURE Move (pRect : RECT) : HRESULT;
+    ABSTRACT PROCEDURE IsPageDirty () : HRESULT;
+    ABSTRACT PROCEDURE Apply () : HRESULT;
+    ABSTRACT PROCEDURE Help (pszHelpDir : ARRAY OF UCHAR) : HRESULT;
+    ABSTRACT PROCEDURE TranslateAccelerator (pMsg : MSG) : HRESULT;
+END IPropertyPage;
+
+TYPE
+	LPPROPERTYPAGE = IPropertyPage;
+
+ABSTRACT CLASS IPropertyPage2;
+INHERIT IPropertyPage;
+REVEAL EditProperty;
+    ABSTRACT PROCEDURE EditProperty (dispId : DISPID) : HRESULT;
+END IPropertyPage2;
+
+TYPE
+	LPPROPERTYPAGE2 = IPropertyPage2;
+
+	PROPPAGESTATUS =
+		(
+			PROPPAGESTATUS_DIRTY	= 1H,
+			PROPPAGESTATUS_VALIDATE	= 2H,
+			PROPPAGESTATUS_CLEAN	= 4H
+	    );
+
+ABSTRACT CLASS IPropertyPageSite;
+INHERIT IUnknown;
+REVEAL OnStatusChange, GetLocaleID, GetPageContainer, TranslateAccelerator;
+    ABSTRACT PROCEDURE OnStatusChange (dwFlags : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE GetLocaleID (VAR pLocaleID : LCID) : HRESULT;
+    ABSTRACT PROCEDURE GetPageContainer (VAR ppUnk : IUnknown) : HRESULT;
+    ABSTRACT PROCEDURE TranslateAccelerator (pMsg : MSG) : HRESULT;
+END IPropertyPageSite;
+
+TYPE
+	LPPROPERTYPAGESITE = IPropertyPageSite;
+
+ABSTRACT CLASS IPropertyNotifySink;
+INHERIT IUnknown;
+REVEAL OnChanged, OnRequestEdit;
+    ABSTRACT PROCEDURE OnChanged (dispID : DISPID) : HRESULT;
+    ABSTRACT PROCEDURE OnRequestEdit (dispID : DISPID) : HRESULT;
+END IPropertyNotifySink;
+
+TYPE
+	LPPROPERTYNOTIFYSINK = IPropertyNotifySink;
+
+	CAUUID =
+		RECORD
+		    cElems : ULONG;
+    		pElems : POINTER TO ARRAY [0..99999999] OF GUID;
+		END;
+	LPCAUUID = POINTER TO CAUUID;
+
+ABSTRACT CLASS ISpecifyPropertyPages;
+INHERIT IUnknown;
+REVEAL GetPages;
+    ABSTRACT PROCEDURE GetPages (VAR pPages : CAUUID) : HRESULT;
+END ISpecifyPropertyPages;
+
+TYPE
+	LPSPECIFYPROPERTYPAGES = ISpecifyPropertyPages;
+
+ABSTRACT CLASS IPersistMemory;
+INHERIT IPersist;
+REVEAL IsDirty, Load, Save, GetSizeMax, InitNew;
+    ABSTRACT PROCEDURE IsDirty () : HRESULT;
+	ABSTRACT PROCEDURE Load (pMem : LPVOID; cbSize : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE Save (pMem : LPVOID; fClearDirty : BOOL; cbSize : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE GetSizeMax (VAR cbSize : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE InitNew () : HRESULT;
+END IPersistMemory;
+
+TYPE
+	LPPERSISTMEMORY = IPersistMemory;
+
+ABSTRACT CLASS IPersistStreamInit;
+INHERIT IPersist;
+REVEAL IsDirty, Load, Save, GetSizeMax, InitNew;
+    ABSTRACT PROCEDURE IsDirty () : HRESULT;
+	ABSTRACT PROCEDURE Load (pStm : IStream) : HRESULT;
+    ABSTRACT PROCEDURE Save (pStm : IStream; fClearDirty : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE GetSizeMax (VAR cbSize : ULARGE_INTEGER) : HRESULT;
+    ABSTRACT PROCEDURE InitNew () : HRESULT;
+END IPersistStreamInit;
+
+TYPE
+	LPPERSISTSTREAMINIT = IPersistStreamInit;
+
+(*
+ *	Next class definition is commented out because contains references to classes IPropertyBag and IErrorLog
+ *	which are not yet defined in ADW Modula-2 RTL.
+ *
+ABSTRACT CLASS IPersistPropertyBag;
+INHERIT IPersist;
+REVEAL InitNew, Load, Save;
+    ABSTRACT PROCEDURE InitNew () : HRESULT;
+	ABSTRACT PROCEDURE Load (pPropBag : IPropertyBag; pErrorLog : IErrorLog) : HRESULT;
+    ABSTRACT PROCEDURE Save (pPropBag : IPropertyBag; fClearDirty, fSaveAllproperties : BOOL) : HRESULT;
+END IPersistPropertyBag;
+
+TYPE
+	LPPERSISTPROPERTYBAG = IPersistPropertyBag;
+*)
+
+ABSTRACT CLASS ISimpleFrameSite;
+INHERIT IUnknown;
+REVEAL PreMessageFilter, PostMessageFilter;
+    ABSTRACT PROCEDURE PreMessageFilter (hWnd : HWND; msg : UINT; wp : WPARAM; lp : LPARAM;
+		VAR plResult : LRESULT; VAR pdwCookie : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE PostMessageFilter (hWnd : HWND; msg : UINT; wp : WPARAM; lp : LPARAM;
+		VAR plResult : LRESULT; dwCookie : DWORD) : HRESULT;
+END ISimpleFrameSite;
+
+TYPE
+	LPSIMPLEFRAMESITE = ISimpleFrameSite;
+
+	TEXTMETRICOLE = TEXTMETRICW;
+	LPTEXTMETRICOLE = POINTER TO TEXTMETRICOLE;
+
+ABSTRACT CLASS IFont;
+INHERIT IUnknown;
+REVEAL
+	get_Name, put_Name, get_Size, put_Size, get_Bold, put_Bold, get_Italic, put_Italic, get_Underline, put_Underline,
+	get_Strikethrough, put_Strikethrough, get_Weight, put_Weight, get_Charset, put_Charset, get_hFont,
+	Clone, IsEqual, SetRatio, QueryTextMetrics, AddRefHfont, ReleaseHfont, SetHdc;
+    ABSTRACT PROCEDURE get_Name (VAR pName : LPBSTR) : HRESULT;
+	ABSTRACT PROCEDURE put_Name (name : ARRAY OF UCHAR) : HRESULT;
+    ABSTRACT PROCEDURE get_Size (VAR pSize : CY) : HRESULT;
+	ABSTRACT PROCEDURE put_Size (size : CY) : HRESULT;
+    ABSTRACT PROCEDURE get_Bold (VAR pBold : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_Bold (bold : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE get_Italic (VAR pItalic : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_Italic (italic : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE get_Underline (VAR pUnderline : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_Underline (underline : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE get_Strikethrough (VAR pStrikethrough : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_Strikethrough (strikethrough : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE get_Weight (VAR pWeight : SHORT) : HRESULT;
+	ABSTRACT PROCEDURE put_Weight (weight : SHORT) : HRESULT;
+    ABSTRACT PROCEDURE get_Charset (VAR pCharset : SHORT) : HRESULT;
+	ABSTRACT PROCEDURE put_Charset (charset : SHORT) : HRESULT;
+    ABSTRACT PROCEDURE get_hFont (VAR phFont : HFONT) : HRESULT;
+    ABSTRACT PROCEDURE Clone (VAR ppFont : IFont) : HRESULT;
+    ABSTRACT PROCEDURE IsEqual (pFontOther : IFont) : HRESULT;
+    ABSTRACT PROCEDURE SetRatio (cyLogical, cyHimetric : LONG) : HRESULT;
+    ABSTRACT PROCEDURE QueryTextMetrics (VAR pTM : TEXTMETRICOLE) : HRESULT;
+    ABSTRACT PROCEDURE AddRefHfont (hFont : HFONT) : HRESULT;
+    ABSTRACT PROCEDURE ReleaseHfont (hFont : HFONT) : HRESULT;
+    ABSTRACT PROCEDURE SetHdc (hDC : HDC) : HRESULT;
+END IFont;
+
+TYPE
+	LPFONT = IFont;
+
+	PICTUREATTRIBUTES =
+		(
+			PICTURE_SCALABLE	= 1,
+			PICTURE_TRANSPARENT	= 2
+    	);
+	OLE_HANDLE			= UINT;
+	OLE_XPOS_HIMETRIC	= LONG;
+	OLE_YPOS_HIMETRIC	= LONG;
+	OLE_XSIZE_HIMETRIC	= LONG;
+	OLE_YSIZE_HIMETRIC	= LONG;
+
+ABSTRACT CLASS IPicture;
+INHERIT IUnknown;
+REVEAL
+	get_Handle, get_hPal, get_Type, get_Width, get_Height, Render, set_hPal, get_CurDC, SelectPicture,
+	get_KeepOriginalFormat, put_KeepOriginalFormat, PictureChanged, SaveAsFile, get_Attributes;
+    ABSTRACT PROCEDURE get_Handle (VAR pHandle : OLE_HANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_hPal (VAR hPal : OLE_HANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_Type (VAR pType : SHORT) : HRESULT;
+    ABSTRACT PROCEDURE get_Width (VAR pWidth : OLE_XSIZE_HIMETRIC) : HRESULT;
+    ABSTRACT PROCEDURE get_Height (VAR pHeight : OLE_YSIZE_HIMETRIC) : HRESULT;
+	ABSTRACT PROCEDURE Render (hDC : HDC; x, y, cx, cy : LONG;
+		xSrc : OLE_XPOS_HIMETRIC; ySrc : OLE_YPOS_HIMETRIC; cxSrc : OLE_XSIZE_HIMETRIC; cySrc : OLE_YSIZE_HIMETRIC;
+		pRcBounds : LPCRECT) : HRESULT;
+    ABSTRACT PROCEDURE set_hPal (hPal : OLE_HANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_CurDC (VAR phDC : HDC) : HRESULT;
+	ABSTRACT PROCEDURE SelectPicture (hDCIn : HDC; VAR phDCOut : HDC; VAR phBmpOut : OLE_HANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_KeepOriginalFormat (VAR pKeep : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_KeepOriginalFormat (keep : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE PictureChanged () : HRESULT;
+	ABSTRACT PROCEDURE SaveAsFile (pStream : IStream; fSaveMemCopy : BOOL; VAR pChSize : LONG) : HRESULT;
+    ABSTRACT PROCEDURE get_Attributes (VAR pDwAttr : DWORD) : HRESULT;
+END IPicture;
+
+TYPE
+	LPPICTURE = IPicture;
+
+	HHANDLE = UINT_PTR;
+
+ABSTRACT CLASS IPicture2;
+INHERIT IUnknown;
+REVEAL
+	get_Handle, get_hPal, get_Type, get_Width, get_Height, Render, set_hPal, get_CurDC, SelectPicture,
+	get_KeepOriginalFormat, put_KeepOriginalFormat, PictureChanged, SaveAsFile, get_Attributes;
+    ABSTRACT PROCEDURE get_Handle (VAR pHandle : HHANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_hPal (VAR phPal : HHANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_Type (VAR pType : SHORT) : HRESULT;
+    ABSTRACT PROCEDURE get_Width (VAR pWidth : OLE_XSIZE_HIMETRIC) : HRESULT;
+    ABSTRACT PROCEDURE get_Height (VAR pHeight : OLE_YSIZE_HIMETRIC) : HRESULT;
+	ABSTRACT PROCEDURE Render (hDC : HDC; x, y, cx, cy : LONG;
+		xSrc : OLE_XPOS_HIMETRIC; ySrc : OLE_YPOS_HIMETRIC; cxSrc : OLE_XSIZE_HIMETRIC; cySrc : OLE_YSIZE_HIMETRIC;
+		pRcBounds : LPCRECT) : HRESULT;
+    ABSTRACT PROCEDURE set_hPal (hPal : HHANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_CurDC (VAR phDC : HDC) : HRESULT;
+	ABSTRACT PROCEDURE SelectPicture (hDCIn : HDC; VAR phDCOut : HDC; VAR phBmpOut : HHANDLE) : HRESULT;
+    ABSTRACT PROCEDURE get_KeepOriginalFormat (VAR pKeep : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE put_KeepOriginalFormat (keep : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE PictureChanged () : HRESULT;
+	ABSTRACT PROCEDURE SaveAsFile (pStream : IStream; fSaveMemCopy : BOOL; VAR pChSize : LONG) : HRESULT;
+    ABSTRACT PROCEDURE get_Attributes (VAR pDwAttr : DWORD) : HRESULT;
+END IPicture2;
+
+TYPE
+	LPPICTURE2 = IPicture2;
+
+ABSTRACT CLASS IFontEventsDisp;
+INHERIT IDispatch;
+END IFontEventsDisp;
+
+TYPE
+	LPFONTEVENTS = IFontEventsDisp;
+
+ABSTRACT CLASS IFontDisp;
+INHERIT IDispatch;
+END IFontDisp;
+
+TYPE
+	LPFONTDISP = IFontDisp;
+
+ABSTRACT CLASS IPictureDisp;
+INHERIT IDispatch;
+END IPictureDisp;
+
+TYPE
+	LPPICTUREDISP = IPictureDisp;
+
+ABSTRACT CLASS IOleInPlaceObjectWindowless;
+INHERIT IOleInPlaceObject;
+REVEAL OnWindowMessage, GetDropTarget;
+	ABSTRACT PROCEDURE OnWindowMessage (msg : UINT; wParam : WPARAM; lParam : LPARAM; VAR plResult : LRESULT) : HRESULT;
+    ABSTRACT PROCEDURE GetDropTarget (VAR ppDropTarget : IDropTarget) : HRESULT;
+END IOleInPlaceObjectWindowless;
+
+TYPE
+	LPOLEINPLACEOBJECTWINDOWLESS = IOleInPlaceObjectWindowless;
+
+	ACTIVATEFLAGS =
+	    (
+			ACTIVATE_WINDOWLESS	= 1
+		);
+
+ABSTRACT CLASS IOleInPlaceSiteEx;
+INHERIT IOleInPlaceSite;
+REVEAL OnInPlaceActivateEx, OnInPlaceDeactivateEx, RequestUIActivate;
+	ABSTRACT PROCEDURE OnInPlaceActivateEx (VAR pfNoRedraw : BOOL; dwFlags : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE OnInPlaceDeactivateEx (fNoRedraw : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE RequestUIActivate () : HRESULT;
+END IOleInPlaceSiteEx;
+
+TYPE
+	LPOLEINPLACESITEEX = IOleInPlaceSiteEx;
+
+	OLEDCFLAGS =
+		(
+			OLEDC_NODRAW		= 1,
+			OLEDC_PAINTBKGND	= 2,
+			OLEDC_OFFSCREEN		= 4
+		);
+
+ABSTRACT CLASS IOleInPlaceSiteWindowless;
+INHERIT IOleInPlaceSiteEx;
+REVEAL
+	CanWindowlessActivate, GetCapture, SetCapture, GetFocus, SetFocus, GetDC, ReleaseDC,
+	InvalidateRect, InvalidateRgn, ScrollRect, AdjustRect, OnDefWindowMessage;
+	ABSTRACT PROCEDURE CanWindowlessActivate () : HRESULT;
+    ABSTRACT PROCEDURE GetCapture () : HRESULT;
+    ABSTRACT PROCEDURE SetCapture (fCapture : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE GetFocus () : HRESULT;
+    ABSTRACT PROCEDURE SetFocus (fFocus : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE GetDC (pRect : LPCRECT; grfFlags : DWORD; VAR phDC : HDC) : HRESULT;
+    ABSTRACT PROCEDURE ReleaseDC (hDC : HDC) : HRESULT;
+    ABSTRACT PROCEDURE InvalidateRect (pRect : LPCRECT; fErase : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE InvalidateRgn (hRGN : HRGN; fErase : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE ScrollRect (dx, dy : WINT; pRectScroll, pRectClip : LPCRECT) : HRESULT;
+    ABSTRACT PROCEDURE AdjustRect ((*inout*) VAR prc : RECT) : HRESULT;
+    ABSTRACT PROCEDURE OnDefWindowMessage (msg : UINT; wParam : WPARAM; lParam : LPARAM; VAR plResult : LRESULT) : HRESULT;
+END IOleInPlaceSiteWindowless;
+
+TYPE
+	LPOLEINPLACESITEWINDOWLESS = IOleInPlaceSiteWindowless;
+
+	VIEWSTATUS =
+	(
+        VIEWSTATUS_OPAQUE				= 1,
+        VIEWSTATUS_SOLIDBKGND			= 2,
+        VIEWSTATUS_DVASPECTOPAQUE		= 4,
+        VIEWSTATUS_DVASPECTTRANSPARENT	= 8,
+        VIEWSTATUS_SURFACE				= 16,
+        VIEWSTATUS_3DSURFACE			= 32
+    );
+	HITRESULT =
+		(
+			HITRESULT_OUTSIDE		= 0,
+			HITRESULT_TRANSPARENT	= 1,
+			HITRESULT_CLOSE			= 2,
+			HITRESULT_HIT			= 3
+		);
+	DVASPECT2 =
+		(
+			DVASPECT_OPAQUE			= 16,
+			DVASPECT_TRANSPARENT	= 32
+		);
+	DVEXTENTINFO =
+		RECORD
+			cb : ULONG;
+			dwExtentMode : DWORD;
+			sizelProposed : SIZEL;
+		END;
+	DVEXTENTMODE =
+		(
+			DVEXTENT_CONTENT	= 0,
+			DVEXTENT_INTEGRAL	= 1
+		);
+	DVASPECTINFOFLAG =
+		(
+			DVASPECTINFOFLAG_CANOPTIMIZE	= 1
+		);
+	DVASPECTINFO =
+		RECORD
+			cb : ULONG;
+			dwFlags : DWORD;
+		END;
+
+ABSTRACT CLASS IViewObjectEx;
+INHERIT IViewObject2;
+REVEAL GetRect, GetViewStatus, QueryHitPoint, QueryHitRect, GetNaturalExtent;
+	ABSTRACT PROCEDURE GetRect (dwAspect : DWORD; VAR pRect : RECT) : HRESULT;
+    ABSTRACT PROCEDURE GetViewStatus (VAR pdwStatus : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE QueryHitPoint (dwAspect : DWORD; pRectBounds : RECT; ptlLoc : POINT; lCloseHint : LONG;
+		VAR pHitResult : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE QueryHitRect (dwAspect : DWORD; pRectBounds, pRectLoc : RECT; lCloseHint : LONG;	VAR pHitResult : DWORD)
+	: HRESULT;
+    ABSTRACT PROCEDURE GetNaturalExtent (dwAspect : DWORD; lindex : LONG; ptd : PDVTARGETDEVICE; hitTargetDev : HDC;
+		pExtentInfo : DVEXTENTINFO; VAR pSizel : SIZEL) : HRESULT;
+END IViewObjectEx;
+
+TYPE
+	LPVIEWOBJECTEX = IViewObjectEx;
+
+ABSTRACT CLASS IOleUndoUnit;
+INHERIT IUnknown;
+REVEAL Do, GetDescription, GetUnitType, OnNextAdd;
+	ABSTRACT PROCEDURE Do (pUndoManager : IOleUndoManager) : HRESULT;
+    ABSTRACT PROCEDURE GetDescription (VAR pBstr : LPBSTR) : HRESULT;
+    ABSTRACT PROCEDURE GetUnitType (VAR pClsid : CLSID; VAR plID : LONG) : HRESULT;
+    ABSTRACT PROCEDURE OnNextAdd () : HRESULT;
+END IOleUndoUnit;
+
+TYPE
+	LPOLEUNDOUNIT = IOleUndoUnit;
+
+ABSTRACT CLASS IOleParentUndoUnit;
+INHERIT IOleUndoUnit;
+REVEAL Open, Close, Add, FindUnit, GetParentState;
+	ABSTRACT PROCEDURE Open (pPUU : IOleParentUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE Close (pPUU : IOleParentUndoUnit; fCommit : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE Add (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE FindUnit (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE GetParentState (VAR pdwState : DWORD) : HRESULT;
+END IOleParentUndoUnit;
+
+TYPE
+	LPOLEPARENTUNDOUNIT = IOleParentUndoUnit;
+
+ABSTRACT CLASS IEnumOleUndoUnits;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+	ABSTRACT PROCEDURE Next (cElt : ULONG; VAR rgElt : ARRAY OF IOleUndoUnit; VAR pcEltFetched : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE Skip (cElt : ULONG) : HRESULT;
+    ABSTRACT PROCEDURE Reset () : HRESULT;
+    ABSTRACT PROCEDURE Clone (VAR ppEnum : IEnumOleUndoUnits) : HRESULT;
+END IEnumOleUndoUnits;
+
+TYPE
+	LPENUMOLEUNDOUNITS = IEnumOleUndoUnits;
+
+ABSTRACT CLASS IOleUndoManager;
+INHERIT IUnknown;
+REVEAL
+	Open, Close, Add, FindUnit, GetOpenParentState, DiscardFrom, UndoTo, RedoTo, EnumUndoable, EnumRedoable,
+	GetLastUndoDescription, GetLastRedoDescription, Enable;
+	ABSTRACT PROCEDURE Open (pPUU : IOleParentUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE Close (pPUU : IOleParentUndoUnit; fCommit : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE Add (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE FindUnit (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE GetOpenParentState (VAR pdwState : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE DiscardFrom (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE UndoTo (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE RedoTo (pUU : IOleUndoUnit) : HRESULT;
+    ABSTRACT PROCEDURE EnumUndoable (VAR ppEnum : IEnumOleUndoUnits) : HRESULT;
+    ABSTRACT PROCEDURE EnumRedoable (VAR ppEnum : IEnumOleUndoUnits) : HRESULT;
+    ABSTRACT PROCEDURE GetLastUndoDescription (VAR pBstr : LPBSTR) : HRESULT;
+    ABSTRACT PROCEDURE GetLastRedoDescription (VAR pBstr : LPBSTR) : HRESULT;
+    ABSTRACT PROCEDURE Enable (fEnable : BOOL) : HRESULT;
+END IOleUndoManager;
+
+TYPE
+	LPOLEUNDOMANAGER = IOleUndoManager;
+
+	POINTERINACTIVE =
+		(
+			POINTERINACTIVE_ACTIVATEONENTRY		= 1,
+			POINTERINACTIVE_DEACTIVATEONLEAVE	= 2,
+			POINTERINACTIVE_ACTIVATEONDRAG		= 4
+		);
+
+ABSTRACT CLASS IPointerInactive;
+INHERIT IUnknown;
+REVEAL GetActivationPolicy, OnInactiveMouseMove, OnInactiveSetCursor;
+	ABSTRACT PROCEDURE GetActivationPolicy (VAR pdwPolicy : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE OnInactiveMouseMove (pRectBounds : RECT; x, y : LONG; grfKeyState : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE OnInactiveSetCursor (pRectBounds : RECT; x, y : LONG; dwMouseMsg : DWORD; fSetAlways : BOOL) : HRESULT;
+END IPointerInactive;
+
+TYPE
+	LPPOINTERINACTIVE = IPointerInactive;
+
+ABSTRACT CLASS IObjectWithSite;
+INHERIT IUnknown;
+REVEAL SetSite, GetSite;
+	ABSTRACT PROCEDURE SetSite (pInkSite : IUnknown) : HRESULT;
+    ABSTRACT PROCEDURE GetSite (riid : IID; VAR ppvSite : PVOID) : HRESULT;
+END IObjectWithSite;
+
+TYPE
+	LPOBJECTWITHSITE = IObjectWithSite;
+
+	CALPOLESTR =
+		RECORD
+			cElems : ULONG;
+			pElems : POINTER TO ARRAY [0..99999999] OF LPOLESTR;
+		END;
+	LPCALPOLESTR = POINTER TO CALPOLESTR;
+	CADWORD =
+		RECORD
+			cElems : ULONG;
+			pElems : POINTER TO ARRAY [0..99999999] OF DWORD;
+		END;
+	LPCADWORD = POINTER TO CADWORD;
+
+ABSTRACT CLASS IPerPropertyBrowsing;
+INHERIT IUnknown;
+REVEAL GetDisplayString, MapPropertyToPage, GetPredefinedStrings, GetPredefinedValue;
+	ABSTRACT PROCEDURE GetDisplayString (dispID : DISPID; VAR pBstr : LPBSTR) : HRESULT;
+    ABSTRACT PROCEDURE MapPropertyToPage (dispID : DISPID; VAR pClsid : CLSID) : HRESULT;
+	ABSTRACT PROCEDURE GetPredefinedStrings (dispID : DISPID; VAR pCaStringsOut : CALPOLESTR; VAR pCaCookiesOut : CADWORD) :
+	HRESULT;
+	ABSTRACT PROCEDURE GetPredefinedValue (dispID : DISPID; dwCookie : DWORD; VAR pVarOut : VARIANT) : HRESULT;
+END IPerPropertyBrowsing;
+
+TYPE
+	LPPERPROPERTYBROWSING = IPerPropertyBrowsing;
+
+	PROPBAG2_TYPE =
+		(
+			PROPBAG2_TYPE_UNDEFINED	= 0,
+			PROPBAG2_TYPE_DATA		= 1,
+			PROPBAG2_TYPE_URL		= 2,
+			PROPBAG2_TYPE_OBJECT	= 3,
+			PROPBAG2_TYPE_STREAM	= 4,
+			PROPBAG2_TYPE_STORAGE	= 5,
+			PROPBAG2_TYPE_MONIKER	= 6
+		);
+	PROPBAG2 =
+		RECORD
+			dwType : DWORD;
+			vt : VARTYPE;
+			cfType : CLIPFORMAT;
+			dwHint : DWORD;
+			pstrName : LPOLESTR;
+			clsid : CLSID;
+		END;
+
+ABSTRACT CLASS IPropertyBag2;
+INHERIT IUnknown;
+REVEAL Read, Write, CountProperties, GetPropertyInfo, LoadObject;
+	ABSTRACT PROCEDURE Read (cProperties : ULONG; pPropBag : ARRAY OF PROPBAG2; pErrLog : IUnknown;
+		VAR pvarValue : ARRAY OF VARIANT; VAR phrError : ARRAY OF HRESULT) : HRESULT;
+		(* Parameter pErrLog should be of IErrorLog type, but this class is not yet described in the library *)
+    ABSTRACT PROCEDURE Write (cProperties : ULONG; pPropBag : ARRAY OF PROPBAG2; pvarValue : ARRAY OF VARIANT) : HRESULT;
+	ABSTRACT PROCEDURE CountProperties (VAR pcProperties : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE GetPropertyInfo (iProperty, cProperties : ULONG;
+		VAR pPropBag : ARRAY OF PROPBAG2; VAR pcProperties : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE LoadObject (pstrName : ARRAY OF UCHAR; dwHint : DWORD; pUnkObject : IUnknown; pErrLog : IUnknown) :
+	HRESULT;
+		(* Parameter pErrLog should be of IErrorLog type, but this class is not yet described in the library *)
+END IPropertyBag2;
+
+TYPE
+	LPPROPERTYBAG2 = IPropertyBag2;
+	PPPROPERTYBAG2 = POINTER TO IPropertyBag2;
+
+ABSTRACT CLASS IPersistPropertyBag2;
+INHERIT IPersist;
+REVEAL InitNew, Load, Save, IsDirty;
+	ABSTRACT PROCEDURE InitNew () : HRESULT;
+    ABSTRACT PROCEDURE Load (pPropBag : IPropertyBag2; pErrLog : IUnknown) : HRESULT;
+		(* Parameter pErrLog should be of IErrorLog type, but this class is not yet described in the library *)
+	ABSTRACT PROCEDURE Save (pPropBag : IPropertyBag2; fClearDirty, fSaveAllProperties : BOOL) : HRESULT;
+	ABSTRACT PROCEDURE IsDirty () : HRESULT;
+END IPersistPropertyBag2;
+
+TYPE
+	LPPERSISTPROPERTYBAG2 = IPersistPropertyBag2;
+
+ABSTRACT CLASS IAdviseSinkEx;
+INHERIT IAdviseSink;
+REVEAL OnViewStatusChange;
+	ABSTRACT PROCEDURE OnViewStatusChange (dwViewStatus : DWORD) : HRESULT;
+END IAdviseSinkEx;
+
+TYPE
+	LPADVISESINKEX = IAdviseSinkEx;
+
+	QACONTAINERFLAGS =
+		(
+			QACONTAINER_SHOWHATCHING		= 1H,
+			QACONTAINER_SHOWGRABHANDLES		= 2H,
+			QACONTAINER_USERMODE			= 4H,
+			QACONTAINER_DISPLAYASDEFAULT	= 8H,
+			QACONTAINER_UIDEAD				= 10H,
+			QACONTAINER_AUTOCLIP			= 20H,
+			QACONTAINER_MESSAGEREFLECT		= 40H,
+			QACONTAINER_SUPPORTSMNEMONICS	= 80H
+		);
+	OLE_COLOR = DWORD;
+	QACONTAINER =
+		RECORD
+			cbSize : ULONG;
+			pClientSite : IOleClientSite;
+			pAdviseSink : IAdviseSinkEx;
+			pPropertyNotifySink : IPropertyNotifySink;
+			pUnkEventSink : IUnknown;
+			dwAmbientFlags : DWORD;
+			colorFore : OLE_COLOR;
+			colorBack : OLE_COLOR;
+			pFont : IFont;
+			pUndoMgr : IOleUndoManager;
+			dwAppearance : DWORD;
+			lcid : LCID;
+			hpal : HPALETTE;
+			pBindHost : IBindHost;
+			pOleControlSite : IOleControlSite;
+			pServiceProvider : IServiceProvider;
+		END;
+	QACONTROL =
+		RECORD
+			cbSize : ULONG;
+			dwMiscStatus : DWORD;
+			dwViewStatus : DWORD;
+			dwEventCookie : DWORD;
+			dwPropNotifyCookie : DWORD;
+			dwPointerActivationPolicy : DWORD;
+		END;
+
+ABSTRACT CLASS IQuickActivate;
+INHERIT IUnknown;
+REVEAL QuickActivate, SetContentExtent, GetContentExtent;
+	ABSTRACT PROCEDURE QuickActivate (pQaContainer : QACONTAINER; (*inout*) VAR pQaControl : QACONTROL) : HRESULT;
+	ABSTRACT PROCEDURE SetContentExtent ((*in*) pSizel : PSIZEL) : HRESULT;
+	ABSTRACT PROCEDURE GetContentExtent (VAR pSizel : SIZEL) : HRESULT;
+END IQuickActivate;
+
+TYPE
+	LPQUICKACTIVATE = IQuickActivate;
+
+END OCIdl.

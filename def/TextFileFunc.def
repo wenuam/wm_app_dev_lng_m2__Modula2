@@ -1,0 +1,205 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE TextFileFunc;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM FileFunc IMPORT
+    File;
+
+TYPE
+    SeparatorSet        = PACKEDSET OF CHAR;
+
+VAR
+    Separators  : SeparatorSet; (* Default = SeparatorSet{' ',
+                                                          FileFunc.EOL,
+                                                          ASCII.ht,
+                                                          ASCII.vt,
+                                                          ASCII.ff};
+                                *)
+
+    PadChar     : CHAR;                 (* Default = ' ' *)
+    ErrorChar   : CHAR;                 (* Default = '?' *)
+    ChopField   : BOOLEAN;              (* Default = FALSE *)
+
+(*
+ it is recommended that any file using these functions be buffered
+ by using FileFunc.SetFileBuffer. The best size of the buffer can only
+ be determined via testing. Buffersizes smaller than 512 do not make
+ much sense and sizes greater than 8k generally have diminishing returns
+*)
+
+PROCEDURE WriteString(VAR INOUT f : File; str : ARRAY OF CHAR);
+(*
+ writes the string, str, to the file f
+*)
+
+PROCEDURE WriteStringLn(VAR INOUT f : File; str : ARRAY OF CHAR);
+(*
+ this procedure is implemented as follows
+        WriteString(f, str);
+        WriteLn(f);
+*)
+
+PROCEDURE WriteField(VAR INOUT f : File;
+                     str : ARRAY OF CHAR;
+                     fieldLen : INTEGER);
+ (*
+ writes the string, str, to the file f
+ fieldLen specifies the size of the field the string is written to
+ if fieldLen > 0, str is right justified in the field
+ if fieldLen < 0, str is left justified in the field
+ if fieldLen = 0 then the full string str is always written to the file
+ if the LENGTH of str is less than fieldLen then this function will
+ use the global variable PadChar to justify the string in the field
+ if the LENGTH of str is > fieldLen, and fieldLen <> 0, then the value
+ of the Global variable ChopField determines the action taken
+ if ChopField = TRUE then the field will be filled with ErrorChar and
+    f.status = MAX(CARDINAL)
+ if ChopField = FALSE then the string str will be truncated to the size
+ of the field
+*)
+
+PROCEDURE WriteNumber(VAR INOUT f : File;
+                      num : LONGINT;
+                      fieldLen : INTEGER);
+ (*
+ the number num is converted to a string and written to the file f
+ using the procedure WriteField
+ See WriteField for the meaning of fieldLen
+ if the numeric conversion fails f.status = MAX(CARDINAL)
+*)
+
+PROCEDURE WriteNumberBase(VAR INOUT f : File;
+                          num : LONGCARD;
+                          base : CARDINAL;
+                          fieldLen : INTEGER);
+(*
+ the number num is converted to a string in the number base base
+ and is written to the file f using the procedure WriteField
+ base must be >= 2 and <= 16
+ See WriteField for the meaning of fieldLen
+ if the numeric conversion fails f.status = MAX(CARDINAL)
+*)
+
+PROCEDURE WriteReal(VAR INOUT f : File;
+                    num : LONGREAL;
+                    sigFigs : CARDINAL;
+                    eng : BOOLEAN;
+                    fieldLen : INTEGER);
+(*
+ the real number num is converted to a string in scientific notation
+ and written to the file f using the procedure WriteField
+ sigFigs = the number of significant digits in the mantissa
+ if eng = TRUE the the exponent will always be a multiple of 3 and therefore
+ the mantissa may be >= 10.0
+ See WriteField for the meaning of fieldLen
+ if the numeric conversion fails f.status = MAX(CARDINAL)
+*)
+
+PROCEDURE WriteRealFixed(VAR INOUT f : File;
+                         num : LONGREAL;
+                         place : CARDINAL;
+                         fieldLen : INTEGER);
+(*
+ the real number num is converted to a string in decimal notation
+ and written to the file f using the procedure WriteField
+ place = the number of digits after the decimal place to output
+ See WriteField for the meaning of fieldLen
+ if the numeric conversion fails f.status = MAX(CARDINAL)
+*)
+
+PROCEDURE WriteBoolean(VAR INOUT f : File; bool : BOOLEAN; fieldLen : INTEGER);
+(*
+ writes a BOOLEAN value to the file f
+ if bool = TRUE then a string value of "TRUE" is written
+ otherwise "FALSE" is written
+ See WriteField for the meaning of fieldLen
+*)
+
+PROCEDURE WriteLn(VAR INOUT f : File);
+(*
+ writes and end of line character(s) to the file f
+ implemented as FileFunc.WriteChar(f, FileFunc.EOL)
+*)
+
+PROCEDURE ReadString(VAR INOUT f : File; VAR OUT str : ARRAY OF CHAR);
+(*
+ reads from the file f as many characters as will fit into the
+ string str. IF the end of the current line is reached before the string
+ is filled then reading will stop and the string will be null terminated
+*)
+
+PROCEDURE ReadField(VAR INOUT f : File; VAR OUT str : ARRAY OF CHAR);
+(*
+ reads from file f into the string str a string deliminated by the
+ characters in the global variable Separators. If the string is not
+ fully filled it will be null terminated.
+ This function skips over separators before attempting to read the field
+*)
+
+PROCEDURE ReadNumber(VAR INOUT f : File) : LONGINT;
+(*
+ read an integer number from the file f by calling ReadField
+ to read a field string and then doing a numeric conversion to an
+ integer number. if the conversion fails f.status = MAX(CARDINAL)
+ if an error occurs a value of 0 is always returned
+*)
+
+PROCEDURE ReadNumberValidate(VAR INOUT f : File;
+                             min, max : LONGINT;
+                             VAR OUT inRange : BOOLEAN) : LONGINT;
+(*
+ read an integer number from the file f by calling ReadField
+ to read a field string and then doing a numeric conversion to an
+ integer number. if the conversion fails f.status = MAX(CARDINAL)
+ this function also validates the numeric range of the read number
+ if an error occurs a value of 0 is always returned
+ if the result within the range of min and max, inclusive then
+ inRange = TRUE, otherwise inRange = FALSE
+ in either case the number value will be returned
+*)
+
+PROCEDURE ReadNumberBase(VAR INOUT f : File; base : CARDINAL) : LONGCARD;
+(*
+ read an integer number in the number base, base, from the file f by
+ calling ReadField to read a field string and then doing a numeric
+ conversion to an integer number.
+ if the conversion fails f.status = MAX(CARDINAL)
+ if an error occurs a value of 0 is always returned
+ base must be >= 2 and <= 16
+*)
+
+PROCEDURE ReadReal(VAR INOUT f : File) : LONGREAL;
+(*
+ read a real number from the file f by calling ReadField to read a
+ field string and then doing a numeric conversion to a real number
+ the real number can be in decimal, scientific or engineering notation
+ if the conversion fails f.status = MAX(CARDINAL)
+ if an error occurs a value of 0.0 is always returned
+*)
+
+PROCEDURE ReadBoolean(VAR INOUT f : File) : BOOLEAN;
+(*
+ read a BOOLEAN value from the file f by calling ReadField to read a
+ field string and then comparing the field string with the value "TRUE"
+ If the field string is equal to "TRUE" then TRUE is returned, otherwise
+ FALSE is returned
+ The field string is compared case insensitively
+*)
+
+PROCEDURE ReadLn(VAR INOUT f : File);
+(*
+ skip all characters in the current line up to and including the
+ end of the line
+*)
+
+END TextFileFunc.

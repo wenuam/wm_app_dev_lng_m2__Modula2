@@ -1,0 +1,33 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE ElapsedTime;
+(* provides functions for measuring elapsed time in milliseconds. *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE StartTime;
+(* Start timing an interval *)
+
+PROCEDURE GetTime() : CARDINAL32;
+(* Return the length in milliseconds since the last call to StartTime *)
+
+PROCEDURE StartTimeEx() : CARDINAL32;
+(* Start timing an interval, and return the start time *)
+
+PROCEDURE GetTimeEx(start : CARDINAL32) : CARDINAL32;
+(* Return the length in milliseconds since the time in start *)
+
+PROCEDURE Delay(milli : CARDINAL32);
+(* procedure will not return until the specified interval has elapsed *)
+(* the delay is approximate and depends upon the underlying system *)
+
+END ElapsedTime.

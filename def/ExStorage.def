@@ -1,0 +1,585 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+(*
+    This module is a superset of the ISO defined Storage module.
+    The ISO Storage module is implemented with calls to this module.
+    ISO does not allow Storage to be extended, hence the existence of
+    the module.
+
+    The module maintains a free list of blocks that are available for
+    allocation. When there is not a big enough block to satisfy the
+    allocation request, the heap then goes to its source of memory,
+    usually the operating system, for a new block of memory. It would be silly
+    to request 50 bytes from the source so the heap allocates chunks from
+    the source and then splits these chunks down as allocation requests are made.
+
+    To minimize waste of memory (fragmentation) you may want to change the chunk size
+    to a multiple of some size.
+    The default chunk size is 64k. (32k for 16-bit DOS)
+    The heap manager does have some overhead per block of memory allocated.
+    You must take this into account when you set multiples of block sizes.
+    This overhead size is BlockOverhead, a value exported from this module.
+
+    A heap has two options to handle allocations larger than the chunk size.
+    1. Allocate the memory and add it to the internal heap memory list.
+    2. Allocate memory directly from the memory source, and deallocate the
+            memory directly back to the memory source on deallocation.
+
+    See the SetChunkSize APIs for further information.
+
+
+    -----
+
+    Multiple heaps.
+    This module allows multiple heaps. A heap is a list of memory blocks
+    that are available for allocation. You can think of each heap as a
+    "different" storage module.
+    All operations in the storage module operate on the current heap, or
+    the "Ex" operations operate on the heap parameter passed.
+
+    To create a new heap use AllocHeap. You can then use this heap
+    handle with the various "Ex" APIs or use it with UseHeap or PushHeap
+    to set the heap as the current heap.
+
+    This module always initializes a default heap. So you need not
+    bother with this if you do not need multiple heaps.
+*)
+DEFINITION MODULE ExStorage;
+
+<*/NOPACK*>
+
+<*/VALIDVERSION:ALIGN8*>
+%IF Bits64 %OR (Bits32 %AND (%NOT IA32)) %THEN
+    <*/VERSION:ALIGN8*>
+%END
+
+FROM SYSTEM IMPORT
+    ADDRESS, CAST, ADRCARD;
+
+TYPE
+    StorageExceptions   =
+                          (
+                           (* ISO defined exceptions *)
+                           nilDeallocation,
+                           pointerToUnallocatedStorage,
+                           wrongStorageToUnallocate,
+
+                           (* Stony Brook extended exceptions *)
+
+                           outOfStorage,
+                           tooManyFreeBlocks,
+                           deallocateToWrongHeap,
+                           memoryOverwrite,
+                           heapStackOverflow,
+                           heapStackUnderflow,
+                           heapCorrupt
+                          );
+
+    AllocStrategy       = (FirstFit, BestFit);
+    CombineStrategy     = (NormalCombine, FullCombine, NoCombine);
+
+    HeapErrorCodes      = (ReturnNIL, DoException, TryAgain);
+    HeapErrorProc       = PROCEDURE((*amount:*)ADRCARD) : HeapErrorCodes;
+
+    MemorySourceAlloc   = PROCEDURE((*amount:*)ADRCARD,
+                                    (*userData:*)ADDRESS) : ADDRESS(*memory addr*);
+    MemorySourceDealloc = PROCEDURE((*addr:*)ADDRESS,
+                                    (*amount:*)ADRCARD,
+                                    (*userData:*)ADDRESS);
+    MemorySourceAvail   = PROCEDURE((*userData:*)ADDRESS) : ADRCARD;
+
+CONST
+%IF ALIGN8 %THEN
+    BlockOverhead       = 8;
+%ELSE
+    BlockOverhead       = 4;
+%END
+(* BlockOverhead is also the alignment which all allocated memory returns *)
+
+    HeapErrorNIL        = CAST(HeapErrorProc, 1);
+    HeapErrorException  = CAST(HeapErrorProc, 2);
+    (*
+      you can use these to set the heap error handler to an
+      internal procedure that simply returns the specificed result code.
+    *)
+
+TYPE
+    HeapInfoPointer;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE ALLOCATE(VAR OUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE AllocateEx(VAR OUT addr : ADDRESS;
+                     amount : ADRCARD;
+                     heap : HeapInfoPointer);
+(*
+ allocate memory from the current heap
+ addr = the address of the memory block to deallocate
+ amount = the size of the memory block in bytes
+ on return addr will contain the address of the memory block or
+ a value of NIL if there was not enough memory available to
+ satisfy the allocation request. This behaviour can be modified by
+ installing a new HeapErrorProc.
+ This call can fail if SetHeapMax or FreezeHeap are used to limit the
+ size of the heap and no block large enough exists in the heap for
+ the allocation.
+ HeapErrorProc is always called when not enough memory is available
+ to satisfy the request. The HeapErrorProc can return one of three
+ possible actions for the heap manager to take.
+ HeapErrorCodes       = (ReturnNIL, DoException, TryAgain);
+ ReturnNIL does just that. This is the default.
+ DoException will have ALLOCATE raise an outOfStorage exception
+ TryAgain will have the system try to allocate the requested amount again
+*)
+
+PROCEDURE DEALLOCATE(VAR INOUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE DeallocateEx(VAR INOUT addr : ADDRESS;
+                       amount : ADRCARD;
+                       heap : HeapInfoPointer);
+(*
+ deallocate memory to the current heap
+ addr = the address of the memory block to deallocate
+ amount = the size of the memory block in bytes
+ On return of this procedure addr will contain the value NIL.
+ If NIL is passed to addr then a nilDeallocation exception is raised
+ If the heap is in debug mode the following actions are also performed.
+ The size of the decallocation is checked to make sure it agrees with
+ the size the block was allocated. A wrongStorageToUnallocate exception
+ is raised if the size is not correct
+ If the memory is not allocated memory, such as deallocating twice,
+ a pointerToUnallocatedStorage exception is raised.
+ A check for memory overwrite is done and a memoryOverwrite exception is
+ raised if one is found.
+ A check is made to make sure the memory block was allocated from the
+ current heap. A deallocateToWrongHeap exception is raised if the memory
+ did not come from the current heap.
+*)
+
+PROCEDURE IsStorageException() : BOOLEAN;
+(* Return TRUE if the current exception came from this module *)
+
+PROCEDURE StorageException() : StorageExceptions;
+(*
+ If IsStorageException() = TRUE, then this function returns the
+ specific exception that was raised
+*)
+
+PROCEDURE ReALLOCATE(VAR INOUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE ReallocateEx(VAR INOUT addr : ADDRESS;
+                       amount : ADRCARD;
+                       heap : HeapInfoPointer);
+(*
+ a convienence call
+ allocates a memory block of size amount,
+ copies the old memory block to the new memory block
+ and then deallocates the old memory block.
+ addr can be NIL for this call. in this case it simply
+ acts like a call to allocate.
+*)
+
+PROCEDURE AllocateAligned(VAR OUT addr, alignedAddr : ADDRESS;
+                          amount, align : ADRCARD);
+PROCEDURE AllocateAlignedEx(VAR OUT addr, alignedAddr : ADDRESS;
+                            amount, align : ADRCARD;
+                            heap : HeapInfoPointer);
+(*
+ as ALLOCATE except...
+ allocate a memory block and return an address aligned on an even
+ multiple address of amount align
+ addr = the returned memory block allocated. use this address when
+          you deallocate the memory. also use amount+align for the
+          amount of memory to deallocate
+ alignedAddr = the aligned memory address. use this address for your
+                 pointer.
+ amount = the amount of memory to allocate.
+ align = the alignment multiple.
+*)
+
+PROCEDURE Available(amount : ADRCARD) : BOOLEAN;
+PROCEDURE AvailableEx(amount : ADRCARD; heap : HeapInfoPointer) : BOOLEAN;
+(*
+ can a block of the specified size be allocated from the current heap
+ TRUE is returned if the amount is available.
+ This call can fail if SetHeapMax or FreezeHeap are used to limit the
+ size of the heap and no block large enough exists in the heap for
+ the allocation.
+*)
+
+PROCEDURE MaxAvailable() : ADRCARD;
+PROCEDURE MaxAvailableEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ largest single continuous block available to be allocated.
+ if the heap is not frozen the memory source will be checked for the
+ largest block available.
+ SetHeapMax can also limit this value.
+*)
+
+PROCEDURE MemAvailable() : ADRCARD;
+PROCEDURE MemAvailableEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ total memory in the heap free list, and available from the memory source,
+ if the heap has not been frozen. SetHeapMax can also limit this value.
+*)
+
+PROCEDURE MemoryInUse() : ADRCARD;
+PROCEDURE MemoryInUseEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ amount of memory currently allocated in the heap
+ this value includes any overhead needed by the heap manager
+
+ IF (heap = NIL) THEN
+     the value returned is the sum of MemoryInUse for all
+     currently active heaps.
+*)
+
+PROCEDURE MaxMemoryUsed() : ADRCARD;
+PROCEDURE MaxMemoryUsedEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ the largest amount of memory ever allocated in the heap
+ this value includes any overhead needed by the heap manager.
+
+ IF (heap = NIL) THEN
+     the value returned is the sum of MaxMemoryUsed for all
+     currently active heaps.
+*)
+
+PROCEDURE ResetMaxMemoryUsed;
+PROCEDURE ResetMaxMemoryUsedEx(heap : HeapInfoPointer);
+(*
+  resets the internal counter for the maximum amount of memory used
+  to zero.
+
+ IF (heap = NIL) THEN
+     all currently active heaps will have their counter reset.
+*)
+
+PROCEDURE HeapMemory() : ADRCARD;
+PROCEDURE HeapMemoryEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ amount of memory the heap currently owns
+ this takes into account heap granularity and overhead.
+
+ IF (heap = NIL) THEN
+     the value returned is the sum of HeapMemory for all
+     currently active heaps.
+*)
+
+PROCEDURE FreezeHeap(yes : BOOLEAN);
+PROCEDURE FreezeHeapEx(yes : BOOLEAN; heap : HeapInfoPointer);
+(*
+ freeze the current heap to it present size.
+ no more allocations will be made from the memory source.
+*)
+
+PROCEDURE CombineHeap;
+PROCEDURE CombineHeapEx(heap : HeapInfoPointer);
+(*
+ make a pass through the entire free list attempting to combine
+ all blocks that can be combined
+*)
+
+PROCEDURE FreeHeap;
+PROCEDURE FreeHeapEx(heap : HeapInfoPointer);
+(* return all memory blocks back to the memory source. *)
+
+PROCEDURE ClearHeap;
+PROCEDURE ClearHeapEx(heap : HeapInfoPointer);
+(*
+ an instant DEALLOCATE everything that is currently allocated in the heap
+ while not returning memory to the memory source.
+*)
+
+PROCEDURE SetMemorySource(alloc : MemorySourceAlloc;
+                          dealloc : MemorySourceDealloc;
+                          avail : MemorySourceAvail;
+                          userData : ADDRESS);
+PROCEDURE SetMemorySourceEx(alloc : MemorySourceAlloc;
+                            dealloc : MemorySourceDealloc;
+                            avail : MemorySourceAvail;
+                            userData : ADDRESS;
+                            heap : HeapInfoPointer);
+(*
+ a heaps memory source defaults to the operating system.
+ with this function you can redirect these allocations to another source of memory.
+
+ userData = arbitrary data which will be passed to your callback procedures.
+ for MemorySourceAlloc, NIL should be returned to indicate failure.
+*)
+
+PROCEDURE SetHeapError(err : HeapErrorProc);
+PROCEDURE SetHeapErrorEx(err : HeapErrorProc; heap : HeapInfoPointer);
+(*
+ The HeapErrorProc is called when ALLOCATE cannot satisfy the allocation
+ request. This allows you to perform some action(s) if possible and gain
+ the memory to satisfy the ALLOCATE request
+ The HeapErrorProc returns a value to indicate what the heap manager
+ should do
+ HeapErrorCodes = (ReturnNIL, DoException, TryAgain);
+ ReturnNIL does just that
+ DoException will have ALLOCATE raise an outOfStorage exception
+ TryAgain will have the system try to allocate the requested amount again
+*)
+
+PROCEDURE GetHeapError() : HeapErrorProc;
+PROCEDURE GetHeapErrorEx(heap : HeapInfoPointer) : HeapErrorProc;
+(* return the current heap error procedure *)
+
+PROCEDURE GetHeapMax() : ADRCARD;
+PROCEDURE GetHeapMaxEx(heap : HeapInfoPointer) : ADRCARD;
+(* get maximum amount of memory a heap can contain *)
+
+PROCEDURE SetHeapMax(max : ADRCARD);
+PROCEDURE SetHeapMaxEx(max : ADRCARD; heap : HeapInfoPointer);
+(* set maximum amount of memory a heap can contain *)
+
+PROCEDURE GetChunkSize() : ADRCARD;
+PROCEDURE GetChunkSizeEx(heap : HeapInfoPointer) : ADRCARD;
+(*
+ get the block size allocated from the source of memory for the heap
+ when the heap needs more memory to satisfy an ALLOCATE request
+*)
+
+PROCEDURE SetChunkSize(max : ADRCARD; direct : BOOLEAN);
+PROCEDURE SetChunkSizeEx(max : ADRCARD; direct : BOOLEAN; heap : HeapInfoPointer);
+(*
+ set the block size allocated from the source of memory for the heap
+ when the heap needs more memory to satisfy an ALLOCATE request.
+ if direct = FALSE then all allocation requests will become a part of the memory
+     freelist managed by the heap. the memory will remain a part of the heap
+     until the heap is freed.
+ if direct = TRUE then allocation requests larger than the chunk size will
+     be allocated directly from the memory source, and when deallocated it will
+     be deallocated back to the memory source. the memory allocation will never
+     be placed into the heap memory freelist. this can help reduce memory fragmentation
+     but direct allocations are slower than allocations from the
+     internal memory freelist.
+*)
+
+PROCEDURE GetMinAllocSize() : ADRCARD;
+PROCEDURE GetMinAllocSizeEx(heap : HeapInfoPointer) : ADRCARD;
+(* get the minimum block size that can be allocated *)
+
+PROCEDURE SetMinAllocSize(min : ADRCARD);
+PROCEDURE SetMinAllocSizeEx(min : ADRCARD; heap : HeapInfoPointer);
+(*
+ set the minimum block size that can be allocated
+ useful when using SetCombine(NoCombine) to get a uniform block size
+ without playing with your data structure definitions and/or the amount
+ value passed to ALLOCATE.
+*)
+
+PROCEDURE GetDebug() : BOOLEAN;
+PROCEDURE GetDebugEx(heap : HeapInfoPointer) : BOOLEAN;
+(* get the heap debug state *)
+
+PROCEDURE SetDebug(debug : BOOLEAN);
+PROCEDURE SetDebugEx(debug : BOOLEAN; heap : HeapInfoPointer);
+(*
+ debug = FALSE is the default
+ it debug = TRUE then the heap is checked for consistency and
+ fills all blocks with NIL before allocation and deallocation
+ it can also detect many memory overwrite situations.
+ it can also help detect memory leaks.
+ Setting the debug mode can only be done when the heap is empty,
+ otherwise this call has no effect.
+ You can use the SetExStorageDebugMode module to easily set the debug mode
+ to TRUE for the default heap.
+ Just import the module as the first module imported in your main program.
+ This will set the debug mode for the default heap. This works even if the
+ initialization code in one or more modules allocates memory because it would be
+ the first module initialization code called that uses the ExStorage module.
+*)
+
+PROCEDURE ScanForMemoryOverwrites;
+PROCEDURE ScanForMemoryOverwritesEx(heap : HeapInfoPointer);
+(*
+ If SetDebug(TRUE) then you can call this procedure to scan all blocks
+ deallocated and allocated to look for memory overwrites
+ If one is found then a memoryOverwrite exception will be raised
+ IF SetDebug(FALSE) then this call returns immediately without performing
+ any checks
+*)
+
+PROCEDURE ScanForMemoryOverwritesOnApiCalls(yes : BOOLEAN);
+PROCEDURE ScanForMemoryOverwritesOnApiCallsEx(yes : BOOLEAN;
+                                              heap : HeapInfoPointer);
+(*
+ if SetDebug(TRUE) and (yes = TRUE) then all calls to
+ ALLOCATE, DEALLOCATE, Available
+ will first scan for memory overwrites before performing their
+ normal action(s)
+ if SetDebug(TRUE) and (yes = FALSE) then memory overwrites are only
+ checked in the DEALLOCATE procedure and then only the deallocated block
+ is checked.
+*)
+
+TYPE
+    CheckLeakCallbackProc = PROCEDURE((*allocId*)CARDINAL32, (*size*) ADRCARD);
+    StopLeakCallbackProc = PROCEDURE(VAR INOUT (*allocId*)CARDINAL32);
+     (*allocId = a unique number identifying a specific allocation *)
+
+PROCEDURE CheckForMemoryLeaks(callback : CheckLeakCallbackProc);
+PROCEDURE CheckForMemoryLeaksEx(callback : CheckLeakCallbackProc; heap : HeapInfoPointer);
+(*
+ if SetDebug(TRUE) then call this function when you believe you have
+ deallocated all memory in your application. The callback procedure
+ will be called for each memory block that has not been deallocated
+*)
+
+PROCEDURE SetMemoryStopLeakCallback(callback : StopLeakCallbackProc;
+                                    allocId : CARDINAL32);
+PROCEDURE SetMemoryStopLeakCallbackEx(callback : StopLeakCallbackProc;
+                                      allocId : CARDINAL32;
+                                      heap : HeapInfoPointer);
+(*
+    if SetDebug(TRUE) then
+    once you have detected one or more memory leaks via CheckForMemoryLeaks,
+    and you can precisely repeat the execution of your program,
+    you can use this call to have a procedure of yours called when the memory
+    block with the given allocId is allocated.
+    You can set a breakpoint in this procedure to stop when one of your leaked
+    memory blocks is allocated. You can now debug your code to determine why the
+    memory allocation leaked.
+    You can assign a value to allocId to look for another memory leak. The allocId
+    you assign should be higher than the current one.
+*)
+
+PROCEDURE GetCombine() : CombineStrategy;
+PROCEDURE GetCombineEx(heap : HeapInfoPointer) : CombineStrategy;
+(* get the heap combine state *)
+
+PROCEDURE SetCombine(comb : CombineStrategy);
+PROCEDURE SetCombineEx(comb : CombineStrategy; heap : HeapInfoPointer);
+(*
+ NormalCombine = the current heap block will be fully combined where
+                 where possible before checking its suitability for
+                 allocation.
+                 This gives best performance, while still reducing
+                 the fragmentation of heap memory
+                 This is the default value
+ FullCombine   = All the free blocks in the heap will be combined where
+                 possible before doing any allocation
+                 If you are having problems with heap fragmentation with
+                 NormalCombine, then this option will help.
+                 How much help cannot be determined.
+                 This will slow down allocations, more so in FirstFit
+                 than in BestFit strategy
+ NoCombine     = No heap block combining will be done. This will slow
+                 down heap allocation unless your blocks are all the same
+                 size. See SetMinAllocSize for more info
+*)
+
+PROCEDURE GetStrategy() : AllocStrategy;
+PROCEDURE GetStrategyEx(heap : HeapInfoPointer) : AllocStrategy;
+(* get the current allocation strategy *)
+
+PROCEDURE SetStrategy(s : AllocStrategy);
+PROCEDURE SetStrategyEx(s : AllocStrategy; heap : HeapInfoPointer);
+(*
+ there are two allocation strategies available
+ FirstFit = default and fastest by far, the first block that is greater
+            than or equal to the requested allocation will be used
+            This is the default value
+ BestFit =  the block that best fits the requested allocation will
+            be used. The entire free list will be searched until an
+            exact match is found. If not found then the next block size
+            >= the requested size will be used
+*)
+
+PROCEDURE SetThreadSafe(yes : BOOLEAN);
+PROCEDURE SetThreadSafeEx(yes : BOOLEAN; heap : HeapInfoPointer);
+(*
+  if yes = TRUE then the heap is thread safe. meaning multiple threads
+  can allocate from the heap and not corrupt the heap.
+  being thread safe incurs a small overhead.
+
+  single threaded code can safely turn off thread protection.
+
+  multi-threaded code can turn off thread safety if the application controls
+  heap access such that only a single thread is allowed to access the heap
+  at any point in time.
+
+  thread safe, yes = TRUE, is the default when a heap is initialized.
+*)
+
+PROCEDURE AllocHeap() : HeapInfoPointer;
+PROCEDURE AllocHeapEx(defaultError : HeapErrorCodes) : HeapInfoPointer;
+(*
+ returns a handle to a heap if successfull. otherwise returns NIL.
+ defaultError can be ReturnNIL or DoException
+*)
+
+PROCEDURE DeallocHeap(heap : HeapInfoPointer);
+(* releases a previously allocated heap.
+   all heap memory is released (FreeHeap) before the heap is deallocated.
+*)
+
+PROCEDURE GetHeap() : HeapInfoPointer;
+(* return the current heap pointer *)
+
+PROCEDURE GetDefaultHeap() : HeapInfoPointer;
+(* return the default heap pointer *)
+
+PROCEDURE UseHeap(heap : HeapInfoPointer) : HeapInfoPointer;
+(* set the current heap, and return the previous heap *)
+
+PROCEDURE PushHeap(heap : HeapInfoPointer);
+(*
+ push the previous heap onto an internal stack and set the passed heap
+ as the current heap.
+ other threads will be blocked from AllocHeap, DeallocHeap,
+ UseHeap, PushHeap, PopHeap, ClearHeapStack until PopHeap is called.
+*)
+
+PROCEDURE PopHeap;
+(* set the current heap to the last heap pushed onto the stack *)
+
+PROCEDURE ClearHeapStack;
+(*
+ clear all heaps off of the internal stack
+ can be useful in exception handlers to do some clean up
+*)
+
+PROCEDURE LockHeap(heap : HeapInfoPointer);
+(*
+ this procedure "locks" the heap such that only the current thread
+ can access the heap.
+ this may be called recursively. you must call Unlock once for each
+ call to lock.
+*)
+
+PROCEDURE UnlockHeap(heap : HeapInfoPointer);
+(* this call reverses a previous LockHeap call. *)
+
+PROCEDURE AllocSystemMemory(VAR OUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE DeallocSystemMemory(VAR INOUT addr : ADDRESS; amount : ADRCARD);
+(*
+  this calls are not an integral part of this modules functions.
+  they are simply here to provide a convenient and portable way
+  of directly allocating operating system memory.
+
+  for alloc, addr = NIL if the call fails.
+*)
+
+PROCEDURE EnableLFH;
+(*
+  it is usefull only for Windows.
+  procedure enable LFH (low fragmentation heap) for the main process heap what may accelerate memeory allocation/deallocation.
+  being enabled LFH cannot be disabled.
+
+  when running the application under debugger LFH is enabled only
+  when variable _NO_DEBUG_HEAP with value 1 is present in the envorinment.
+
+  for other OS it is an empty procedure.
+*)
+
+
+END ExStorage.

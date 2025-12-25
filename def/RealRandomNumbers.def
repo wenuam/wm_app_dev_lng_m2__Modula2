@@ -1,0 +1,49 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE RealRandomNumbers;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* functions to generate pseudo random number sequences *)
+(* the module initializes itself with Randomize(0) *)
+
+PROCEDURE Randomize(seed : CARDINAL32);
+(* seed the random number generator with a specific value *)
+(* the same sequence will always be generated if the same *)
+(* seed value is given, thus a repeatable "random" sequence *)
+(* if the seed value is 0, then a random seed value will be used *)
+(* to seed the random number generator. The random seed value is *)
+(* based upon the current system time *)
+
+PROCEDURE Random() : LONGREAL;
+(* return a random number in a range of 0..1.0 *)
+
+
+(* the following procedures operate like the above procedures *)
+(* except that these use a handle for the random number generator *)
+(* this allows you to have multiple unique random number sequences *)
+(* you must call RandomizeEx before calling any other "Ex" procedures *)
+(* when you are finished with the RandomHandle you can call *)
+(* DisposeRandomHandle to deallocate the internal data *)
+
+TYPE
+    RandomHandle;
+
+PROCEDURE RandomizeEx(seed : CARDINAL32) : RandomHandle;
+
+PROCEDURE SeedEx(h : RandomHandle; seed : CARDINAL);
+(* re-initializes with a new seed value. *)
+
+PROCEDURE DisposeRandomHandle(VAR INOUT h : RandomHandle);
+
+PROCEDURE RandomEx(h : RandomHandle) : LONGREAL;
+
+END RealRandomNumbers.

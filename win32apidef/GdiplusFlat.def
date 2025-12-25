@@ -1,0 +1,2491 @@
+UNSAFEGUARDED DEFINITION MODULE GdiplusFlat;
+
+FROM WIN32 IMPORT
+    WINT, WCHAR, BOOL, BYTE, HRGN, UINT, CLSID, GUID, LPVOID, HINSTANCE, HDC, HANDLE,
+    HBITMAP, HPALETTE, HICON, HWND, LANGID, UINT16, HENHMETAFILE;
+
+FROM WINGDI IMPORT
+    BITMAPINFO, LOGFONTA, LOGFONTW;
+
+FROM OOle2 IMPORT
+    IStream, PROPID;
+
+FROM Gdiplus IMPORT *;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH/ENUMSIZE:BIG*>
+<*/ALIGN:8/NOPACK*>
+
+(*----------------------------------------------------------------------------
+// GraphicsPath APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreatePath(fillMode : GpFillMode; VAR OUT path : GpPath) : GpStatus;
+
+PROCEDURE GdipCreatePath2(points : ARRAY OF GpPointF;
+                          types : ARRAY OF BYTE;
+                          count : WINT;
+                          fillMode : GpFillMode;
+                          VAR OUT path : GpPath) : GpStatus;
+
+PROCEDURE GdipCreatePath2I(points : ARRAY OF GpPoint;
+                           types : ARRAY OF BYTE;
+                           count : WINT;
+                           fillMode : GpFillMode;
+                           VAR OUT path : GpPath) : GpStatus;
+
+PROCEDURE GdipClonePath(path : GpPath; VAR OUT clonePath : GpPath) : GpStatus;
+
+PROCEDURE GdipDeletePath(path : GpPath) : GpStatus;
+
+PROCEDURE GdipResetPath(path : GpPath) : GpStatus;
+
+PROCEDURE GdipGetPointCount(path : GpPath; VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathTypes(path : GpPath;
+                           VAR OUT types : ARRAY OF BYTE;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathPoints(path : GpPath;
+                            VAR OUT points : ARRAY OF GpPointF;
+                            count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathPointsI(path : GpPath;
+                             VAR OUT points : GpPoint;
+                             count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathFillMode(path : GpPath; VAR OUT fillmode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipSetPathFillMode(path : GpPath; fillMode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipGetPathData(path : GpPath; VAR OUT pathData : GpPathData) : GpStatus;
+
+PROCEDURE GdipStartPathFigure(path : GpPath) : GpStatus;
+
+PROCEDURE GdipClosePathFigure(path : GpPath) : GpStatus;
+
+PROCEDURE GdipClosePathFigures(path : GpPath) : GpStatus;
+
+PROCEDURE GdipSetPathMarker(path : GpPath) : GpStatus;
+
+PROCEDURE GdipClearPathMarkers(path : GpPath) : GpStatus;
+
+PROCEDURE GdipReversePath(path : GpPath) : GpStatus;
+
+PROCEDURE GdipGetPathLastPoint(path : GpPath; VAR OUT lastPoint : GpPointF) : GpStatus;
+
+PROCEDURE GdipAddPathLine(path : GpPath;
+                          x1, y1, x2, y2 : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathLine2(path : GpPath;
+                           points : ARRAY OF GpPointF;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathArc(path : GpPath;
+                         x, y, width, height, startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathBezier(path : GpPath;
+                            x1, y1, x2, y2, x3, y3, x4, y4 : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathBeziers(path : GpPath;
+                             points : ARRAY OF GpPointF;
+                             count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathCurve(path : GpPath;
+                           points : ARRAY OF GpPointF;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathCurve2(path : GpPath;
+                            points : ARRAY OF GpPointF;
+                            count : WINT;
+                            tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathCurve3(path : GpPath;
+                            points : ARRAY OF GpPointF;
+                            count : WINT;
+                            offset : WINT;
+                            numberOfSegments : WINT;
+                            tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathClosedCurve(path : GpPath;
+                                 points : ARRAY OF GpPointF;
+                                 count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathClosedCurve2(path : GpPath;
+                                  points : ARRAY OF GpPointF;
+                                  count : WINT;
+                                  tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathRectangle(path : GpPath;
+                               x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathRectangles(path : GpPath;
+                                rects : ARRAY OF GpRectF;
+                                count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathEllipse(path : GpPath;
+                             x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathPie(path : GpPath;
+                         x, y, width, height, startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathPolygon(path : GpPath;
+                             points : ARRAY OF GpPointF;
+                             count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathPath(path : GpPath;
+                          addingPath : GpPath;
+                          connect : BOOL) : GpStatus;
+
+PROCEDURE GdipAddPathString(path : GpPath;
+                            string : ARRAY OF WCHAR;
+                            length : WINT;
+                            family : GpFontFamily;
+                            style : WINT;
+                            emSize : REAL;
+                            layoutRect : RectF;
+                            format : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipAddPathStringI(path : GpPath;
+                             string : ARRAY OF WCHAR;
+                             length : WINT;
+                             family : GpFontFamily;
+                             style : WINT;
+                             emSize : REAL;
+                             layoutRect : Rect;
+                             format : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipAddPathLineI(path : GpPath; x1, y1, x2, y2 : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathLine2I(path : GpPath;
+                            points : ARRAY OF GpPoint;
+                            count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathArcI(path : GpPath;
+                          x, y, width, height : WINT;
+                          startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathBezierI(path : GpPath;
+                             x1, y1, x2, y2, x3, y3, x4, y4 : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathBeziersI(path : GpPath;
+                              points : ARRAY OF GpPoint;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathCurveI(path : GpPath;
+                            points : ARRAY OF GpPoint;
+                            count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathCurve2I(path : GpPath;
+                             points : ARRAY OF GpPoint;
+                             count : WINT;
+                             tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathCurve3I(path : GpPath;
+                             points : ARRAY OF GpPoint;
+                             count : WINT;
+                             offset : WINT;
+                             numberOfSegments : WINT;
+                             tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathClosedCurveI(path : GpPath;
+                                  points : ARRAY OF GpPoint;
+                                  count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathClosedCurve2I(path : GpPath;
+                                   points : ARRAY OF GpPoint;
+                                   count : WINT;
+                                   tension : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathRectangleI(path : GpPath;
+                                x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathRectanglesI(path : GpPath;
+                                 rects : ARRAY OF GpRect;
+                                 count : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathEllipseI(path : GpPath;
+                              x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipAddPathPieI(path : GpPath;
+                          x, y, width, height : WINT;
+                          startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipAddPathPolygonI(path : GpPath;
+                              points : GpPoint;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipFlattenPath(path : GpPath;
+                          matrix : GpMatrix;
+                          flatness : REAL) : GpStatus;
+
+PROCEDURE GdipWindingModeOutline(
+    path : GpPath;
+    matrix : GpMatrix;
+    flatness : REAL
+) : GpStatus;
+
+PROCEDURE GdipWidenPath(
+    nativePath : GpPath;
+    pen : GpPen;
+    matrix : GpMatrix;
+    flatness : REAL
+) : GpStatus;
+
+PROCEDURE GdipWarpPath(path : GpPath;
+                       matrix : GpMatrix;
+                       points : ARRAY OF GpPointF;
+                       count : WINT;
+                       srcx, srcy, srcwidth, srcheight : REAL;
+                       warpMode : WarpMode;
+                       flatness : REAL) : GpStatus;
+
+PROCEDURE GdipTransformPath(path : GpPath; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipGetPathWorldBounds(path : GpPath;
+                                 VAR OUT bounds : GpRectF;
+                                 matrix : GpMatrix;
+                                 pen : GpPen) : GpStatus;
+
+PROCEDURE GdipGetPathWorldBoundsI(path : GpPath;
+                                  VAR OUT bounds : GpRect;
+                                  matrix : GpMatrix;
+                                  pen : GpPen) : GpStatus;
+
+PROCEDURE GdipIsVisiblePathPoint(path : GpPath;
+                                 x, y : REAL;
+                                 graphics : GpGraphics;
+                                 VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisiblePathPointI(path : GpPath;
+                                  x, y : WINT;
+                                  graphics : GpGraphics;
+                                  VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsOutlineVisiblePathPoint(path : GpPath;
+                                        x, y : REAL;
+                                        pen : GpPen;
+                                        graphics : GpGraphics;
+                                        VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsOutlineVisiblePathPointI(path : GpPath;
+                                         x, y : WINT;
+                                         pen : GpPen;
+                                         graphics : GpGraphics;
+                                         VAR OUT result : BOOL) : GpStatus;
+
+
+(*----------------------------------------------------------------------------
+// PathIterator APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreatePathIter(VAR OUT iterator : GpPathIterator; path : GpPath) : GpStatus;
+
+PROCEDURE GdipDeletePathIter(iterator : GpPathIterator) : GpStatus;
+
+PROCEDURE GdipPathIterNextSubpath(iterator : GpPathIterator;
+                                  VAR OUT resultCount,
+                                          startIndex,
+                                          endIndex : WINT;
+                                  VAR OUT isClosed : BOOL) : GpStatus;
+
+PROCEDURE GdipPathIterNextSubpathPath(iterator : GpPathIterator;
+                                      VAR OUT resultCount : WINT;
+                                      path : GpPath;
+                                      VAR OUT isClosed : BOOL) : GpStatus;
+
+PROCEDURE GdipPathIterNextPathType(iterator : GpPathIterator;
+                                   VAR OUT resultCount : WINT;
+                                   VAR OUT pathType : BYTE;
+                                   VAR OUT startIndex : WINT;
+                                   VAR OUT endIndex : WINT) : GpStatus;
+
+PROCEDURE GdipPathIterNextMarker(iterator : GpPathIterator;
+                                 VAR OUT resultCount,
+                                         startIndex,
+                                         endIndex : WINT) : GpStatus;
+
+PROCEDURE GdipPathIterNextMarkerPath(iterator : GpPathIterator;
+                                     VAR OUT resultCount : WINT;
+                                     path : GpPath) : GpStatus;
+
+PROCEDURE GdipPathIterGetCount(iterator : GpPathIterator;
+                               VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipPathIterGetSubpathCount(iterator : GpPathIterator;
+                                      VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipPathIterIsValid(iterator : GpPathIterator;
+                              VAR OUT valid : BOOL) : GpStatus;
+
+PROCEDURE GdipPathIterHasCurve(iterator : GpPathIterator;
+                               VAR OUT hasCurve : BOOL) : GpStatus;
+
+PROCEDURE GdipPathIterRewind(iterator : GpPathIterator) : GpStatus;
+
+PROCEDURE GdipPathIterEnumerate(iterator : GpPathIterator;
+                                VAR OUT resultCount : WINT;
+                                VAR OUT points : ARRAY OF GpPointF;
+                                VAR OUT types : ARRAY OF BYTE;
+                                count : WINT) : GpStatus;
+
+PROCEDURE GdipPathIterCopyData(iterator : GpPathIterator;
+                               VAR OUT resultCount : WINT;
+                               VAR OUT points : ARRAY OF GpPointF;
+                               VAR OUT types : ARRAY OF BYTE;
+                               startIndex : WINT;
+                               endIndex : WINT) : GpStatus;
+
+(*----------------------------------------------------------------------------
+// Matrix APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateMatrix(VAR OUT matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipCreateMatrix2(m11, m12, m21, m22 : REAL;
+                            dx, dy : REAL;
+                            VAR OUT matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipCreateMatrix3(rect : GpRectF;
+                            dstplg : GpPointF;
+                            VAR OUT  matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipCreateMatrix3I(rect : GpRect;
+                             dstplg : GpPoint;
+                             VAR OUT  matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipCloneMatrix(matrix : GpMatrix; VAR OUT cloneMatrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipDeleteMatrix(matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipSetMatrixElements(matrix : GpMatrix;
+                                m11, m12, m21, m22 : REAL;
+                                dx, dy : REAL) : GpStatus;
+
+PROCEDURE GdipMultiplyMatrix(matrix : GpMatrix;
+                             matrix2 : GpMatrix;
+                             order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslateMatrix(matrix : GpMatrix;
+                              offsetX, offsetY : REAL;
+                              order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScaleMatrix(matrix : GpMatrix;
+                          scaleX, scaleY : REAL;
+                          order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotateMatrix(matrix : GpMatrix;
+                           angle : REAL;
+                           order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipShearMatrix(matrix : GpMatrix;
+                          shearX, shearY : REAL;
+                          order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipInvertMatrix(matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipTransformMatrixPoints(matrix : GpMatrix;
+                                    pts : ARRAY OF GpPointF;
+                                    count : WINT) : GpStatus;
+
+PROCEDURE GdipTransformMatrixPointsI(matrix : GpMatrix;
+                                     pts : ARRAY OF GpPoint;
+                                     count : WINT) : GpStatus;
+
+PROCEDURE GdipVectorTransformMatrixPoints(matrix : GpMatrix;
+                                          pts : ARRAY OF GpPointF;
+                                          count : WINT) : GpStatus;
+
+PROCEDURE GdipVectorTransformMatrixPointsI(matrix : GpMatrix;
+                                           pts : ARRAY OF GpPoint;
+                                           count : WINT) : GpStatus;
+
+PROCEDURE GdipGetMatrixElements(matrix : GpMatrix;
+                                VAR OUT matrixOut : ARRAY OF REAL) : GpStatus;
+
+PROCEDURE GdipIsMatrixInvertible(matrix : GpMatrix; VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsMatrixIdentity(matrix : GpMatrix; VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsMatrixEqual(matrix, matrix2 : GpMatrix;
+                            VAR OUT result : BOOL) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Region APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateRegion(VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCreateRegionRect(rect : GpRectF; VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCreateRegionRectI(rect : GpRect; VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCreateRegionPath(path : GpPath; VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCreateRegionRgnData(regionData : LPVOID;
+                                  size : WINT;
+                                  VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCreateRegionHrgn(hRgn : HRGN; VAR OUT region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCloneRegion(region : GpRegion; VAR OUT cloneRegion : GpRegion) : GpStatus;
+
+PROCEDURE GdipDeleteRegion(region : GpRegion) : GpStatus;
+
+PROCEDURE GdipSetInfinite(region : GpRegion) : GpStatus;
+
+PROCEDURE GdipSetEmpty(region : GpRegion) : GpStatus;
+
+PROCEDURE GdipCombineRegionRect(region : GpRegion;
+                                rect : GpRectF;
+                                combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipCombineRegionRectI(region : GpRegion;
+                                 rect : GpRect;
+                                 combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipCombineRegionPath(region : GpRegion;
+                                path : GpPath;
+                                combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipCombineRegionRegion(region : GpRegion;
+                                  region2 : GpRegion;
+                                  combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipTranslateRegion(region : GpRegion; dx, dy : REAL) : GpStatus;
+
+PROCEDURE GdipTranslateRegionI(region : GpRegion; dx, dy : WINT) : GpStatus;
+
+PROCEDURE GdipTransformRegion(region : GpRegion; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipGetRegionBounds(region : GpRegion;
+                              graphics : GpGraphics;
+                              VAR OUT rect : GpRectF) : GpStatus;
+
+PROCEDURE GdipGetRegionBoundsI(region : GpRegion;
+                               graphics : GpGraphics;
+                               VAR OUT rect : GpRect) : GpStatus;
+
+PROCEDURE GdipGetRegionHRgn(region : GpRegion;
+                            graphics : GpGraphics;
+                            VAR OUT hRgn : HRGN) : GpStatus;
+
+PROCEDURE GdipIsEmptyRegion(region : GpRegion;
+                            graphics : GpGraphics;
+                            VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsInfiniteRegion(region : GpRegion;
+                               graphics : GpGraphics;
+                               VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsEqualRegion(region, region2 : GpRegion;
+                            graphics : GpGraphics;
+                            VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipGetRegionDataSize(region : GpRegion; VAR OUT bufferSize : UINT) : GpStatus;
+
+PROCEDURE GdipGetRegionData(region : GpRegion;
+                            buffer : LPVOID;
+                            bufferSize : UINT;
+                            VAR OUT sizeFilled : UINT) : GpStatus;
+
+PROCEDURE GdipIsVisibleRegionPoint(region : GpRegion;
+                                   x, y : REAL;
+                                   graphics : GpGraphics;
+                                   VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisibleRegionPointI(region : GpRegion;
+                                    x, y : WINT;
+                                    graphics : GpGraphics;
+                                    VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisibleRegionRect(region : GpRegion;
+                                  x, y, width, height : REAL;
+                                  graphics : GpGraphics;
+                                  VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisibleRegionRectI(region : GpRegion;
+                                   x, y, width, height : WINT;
+                                   graphics : GpGraphics;
+                                   VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipGetRegionScansCount(region : GpRegion;
+                                  VAR OUT count : UINT;
+                                  matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipGetRegionScans(region : GpRegion;
+                             VAR OUT rects : ARRAY OF GpRectF;
+                             VAR OUT count : WINT;
+                             matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipGetRegionScansI(region : GpRegion;
+                              VAR OUT rects : ARRAY OF GpRect;
+                              VAR OUT count : WINT;
+                              matrix : GpMatrix) : GpStatus;
+
+(*----------------------------------------------------------------------------
+// Brush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCloneBrush(brush : GpBrush; VAR OUT cloneBrush : GpBrush) : GpStatus;
+
+PROCEDURE GdipDeleteBrush(brush : GpBrush) : GpStatus;
+
+PROCEDURE GdipGetBrushType(brush : GpBrush; VAR OUT type : GpBrushType) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// HatchBrush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateHatchBrush(hatchstyle : GpHatchStyle;
+                               forecol, backcol : ARGB;
+                               VAR OUT brush : GpHatch) : GpStatus;
+
+PROCEDURE GdipGetHatchStyle(brush : GpHatch;
+                            VAR OUT hatchstyle : GpHatchStyle) : GpStatus;
+
+PROCEDURE GdipGetHatchForegroundColor(brush : GpHatch; VAR OUT forecol : ARGB) : GpStatus;
+
+PROCEDURE GdipGetHatchBackgroundColor(brush : GpHatch; VAR OUT backcol : ARGB) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// TextureBrush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateTexture(image : GpImage;
+                            wrapmode : GpWrapMode;
+                            VAR OUT texture : GpTexture) : GpStatus;
+
+PROCEDURE GdipCreateTexture2(image : GpImage;
+                             wrapmode : GpWrapMode;
+                             x, y, width, height : REAL;
+                             VAR OUT texture : GpTexture) : GpStatus;
+
+PROCEDURE GdipCreateTextureIA(image : GpImage;
+                              imageAttributes : GpImageAttributes;
+                              x, y, width, height : REAL;
+                              VAR OUT texture : GpTexture) : GpStatus;
+
+PROCEDURE GdipCreateTexture2I(image : GpImage;
+                              wrapmode : GpWrapMode;
+                              x, y, width, height : WINT;
+                              VAR OUT texture : GpTexture) : GpStatus;
+
+PROCEDURE GdipCreateTextureIAI(image : GpImage;
+                               imageAttributes : GpImageAttributes;
+                               x, y, width, height : WINT;
+                               VAR OUT texture : GpTexture) : GpStatus;
+
+PROCEDURE GdipGetTextureTransform(brush : GpTexture; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipSetTextureTransform(brush : GpTexture; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetTextureTransform(brush : GpTexture) : GpStatus;
+
+PROCEDURE GdipMultiplyTextureTransform(brush : GpTexture;
+                                       matrix : GpMatrix;
+                                       order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslateTextureTransform(brush : GpTexture;
+                                        dx, dy : REAL;
+                                        order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScaleTextureTransform(brush : GpTexture;
+                                    sx, sy : REAL;
+                                    order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotateTextureTransform(brush : GpTexture;
+                                     angle : REAL;
+                                     order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipSetTextureWrapMode(brush : GpTexture; wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipGetTextureWrapMode(brush : GpTexture;
+                                 VAR OUT wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipGetTextureImage(brush : GpTexture; VAR OUT image : GpImage) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// SolidBrush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateSolidFill(color : ARGB; VAR OUT brush : GpSolidFill) : GpStatus;
+
+PROCEDURE GdipSetSolidFillColor(brush : GpSolidFill; color : ARGB) : GpStatus;
+
+PROCEDURE GdipGetSolidFillColor(brush : GpSolidFill; VAR OUT color : ARGB) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// LineBrush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateLineBrush(point1 : GpPointF;
+                              point2 : GpPointF;
+                              color1, color2 : ARGB;
+                              wrapmode : GpWrapMode;
+                              VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipCreateLineBrushI(point1 : GpPoint;
+                               point2 : GpPoint;
+                               color1, color2 : ARGB;
+                               wrapmode : GpWrapMode;
+                               VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipCreateLineBrushFromRect(rect : GpRectF;
+                                      color1, color2 : ARGB;
+                                      mode : LinearGradientMode;
+                                      wrapmode : GpWrapMode;
+                                      VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipCreateLineBrushFromRectI(rect : GpRect;
+                                       color1, color2 : ARGB;
+                                       mode : LinearGradientMode;
+                                       wrapmode : GpWrapMode;
+                                       VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipCreateLineBrushFromRectWithAngle(rect : GpRectF;
+                                               color1, color2 : ARGB;
+                                               angle : REAL;
+                                               isAngleScalable : BOOL;
+                                               wrapmode : GpWrapMode;
+                                               VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipCreateLineBrushFromRectWithAngleI(rect : GpRect;
+                                                color1, color2 : ARGB;
+                                                angle : REAL;
+                                                isAngleScalable : BOOL;
+                                                wrapmode : GpWrapMode;
+                                                VAR OUT lineGradient : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipSetLineColors(brush : GpLineGradient; color1, color2 : ARGB) : GpStatus;
+
+PROCEDURE GdipGetLineColors(brush : GpLineGradient;
+                            colors : ARRAY OF ARGB) : GpStatus;
+
+PROCEDURE GdipGetLineRect(brush : GpLineGradient; VAR OUT rect : GpRectF) : GpStatus;
+
+PROCEDURE GdipGetLineRectI(brush : GpLineGradient; VAR OUT rect : GpRect) : GpStatus;
+
+PROCEDURE GdipSetLineGammaCorrection(brush : GpLineGradient;
+                                     useGammaCorrection : BOOL) : GpStatus;
+
+PROCEDURE GdipGetLineGammaCorrection(brush : GpLineGradient;
+                                     VAR OUT useGammaCorrection : BOOL) : GpStatus;
+
+PROCEDURE GdipGetLineBlendCount(brush : GpLineGradient; VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetLineBlend(brush : GpLineGradient;
+                           VAR OUT blend : ARRAY OF REAL;(*???*)
+                           VAR OUT positions : ARRAY OF REAL;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipSetLineBlend(brush : GpLineGradient;
+                           blend : ARRAY OF REAL;(*???*)
+                           positions : ARRAY OF REAL;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipGetLinePresetBlendCount(brush : GpLineGradient;
+                                      VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetLinePresetBlend(brush : GpLineGradient;
+                                 VAR OUT blend : ARRAY OF ARGB;(*???*)
+                                 VAR OUT positions : ARRAY OF REAL;
+                                 count : WINT) : GpStatus;
+
+PROCEDURE GdipSetLinePresetBlend(brush : GpLineGradient;
+                                 blend : ARRAY OF ARGB;(*???*)
+                                 positions : ARRAY OF REAL;
+                                 count : WINT) : GpStatus;
+
+PROCEDURE GdipSetLineSigmaBlend(brush : GpLineGradient;
+                                focus, scale : REAL) : GpStatus;
+
+PROCEDURE GdipSetLineLinearBlend(brush : GpLineGradient;
+                                 focus, scale : REAL) : GpStatus;
+
+PROCEDURE GdipSetLineWrapMode(brush : GpLineGradient;
+                              wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipGetLineWrapMode(brush : GpLineGradient;
+                              VAR OUT wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipGetLineTransform(brush : GpLineGradient; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipSetLineTransform(brush : GpLineGradient;
+                               matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetLineTransform(brush : GpLineGradient) : GpStatus;
+
+PROCEDURE GdipMultiplyLineTransform(brush : GpLineGradient;
+                                    matrix : GpMatrix;
+                                    order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslateLineTransform(brush : GpLineGradient;
+                                     dx, dy : REAL;
+                                     order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScaleLineTransform(brush : GpLineGradient;
+                                 sx, sy : REAL;
+                                 order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotateLineTransform(brush : GpLineGradient;
+                                  angle : REAL;
+                                  order : GpMatrixOrder) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// PathGradientBrush APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreatePathGradient(points : ARRAY OF GpPointF;
+                                 count : WINT;
+                                 wrapmode : GpWrapMode;
+                                 VAR OUT polyGradient : GpPathGradient) : GpStatus;
+
+PROCEDURE GdipCreatePathGradientI(points : ARRAY OF GpPoint;
+                                  count : WINT;
+                                  wrapmode : GpWrapMode;
+                                  VAR OUT polyGradient : GpPathGradient) : GpStatus;
+
+PROCEDURE GdipCreatePathGradientFromPath(path : GpPath;
+                                     VAR OUT polyGradient : GpPathGradient) : GpStatus;
+
+PROCEDURE GdipGetPathGradientCenterColor(brush : GpPathGradient;
+                                         VAR OUT colors : ARGB) : GpStatus;
+
+PROCEDURE GdipSetPathGradientCenterColor(brush : GpPathGradient;
+                                         colors : ARGB) : GpStatus;
+
+PROCEDURE GdipGetPathGradientSurroundColorsWithCount(brush : GpPathGradient;
+                                                     VAR OUT color : ARRAY OF ARGB;
+                                                     VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPathGradientSurroundColorsWithCount(brush : GpPathGradient;
+                                                     color : ARRAY OF ARGB;
+                                                     VAR INOUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathGradientPath(brush : GpPathGradient; path : GpPath) : GpStatus;
+
+PROCEDURE GdipSetPathGradientPath(brush : GpPathGradient; path : GpPath) : GpStatus;
+
+PROCEDURE GdipGetPathGradientCenterPoint(brush : GpPathGradient;
+                                         VAR OUT points : GpPointF) : GpStatus;
+
+PROCEDURE GdipGetPathGradientCenterPointI(brush : GpPathGradient;
+                                          VAR OUT points : GpPoint) : GpStatus;
+
+PROCEDURE GdipSetPathGradientCenterPoint(brush : GpPathGradient;
+                                         points : GpPointF) : GpStatus;
+
+PROCEDURE GdipSetPathGradientCenterPointI(brush : GpPathGradient;
+                                          points : GpPoint) : GpStatus;
+
+PROCEDURE GdipGetPathGradientRect(brush : GpPathGradient;
+                                  VAR OUT rect : GpRectF) : GpStatus;
+
+PROCEDURE GdipGetPathGradientRectI(brush : GpPathGradient;
+                                   VAR OUT rect : GpRect) : GpStatus;
+
+PROCEDURE GdipGetPathGradientPointCount(brush : GpPathGradient;
+                                        VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathGradientSurroundColorCount(brush : GpPathGradient;
+                                                VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPathGradientGammaCorrection(brush : GpPathGradient;
+                                             useGammaCorrection : BOOL) : GpStatus;
+
+PROCEDURE GdipGetPathGradientGammaCorrection(brush : GpPathGradient;
+                                         VAR OUT useGammaCorrection : BOOL) : GpStatus;
+
+PROCEDURE GdipGetPathGradientBlendCount(brush : GpPathGradient;
+                                        VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathGradientBlend(brush : GpPathGradient;
+                                   VAR OUT blend : ARRAY OF REAL;(*???*)
+                                   VAR OUT positions : ARRAY OF REAL;
+                                   count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPathGradientBlend(brush : GpPathGradient;
+                                   blend : ARRAY OF REAL;(*???*)
+                                   positions : ARRAY OF REAL;
+                                   count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathGradientPresetBlendCount(brush : GpPathGradient;
+                                              VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPathGradientPresetBlend(brush : GpPathGradient;
+                                         VAR OUT blend : ARRAY OF ARGB;(*???*)
+                                         VAR OUT positions : ARRAY OF REAL;
+                                         count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPathGradientPresetBlend(brush : GpPathGradient;
+                                         blend : ARRAY OF ARGB;(*???*)
+                                         positions : ARRAY OF REAL;
+                                         count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPathGradientSigmaBlend(brush : GpPathGradient;
+                                        focus, scale : REAL) : GpStatus;
+
+PROCEDURE GdipSetPathGradientLinearBlend(brush : GpPathGradient;
+                                         focus, scale : REAL) : GpStatus;
+
+PROCEDURE GdipGetPathGradientWrapMode(brush : GpPathGradient;
+                                      VAR OUT wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipSetPathGradientWrapMode(brush : GpPathGradient;
+                                      wrapmode : GpWrapMode) : GpStatus;
+
+PROCEDURE GdipGetPathGradientTransform(brush : GpPathGradient;
+                                       matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipSetPathGradientTransform(brush : GpPathGradient;
+                                       matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetPathGradientTransform(brush : GpPathGradient) : GpStatus;
+
+PROCEDURE GdipMultiplyPathGradientTransform(brush : GpPathGradient;
+                                            matrix : GpMatrix;
+                                            order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslatePathGradientTransform(brush : GpPathGradient;
+                                             dx, dy : REAL;
+                                             order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScalePathGradientTransform(brush : GpPathGradient;
+                                         sx, sy : REAL;
+                                         order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotatePathGradientTransform(brush : GpPathGradient;
+                                          angle : REAL;
+                                          order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipGetPathGradientFocusScales(brush : GpPathGradient;
+                                         VAR OUT xScale, yScale : REAL) : GpStatus;
+
+PROCEDURE GdipSetPathGradientFocusScales(brush : GpPathGradient;
+                                         xScale, yScale : REAL) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Pen APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreatePen1(color : ARGB;
+                         width : REAL;
+                         unit : GpUnit;
+                         VAR OUT pen : GpPen) : GpStatus;
+
+PROCEDURE GdipCreatePen2(brush : GpBrush;
+                         width : REAL;
+                         unit : GpUnit;
+                         VAR OUT pen : GpPen) : GpStatus;
+
+PROCEDURE GdipClonePen(clonePen : GpPen; VAR OUT pen : GpPen) : GpStatus;
+
+PROCEDURE GdipDeletePen(pen : GpPen) : GpStatus;
+
+PROCEDURE GdipSetPenWidth(pen : GpPen; width : REAL) : GpStatus;
+
+PROCEDURE GdipGetPenWidth(pen : GpPen; VAR OUT width : REAL) : GpStatus;
+
+PROCEDURE GdipSetPenUnit(pen : GpPen; unit : GpUnit) : GpStatus;
+
+PROCEDURE GdipGetPenUnit(pen : GpPen; VAR OUT unit : GpUnit) : GpStatus;
+
+PROCEDURE GdipSetPenLineCap197819(*???*)(pen : GpPen;
+                                  startCap, endCap, dashCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipSetPenStartCap(pen : GpPen; startCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipSetPenEndCap(pen : GpPen; endCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipSetPenDashCap197819(pen : GpPen; dashCap : GpDashCap) : GpStatus;
+
+PROCEDURE GdipGetPenStartCap(pen : GpPen; VAR OUT startCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipGetPenEndCap(pen : GpPen; VAR OUT endCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipGetPenDashCap197819(pen : GpPen; VAR OUT dashCap : GpDashCap) : GpStatus;
+
+PROCEDURE GdipSetPenLineJoin(pen : GpPen; lineJoin : GpLineJoin) : GpStatus;
+
+PROCEDURE GdipGetPenLineJoin(pen : GpPen; VAR OUT lineJoin : GpLineJoin) : GpStatus;
+
+PROCEDURE GdipSetPenCustomStartCap(pen : GpPen;
+                                   customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipGetPenCustomStartCap(pen : GpPen;
+                                   VAR OUT customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipSetPenCustomEndCap(pen : GpPen; customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipGetPenCustomEndCap(pen : GpPen;
+                                 VAR OUT customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipSetPenMiterLimit(pen : GpPen; miterLimit : REAL) : GpStatus;
+
+PROCEDURE GdipGetPenMiterLimit(pen : GpPen; VAR OUT miterLimit : REAL) : GpStatus;
+
+PROCEDURE GdipSetPenMode(pen : GpPen; penMode : GpPenAlignment) : GpStatus;
+
+PROCEDURE GdipGetPenMode(pen : GpPen; VAR OUT penMode : GpPenAlignment) : GpStatus;
+
+PROCEDURE GdipSetPenTransform(pen : GpPen; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipGetPenTransform(pen : GpPen; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetPenTransform(pen : GpPen) : GpStatus;
+
+PROCEDURE GdipMultiplyPenTransform(pen : GpPen;
+                                   matrix : GpMatrix;
+                                   order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslatePenTransform(pen : GpPen;
+                                    dx, dy : REAL;
+                                    order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScalePenTransform(pen : GpPen;
+                                sx, sy : REAL;
+                                order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotatePenTransform(pen : GpPen;
+                                 angle : REAL;
+                                 order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipSetPenColor(pen : GpPen; argb : ARGB) : GpStatus;
+
+PROCEDURE GdipGetPenColor(pen : GpPen; VAR OUT argb : ARGB) : GpStatus;
+
+PROCEDURE GdipSetPenBrushFill(pen : GpPen; brush : GpBrush) : GpStatus;
+
+PROCEDURE GdipGetPenBrushFill(pen : GpPen; VAR OUT brush : GpBrush) : GpStatus;
+
+PROCEDURE GdipGetPenFillType(pen : GpPen; VAR OUT type : GpPenType) : GpStatus;
+
+PROCEDURE GdipGetPenDashStyle(pen : GpPen; VAR OUT dashstyle : GpDashStyle) : GpStatus;
+
+PROCEDURE GdipSetPenDashStyle(pen : GpPen; dashstyle : GpDashStyle) : GpStatus;
+
+PROCEDURE GdipGetPenDashOffset(pen : GpPen; VAR OUT offset : REAL) : GpStatus;
+
+PROCEDURE GdipSetPenDashOffset(pen : GpPen; offset : REAL) : GpStatus;
+
+PROCEDURE GdipGetPenDashCount(pen : GpPen; VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPenDashArray(pen : GpPen;
+                              dash : ARRAY OF REAL;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPenDashArray(pen : GpPen;
+                              VAR OUT dash : ARRAY OF REAL;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPenCompoundCount(pen : GpPen; VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipSetPenCompoundArray(pen : GpPen;
+                                  dash : ARRAY OF REAL;
+                                  count : WINT) : GpStatus;
+
+PROCEDURE GdipGetPenCompoundArray(pen : GpPen;
+                                  VAR OUT dash : ARRAY OF REAL;
+                                  count : WINT) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// CustomLineCap APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateCustomLineCap(fillPath : GpPath;
+                                  trokePath : GpPath;
+                                  baseCap : GpLineCap;
+                                  baseInset : REAL;
+                                  VAR OUT customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipDeleteCustomLineCap(customCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipCloneCustomLineCap(customCap : GpCustomLineCap;
+                                 VAR OUT clonedCap : GpCustomLineCap) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapType(customCap : GpCustomLineCap;
+                                   VAR OUT capType : CustomLineCapType) : GpStatus;
+
+PROCEDURE GdipSetCustomLineCapStrokeCaps(customCap : GpCustomLineCap;
+                                         startCap, endCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapStrokeCaps(customCap : GpCustomLineCap;
+                                         VAR OUT startCap, endCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipSetCustomLineCapStrokeJoin(customCap : GpCustomLineCap;
+                                         lineJoin : GpLineJoin) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapStrokeJoin(customCap : GpCustomLineCap;
+                                         VAR OUT lineJoin : GpLineJoin) : GpStatus;
+
+PROCEDURE GdipSetCustomLineCapBaseCap(customCap : GpCustomLineCap;
+                                      baseCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapBaseCap(customCap : GpCustomLineCap;
+                                      VAR OUT baseCap : GpLineCap) : GpStatus;
+
+PROCEDURE GdipSetCustomLineCapBaseInset(customCap : GpCustomLineCap;
+                                        inset : REAL) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapBaseInset(customCap : GpCustomLineCap;
+                                        VAR OUT inset : REAL) : GpStatus;
+
+PROCEDURE GdipSetCustomLineCapWidthScale(customCap : GpCustomLineCap;
+                                         widthScale : REAL) : GpStatus;
+
+PROCEDURE GdipGetCustomLineCapWidthScale(customCap : GpCustomLineCap;
+                                         VAR OUT widthScale : REAL) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// AdjustableArrowCap APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateAdjustableArrowCap(height, width : REAL;
+                                       isFilled : BOOL;
+                                       VAR OUT cap : GpAdjustableArrowCap) : GpStatus;
+
+PROCEDURE GdipSetAdjustableArrowCapHeight(cap : GpAdjustableArrowCap;
+                                          height : REAL) : GpStatus;
+
+PROCEDURE GdipGetAdjustableArrowCapHeight(cap : GpAdjustableArrowCap;
+                                          VAR OUT height : REAL) : GpStatus;
+
+PROCEDURE GdipSetAdjustableArrowCapWidth(cap : GpAdjustableArrowCap;
+                                         width : REAL) : GpStatus;
+
+PROCEDURE GdipGetAdjustableArrowCapWidth(cap : GpAdjustableArrowCap;
+                                         VAR OUT width : REAL) : GpStatus;
+
+PROCEDURE GdipSetAdjustableArrowCapMiddleInset(cap : GpAdjustableArrowCap;
+                                               middleInset : REAL) : GpStatus;
+
+PROCEDURE GdipGetAdjustableArrowCapMiddleInset(cap : GpAdjustableArrowCap;
+                                               VAR OUT middleInset : REAL) : GpStatus;
+
+PROCEDURE GdipSetAdjustableArrowCapFillState(cap : GpAdjustableArrowCap;
+                                             fillState : BOOL) : GpStatus;
+
+PROCEDURE GdipGetAdjustableArrowCapFillState(cap : GpAdjustableArrowCap;
+                                             VAR OUT fillState : BOOL) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Image APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipLoadImageFromStream(stream : IStream; VAR OUT image : GpImage) : GpStatus;
+
+PROCEDURE GdipLoadImageFromFile(filename : ARRAY OF WCHAR;
+                                VAR OUT image : GpImage) : GpStatus;
+
+PROCEDURE GdipLoadImageFromStreamICM(stream : IStream;
+                                     VAR OUT image : GpImage) : GpStatus;
+
+
+PROCEDURE GdipLoadImageFromFileICM(filename : ARRAY OF WCHAR;
+                                   VAR OUT image : GpImage) : GpStatus;
+
+PROCEDURE GdipCloneImage(image : GpImage; VAR OUT cloneImage : GpImage) : GpStatus;
+
+PROCEDURE GdipDisposeImage(image : GpImage) : GpStatus;
+
+PROCEDURE GdipSaveImageToFile(image : GpImage;
+                              filename : ARRAY OF WCHAR;
+                              clsidEncoder : CLSID;
+                              encoderParams : EncoderParameters) : GpStatus;
+
+PROCEDURE GdipSaveImageToStream(image : GpImage;
+                                stream : IStream;
+                                clsidEncoder : CLSID;
+                                encoderParams : EncoderParameters) : GpStatus;
+
+PROCEDURE GdipSaveAdd(image : GpImage; encoderParams : EncoderParameters) : GpStatus;
+
+PROCEDURE GdipSaveAddImage(image : GpImage;
+                           newImage : GpImage;
+                           encoderParams : EncoderParameters) : GpStatus;
+
+PROCEDURE GdipGetImageGraphicsContext(image : GpImage;
+                                      VAR OUT graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipGetImageBounds(image : GpImage;
+                             VAR OUT srcRect : GpRectF;
+                             VAR OUT srcUnit : GpUnit) : GpStatus;
+
+PROCEDURE GdipGetImageDimension(image : GpImage;
+                                VAR OUT width, height : REAL) : GpStatus;
+
+PROCEDURE GdipGetImageType(image : GpImage; VAR OUT type : ImageType) : GpStatus;
+
+PROCEDURE GdipGetImageWidth(image : GpImage; VAR OUT width : UINT) : GpStatus;
+
+PROCEDURE GdipGetImageHeight(image : GpImage; VAR OUT height : UINT) : GpStatus;
+
+PROCEDURE GdipGetImageHorizontalResolution(image : GpImage;
+                                           VAR OUT resolution : REAL) : GpStatus;
+
+PROCEDURE GdipGetImageVerticalResolution(image : GpImage;
+                                         VAR OUT resolution : REAL) : GpStatus;
+
+PROCEDURE GdipGetImageFlags(image : GpImage; VAR OUT flags : UINT) : GpStatus;
+
+PROCEDURE GdipGetImageRawFormat(image : GpImage; VAR OUT format : GUID) : GpStatus;
+
+PROCEDURE GdipGetImagePixelFormat(image : GpImage;
+                                  VAR OUT format : PixelFormat) : GpStatus;
+
+PROCEDURE GdipGetImageThumbnail(image : GpImage;
+                                thumbWidth, thumbHeight : UINT;
+                                VAR OUT thumbImage : GpImage;
+                                callback : GetThumbnailImageAbort;
+                                callbackData : LPVOID) : GpStatus;
+
+PROCEDURE GdipGetEncoderParameterListSize(image : GpImage;
+                                          clsidEncoder : CLSID;
+                                          VAR OUT size : UINT) : GpStatus;
+
+PROCEDURE GdipGetEncoderParameterList(image : GpImage;
+                                      clsidEncoder : CLSID;
+                                      size : UINT;
+                                      VAR OUT buffer : EncoderParameters) : GpStatus;
+
+PROCEDURE GdipImageGetFrameDimensionsCount(image : GpImage;
+                                           VAR OUT count : UINT) : GpStatus;
+
+PROCEDURE GdipImageGetFrameDimensionsList(image : GpImage;
+                                          VAR OUT dimensionIDs : ARRAY OF GUID;
+                                          count : UINT) : GpStatus;
+
+PROCEDURE GdipImageGetFrameCount(image : GpImage;
+                                 dimensionID : GUID;
+                                 VAR OUT count : UINT) : GpStatus;
+
+PROCEDURE GdipImageSelectActiveFrame(image : GpImage;
+                                     dimensionID : GUID;
+                                     frameIndex : UINT) : GpStatus;
+
+PROCEDURE GdipImageRotateFlip(image : GpImage; rtType : RotateFlipType) : GpStatus;
+
+PROCEDURE GdipGetImagePalette(image : GpImage;
+                              VAR OUT palette : ColorPalette;
+                              size : WINT) : GpStatus;
+
+PROCEDURE GdipSetImagePalette(image : GpImage;
+                              palette : ColorPalette) : GpStatus;
+
+PROCEDURE GdipGetImagePaletteSize(image : GpImage; VAR OUT size : WINT) : GpStatus;
+
+PROCEDURE GdipGetPropertyCount(image : GpImage; VAR OUT numOfProperty : WINT) : GpStatus;
+
+PROCEDURE GdipGetPropertyIdList(image : GpImage;
+                                numOfProperty : UINT;
+                                VAR OUT list : ARRAY OF PROPID) : GpStatus;
+
+PROCEDURE GdipGetPropertyItemSize(image : GpImage;
+                                  propId : PROPID;
+                                  VAR OUT size : UINT) : GpStatus;
+
+PROCEDURE GdipGetPropertyItem(image : GpImage;
+                              propId : PROPID;
+                              propSize : UINT;
+                              VAR OUT buffer : PropertyItem) : GpStatus;
+
+PROCEDURE GdipGetPropertySize(image : GpImage;
+                              VAR OUT totalBufferSize : UINT;
+                              VAR OUT numProperties : UINT) : GpStatus;
+
+PROCEDURE GdipGetAllPropertyItems(image : GpImage;
+                                  totalBufferSize : UINT;
+                                  numProperties : UINT;
+                                  VAR OUT allItems : ARRAY OF PropertyItem) : GpStatus;
+
+PROCEDURE GdipRemovePropertyItem(image : GpImage; propId : PROPID) : GpStatus;
+
+PROCEDURE GdipSetPropertyItem(image : GpImage; item : PropertyItem) : GpStatus;
+
+PROCEDURE GdipImageForceValidation(image : GpImage) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Bitmap APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateBitmapFromStream(stream : IStream;
+                                     VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromFile(filename : ARRAY OF WCHAR;
+                                   VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromStreamICM(stream : IStream;
+                                        VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromFileICM(filename : ARRAY OF WCHAR;
+                                      VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromScan0(width : WINT;
+                                    height : WINT;
+                                    stride : WINT;
+                                    format : PixelFormat;
+                                    scan0 : LPVOID;
+                                    VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromGraphics(width : WINT;
+                                       height : WINT;
+                                       target : GpGraphics;
+                                       VAR OUT bitmap : GpBitmap) : GpStatus;
+
+(*PROCEDURE GdipCreateBitmapFromDirectDrawSurface(surface : IDirectDrawSurface7;
+                                                bitmap : GpBitmap) : GpStatus;*)
+
+PROCEDURE GdipCreateBitmapFromGdiDib(gdiBitmapInfo : BITMAPINFO;
+                                     gdiBitmapData : LPVOID;
+                                     VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromHBITMAP(hbm : HBITMAP;
+                                      hpal : HPALETTE;
+                                      VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateHBITMAPFromBitmap(bitmap : GpBitmap;
+                                      VAR OUT hbmReturn : HBITMAP;
+                                      background : ARGB) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromHICON(hicon : HICON;
+                                    VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCreateHICONFromBitmap(bitmap : GpBitmap;
+                                    VAR OUT hbmReturn : HICON) : GpStatus;
+
+PROCEDURE GdipCreateBitmapFromResource(hInstance : HINSTANCE;
+                                       lpBitmapName : ARRAY OF WCHAR;
+                                       VAR OUT bitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCloneBitmapArea(x, y, width, height : REAL;
+                              format : PixelFormat;
+                              srcBitmap : GpBitmap;
+                              VAR OUT dstBitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipCloneBitmapAreaI(x, y, width, height : WINT;
+                               format : PixelFormat;
+                               srcBitmap : GpBitmap;
+                               VAR OUT dstBitmap : GpBitmap) : GpStatus;
+
+PROCEDURE GdipBitmapLockBits(bitmap : GpBitmap;
+                             rect : GpRect;
+                             flags : UINT;
+                             format : PixelFormat;
+                             VAR OUT lockedBitmapData : BitmapData) : GpStatus;
+
+PROCEDURE GdipBitmapUnlockBits(bitmap : GpBitmap;
+                               lockedBitmapData : BitmapData) : GpStatus;
+
+PROCEDURE GdipBitmapGetPixel(bitmap : GpBitmap;
+                             x, y : WINT;
+                             VAR OUT color : ARGB) : GpStatus;
+
+PROCEDURE GdipBitmapSetPixel(bitmap : GpBitmap;
+                             x, y : WINT;
+                             color : ARGB) : GpStatus;
+
+PROCEDURE GdipBitmapSetResolution(bitmap : GpBitmap;
+                                  xdpi, ydpi : REAL) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// ImageAttributes APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateImageAttributes(VAR OUT imageattr : GpImageAttributes) : GpStatus;
+
+PROCEDURE GdipCloneImageAttributes(imageattr : GpImageAttributes;
+                                   VAR OUT cloneImageattr : GpImageAttributes) : GpStatus;
+
+PROCEDURE GdipDisposeImageAttributes(imageattr : GpImageAttributes) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesToIdentity(imageattr : GpImageAttributes;
+                                           type : ColorAdjustType) : GpStatus;
+
+PROCEDURE GdipResetImageAttributes(imageattr : GpImageAttributes;
+                                   type : ColorAdjustType) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesColorMatrix(imageattr : GpImageAttributes;
+                                            type : ColorAdjustType;
+                                            enableFlag : BOOL;
+                                            colorMatrix : ColorMatrix;
+                                            grayMatrix : ColorMatrix;
+                                            flags : ColorMatrixFlags) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesThreshold(imageattr : GpImageAttributes;
+                                          type : ColorAdjustType;
+                                          enableFlag : BOOL;
+                                          threshold : REAL) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesGamma(imageattr : GpImageAttributes;
+                                      type : ColorAdjustType;
+                                      enableFlag : BOOL;
+                                      gamma : REAL) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesNoOp(imageattr : GpImageAttributes;
+                                     type : ColorAdjustType;
+                                     enableFlag : BOOL) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesColorKeys(imageattr : GpImageAttributes;
+                                          type : ColorAdjustType;
+                                          enableFlag : BOOL;
+                                          colorLow : ARGB;
+                                          colorHigh : ARGB) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesOutputChannel(imageattr : GpImageAttributes;
+                                              type : ColorAdjustType;
+                                              enableFlag : BOOL;
+                                              channelFlags : ColorChannelFlags) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesOutputChannelColorProfile(imageattr : GpImageAttributes;
+                                            type : ColorAdjustType;
+                                            enableFlag : BOOL;
+                                            colorProfileFilename : ARRAY OF WCHAR
+                                            ) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesRemapTable(imageattr : GpImageAttributes;
+                                           type : ColorAdjustType;
+                                           enableFlag : BOOL;
+                                           mapSize : UINT;
+                                           map : ColorMap) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesWrapMode(imageattr : GpImageAttributes;
+                                         wrap : WrapMode;
+                                         argb : ARGB;
+                                         clamp : BOOL) : GpStatus;
+
+PROCEDURE GdipSetImageAttributesICMMode(imageattr : GpImageAttributes;
+                                        on : BOOL) : GpStatus;
+
+PROCEDURE GdipGetImageAttributesAdjustedPalette(imageattr : GpImageAttributes;
+                                                VAR OUT colorPalette : ColorPalette;
+                                                colorAdjustType : ColorAdjustType
+                                               ) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Graphics APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipFlush(graphics : GpGraphics; intention : GpFlushIntention) : GpStatus;
+
+PROCEDURE GdipCreateFromHDC(hdc : HDC; VAR OUT graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipCreateFromHDC2(hdc : HDC;
+                             hDevice : HANDLE;
+                             VAR OUT graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipCreateFromHWND(hwnd : HWND; VAR OUT graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipCreateFromHWNDICM(hwnd : HWND; VAR OUT graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipDeleteGraphics(graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipGetDC(graphics : GpGraphics; VAR OUT hdc : HDC) : GpStatus;
+
+PROCEDURE GdipReleaseDC(graphics : GpGraphics; hdc : HDC) : GpStatus;
+
+PROCEDURE GdipSetCompositingMode(graphics : GpGraphics;
+                                 compositingMode : CompositingMode) : GpStatus;
+
+PROCEDURE GdipGetCompositingMode(graphics : GpGraphics;
+                                 VAR OUT compositingMode : CompositingMode) : GpStatus;
+
+PROCEDURE GdipSetRenderingOrigin(graphics : GpGraphics;
+                                 x, y : WINT) : GpStatus;
+
+PROCEDURE GdipGetRenderingOrigin(graphics : GpGraphics;
+                                 VAR OUT x, y : WINT) : GpStatus;
+
+PROCEDURE GdipSetCompositingQuality(graphics : GpGraphics;
+                                    compositingQuality : CompositingQuality) : GpStatus;
+
+PROCEDURE GdipGetCompositingQuality(graphics : GpGraphics;
+                            VAR OUT compositingQuality : CompositingQuality) : GpStatus;
+
+PROCEDURE GdipSetSmoothingMode(graphics : GpGraphics;
+                               smoothingMode : SmoothingMode) : GpStatus;
+
+PROCEDURE GdipGetSmoothingMode(graphics : GpGraphics;
+                               VAR OUT smoothingMode : SmoothingMode) : GpStatus;
+
+PROCEDURE GdipSetPixelOffsetMode(graphics : GpGraphics;
+                                 pixelOffsetMode : PixelOffsetMode) : GpStatus;
+
+PROCEDURE GdipGetPixelOffsetMode(graphics : GpGraphics;
+                                 VAR OUT pixelOffsetMode : PixelOffsetMode) : GpStatus;
+
+PROCEDURE GdipSetTextRenderingHint(graphics : GpGraphics;
+                                   mode : TextRenderingHint) : GpStatus;
+
+PROCEDURE GdipGetTextRenderingHint(graphics : GpGraphics;
+                                   VAR OUT mode : TextRenderingHint) : GpStatus;
+
+PROCEDURE GdipSetTextContrast(graphics : GpGraphics; contrast : UINT) : GpStatus;
+
+PROCEDURE GdipGetTextContrast(graphics : GpGraphics; VAR OUT contrast : UINT) : GpStatus;
+
+PROCEDURE GdipSetInterpolationMode(graphics : GpGraphics;
+                                   interpolationMode : InterpolationMode) : GpStatus;
+
+PROCEDURE GdipGetInterpolationMode(graphics : GpGraphics;
+                           VAR OUT interpolationMode : InterpolationMode) : GpStatus;
+
+PROCEDURE GdipSetWorldTransform(graphics : GpGraphics; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetWorldTransform(graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipMultiplyWorldTransform(graphics : GpGraphics;
+                                     matrix : GpMatrix;
+                                     order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipTranslateWorldTransform(graphics : GpGraphics;
+                                      dx, dy : REAL;
+                                      order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipScaleWorldTransform(graphics : GpGraphics;
+                                  sx, sy : REAL;
+                                  order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipRotateWorldTransform(graphics : GpGraphics;
+                                   angle : REAL;
+                                   order : GpMatrixOrder) : GpStatus;
+
+PROCEDURE GdipGetWorldTransform(graphics : GpGraphics; matrix : GpMatrix) : GpStatus;
+
+PROCEDURE GdipResetPageTransform(graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipGetPageUnit(graphics : GpGraphics; VAR OUT unit : GpUnit) : GpStatus;
+
+PROCEDURE GdipGetPageScale(graphics : GpGraphics; VAR OUT scale : REAL) : GpStatus;
+
+PROCEDURE GdipSetPageUnit(graphics : GpGraphics; unit : GpUnit) : GpStatus;
+
+PROCEDURE GdipSetPageScale(graphics : GpGraphics; scale : REAL) : GpStatus;
+
+PROCEDURE GdipGetDpiX(graphics : GpGraphics; VAR OUT dpi : REAL) : GpStatus;
+
+PROCEDURE GdipGetDpiY(graphics : GpGraphics; VAR OUT dpi : REAL) : GpStatus;
+
+PROCEDURE GdipTransformPoints(graphics : GpGraphics;
+                              destSpace : GpCoordinateSpace;
+                              srcSpace : GpCoordinateSpace;
+                              VAR OUT points : ARRAY OF GpPointF;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipTransformPointsI(graphics : GpGraphics;
+                               destSpace : GpCoordinateSpace;
+                               srcSpace : GpCoordinateSpace;
+                               VAR OUT points : ARRAY OF GpPoint;
+                               count : WINT) : GpStatus;
+
+PROCEDURE GdipGetNearestColor(graphics : GpGraphics; VAR INOUT argb : ARGB) : GpStatus;
+
+(* Creates the Win9x Halftone Palette (even on NT) with correct Desktop colors*)
+PROCEDURE GdipCreateHalftonePalette() : HPALETTE;
+
+PROCEDURE GdipDrawLine(graphics : GpGraphics;
+                       pen : GpPen;
+                       x1, y1, x2, y2 : REAL) : GpStatus;
+
+PROCEDURE GdipDrawLineI(graphics : GpGraphics;
+                        pen : GpPen;
+                        x1, y1, x2, y2 : WINT) : GpStatus;
+
+PROCEDURE GdipDrawLines(graphics : GpGraphics;
+                        pen : GpPen;
+                        points : ARRAY OF GpPointF;
+                        count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawLinesI(graphics : GpGraphics;
+                         pen : GpPen;
+                         points : ARRAY OF GpPoint;
+                         count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawArc(graphics : GpGraphics;
+                      pen : GpPen;
+                      x, y, width, height, startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipDrawArcI(graphics : GpGraphics;
+                       pen : GpPen;
+                       x, y, width, height, startAngle, sweepAngle : WINT) : GpStatus;
+
+PROCEDURE GdipDrawBezier(graphics : GpGraphics;
+                         pen : GpPen;
+                         x1, y1, x2, y2, x3, y3, x4, y4 : REAL) : GpStatus;
+
+PROCEDURE GdipDrawBezierI(graphics : GpGraphics;
+                          pen : GpPen;
+                          x1, y1, x2, y2, x3, y3, x4, y4 : WINT) : GpStatus;
+
+PROCEDURE GdipDrawBeziers(graphics : GpGraphics;
+                          pen : GpPen;
+                          points : ARRAY OF GpPointF;
+                          count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawBeziersI(graphics : GpGraphics;
+                           pen : GpPen;
+                           points : ARRAY OF GpPoint;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawRectangle(graphics : GpGraphics;
+                            pen : GpPen;
+                            x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipDrawRectangleI(graphics : GpGraphics;
+                             pen : GpPen;
+                             x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipDrawRectangles(graphics : GpGraphics;
+                             pen : GpPen;
+                             rects : ARRAY OF GpRectF;
+                             count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawRectanglesI(graphics : GpGraphics;
+                              pen : GpPen;
+                              rects : ARRAY OF GpRect;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawEllipse(graphics : GpGraphics;
+                          pen : GpPen;
+                          x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipDrawEllipseI(graphics : GpGraphics;
+                           pen : GpPen;
+                           x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipDrawPie(graphics : GpGraphics;
+                      pen : GpPen;
+                      x, y, width, height, startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipDrawPieI(graphics : GpGraphics;
+                       pen : GpPen;
+                       x, y, width, height : WINT;
+                       startAngle, sweepAngle : WINT) : GpStatus;
+
+PROCEDURE GdipDrawPolygon(graphics : GpGraphics;
+                          pen : GpPen;
+                          points : ARRAY OF GpPointF;
+                          count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawPolygonI(graphics : GpGraphics;
+                           pen : GpPen;
+                           points : ARRAY OF GpPoint;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawPath(graphics : GpGraphics; pen : GpPen; path : GpPath) : GpStatus;
+
+PROCEDURE GdipDrawCurve(graphics : GpGraphics;
+                        pen : GpPen;
+                        points : ARRAY OF GpPointF;
+                        count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawCurveI(graphics : GpGraphics;
+                         pen : GpPen;
+                         points : ARRAY OF GpPoint;
+                         count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawCurve2(graphics : GpGraphics;
+                         pen : GpPen;
+                         points : ARRAY OF GpPointF;
+                         count : WINT;
+                         tension : REAL) : GpStatus;
+
+PROCEDURE GdipDrawCurve2I(graphics : GpGraphics;
+                          pen : GpPen;
+                          points : ARRAY OF GpPoint;
+                          count : WINT;
+                          tension : REAL) : GpStatus;
+
+PROCEDURE GdipDrawCurve3(graphics : GpGraphics;
+                         pen : GpPen;
+                         points : ARRAY OF GpPointF;
+                         count : WINT;
+                         offset : WINT;
+                         numberOfSegments : WINT;
+                         tension : REAL) : GpStatus;
+
+PROCEDURE GdipDrawCurve3I(graphics : GpGraphics;
+                          pen : GpPen;
+                          points : ARRAY OF GpPoint;
+                          count : WINT;
+                          offset : WINT;
+                          numberOfSegments : WINT;
+                          tension : REAL) : GpStatus;
+
+PROCEDURE GdipDrawClosedCurve(graphics : GpGraphics;
+                              pen : GpPen;
+                              points : ARRAY OF GpPointF;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawClosedCurveI(graphics : GpGraphics;
+                               pen : GpPen;
+                               points : ARRAY OF GpPoint;
+                               count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawClosedCurve2(graphics : GpGraphics;
+                               pen : GpPen;
+                               points : ARRAY OF GpPointF;
+                               count : WINT;
+                               tension : REAL) : GpStatus;
+
+PROCEDURE GdipDrawClosedCurve2I(graphics : GpGraphics;
+                                pen : GpPen;
+                                points : ARRAY OF GpPoint;
+                                count : WINT;
+                                tension : REAL) : GpStatus;
+
+PROCEDURE GdipGraphicsClear(graphics : GpGraphics; color : ARGB) : GpStatus;
+
+PROCEDURE GdipFillRectangle(graphics : GpGraphics;
+                            brush : GpBrush;
+                            x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipFillRectangleI(graphics : GpGraphics;
+                             brush : GpBrush;
+                             x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipFillRectangles(graphics : GpGraphics;
+                             brush : GpBrush;
+                             rects : ARRAY OF GpRectF;
+                             count : WINT) : GpStatus;
+
+PROCEDURE GdipFillRectanglesI(graphics : GpGraphics;
+                              brush : GpBrush;
+                              rects : ARRAY OF GpRect;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipFillPolygon(graphics : GpGraphics;
+                          brush : GpBrush;
+                          points : ARRAY OF GpPointF;
+                          count : WINT;
+                          fillMode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipFillPolygonI(graphics : GpGraphics;
+                           brush : GpBrush;
+                           points : ARRAY OF GpPoint;
+                           count : WINT;
+                           fillMode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipFillPolygon2(graphics : GpGraphics;
+                           brush : GpBrush;
+                           points : ARRAY OF GpPointF;
+                           count : WINT) : GpStatus;
+
+PROCEDURE GdipFillPolygon2I(graphics : GpGraphics;
+                            brush : GpBrush;
+                            points : ARRAY OF GpPoint;
+                            count : WINT) : GpStatus;
+
+PROCEDURE GdipFillEllipse(graphics : GpGraphics;
+                          brush : GpBrush;
+                          x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipFillEllipseI(graphics : GpGraphics;
+                           brush : GpBrush;
+                           x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipFillPie(graphics : GpGraphics;
+                      brush : GpBrush;
+                      x, y, width, height, startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipFillPieI(graphics : GpGraphics;
+                       brush : GpBrush;
+                       x, y, width, height : WINT;
+                       startAngle, sweepAngle : REAL) : GpStatus;
+
+PROCEDURE GdipFillPath(graphics : GpGraphics;
+                       brush : GpBrush;
+                       path : GpPath) : GpStatus;
+
+PROCEDURE GdipFillClosedCurve(graphics : GpGraphics;
+                              brush : GpBrush;
+                              points : ARRAY OF GpPointF;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipFillClosedCurveI(graphics : GpGraphics;
+                               brush : GpBrush;
+                               points : ARRAY OF GpPoint;
+                               count : WINT) : GpStatus;
+
+PROCEDURE GdipFillClosedCurve2(graphics : GpGraphics;
+                               brush : GpBrush;
+                               points : ARRAY OF GpPointF;
+                               count : WINT;
+                               tension : REAL;
+                               fillMode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipFillClosedCurve2I(graphics : GpGraphics;
+                                brush : GpBrush;
+                                points : ARRAY OF GpPointF;
+                                count : WINT;
+                                tension : REAL;
+                                fillMode : GpFillMode) : GpStatus;
+
+PROCEDURE GdipFillRegion(graphics : GpGraphics;
+                         brush : GpBrush;
+                         region : GpRegion) : GpStatus;
+
+PROCEDURE GdipDrawImage(graphics : GpGraphics; image : GpImage; x, y : REAL) : GpStatus;
+
+PROCEDURE GdipDrawImageI(graphics : GpGraphics; image : GpImage; x, y : WINT) : GpStatus;
+
+PROCEDURE GdipDrawImageRect(graphics : GpGraphics;
+                            image : GpImage;
+                            x, y, width, height : REAL) : GpStatus;
+
+PROCEDURE GdipDrawImageRectI(graphics : GpGraphics;
+                             image : GpImage;
+                             x, y, width, height : WINT) : GpStatus;
+
+PROCEDURE GdipDrawImagePoints(graphics : GpGraphics;
+                              image : GpImage;
+                              dstpoints : ARRAY OF GpPointF;
+                              count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawImagePointsI(graphics : GpGraphics;
+                               image : GpImage;
+                               dstpoints : ARRAY OF GpPoint;
+                               count : WINT) : GpStatus;
+
+PROCEDURE GdipDrawImagePointRect(graphics : GpGraphics;
+                                 image : GpImage;
+                                 x, y, srcx, srcy : REAL;
+                                 srcwidth, srcheight : REAL;
+                                 srcUnit : GpUnit) : GpStatus;
+
+PROCEDURE GdipDrawImagePointRectI(graphics : GpGraphics;
+                                 image : GpImage;
+                                 x, y, srcx, srcy : WINT;
+                                 srcwidth, srcheight : WINT;
+                                 srcUnit : GpUnit) : GpStatus;
+
+PROCEDURE GdipDrawImageRectRect(graphics : GpGraphics;
+                                image : GpImage;
+                                dstx, dsty, dstwidth, dstheight : REAL;
+                                srcx, srcy, srcwidth, srcheight : REAL;
+                                srcUnit : GpUnit;
+                                imageAttributes : GpImageAttributes;
+                                callback : DrawImageAbort;
+                                callbackData : LPVOID) : GpStatus;
+
+PROCEDURE GdipDrawImageRectRectI(graphics : GpGraphics;
+                                 image : GpImage;
+                                 dstx, dsty, dstwidth, dstheight : WINT;
+                                 srcx, srcy, srcwidth, srcheight : WINT;
+                                 srcUnit : GpUnit;
+                                 imageAttributes : GpImageAttributes;
+                                 callback : DrawImageAbort;
+                                 callbackData : LPVOID) : GpStatus;
+
+PROCEDURE GdipDrawImagePointsRect(graphics : GpGraphics;
+                                  image : GpImage;
+                                  points : ARRAY OF GpPointF;
+                                  count : WINT;
+                                  srcx, srcy, srcwidth, srcheight : REAL;
+                                  srcUnit : GpUnit;
+                                  imageAttributes : GpImageAttributes;
+                                  callback : DrawImageAbort;
+                                  callbackData : LPVOID) : GpStatus;
+
+PROCEDURE GdipDrawImagePointsRectI(graphics : GpGraphics;
+                                   image : GpImage;
+                                   points : ARRAY OF GpPoint;
+                                   count : WINT;
+                                   srcx, srcy, srcwidth, srcheight : WINT;
+                                   srcUnit : GpUnit;
+                                   imageAttributes : GpImageAttributes;
+                                   callback : DrawImageAbort;
+                                   callbackData : LPVOID) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestPoint(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoint : PointF;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestPointI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoint : Point;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestRect(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destRect : RectF;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestRectI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destRect : Rect;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestPoints(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoints : ARRAY OF PointF;
+    count : WINT;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileDestPointsI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoints : ARRAY OF Point;
+    count : WINT;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestPoint(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoint : PointF;
+    srcRect : RectF;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestPointI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoint : Point;
+    srcRect : RectF;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestRect(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destRect : RectF;
+    srcRect : RectF;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestRectI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destRect : Rect;
+    srcRect : Rect;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestPoints(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoints : ARRAY OF PointF;
+    count : WINT;
+    srcRect : RectF;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipEnumerateMetafileSrcRectDestPointsI(
+    graphics : GpGraphics;
+    metafile : GpMetafile;
+    destPoints : ARRAY OF Point;
+    count : WINT;
+    srcRect : Rect;
+    srcUnit : Unit;
+    callback : EnumerateMetafileProc;
+    callbackData : LPVOID;
+    imageAttributes : GpImageAttributes
+    ) : GpStatus;
+
+PROCEDURE GdipPlayMetafileRecord(
+    metafile : GpMetafile;
+    recordType : EmfPlusRecordType;
+    flags : UINT;
+    dataSize : UINT;
+    data : LPVOID
+    ) : GpStatus;
+
+PROCEDURE GdipSetClipGraphics(graphics : GpGraphics;
+                              srcgraphics : GpGraphics;
+                              combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipSetClipRect(graphics : GpGraphics;
+                          x, y, width, height : REAL;
+                          combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipSetClipRectI(graphics : GpGraphics;
+                           x, y, width, height : WINT;
+                           combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipSetClipPath(graphics : GpGraphics;
+                          path : GpPath;
+                          combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipSetClipRegion(graphics : GpGraphics;
+                            region : GpRegion;
+                            combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipSetClipHrgn(graphics : GpGraphics;
+                          hRgn : HRGN;
+                          combineMode : CombineMode) : GpStatus;
+
+PROCEDURE GdipResetClip(graphics : GpGraphics) : GpStatus;
+
+PROCEDURE GdipTranslateClip(graphics : GpGraphics; dx, dy : REAL) : GpStatus;
+
+PROCEDURE GdipTranslateClipI(graphics : GpGraphics; dx, dy : WINT) : GpStatus;
+
+PROCEDURE GdipGetClip(graphics : GpGraphics; region : GpRegion) : GpStatus;
+
+PROCEDURE GdipGetClipBounds(graphics : GpGraphics; VAR OUT rect : GpRectF) : GpStatus;
+
+PROCEDURE GdipGetClipBoundsI(graphics : GpGraphics; VAR OUT rect : GpRect) : GpStatus;
+
+PROCEDURE GdipIsClipEmpty(graphics : GpGraphics; VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipGetVisibleClipBounds(graphics : GpGraphics;
+                                   VAR OUT rect : GpRectF) : GpStatus;
+
+PROCEDURE GdipGetVisibleClipBoundsI(graphics : GpGraphics;
+                                    VAR OUT rect : GpRect) : GpStatus;
+
+PROCEDURE GdipIsVisibleClipEmpty(graphics : GpGraphics; VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisiblePoint(graphics : GpGraphics;
+                             x, y : REAL;
+                             VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisiblePointI(graphics : GpGraphics;
+                              x, y : WINT;
+                              VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisibleRect(graphics : GpGraphics;
+                            x, y, width, height : REAL;
+                            VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipIsVisibleRectI(graphics : GpGraphics;
+                             x, y, width, height : WINT;
+                             VAR OUT result : BOOL) : GpStatus;
+
+PROCEDURE GdipSaveGraphics(graphics : GpGraphics;
+                           VAR OUT state : GraphicsState) : GpStatus;
+
+PROCEDURE GdipRestoreGraphics(graphics : GpGraphics; state : GraphicsState) : GpStatus;
+
+PROCEDURE GdipBeginContainer(graphics : GpGraphics;
+                             dstrect, srcrect : GpRectF;
+                             unit : GpUnit;
+                             VAR OUT state : GraphicsContainer) : GpStatus;
+
+PROCEDURE GdipBeginContainerI(graphics : GpGraphics;
+                              dstrect, srcrect : GpRect;
+                              unit : GpUnit;
+                              VAR OUT state : GraphicsContainer) : GpStatus;
+
+PROCEDURE GdipBeginContainer2(graphics : GpGraphics;
+                              VAR OUT state : GraphicsContainer) : GpStatus;
+
+PROCEDURE GdipEndContainer(graphics : GpGraphics; state : GraphicsContainer) : GpStatus;
+
+(*
+PROCEDURE GdipGetMetafileHeaderFromWmf(
+    hWmf : HMETAFILE;
+    wmfPlaceableFileHeader : WmfPlaceableFileHeader;
+    header : MetafileHeader
+    ) : GpStatus;
+
+GpStatus
+WINGDIPAPI
+PROCEDURE GdipGetMetafileHeaderFromEmf(
+    HENHMETAFILE        hEmf,
+    header : MetafileHeader
+    ) : GpStatus;
+
+GpStatus
+WINGDIPAPI
+PROCEDURE GdipGetMetafileHeaderFromFile(
+    GDIPCONST WCHAR*        filename,
+    header : MetafileHeader
+    ) : GpStatus;
+
+GpStatus
+WINGDIPAPI
+PROCEDURE GdipGetMetafileHeaderFromStream(
+    IStream *           stream,
+    header : MetafileHeader
+    ) : GpStatus;
+
+GpStatus
+WINGDIPAPI
+PROCEDURE GdipGetMetafileHeaderFromMetafile(
+    metafile : GpMetafile;
+    header : MetafileHeader
+    ) : GpStatus;
+
+GpStatus
+WINGDIPAPI
+PROCEDURE GdipGetHemfFromMetafile(
+    metafile : GpMetafile;
+    HENHMETAFILE *      hEmf
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateStreamOnFile(GDIPCONST WCHAR * filename, UINT access,
+                       IStream **stream) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateMetafileFromWmf(HMETAFILE hWmf, BOOL deleteWmf,
+                          GDIPCONST WmfPlaceableFileHeader * wmfPlaceableFileHeader,
+                          GpMetafile **metafile) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateMetafileFromEmf(HENHMETAFILE hEmf, BOOL deleteEmf,
+                          GpMetafile **metafile) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateMetafileFromFile(GDIPCONST WCHAR* file, GpMetafile **metafile) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateMetafileFromWmfFile(GDIPCONST WCHAR* file,
+                              GDIPCONST WmfPlaceableFileHeader * wmfPlaceableFileHeader,
+                              GpMetafile **metafile) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipCreateMetafileFromStream(IStream * stream, GpMetafile **metafile) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafile(
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRectF * frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafileI(
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRect *  frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafileFileName(
+    GDIPCONST WCHAR*    fileName,
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRectF * frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafileFileNameI(
+    GDIPCONST WCHAR*    fileName,
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRect *  frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafileStream(
+    IStream *           stream,
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRectF * frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipRecordMetafileStreamI(
+    IStream *           stream,
+    HDC                 referenceHdc,
+    EmfType             type,
+    GDIPCONST GpRect *  frameRect,
+    MetafileFrameUnit   frameUnit,
+    GDIPCONST WCHAR *   description,
+    GpMetafile **       metafile
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipSetMetafileDownLevelRasterizationLimit(
+    GpMetafile *            metafile,
+    UINT                    metafileRasterizationLimitDpi
+    ) : GpStatus;
+
+GpStatus WINGDIPAPI
+PROCEDURE GdipGetMetafileDownLevelRasterizationLimit(
+    GDIPCONST GpMetafile *  metafile,
+    UINT *                  metafileRasterizationLimitDpi
+    ) : GpStatus;
+*)
+
+PROCEDURE GdipGetImageDecodersSize(VAR OUT numDecoders : UINT;
+                                   VAR OUT size : UINT) : GpStatus;
+
+PROCEDURE GdipGetImageDecoders(numDecoders : UINT;
+                               size : UINT;
+                               VAR OUT decoders : ImageCodecInfo) : GpStatus;
+
+PROCEDURE GdipGetImageEncodersSize(VAR OUT numEncoders, size : UINT) : GpStatus;
+
+PROCEDURE GdipGetImageEncoders(numEncoders, size : UINT;
+                               VAR OUT encoders : ImageCodecInfo) : GpStatus;
+
+PROCEDURE GdipComment(graphics : GpGraphics;
+                      sizeData : UINT;
+                      data : LPVOID) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// FontFamily APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateFontFamilyFromName(name : ARRAY OF WCHAR;
+                                       fontCollection : GpFontCollection;
+                                       VAR OUT FontFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipDeleteFontFamily(FontFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipCloneFontFamily(FontFamily : GpFontFamily;
+                              VAR OUT clonedFontFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipGetGenericFontFamilySansSerif(VAR OUT nativeFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipGetGenericFontFamilySerif(VAR OUT nativeFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipGetGenericFontFamilyMonospace(VAR OUT nativeFamily : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipGetFamilyName(
+    family : GpFontFamily;
+    name : ARRAY OF WCHAR;(*[LF_FACESIZE]*)
+    language : LANGID
+) : GpStatus;
+
+PROCEDURE GdipIsStyleAvailable(family : GpFontFamily;
+                               style : WINT;
+                               VAR OUT IsStyleAvailable : BOOL) : GpStatus;
+
+
+PROCEDURE GdipFontCollectionEnumerable(
+    fontCollection : GpFontCollection;
+    graphics : GpGraphics;
+    VAR OUT numFound : WINT
+) : GpStatus;
+
+PROCEDURE GdipFontCollectionEnumerate(
+    fontCollection : GpFontCollection;
+    numSought : WINT;
+    gpfamilies : ARRAY OF GpFontFamily;
+    VAR OUT numFound : WINT;
+    graphics : GpGraphics
+) : GpStatus;
+
+PROCEDURE GdipGetEmHeight(family : GpFontFamily;
+                          style : WINT;
+                          VAR OUT EmHeight : UINT16) : GpStatus;
+
+PROCEDURE GdipGetCellAscent(family : GpFontFamily;
+                            style : WINT;
+                            VAR OUT CellAscent : UINT16) : GpStatus;
+
+PROCEDURE GdipGetCellDescent(family : GpFontFamily;
+                             style : WINT;
+                             VAR OUT CellDescent : UINT16) : GpStatus;
+
+PROCEDURE GdipGetLineSpacing(family : GpFontFamily;
+                             style : WINT;
+                             VAR OUT LineSpacing : UINT16) : GpStatus;
+
+
+(*//----------------------------------------------------------------------------
+// Font APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateFontFromDC(
+    hdc : HDC;
+    VAR OUT font : GpFont
+) : GpStatus;
+
+PROCEDURE GdipCreateFontFromLogfontA(
+    hdc : HDC;
+    logfont : LOGFONTA;
+    VAR OUT font : GpFont
+) : GpStatus;
+
+PROCEDURE GdipCreateFontFromLogfontW(
+    hdc : HDC;
+    logfont : LOGFONTW;
+    VAR OUT font : GpFont
+) : GpStatus;
+
+PROCEDURE GdipCreateFont(
+    fontFamily : GpFontFamily;
+    emSize : REAL;
+    style       : WINT;
+    unit : GpUnit;
+    VAR OUT font : GpFont
+) : GpStatus;
+
+PROCEDURE GdipCloneFont(font : GpFont; VAR OUT cloneFont : GpFont) : GpStatus;
+
+PROCEDURE GdipDeleteFont(font : GpFont) : GpStatus;
+
+PROCEDURE GdipGetFamily(font : GpFont; VAR OUT family : GpFontFamily) : GpStatus;
+
+PROCEDURE GdipGetFontStyle(font : GpFont; VAR OUT style : WINT) : GpStatus;
+
+PROCEDURE GdipGetFontSize(font : GpFont; VAR OUT size : REAL) : GpStatus;
+
+PROCEDURE GdipGetFontUnit(font : GpFont; VAR OUT unit : GpUnit) : GpStatus;
+
+PROCEDURE GdipGetFontHeight(font : GpFont;
+                            graphics : GpGraphics;
+                            VAR OUT height : REAL) : GpStatus;
+
+PROCEDURE GdipGetFontHeightGivenDPI(font : GpFont;
+                                    dpi : REAL;
+                                    VAR OUT height : REAL) : GpStatus;
+
+PROCEDURE GdipGetLogFontA(font : GpFont;
+                          graphics : GpGraphics;
+                          VAR OUT logfontA : LOGFONTA) : GpStatus;
+
+PROCEDURE GdipGetLogFontW(font : GpFont;
+                          graphics : GpGraphics;
+                          VAR OUT logfontW : LOGFONTW) : GpStatus;
+
+PROCEDURE GdipNewInstalledFontCollection(VAR OUT fontCollection : GpFontCollection) : GpStatus;
+
+PROCEDURE GdipNewPrivateFontCollection(VAR OUT fontCollection : GpFontCollection) : GpStatus;
+
+PROCEDURE GdipDeletePrivateFontCollection(VAR OUT fontCollection : GpFontCollection) : GpStatus;
+
+PROCEDURE GdipGetFontCollectionFamilyCount(
+    fontCollection : GpFontCollection;
+    VAR OUT numFound : WINT
+) : GpStatus;
+
+PROCEDURE GdipGetFontCollectionFamilyList(
+    fontCollection : GpFontCollection;
+    numSought : WINT;
+    gpfamilies : ARRAY OF GpFontFamily;
+    VAR OUT numFound : WINT
+) : GpStatus;
+
+PROCEDURE GdipPrivateAddFontFile(
+    fontCollection : GpFontCollection;
+    filename : ARRAY OF WCHAR
+) : GpStatus;
+
+PROCEDURE GdipPrivateAddMemoryFont(
+    fontCollection : GpFontCollection;
+    memory : LPVOID;
+    length : WINT
+) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Text APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipDrawString(
+    graphics : GpGraphics;
+    string : ARRAY OF WCHAR;
+    length : WINT;
+    font : GpFont;
+    layoutRect : RectF;
+    stringFormat : GpStringFormat;
+    brush : GpBrush
+) : GpStatus;
+
+PROCEDURE GdipMeasureString(
+    graphics : GpGraphics;
+    string : ARRAY OF WCHAR;
+    length : WINT;
+    font : GpFont;
+    layoutRect : RectF;
+    stringFormat : GpStringFormat;
+    VAR OUT boundingBox : RectF;
+    VAR OUT codepointsFitted : WINT;
+    VAR OUT linesFilled : WINT
+) : GpStatus;
+
+
+PROCEDURE GdipMeasureCharacterRanges(
+    graphics : GpGraphics;
+    string : ARRAY OF WCHAR;
+    length : WINT;
+    font : GpFont;
+    layoutRect : RectF;
+    stringFormat : GpStringFormat;
+    regionCount : WINT;
+    VAR OUT regions : ARRAY OF GpRegion
+) : GpStatus;
+
+
+PROCEDURE GdipDrawDriverString(
+    graphics : GpGraphics;
+    text : ARRAY OF UINT16;
+    length : WINT;
+    font : GpFont;
+    brush : GpBrush;
+    positions : ARRAY OF PointF;
+    flags : WINT;
+    matrix : GpMatrix
+) : GpStatus;
+
+PROCEDURE GdipMeasureDriverString(
+    graphics : GpGraphics;
+    text : ARRAY OF UINT16;
+    length : WINT;
+    font : GpFont;
+    positions : ARRAY OF PointF;
+    flags : WINT;
+    matrix : GpMatrix;
+    VAR OUT boundingBox : RectF
+) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// String format APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateStringFormat(
+    formatAttributes : WINT;
+    language : LANGID;
+    VAR OUT format : GpStringFormat
+) : GpStatus;
+
+PROCEDURE GdipStringFormatGetGenericDefault(VAR OUT format : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipStringFormatGetGenericTypographic(VAR OUT format : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipDeleteStringFormat(format : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipCloneStringFormat(format : GpStringFormat;
+                                VAR OUT newFormat : GpStringFormat) : GpStatus;
+
+PROCEDURE GdipSetStringFormatFlags(format : GpStringFormat; flags : WINT) : GpStatus;
+
+PROCEDURE GdipGetStringFormatFlags(format : GpStringFormat;
+                                   VAR OUT flags : WINT) : GpStatus;
+
+PROCEDURE GdipSetStringFormatAlign(format : GpStringFormat;
+                                   align : StringAlignment) : GpStatus;
+
+PROCEDURE GdipGetStringFormatAlign(format : GpStringFormat;
+                                   VAR OUT align : StringAlignment) : GpStatus;
+
+PROCEDURE GdipSetStringFormatLineAlign(format : GpStringFormat;
+                                       align : StringAlignment) : GpStatus;
+
+PROCEDURE GdipGetStringFormatLineAlign(format : GpStringFormat;
+                                       VAR OUT align : StringAlignment) : GpStatus;
+
+PROCEDURE GdipSetStringFormatTrimming(
+    format : GpStringFormat;
+    trimming : StringTrimming
+) : GpStatus;
+
+PROCEDURE GdipGetStringFormatTrimming(
+    format : GpStringFormat;
+    VAR OUT trimming : StringTrimming
+) : GpStatus;
+
+PROCEDURE GdipSetStringFormatHotkeyPrefix(format : GpStringFormat;
+                                          hotkeyPrefix : WINT) : GpStatus;
+
+PROCEDURE GdipGetStringFormatHotkeyPrefix(format : GpStringFormat;
+                                          VAR OUT hotkeyPrefix : WINT) : GpStatus;
+
+PROCEDURE GdipSetStringFormatTabStops(format : GpStringFormat;
+                                      firstTabOffset : REAL;
+                                      count : WINT;
+                                      tabStops : ARRAY OF REAL) : GpStatus;
+
+PROCEDURE GdipGetStringFormatTabStops(format : GpStringFormat;
+                                      count : WINT;
+                                      VAR OUT firstTabOffset : REAL;
+                                      VAR OUT tabStops : ARRAY OF REAL) : GpStatus;
+
+PROCEDURE GdipGetStringFormatTabStopCount(format : GpStringFormat;
+                                          VAR OUT count : WINT) : GpStatus;
+
+PROCEDURE GdipSetStringFormatDigitSubstitution(format : GpStringFormat;
+                                               language : LANGID;
+                                       substitute : StringDigitSubstitute) : GpStatus;
+
+PROCEDURE GdipGetStringFormatDigitSubstitution(format : GpStringFormat;
+                                               VAR OUT language : LANGID;
+                                   VAR OUT substitute : StringDigitSubstitute) : GpStatus;
+
+PROCEDURE GdipGetStringFormatMeasurableCharacterRangeCount(
+    format : GpStringFormat;
+    VAR OUT count : WINT
+) : GpStatus;
+
+PROCEDURE GdipSetStringFormatMeasurableCharacterRanges(
+    format : GpStringFormat;
+    rangeCount : WINT;
+    VAR OUT ranges : ARRAY OF CharacterRange
+) : GpStatus;
+
+(*//----------------------------------------------------------------------------
+// Cached Bitmap APIs
+//----------------------------------------------------------------------------*)
+
+PROCEDURE GdipCreateCachedBitmap(
+    bitmap : GpBitmap;
+    graphics : GpGraphics;
+    VAR OUT cachedBitmap : GpCachedBitmap
+) : GpStatus;
+
+PROCEDURE GdipDeleteCachedBitmap(cachedBitmap : GpCachedBitmap) : GpStatus;
+
+PROCEDURE GdipDrawCachedBitmap(
+    graphics : GpGraphics;
+    cachedBitmap : GpCachedBitmap;
+    x, y : WINT
+) : GpStatus;
+
+PROCEDURE GdipEmfToWmfBits(
+    hemf : HENHMETAFILE;
+    cbData16 : UINT;
+    pData16 : LPVOID;
+    iMapMode : WINT;
+    eFlags : WINT
+) : UINT;
+
+END GdiplusFlat.

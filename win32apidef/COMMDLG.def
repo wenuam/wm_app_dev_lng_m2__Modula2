@@ -1,0 +1,935 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 1995-2000, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE COMMDLG;
+
+FROM SYSTEM IMPORT
+    CAST;
+
+FROM WIN32 IMPORT
+    NULL, DWORD, HWND, UINT, UINT_PTR, WPARAM, LPARAM, BOOL, HDC,
+    LPCWSTR, LPCSTR, LPWSTR, LPSTR, POINT, HINSTANCE, RECT, WORD, LPVOID, TCHAR, WINT, COLORREF, HGLOBAL;
+
+FROM WINGDI IMPORT
+    LPLOGFONTA, LPLOGFONTW;
+
+FROM WINUSER IMPORT
+    WM_USER, NMHDR;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+%IF X64 %THEN
+   <*/ALIGN:8/NOPACK*>
+%ELSE
+   <*/PACK/NOWARN*>
+%END
+
+TYPE
+    LPOFNHOOKPROC        = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT_PTR [EXPORT];
+    OPENFILENAME_NT4A = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          lpstrFilter    : LPCSTR;
+          lpstrCustomFilter: LPSTR;
+          nMaxCustFilter : DWORD;
+          nFilterIndex   : DWORD;
+          lpstrFile      : LPSTR;
+          nMaxFile       : DWORD;
+          lpstrFileTitle : LPSTR;
+          nMaxFileTitle  : DWORD;
+          lpstrInitialDir: LPCSTR;
+          lpstrTitle     : LPCSTR;
+          Flags          : DWORD;
+          nFileOffset    : WORD;
+          nFileExtension : WORD;
+          lpstrDefExt    : LPCSTR;
+          lCustData      : LPARAM;
+          lpfnHook       : LPOFNHOOKPROC;
+          lpTemplateName : LPCSTR;
+    END;
+    LPOPENFILENAME_NT4A      = POINTER TO OPENFILENAME_NT4A;
+
+    OPENFILENAME_NT4W = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          lpstrFilter    : LPCWSTR;
+          lpstrCustomFilter: LPWSTR;
+          nMaxCustFilter : DWORD;
+          nFilterIndex   : DWORD;
+          lpstrFile      : LPWSTR;
+          nMaxFile       : DWORD;
+          lpstrFileTitle : LPWSTR;
+          nMaxFileTitle  : DWORD;
+          lpstrInitialDir: LPCWSTR;
+          lpstrTitle     : LPCWSTR;
+          Flags          : DWORD;
+          nFileOffset    : WORD;
+          nFileExtension : WORD;
+          lpstrDefExt    : LPCWSTR;
+          lCustData      : LPARAM;
+          lpfnHook       : LPOFNHOOKPROC;
+          lpTemplateName : LPCWSTR;
+          pvReserved     : LPVOID;
+          dwReserved     : DWORD;
+          FlagsEx        : DWORD;
+    END;
+    LPOPENFILENAME_NT4W      = POINTER TO OPENFILENAME_NT4W;
+
+    OPENFILENAMEA = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          lpstrFilter    : LPCSTR;
+          lpstrCustomFilter: LPSTR;
+          nMaxCustFilter : DWORD;
+          nFilterIndex   : DWORD;
+          lpstrFile      : LPSTR;
+          nMaxFile       : DWORD;
+          lpstrFileTitle : LPSTR;
+          nMaxFileTitle  : DWORD;
+          lpstrInitialDir: LPCSTR;
+          lpstrTitle     : LPCSTR;
+          Flags          : DWORD;
+          nFileOffset    : WORD;
+          nFileExtension : WORD;
+          lpstrDefExt    : LPCSTR;
+          lCustData      : LPARAM;
+          lpfnHook       : LPOFNHOOKPROC;
+          lpTemplateName : LPCSTR;
+          pvReserved     : LPVOID;
+          dwReserved     : DWORD;
+          FlagsEx        : DWORD;
+    END;
+    LPOPENFILENAMEA      = POINTER TO OPENFILENAMEA;
+
+    OPENFILENAMEW = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          lpstrFilter    : LPCWSTR;
+          lpstrCustomFilter: LPWSTR;
+          nMaxCustFilter : DWORD;
+          nFilterIndex   : DWORD;
+          lpstrFile      : LPWSTR;
+          nMaxFile       : DWORD;
+          lpstrFileTitle : LPWSTR;
+          nMaxFileTitle  : DWORD;
+          lpstrInitialDir: LPCWSTR;
+          lpstrTitle     : LPCWSTR;
+          Flags          : DWORD;
+          nFileOffset    : WORD;
+          nFileExtension : WORD;
+          lpstrDefExt    : LPCWSTR;
+          lCustData      : LPARAM;
+          lpfnHook       : LPOFNHOOKPROC;
+          lpTemplateName : LPCWSTR;
+          pvReserved     : LPVOID;
+          dwReserved     : DWORD;
+          FlagsEx        : DWORD;
+    END;
+    LPOPENFILENAMEW      = POINTER TO OPENFILENAMEW;
+
+%IF UNICODE %THEN
+    OPENFILENAME        = OPENFILENAMEW;
+    LPOPENFILENAME       = LPOPENFILENAMEW;
+%ELSE
+    OPENFILENAME        = OPENFILENAMEA;
+    LPOPENFILENAME       = LPOPENFILENAMEA;
+%END
+
+PROCEDURE GetOpenFileNameA(VAR a : OPENFILENAMEA) : BOOL;
+
+PROCEDURE GetOpenFileNameW(VAR a : OPENFILENAMEW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetOpenFileName = GetOpenFileNameW;
+%ELSE
+PROCEDURE GetOpenFileName = GetOpenFileNameA;
+%END
+
+PROCEDURE GetSaveFileNameA(VAR a : OPENFILENAMEA) : BOOL;
+
+PROCEDURE GetSaveFileNameW(VAR a : OPENFILENAMEW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetSaveFileName = GetSaveFileNameW;
+%ELSE
+PROCEDURE GetSaveFileName = GetSaveFileNameA;
+%END
+
+PROCEDURE GetFileTitleA(a : ARRAY OF ACHAR;
+                        VAR b : ARRAY OF ACHAR;
+                        c : WORD) : INTEGER;
+
+PROCEDURE GetFileTitleW(a : ARRAY OF UCHAR;
+                        VAR b : ARRAY OF UCHAR;
+                        c : WORD) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE GetFileTitle = GetFileTitleW;
+%ELSE
+PROCEDURE GetFileTitle = GetFileTitleA;
+%END
+
+CONST
+    OFN_READONLY         = 000000001h;
+    OFN_OVERWRITEPROMPT  = 000000002h;
+    OFN_HIDEREADONLY     = 000000004h;
+    OFN_NOCHANGEDIR      = 000000008h;
+    OFN_SHOWHELP         = 000000010h;
+    OFN_ENABLEHOOK       = 000000020h;
+    OFN_ENABLETEMPLATE   = 000000040h;
+    OFN_ENABLETEMPLATEHANDLE= 000000080h;
+    OFN_NOVALIDATE       = 000000100h;
+    OFN_ALLOWMULTISELECT = 000000200h;
+    OFN_EXTENSIONDIFFERENT= 000000400h;
+    OFN_PATHMUSTEXIST    = 000000800h;
+    OFN_FILEMUSTEXIST    = 000001000h;
+    OFN_CREATEPROMPT     = 000002000h;
+    OFN_SHAREAWARE       = 000004000h;
+    OFN_NOREADONLYRETURN = 000008000h;
+    OFN_NOTESTFILECREATE = 000010000h;
+    OFN_NONETWORKBUTTON  = 000020000h;
+    OFN_NOLONGNAMES      = 000040000h;
+
+    OFN_EXPLORER         = 000080000h;
+    OFN_NODEREFERENCELINKS=000100000h;
+    OFN_LONGNAMES        = 000200000h;
+    OFN_ENABLEINCLUDENOTIFY     = 00400000h;
+    OFN_ENABLESIZING            = 00800000h;
+
+    OFN_DONTADDTORECENT         = 02000000h;
+    OFN_FORCESHOWHIDDEN         = 01000000h;
+
+    OFN_EX_NOPLACESBAR          = 00000001h;
+
+    OFN_SHAREFALLTHROUGH = 2;
+    OFN_SHARENOWARN      = 1;
+    OFN_SHAREWARN        = 0;
+
+TYPE
+    LPCCHOOKPROC         = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT [EXPORT];
+
+    OFNOTIFYA = RECORD
+        hdr     : NMHDR;
+        lpOFN   : LPOPENFILENAMEA;
+        pszFile : LPSTR;
+    END;
+    LPOFNOTIFYA = POINTER TO OFNOTIFYA;
+
+    OFNOTIFYW = RECORD
+        hdr     : NMHDR;
+        lpOFN   : LPOPENFILENAMEW;
+        pszFile : LPWSTR;
+    END;
+    LPOFNOTIFYW = POINTER TO OFNOTIFYW;
+
+(* Structure used for all object based OpenFileName notifications*)
+    OFNOTIFYEXA = RECORD
+        hdr             : NMHDR;
+        lpOFN           : LPOPENFILENAMEA;
+        psf             : LPVOID;
+        pidl            : LPVOID;(* May be NULL*)
+    END;
+    LPOFNOTIFYEXA = POINTER TO OFNOTIFYEXA;
+
+    OFNOTIFYEXW = RECORD
+        hdr             : NMHDR;
+        lpOFN           : LPOPENFILENAMEW;
+        psf             : LPVOID;
+        pidl            : LPVOID;(* May be NULL*)
+    END;
+    LPOFNOTIFYEXW = POINTER TO OFNOTIFYEXW;
+
+%IF UNICODE %THEN
+    OFNOTIFY = OFNOTIFYW;
+    OFNOTIFYEX = OFNOTIFYEXW;
+    LPOFNOTIFY = LPOFNOTIFYW;
+    LPOFNOTIFYEX = LPOFNOTIFYEXW;
+%ELSE
+    OFNOTIFY = OFNOTIFYA;
+    OFNOTIFYEX = OFNOTIFYEXA;
+    LPOFNOTIFY = LPOFNOTIFYA;
+    LPOFNOTIFYEX = LPOFNOTIFYEXA;
+%END
+
+CONST
+    CDN_FIRST           = CAST(UINT, 0-601);
+    CDN_LAST            = CAST(UINT, 0-699);
+
+    CDN_INITDONE        = CDN_FIRST - 0000h;
+    CDN_SELCHANGE       = CDN_FIRST - 0001h;
+    CDN_FOLDERCHANGE    = CDN_FIRST - 0002h;
+    CDN_SHAREVIOLATION  = CDN_FIRST - 0003h;
+    CDN_HELP            = CDN_FIRST - 0004h;
+    CDN_FILEOK          = CDN_FIRST - 0005h;
+    CDN_TYPECHANGE      = CDN_FIRST - 0006h;
+    CDN_INCLUDEITEM     = (CDN_FIRST -0007h);
+
+    CDM_FIRST           = WM_USER + 100;
+    CDM_LAST            = WM_USER + 200;
+
+    CDM_GETSPEC         = CDM_FIRST + 0000h;
+    CDM_GETFILEPATH     = CDM_FIRST + 0001h;
+    CDM_GETFOLDERPATH   = CDM_FIRST + 0002h;
+    CDM_GETFOLDERIDLIST = CDM_FIRST + 0003h;
+    CDM_SETCONTROLTEXT  = CDM_FIRST + 0004h;
+    CDM_HIDECONTROL     = CDM_FIRST + 0005h;
+    CDM_SETDEFEXT       = CDM_FIRST + 0006h;
+
+
+
+TYPE
+    CHOOSECOLORA = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          rgbResult      : COLORREF;
+          lpCustColors   : POINTER TO COLORREF;
+          Flags          : DWORD;
+          lCustData      : LPARAM;
+          lpfnHook       : LPCCHOOKPROC;
+          lpTemplateName : LPCSTR;
+    END;
+    LPCHOOSECOLORA       = POINTER TO CHOOSECOLORA;
+
+    CHOOSECOLORW = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          rgbResult      : COLORREF;
+          lpCustColors   : POINTER TO COLORREF;
+          Flags          : DWORD;
+          lCustData      : LPARAM;
+          lpfnHook       : LPCCHOOKPROC;
+          lpTemplateName : LPCWSTR;
+    END;
+    LPCHOOSECOLORW       = POINTER TO CHOOSECOLORW;
+
+%IF UNICODE %THEN
+    CHOOSECOLOR = CHOOSECOLORW;
+    LPCHOOSECOLOR        = LPCHOOSECOLORW;
+%ELSE
+    CHOOSECOLOR = CHOOSECOLORA;
+    LPCHOOSECOLOR        = LPCHOOSECOLORA;
+%END
+
+PROCEDURE ChooseColorA(VAR a : CHOOSECOLORA) : BOOL;
+
+PROCEDURE ChooseColorW(VAR a : CHOOSECOLORW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ChooseColor = ChooseColorW;
+%ELSE
+PROCEDURE ChooseColor = ChooseColorA;
+%END
+
+CONST
+    CC_RGBINIT           = 000000001h;
+    CC_FULLOPEN          = 000000002h;
+    CC_PREVENTFULLOPEN   = 000000004h;
+    CC_SHOWHELP          = 000000008h;
+    CC_ENABLEHOOK        = 000000010h;
+    CC_ENABLETEMPLATE    = 000000020h;
+    CC_ENABLETEMPLATEHANDLE= 000000040h;
+
+    CC_SOLIDCOLOR        = 000000080h;
+    CC_ANYCOLOR          = 000000100h;
+
+
+
+TYPE
+    LPFRHOOKPROC         = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT [EXPORT];
+
+    FINDREPLACEA = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          Flags          : DWORD;
+          lpstrFindWhat  : LPSTR;
+          lpstrReplaceWith: LPSTR;
+          wFindWhatLen   : WORD;
+          wReplaceWithLen: WORD;
+          lCustData      : LPARAM;
+          lpfnHook       : LPFRHOOKPROC;
+          lpTemplateName : LPCSTR;
+    END;
+    LPFINDREPLACEA       = POINTER TO FINDREPLACEA;
+
+    FINDREPLACEW = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hInstance      : HINSTANCE;
+          Flags          : DWORD;
+          lpstrFindWhat  : LPWSTR;
+          lpstrReplaceWith: LPWSTR;
+          wFindWhatLen   : WORD;
+          wReplaceWithLen: WORD;
+          lCustData      : LPARAM;
+          lpfnHook       : LPFRHOOKPROC;
+          lpTemplateName : LPCWSTR;
+    END;
+    LPFINDREPLACEW       = POINTER TO FINDREPLACEW;
+
+%IF UNICODE %THEN
+    FINDREPLACE = FINDREPLACEW;
+    LPFINDREPLACE        = LPFINDREPLACEW;
+%ELSE
+    FINDREPLACE = FINDREPLACEA;
+    LPFINDREPLACE        = LPFINDREPLACEA;
+%END
+
+CONST
+    FR_DOWN              = 000000001h;
+    FR_WHOLEWORD         = 000000002h;
+    FR_MATCHCASE         = 000000004h;
+    FR_FINDNEXT          = 000000008h;
+    FR_REPLACE           = 000000010h;
+    FR_REPLACEALL        = 000000020h;
+    FR_DIALOGTERM        = 000000040h;
+    FR_SHOWHELP          = 000000080h;
+    FR_ENABLEHOOK        = 000000100h;
+    FR_ENABLETEMPLATE    = 000000200h;
+    FR_NOUPDOWN          = 000000400h;
+    FR_NOMATCHCASE       = 000000800h;
+    FR_NOWHOLEWORD       = 000001000h;
+    FR_ENABLETEMPLATEHANDLE= 000002000h;
+    FR_HIDEUPDOWN        = 000004000h;
+    FR_HIDEMATCHCASE     = 000008000h;
+    FR_HIDEWHOLEWORD     = 000010000h;
+
+PROCEDURE FindTextA(VAR a : FINDREPLACEA) : HWND;
+
+PROCEDURE FindTextW(VAR a : FINDREPLACEW) : HWND;
+
+%IF UNICODE %THEN
+PROCEDURE FindText = FindTextW;
+%ELSE
+PROCEDURE FindText = FindTextA;
+%END
+
+PROCEDURE ReplaceTextA(VAR a : FINDREPLACEA) : HWND;
+
+PROCEDURE ReplaceTextW(VAR a : FINDREPLACEW) : HWND;
+
+%IF UNICODE %THEN
+PROCEDURE ReplaceText = ReplaceTextW;
+%ELSE
+PROCEDURE ReplaceText = ReplaceTextA;
+%END
+
+TYPE
+    LPCFHOOKPROC         = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT [EXPORT];
+
+    CHOOSEFONTA = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hDC            : HDC;
+          lpLogFont      : LPLOGFONTA;
+          iPointSize     : WINT;
+          Flags          : DWORD;
+          rgbColors      : COLORREF;
+          lCustData      : LPARAM;
+          lpfnHook       : LPCFHOOKPROC;
+          lpTemplateName : LPCSTR;
+          hInstance      : HINSTANCE;
+          lpszStyle      : LPSTR;
+          nFontType      : WORD;
+          ___MISSING_ALIGNMENT__: WORD;
+          nSizeMin       : WINT;
+          nSizeMax       : WINT;
+    END;
+    LPCHOOSEFONTA        = POINTER TO CHOOSEFONTA;
+
+    CHOOSEFONTW = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hDC            : HDC;
+          lpLogFont      : LPLOGFONTW;
+          iPointSize     : WINT;
+          Flags          : DWORD;
+          rgbColors      : COLORREF;
+          lCustData      : LPARAM;
+          lpfnHook       : LPCFHOOKPROC;
+          lpTemplateName : LPCWSTR;
+          hInstance      : HINSTANCE;
+          lpszStyle      : LPWSTR;
+          nFontType      : WORD;
+          ___MISSING_ALIGNMENT__: WORD;
+          nSizeMin       : WINT;
+          nSizeMax       : WINT;
+    END;
+    LPCHOOSEFONTW        = POINTER TO CHOOSEFONTW;
+
+%IF UNICODE %THEN
+    CHOOSEFONT = CHOOSEFONTW;
+    LPCHOOSEFONT         = LPCHOOSEFONTW;
+%ELSE
+    CHOOSEFONT = CHOOSEFONTA;
+    LPCHOOSEFONT         = LPCHOOSEFONTA;
+%END
+
+PROCEDURE ChooseFontA(VAR a : CHOOSEFONTA) : BOOL;
+
+PROCEDURE ChooseFontW(VAR a : CHOOSEFONTW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ChooseFont = ChooseFontW;
+%ELSE
+PROCEDURE ChooseFont = ChooseFontA;
+%END
+
+CONST
+    CF_SCREENFONTS       = 000000001h;
+    CF_PRINTERFONTS      = 000000002h;
+    CF_BOTH              = ( CF_SCREENFONTS BOR CF_PRINTERFONTS ) ;
+    CF_SHOWHELP          = 000000004h;
+    CF_ENABLEHOOK        = 000000008h;
+    CF_ENABLETEMPLATE    = 000000010h;
+    CF_ENABLETEMPLATEHANDLE= 000000020h;
+    CF_INITTOLOGFONTSTRUCT= 000000040h;
+    CF_USESTYLE          = 000000080h;
+    CF_EFFECTS           = 000000100h;
+    CF_APPLY             = 000000200h;
+    CF_ANSIONLY          = 000000400h;
+    CF_SCRIPTSONLY       = CF_ANSIONLY;(*95*)
+    CF_NOVECTORFONTS     = 000000800h;
+    CF_NOOEMFONTS        = CF_NOVECTORFONTS;(*95*)
+    CF_NOSIMULATIONS     = 000001000h;
+    CF_LIMITSIZE         = 000002000h;
+    CF_FIXEDPITCHONLY    = 000004000h;
+    CF_WYSIWYG           = 000008000h;
+    CF_FORCEFONTEXIST    = 000010000h;
+    CF_SCALABLEONLY      = 000020000h;
+    CF_TTONLY            = 000040000h;
+    CF_NOFACESEL         = 000080000h;
+    CF_NOSTYLESEL        = 000100000h;
+    CF_NOSIZESEL         = 000200000h;
+
+    CF_SELECTSCRIPT      = 000400000h;
+    CF_NOSCRIPTSEL       = 000800000h;
+    CF_NOVERTFONTS       = 001000000h;
+
+
+    SIMULATED_FONTTYPE   = 08000h;
+    PRINTER_FONTTYPE     = 04000h;
+    SCREEN_FONTTYPE      = 02000h;
+    BOLD_FONTTYPE        = 00100h;
+    ITALIC_FONTTYPE      = 00200h;
+    REGULAR_FONTTYPE     = 00400h;
+
+(* EnumFonts callback routine only uses these bits, so we can use the rest*)
+
+(* RASTER_FONTTYPE     = 001h *)
+(* DEVICE_FONTTYPE     = 002h *)
+(* TRUETYPE_FONTTYPE   = 004h *)
+
+    (* WIN NT *)
+    OPENTYPE_FONTTYPE     =10000h;
+    TYPE1_FONTTYPE        =20000h;
+    DSIG_FONTTYPE         =40000h;
+
+    WM_CHOOSEFONT_GETLOGFONT = WM_USER + 1;
+    WM_CHOOSEFONT_SETLOGFONT = WM_USER + 101;(*95*)
+    WM_CHOOSEFONT_SETFLAGS   = WM_USER + 102;(*95*)
+
+    LBSELCHSTRINGA        = "commdlg_LBSelChangedNotify";
+    SHAREVISTRINGA        = "commdlg_ShareViolation";
+    FILEOKSTRINGA         = "commdlg_FileNameOK";
+    COLOROKSTRINGA        = "commdlg_ColorOK";
+    SETRGBSTRINGA         = "commdlg_SetRGBColor";
+    HELPMSGSTRINGA        = "commdlg_help";
+    FINDMSGSTRINGA        = "commdlg_FindReplace";
+
+    LBSELCHSTRINGW        = "commdlg_LBSelChangedNotify";
+    SHAREVISTRINGW        = "commdlg_ShareViolation";
+    FILEOKSTRINGW         = "commdlg_FileNameOK";
+    COLOROKSTRINGW        = "commdlg_ColorOK";
+    SETRGBSTRINGW         = "commdlg_SetRGBColor";
+    HELPMSGSTRINGW        = "commdlg_help";
+    FINDMSGSTRINGW        = "commdlg_FindReplace";
+
+
+%IF UNICODE %THEN
+    LBSELCHSTRING  = LBSELCHSTRINGW;
+    SHAREVISTRING  = SHAREVISTRINGW;
+    FILEOKSTRING   = FILEOKSTRINGW;
+    COLOROKSTRING  = COLOROKSTRINGW;
+    SETRGBSTRING   = SETRGBSTRINGW;
+    HELPMSGSTRING  = HELPMSGSTRINGW;
+    FINDMSGSTRING  = FINDMSGSTRINGW;
+%ELSE
+    LBSELCHSTRING  = LBSELCHSTRINGA;
+    SHAREVISTRING  = SHAREVISTRINGA;
+    FILEOKSTRING   = FILEOKSTRINGA;
+    COLOROKSTRING  = COLOROKSTRINGA;
+    SETRGBSTRING   = SETRGBSTRINGA;
+    HELPMSGSTRING  = HELPMSGSTRINGA;
+    FINDMSGSTRING  = FINDMSGSTRINGA;
+%END
+
+
+    CD_LBSELNOITEMS      = -1;
+    CD_LBSELCHANGE       = 0;
+    CD_LBSELSUB          = 1;
+    CD_LBSELADD          = 2;
+
+TYPE
+    LPPRINTHOOKPROC      = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT [EXPORT];
+    LPSETUPHOOKPROC      = PROCEDURE(HWND,
+                                     UINT,
+                                     WPARAM,
+                                     LPARAM) : UINT [EXPORT];
+
+    PRINTDLGA = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hDevMode       : HGLOBAL;
+          hDevNames      : HGLOBAL;
+          hDC            : HDC;
+          Flags          : DWORD;
+          nFromPage      : WORD;
+          nToPage        : WORD;
+          nMinPage       : WORD;
+          nMaxPage       : WORD;
+          nCopies        : WORD;
+          hInstance      : HINSTANCE;
+          lCustData      : LPARAM;
+          lpfnPrintHook  : LPPRINTHOOKPROC;
+          lpfnSetupHook  : LPSETUPHOOKPROC;
+          lpPrintTemplateName: LPCSTR;
+          lpSetupTemplateName: LPCSTR;
+          hPrintTemplate : HGLOBAL;
+          hSetupTemplate : HGLOBAL;
+    END;
+    LPPRINTDLGA          = POINTER TO PRINTDLGA;
+
+    PRINTDLGW = RECORD
+          lStructSize    : DWORD;
+          hwndOwner      : HWND;
+          hDevMode       : HGLOBAL;
+          hDevNames      : HGLOBAL;
+          hDC            : HDC;
+          Flags          : DWORD;
+          nFromPage      : WORD;
+          nToPage        : WORD;
+          nMinPage       : WORD;
+          nMaxPage       : WORD;
+          nCopies        : WORD;
+          hInstance      : HINSTANCE;
+          lCustData      : LPARAM;
+          lpfnPrintHook  : LPPRINTHOOKPROC;
+          lpfnSetupHook  : LPSETUPHOOKPROC;
+          lpPrintTemplateName: LPCWSTR;
+          lpSetupTemplateName: LPCWSTR;
+          hPrintTemplate : HGLOBAL;
+          hSetupTemplate : HGLOBAL;
+    END;
+    LPPRINTDLGW          = POINTER TO PRINTDLGW;
+
+%IF UNICODE %THEN
+    PRINTDLG = PRINTDLGW;
+    LPPRINTDLG           = LPPRINTDLGW;
+%ELSE
+    PRINTDLG = PRINTDLGA;
+    LPPRINTDLG           = LPPRINTDLGA;
+%END
+
+PROCEDURE PrintDlgA(VAR a : PRINTDLGA) : BOOL;
+
+PROCEDURE PrintDlgW(VAR a : PRINTDLGW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE PrintDlg = PrintDlgW;
+%ELSE
+PROCEDURE PrintDlg = PrintDlgA;
+%END
+
+CONST
+    PD_ALLPAGES          = 000000000h;
+    PD_SELECTION         = 000000001h;
+    PD_PAGENUMS          = 000000002h;
+    PD_NOSELECTION       = 000000004h;
+    PD_NOPAGENUMS        = 000000008h;
+    PD_COLLATE           = 000000010h;
+    PD_PRINTTOFILE       = 000000020h;
+    PD_PRINTSETUP        = 000000040h;
+    PD_NOWARNING         = 000000080h;
+    PD_RETURNDC          = 000000100h;
+    PD_RETURNIC          = 000000200h;
+    PD_RETURNDEFAULT     = 000000400h;
+    PD_SHOWHELP          = 000000800h;
+    PD_ENABLEPRINTHOOK   = 000001000h;
+    PD_ENABLESETUPHOOK   = 000002000h;
+    PD_ENABLEPRINTTEMPLATE= 000004000h;
+    PD_ENABLESETUPTEMPLATE= 000008000h;
+    PD_ENABLEPRINTTEMPLATEHANDLE= 000010000h;
+    PD_ENABLESETUPTEMPLATEHANDLE= 000020000h;
+    PD_USEDEVMODECOPIES  = 000040000h;
+    PD_USEDEVMODECOPIESANDCOLLATE = 000040000h;
+    PD_DISABLEPRINTTOFILE= 000080000h;
+    PD_HIDEPRINTTOFILE   = 000100000h;
+    PD_NONETWORKBUTTON   = 000200000h;
+
+TYPE
+    DEVNAMES = RECORD
+          wDriverOffset  : WORD;
+          wDeviceOffset  : WORD;
+          wOutputOffset  : WORD;
+          wDefault       : WORD;
+    END;
+
+    LPDEVNAMES           = POINTER TO DEVNAMES;
+
+CONST
+    DN_DEFAULTPRN        = 00001h;
+
+PROCEDURE CommDlgExtendedError() : DWORD;
+
+CONST
+    CDERR_DIALOGFAILURE                 = 0FFFFh;
+
+    CDERR_GENERALCODES                  = 00000h;
+    CDERR_STRUCTSIZE                    = 00001h;
+    CDERR_INITIALIZATION                = 00002h;
+    CDERR_NOTEMPLATE                    = 00003h;
+    CDERR_NOHINSTANCE                   = 00004h;
+    CDERR_LOADSTRFAILURE                = 00005h;
+    CDERR_FINDRESFAILURE                = 00006h;
+    CDERR_LOADRESFAILURE                = 00007h;
+    CDERR_LOCKRESFAILURE                = 00008h;
+    CDERR_MEMALLOCFAILURE               = 00009h;
+    CDERR_MEMLOCKFAILURE                = 0000Ah;
+    CDERR_NOHOOK                        = 0000Bh;
+    CDERR_REGISTERMSGFAIL               = 0000Ch;
+
+    PDERR_PRINTERCODES                  = 01000h;
+    PDERR_SETUPFAILURE                  = 01001h;
+    PDERR_PARSEFAILURE                  = 01002h;
+    PDERR_RETDEFFAILURE                 = 01003h;
+    PDERR_LOADDRVFAILURE                = 01004h;
+    PDERR_GETDEVMODEFAIL                = 01005h;
+    PDERR_INITFAILURE                   = 01006h;
+    PDERR_NODEVICES                     = 01007h;
+    PDERR_NODEFAULTPRN                  = 01008h;
+    PDERR_DNDMMISMATCH                  = 01009h;
+    PDERR_CREATEICFAILURE               = 0100Ah;
+    PDERR_PRINTERNOTFOUND               = 0100Bh;
+    PDERR_DEFAULTDIFFERENT              = 0100Ch;
+
+    CFERR_CHOOSEFONTCODES               = 02000h;
+    CFERR_NOFONTS                       = 02001h;
+    CFERR_MAXLESSTHANMIN                = 02002h;
+
+    FNERR_FILENAMECODES                 = 03000h;
+    FNERR_SUBCLASSFAILURE               = 03001h;
+    FNERR_INVALIDFILENAME               = 03002h;
+    FNERR_BUFFERTOOSMALL                = 03003h;
+
+    FRERR_FINDREPLACECODES              = 04000h;
+    FRERR_BUFFERLENGTHZERO              = 04001h;
+
+    CCERR_CHOOSECOLORCODES              = 05000h;
+
+
+CONST
+    WM_PSD_PAGESETUPDLG     = WM_USER;
+    WM_PSD_FULLPAGERECT     = WM_USER+1;
+    WM_PSD_MINMARGINRECT    = WM_USER+2;
+    WM_PSD_MARGINRECT       = WM_USER+3;
+    WM_PSD_GREEKTEXTRECT    = WM_USER+4;
+    WM_PSD_ENVSTAMPRECT     = WM_USER+5;
+    WM_PSD_YAFULLPAGERECT   = WM_USER+6;
+
+TYPE
+    LPPAGEPAINTHOOK = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+    LPPAGESETUPHOOK = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+
+    PAGESETUPDLGA =
+		RECORD
+			lStructSize             : DWORD;
+			hwndOwner               : HWND;
+			hDevMode                : HGLOBAL;
+			hDevNames               : HGLOBAL;
+			Flags                   : DWORD;
+			ptPaperSize             : POINT;
+			rtMinMargin             : RECT;
+			rtMargin                : RECT;
+			hInstance               : HINSTANCE;
+			lCustData               : LPARAM;
+			lpfnPageSetupHook       : LPPAGESETUPHOOK;
+			lpfnPagePaintHook       : LPPAGESETUPHOOK;
+			lpPageSetupTemplateName : LPCSTR;
+			hPageSetupTemplate      : HGLOBAL;
+		END;
+    LPPAGESETUPDLGA     = POINTER TO PAGESETUPDLGA;
+
+    PAGESETUPDLGW =
+		RECORD
+			lStructSize             : DWORD;
+			hwndOwner               : HWND;
+			hDevMode                : HGLOBAL;
+			hDevNames               : HGLOBAL;
+			Flags                   : DWORD;
+			ptPaperSize             : POINT;
+			rtMinMargin             : RECT;
+			rtMargin                : RECT;
+			hInstance               : HINSTANCE;
+			lCustData               : LPARAM;
+			lpfnPageSetupHook       : LPPAGESETUPHOOK;
+			lpfnPagePaintHook       : LPPAGESETUPHOOK;
+			lpPageSetupTemplateName : LPCWSTR;
+			hPageSetupTemplate      : HGLOBAL;
+		END;
+    LPPAGESETUPDLGW     = POINTER TO PAGESETUPDLGW;
+
+%IF UNICODE %THEN
+    PAGESETUPDLG        = PAGESETUPDLGW;
+    LPPAGESETUPDLG      = LPPAGESETUPDLGW;
+%ELSE
+    PAGESETUPDLG        = PAGESETUPDLGA;
+    LPPAGESETUPDLG      = LPPAGESETUPDLGA;
+%END
+
+PROCEDURE PageSetupDlgA(VAR b: PAGESETUPDLGA) : BOOL;
+
+PROCEDURE PageSetupDlgW(VAR a: PAGESETUPDLGW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE PageSetupDlg =  PageSetupDlgW;
+%ELSE
+PROCEDURE PageSetupDlg =  PageSetupDlgA;
+%END
+
+CONST
+    PSD_DEFAULTMINMARGINS             = 00000000h;
+    PSD_INWININIINTLMEASURE           = 00000000h;
+
+    PSD_MINMARGINS                    = 00000001h;
+    PSD_MARGINS                       = 00000002h;
+    PSD_INTHOUSANDTHSOFINCHES         = 00000004h;
+    PSD_INHUNDREDTHSOFMILLIMETERS     = 00000008h;
+    PSD_DISABLEMARGINS                = 00000010h;
+    PSD_DISABLEPRINTER                = 00000020h;
+    PSD_NOWARNING                     = 00000080h;
+    PSD_DISABLEORIENTATION            = 00000100h;
+    PSD_RETURNDEFAULT                 = 00000400h;
+    PSD_DISABLEPAPER                  = 00000200h;
+    PSD_SHOWHELP                      = 00000800h;
+    PSD_ENABLEPAGESETUPHOOK           = 00002000h;
+    PSD_ENABLEPAGESETUPTEMPLATE       = 00008000h;
+    PSD_ENABLEPAGESETUPTEMPLATEHANDLE = 00020000h;
+    PSD_ENABLEPAGEPAINTHOOK           = 00040000h;
+    PSD_DISABLEPAGEPAINTING           = 00080000h;
+
+    PSD_NONETWORKBUTTON               = 00200000h; (* must be same as PD_**)
+
+CONST
+    NULL_OFNHOOKPROC            = CAST(LPOFNHOOKPROC, NULL);
+    NULL_CCHOOKPROC             = CAST(LPCCHOOKPROC, NULL);
+    NULL_FRHOOKPROC             = CAST(LPFRHOOKPROC, NULL);
+    NULL_CFHOOKPROC             = CAST(LPCFHOOKPROC, NULL);
+    NULL_PRINTHOOKPROC          = CAST(LPPRINTHOOKPROC, NULL);
+    NULL_SETUPHOOKHOOKPROC      = CAST(LPSETUPHOOKPROC, NULL);
+
+ (*MACROS*)
+<*/CALLS:StonyBrook*>
+PROCEDURE CommDlg_OpenSave_GetSpecA(_hdlg : HWND;
+                                    VAR _psz : ARRAY OF ACHAR;
+                                    _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_GetSpecW(_hdlg : HWND;
+                                    VAR _psz : ARRAY OF UCHAR;
+                                    _cbmax : WPARAM) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE CommDlg_OpenSave_GetSpec = CommDlg_OpenSave_GetSpecW;
+%ELSE
+PROCEDURE CommDlg_OpenSave_GetSpec = CommDlg_OpenSave_GetSpecA;
+%END
+
+PROCEDURE CommDlg_OpenSave_GetFilePathA(_hdlg : HWND;
+                                        VAR _psz : ARRAY OF ACHAR;
+                                        _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_GetFilePathW(_hdlg : HWND;
+                                        VAR _psz : ARRAY OF UCHAR;
+                                        _cbmax : WPARAM) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE CommDlg_OpenSave_GetFilePath = CommDlg_OpenSave_GetFilePathW;
+%ELSE
+PROCEDURE CommDlg_OpenSave_GetFilePath = CommDlg_OpenSave_GetFilePathA;
+%END
+
+PROCEDURE CommDlg_OpenSave_GetFolderPathA(_hdlg : HWND;
+                                          VAR _psz : ARRAY OF ACHAR;
+                                          _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_GetFolderPathW(_hdlg : HWND;
+                                          VAR _psz : ARRAY OF UCHAR;
+                                          _cbmax : WPARAM) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE CommDlg_OpenSave_GetFolderPath = CommDlg_OpenSave_GetFolderPathW;
+%ELSE
+PROCEDURE CommDlg_OpenSave_GetFolderPath = CommDlg_OpenSave_GetFolderPathA;
+%END
+
+PROCEDURE CommDlg_OpenSave_GetFolderIDList(_hdlg : HWND;
+                                           _pidl : LPVOID;
+                                           _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_GetFolderIDListA(_hdlg : HWND;
+                                           _pidl : LPVOID;
+                                           _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_GetFolderIDListW(_hdlg : HWND;
+                                           _pidl : LPVOID;
+                                           _cbmax : WPARAM) : WINT;
+
+PROCEDURE CommDlg_OpenSave_SetControlText(_hdlg : HWND;
+                                        _id : WPARAM;
+                                        VAR _text : ARRAY OF TCHAR);
+
+PROCEDURE CommDlg_OpenSave_SetControlTextA(_hdlg : HWND;
+                                        _id : WPARAM;
+                                        VAR _text : ARRAY OF ACHAR);
+
+PROCEDURE CommDlg_OpenSave_SetControlTextW(_hdlg : HWND;
+                                        _id : WPARAM;
+                                        VAR _text : ARRAY OF UCHAR);
+
+PROCEDURE CommDlg_OpenSave_HideControl(_hdlg : HWND; _id : WPARAM);
+
+PROCEDURE CommDlg_OpenSave_HideControlA(_hdlg : HWND; _id : WPARAM);
+
+PROCEDURE CommDlg_OpenSave_HideControlW(_hdlg : HWND; _id : WPARAM);
+
+PROCEDURE CommDlg_OpenSave_SetDefExt(_hdlg : HWND; VAR _pszext : ARRAY OF TCHAR);
+
+PROCEDURE CommDlg_OpenSave_SetDefExtA(_hdlg : HWND; VAR _pszext : ARRAY OF ACHAR);
+
+PROCEDURE CommDlg_OpenSave_SetDefExtW(_hdlg : HWND; VAR _pszext : ARRAY OF UCHAR);
+
+END COMMDLG.

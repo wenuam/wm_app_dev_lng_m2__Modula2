@@ -1,0 +1,956 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE MSACM;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+FROM WIN32 IMPORT
+    DWORD, WORD, UINT, BOOL, LPVOID, HINSTANCE, LPARAM, LRESULT, WCHAR,
+    HWND, WPARAM, HICON, LPCSTR, LPCWSTR, LPSTR, LPWSTR, DWORD_PTR;
+
+FROM MMSYSTEM IMPORT
+    FOURCC, DRV_USER, MM_STREAM_OPEN, MM_STREAM_CLOSE, MM_STREAM_DONE, MMRESULT,
+    LPWAVEFORMATEX;
+
+FROM MMREG IMPORT
+    LPWAVEFILTER;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/NOPACK*>
+
+CONST
+    DLG_ACMFORMATCHOOSE_ID              = 70;
+    IDD_ACMFORMATCHOOSE_BTN_HELP        = 9;
+    IDD_ACMFORMATCHOOSE_CMB_CUSTOM      = 100;
+    IDD_ACMFORMATCHOOSE_CMB_FORMATTAG   = 101;
+    IDD_ACMFORMATCHOOSE_CMB_FORMAT      = 102;
+    IDD_ACMFORMATCHOOSE_BTN_SETNAME     = 103;
+    IDD_ACMFORMATCHOOSE_BTN_DELNAME     = 104;
+
+    DLG_ACMFILTERCHOOSE_ID              = 71;
+
+    IDD_ACMFILTERCHOOSE_BTN_HELP        = 9;
+    IDD_ACMFILTERCHOOSE_CMB_CUSTOM      = 100;
+    IDD_ACMFILTERCHOOSE_CMB_FILTERTAG   = 101;
+    IDD_ACMFILTERCHOOSE_CMB_FILTER      = 102;
+    IDD_ACMFILTERCHOOSE_BTN_SETNAME     = 103;
+    IDD_ACMFILTERCHOOSE_BTN_DELNAME     = 104;
+
+    DRV_MAPPER_PREFERRED_INPUT_GET      = DRV_USER + 0;
+    DRV_MAPPER_PREFERRED_OUTPUT_GET     = DRV_USER + 2;
+
+    DRVM_MAPPER_STATUS                  = 2000h;
+
+    WIDM_MAPPER_STATUS                  = DRVM_MAPPER_STATUS + 0;
+    WAVEIN_MAPPER_STATUS_DEVICE         = 0;
+    WAVEIN_MAPPER_STATUS_MAPPED         = 1;
+    WAVEIN_MAPPER_STATUS_FORMAT         = 2;
+
+    WODM_MAPPER_STATUS                  = DRVM_MAPPER_STATUS + 0;
+    WAVEOUT_MAPPER_STATUS_DEVICE        = 0;
+    WAVEOUT_MAPPER_STATUS_MAPPED        = 1;
+    WAVEOUT_MAPPER_STATUS_FORMAT        = 2;
+
+TYPE
+    HACMDRIVERID         = POINTER TO RECORD END;
+    PHACMDRIVERID        = POINTER TO HACMDRIVERID;
+    LPHACMDRIVERID       = POINTER TO HACMDRIVERID;
+
+    HACMDRIVER           = POINTER TO RECORD END;
+    PHACMDRIVER          = POINTER TO HACMDRIVER;
+    LPHACMDRIVER         = POINTER TO HACMDRIVER;
+
+    HACMSTREAM           = POINTER TO RECORD END;
+    PHACMSTREAM          = POINTER TO HACMSTREAM;
+    LPHACMSTREAM         = POINTER TO HACMSTREAM;
+
+    HACMOBJ              = POINTER TO RECORD END;
+
+TYPE
+    PHACMOBJ             = POINTER TO HACMOBJ;
+    LPHACMOBJ            = POINTER TO HACMOBJ;
+
+CONST
+    ACMERR_BASE          = 512;
+    ACMERR_NOTPOSSIBLE   = ACMERR_BASE + 0;
+    ACMERR_BUSY          = ACMERR_BASE + 1;
+    ACMERR_UNPREPARED    = ACMERR_BASE + 2;
+    ACMERR_CANCELED      = ACMERR_BASE + 3;
+
+    MM_ACM_OPEN          = MM_STREAM_OPEN;
+    MM_ACM_CLOSE         = MM_STREAM_CLOSE;
+    MM_ACM_DONE          = MM_STREAM_DONE;
+
+PROCEDURE acmGetVersion() : DWORD;
+
+PROCEDURE acmMetrics(hao : HACMOBJ;
+                     uMetric : UINT;
+                     pMetric : LPVOID) : MMRESULT;
+
+
+CONST
+    ACM_METRIC_COUNT_DRIVERS            = 1;
+    ACM_METRIC_COUNT_CODECS             = 2;
+    ACM_METRIC_COUNT_CONVERTERS         = 3;
+    ACM_METRIC_COUNT_FILTERS            = 4;
+    ACM_METRIC_COUNT_DISABLED           = 5;
+    ACM_METRIC_COUNT_HARDWARE           = 6;
+
+    ACM_METRIC_COUNT_LOCAL_DRIVERS      = 20;
+    ACM_METRIC_COUNT_LOCAL_CODECS       = 21;
+    ACM_METRIC_COUNT_LOCAL_CONVERTERS   = 22;
+    ACM_METRIC_COUNT_LOCAL_FILTERS      = 23;
+    ACM_METRIC_COUNT_LOCAL_DISABLED     = 24;
+
+    ACM_METRIC_HARDWARE_WAVE_INPUT      = 30;
+    ACM_METRIC_HARDWARE_WAVE_OUTPUT     = 31;
+
+    ACM_METRIC_MAX_SIZE_FORMAT          = 50;
+    ACM_METRIC_MAX_SIZE_FILTER          = 51;
+
+    ACM_METRIC_DRIVER_SUPPORT           = 100;
+    ACM_METRIC_DRIVER_PRIORITY          = 101;
+
+TYPE
+    ACMDRIVERENUMCB      = PROCEDURE (HACMDRIVERID, DWORD_PTR, DWORD) : BOOL;
+
+PROCEDURE acmDriverEnum(fn : ACMDRIVERENUMCB;
+                        dwInstance : DWORD_PTR;
+                        fdwEnum : DWORD) : MMRESULT;
+
+CONST
+    ACM_DRIVERENUMF_NOLOCAL     = 040000000h;
+    ACM_DRIVERENUMF_DISABLED    = 080000000h;
+
+PROCEDURE acmDriverID(hao : HACMOBJ;
+                      phadid : LPHACMDRIVERID;
+                      fdwDriverID : DWORD) : MMRESULT;
+
+%IF Windows %THEN
+PROCEDURE acmDriverAddA(phadid : LPHACMDRIVERID;
+                        hinstModule : HINSTANCE;
+                        lParam : LPARAM;
+                        dwPriority : DWORD;
+                        fdwAdd : DWORD) : MMRESULT;
+
+PROCEDURE acmDriverAddW(phadid : LPHACMDRIVERID;
+                        hinstModule : HINSTANCE;
+                        lParam : LPARAM;
+                        dwPriority : DWORD;
+                        fdwAdd : DWORD) : MMRESULT;
+%IF UNICODE %THEN
+PROCEDURE acmDriverAdd = acmDriverAddW;
+%ELSE
+PROCEDURE acmDriverAdd = acmDriverAddA;
+%END
+
+
+%ELSE
+PROCEDURE acmDriverAdd(phadid : LPHACMDRIVERID;
+                        hinstModule : HINSTANCE;
+                        lParam : LPARAM;
+                        dwPriority : DWORD;
+                        fdwAdd : DWORD) : MMRESULT;
+%END
+
+
+CONST
+    ACM_DRIVERADDF_FUNCTION     = 000003h;
+    ACM_DRIVERADDF_NOTIFYHWND   = 000004h;
+    ACM_DRIVERADDF_TYPEMASK     = 000007h;
+    ACM_DRIVERADDF_LOCAL        = 000000h;
+    ACM_DRIVERADDF_GLOBAL       = 000008h;
+
+TYPE
+    ACMDRIVERPROC        = PROCEDURE (DWORD_PTR, HACMDRIVERID, UINT, LPARAM, LPARAM):LRESULT;
+    LPACMDRIVERPROC      = ACMDRIVERPROC;
+
+PROCEDURE acmDriverRemove(hadid : HACMDRIVERID;
+                          fdwRemove : DWORD) : MMRESULT;
+
+PROCEDURE acmDriverOpen(phad : LPHACMDRIVER;
+                        hadid : HACMDRIVERID;
+                        fdwOpen : DWORD) : MMRESULT;
+
+PROCEDURE acmDriverClose(had : HACMDRIVER;
+                         fdwClose : DWORD) : MMRESULT;
+
+PROCEDURE acmDriverMessage(had : HACMDRIVER;
+                           uMsg : UINT;
+                           lParam1 : LPARAM;
+                           lParam2 : LPARAM) : MMRESULT;
+
+CONST
+    ACMDM_USER                          = DRV_USER + 0;
+    ACMDM_RESERVED_LOW                  = DRV_USER + 2000h;
+    ACMDM_RESERVED_HIGH                 = DRV_USER + 2FFFh;
+
+    ACMDM_BASE                          = ACMDM_RESERVED_LOW;
+
+    ACMDM_DRIVER_ABOUT                  = ACMDM_BASE + 11;
+
+PROCEDURE acmDriverPriority(hadid : HACMDRIVERID;
+                            dwPriority : DWORD;
+                            fdwPriority : DWORD) : MMRESULT;
+
+
+CONST
+    ACM_DRIVERPRIORITYF_ENABLE          = 000000001h;
+    ACM_DRIVERPRIORITYF_DISABLE         = 000000002h;
+    ACM_DRIVERPRIORITYF_ABLEMASK        = 000000003h;
+    ACM_DRIVERPRIORITYF_BEGIN           = 000010000h;
+    ACM_DRIVERPRIORITYF_END             = 000020000h;
+    ACM_DRIVERPRIORITYF_DEFERMASK       = 000030000h;
+
+    ACMDRIVERDETAILS_SHORTNAME_CHARS    = 32;
+    ACMDRIVERDETAILS_LONGNAME_CHARS     = 128;
+    ACMDRIVERDETAILS_COPYRIGHT_CHARS    = 80;
+    ACMDRIVERDETAILS_LICENSING_CHARS    = 128;
+    ACMDRIVERDETAILS_FEATURES_CHARS     = 512;
+
+TYPE
+%IF Windows %THEN
+    ACMDRIVERDETAILSA = RECORD
+          cbStruct       : DWORD;
+          fccType        : FOURCC;
+          fccComp        : FOURCC;
+          wMid           : WORD;
+          wPid           : WORD;
+          vdwACM         : DWORD;
+          vdwDriver      : DWORD;
+          fdwSupport     : DWORD;
+          cFormatTags    : DWORD;
+          cFilterTags    : DWORD;
+          hicon          : HICON;
+          szShortName    : ARRAY [0..ACMDRIVERDETAILS_SHORTNAME_CHARS - 1] OF ACHAR;
+          szLongName     : ARRAY [0..ACMDRIVERDETAILS_LONGNAME_CHARS - 1] OF ACHAR;
+          szCopyright    : ARRAY [0..ACMDRIVERDETAILS_COPYRIGHT_CHARS - 1] OF ACHAR;
+          szLicensing    : ARRAY [0..ACMDRIVERDETAILS_LICENSING_CHARS - 1] OF ACHAR;
+          szFeatures     : ARRAY [0..ACMDRIVERDETAILS_FEATURES_CHARS - 1] OF ACHAR;
+    END;
+    LPACMDRIVERDETAILSA  = POINTER TO ACMDRIVERDETAILSA;
+    PACMDRIVERDETAILSA   = POINTER TO ACMDRIVERDETAILSA;
+
+    ACMDRIVERDETAILSW = RECORD
+          cbStruct       : DWORD;
+          fccType        : FOURCC;
+          fccComp        : FOURCC;
+          wMid           : WORD;
+          wPid           : WORD;
+          vdwACM         : DWORD;
+          vdwDriver      : DWORD;
+          fdwSupport     : DWORD;
+          cFormatTags    : DWORD;
+          cFilterTags    : DWORD;
+          hicon          : HICON;
+          szShortName    : ARRAY [0..ACMDRIVERDETAILS_SHORTNAME_CHARS - 1] OF WCHAR;
+          szLongName     : ARRAY [0..ACMDRIVERDETAILS_LONGNAME_CHARS - 1] OF WCHAR;
+          szCopyright    : ARRAY [0..ACMDRIVERDETAILS_COPYRIGHT_CHARS - 1] OF WCHAR;
+          szLicensing    : ARRAY [0..ACMDRIVERDETAILS_LICENSING_CHARS - 1] OF WCHAR;
+          szFeatures     : ARRAY [0..ACMDRIVERDETAILS_FEATURES_CHARS - 1] OF WCHAR;
+    END;
+    LPACMDRIVERDETAILSW  = POINTER TO ACMDRIVERDETAILSW;
+    PACMDRIVERDETAILSW   = POINTER TO ACMDRIVERDETAILSW;
+
+ %IF UNICODE %THEN
+     ACMDRIVERDETAILS           = ACMDRIVERDETAILSW;
+ %ELSE
+     ACMDRIVERDETAILS           = ACMDRIVERDETAILSW;
+ %END
+
+    LPACMDRIVERDETAILS          = POINTER TO ACMDRIVERDETAILS;
+    PACMDRIVERDETAILS           = POINTER TO ACMDRIVERDETAILS;
+
+%ELSE
+    LPACMDRIVERDETAILS  = POINTER TO ACMDRIVERDETAILS;
+    PACMDRIVERDETAILS   = POINTER TO ACMDRIVERDETAILS;
+    ACMDRIVERDETAILS = RECORD
+          cbStruct       : DWORD;
+          fccType        : FOURCC;
+          fccComp        : FOURCC;
+          wMid           : WORD;
+          wPid           : WORD;
+          vdwACM         : DWORD;
+          vdwDriver      : DWORD;
+          fdwSupport     : DWORD;
+          cFormatTags    : DWORD;
+          cFilterTags    : DWORD;
+          hicon          : HICON;
+          szShortName    : ARRAY [0..ACMDRIVERDETAILS_SHORTNAME_CHARS - 1] OF ACHAR;
+          szLongName     : ARRAY [0..ACMDRIVERDETAILS_LONGNAME_CHARS - 1] OF ACHAR;
+          szCopyright    : ARRAY [0..ACMDRIVERDETAILS_COPYRIGHT_CHARS - 1] OF ACHAR;
+          szLicensing    : ARRAY [0..ACMDRIVERDETAILS_LICENSING_CHARS - 1] OF ACHAR;
+          szFeatures     : ARRAY [0..ACMDRIVERDETAILS_FEATURES_CHARS - 1] OF ACHAR;
+    END;
+%END
+
+CONST
+
+    ACMDRIVERDETAILS_FCCTYPE_AUDIOCODEC = ORD('a') BOR
+                                         (ORD('u') SHL 8) BOR
+                                         (ORD('d') SHL 16) BOR
+                                         (ORD('c') SHL 24);
+
+    ACMDRIVERDETAILS_FCCCOMP_UNDEFINED   = 0;
+
+    ACMDRIVERDETAILS_SUPPORTF_CODEC     = 000000001h;
+    ACMDRIVERDETAILS_SUPPORTF_CONVERTER = 000000002h;
+    ACMDRIVERDETAILS_SUPPORTF_FILTER    = 000000004h;
+    ACMDRIVERDETAILS_SUPPORTF_HARDWARE  = 000000008h;
+    ACMDRIVERDETAILS_SUPPORTF_ASYNC     = 000000010h;
+    ACMDRIVERDETAILS_SUPPORTF_LOCAL     = 040000000h;
+    ACMDRIVERDETAILS_SUPPORTF_DISABLED  = 080000000h;
+
+PROCEDURE acmDriverDetailsA(hadid : HACMDRIVERID;
+                            padd : LPACMDRIVERDETAILSA;
+                            fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE acmDriverDetailsW(hadid : HACMDRIVERID;
+                            padd : LPACMDRIVERDETAILSW;
+                            fdwDetails : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmDriverDetails = acmDriverDetailsW;
+%ELSE
+PROCEDURE acmDriverDetails = acmDriverDetailsA;
+%END
+
+CONST
+    ACMFORMATTAGDETAILS_FORMATTAG_CHARS = 48;
+
+TYPE
+    ACMFORMATTAGDETAILSA = RECORD
+          cbStruct       : DWORD;
+          dwFormatTagIndex: DWORD;
+          dwFormatTag    : DWORD;
+          cbFormatSize   : DWORD;
+          fdwSupport     : DWORD;
+          cStandardFormats: DWORD;
+          szFormatTag    : ARRAY [0..ACMFORMATTAGDETAILS_FORMATTAG_CHARS - 1] OF ACHAR;
+    END;
+    LPACMFORMATTAGDETAILSA      = POINTER TO ACMFORMATTAGDETAILSA;
+    PACMFORMATTAGDETAILSA       = POINTER TO ACMFORMATTAGDETAILSA;
+
+    ACMFORMATTAGDETAILSW = RECORD
+          cbStruct       : DWORD;
+          dwFormatTagIndex: DWORD;
+          dwFormatTag    : DWORD;
+          cbFormatSize   : DWORD;
+          fdwSupport     : DWORD;
+          cStandardFormats: DWORD;
+          szFormatTag    : ARRAY [0..ACMFORMATTAGDETAILS_FORMATTAG_CHARS - 1] OF WCHAR;
+    END;
+    LPACMFORMATTAGDETAILSW      = POINTER TO ACMFORMATTAGDETAILSW;
+    PACMFORMATTAGDETAILSW       = POINTER TO ACMFORMATTAGDETAILSW;
+
+%IF UNICODE %THEN
+    ACMFORMATTAGDETAILS = ACMFORMATTAGDETAILSW;
+%ELSE
+    ACMFORMATTAGDETAILS = ACMFORMATTAGDETAILSA;
+%END
+    LPACMFORMATTAGDETAILS       = POINTER TO ACMFORMATTAGDETAILS;
+    PACMFORMATTAGDETAILS        = POINTER TO ACMFORMATTAGDETAILS;
+
+PROCEDURE acmFormatTagDetailsA(had : HACMDRIVER;
+                               paftd : LPACMFORMATTAGDETAILSA;
+                               fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE acmFormatTagDetailsW(had : HACMDRIVER;
+                               paftd : LPACMFORMATTAGDETAILSW;
+                               fdwDetails : DWORD) : MMRESULT;
+%IF UNICODE %THEN
+PROCEDURE acmFormatTagDetails = acmFormatTagDetailsW;
+%ELSE
+PROCEDURE acmFormatTagDetails = acmFormatTagDetailsA;
+%END
+
+CONST
+    ACM_FORMATTAGDETAILSF_INDEX         = 000000000h;
+    ACM_FORMATTAGDETAILSF_FORMATTAG     = 000000001h;
+    ACM_FORMATTAGDETAILSF_LARGESTSIZE   = 000000002h;
+    ACM_FORMATTAGDETAILSF_QUERYMASK     = 00000000Fh;
+
+TYPE
+    ACMFORMATTAGENUMCBA  = PROCEDURE (HACMDRIVERID, LPACMFORMATTAGDETAILSA, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFormatTagEnumA(had : HACMDRIVER;
+                            paftd : LPACMFORMATTAGDETAILSA;
+                            fn : ACMFORMATTAGENUMCBA;
+                            dwInstance : DWORD_PTR;
+                            fdwEnum : DWORD) : MMRESULT;
+
+
+TYPE
+    ACMFORMATTAGENUMCBW  = PROCEDURE (HACMDRIVERID, LPACMFORMATTAGDETAILSW, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFormatTagEnumW(had : HACMDRIVER;
+                            paftd : LPACMFORMATTAGDETAILSW;
+                            fn : ACMFORMATTAGENUMCBW;
+                            dwInstance : DWORD_PTR;
+                            fdwEnum : DWORD) : MMRESULT;
+
+
+%IF UNICODE %THEN
+TYPE
+    ACMFORMATTAGENUMCB  = ACMFORMATTAGENUMCBW;
+
+PROCEDURE acmFormatTagEnum = acmFormatTagEnumW;
+%ELSE
+TYPE
+    ACMFORMATTAGENUMCB  = ACMFORMATTAGENUMCBA;
+
+PROCEDURE acmFormatTagEnum = acmFormatTagEnumA;
+%END
+
+CONST
+    ACMFORMATDETAILS_FORMAT_CHARS       = 128;
+
+TYPE
+    ACMFORMATDETAILSA = RECORD
+          cbStruct       : DWORD;
+          dwFormatIndex  : DWORD;
+          dwFormatTag    : DWORD;
+          fdwSupport     : DWORD;
+          pwfx           : LPWAVEFORMATEX;
+          cbwfx          : DWORD;
+          szFormat       : ARRAY [0..ACMFORMATDETAILS_FORMAT_CHARS - 1] OF ACHAR;
+    END;
+    LPACMFORMATDETAILSA  = POINTER TO ACMFORMATDETAILSA;
+    PACMFORMATDETAILSA   = POINTER TO ACMFORMATDETAILSA;
+
+    ACMFORMATDETAILSW = RECORD
+          cbStruct       : DWORD;
+          dwFormatIndex  : DWORD;
+          dwFormatTag    : DWORD;
+          fdwSupport     : DWORD;
+          pwfx           : LPWAVEFORMATEX;
+          cbwfx          : DWORD;
+          szFormat       : ARRAY [0..ACMFORMATDETAILS_FORMAT_CHARS - 1] OF WCHAR;
+    END;
+    LPACMFORMATDETAILSW  = POINTER TO ACMFORMATDETAILSW;
+    PACMFORMATDETAILSW   = POINTER TO ACMFORMATDETAILSW;
+
+%IF UNICODE %THEN
+    ACMFORMATDETAILS    = ACMFORMATDETAILSW;
+%ELSE
+    ACMFORMATDETAILS    = ACMFORMATDETAILSA;
+%END
+    LPACMFORMATDETAILS  = POINTER TO ACMFORMATDETAILS;
+    PACMFORMATDETAILS   = POINTER TO ACMFORMATDETAILS;
+
+PROCEDURE acmFormatDetailsA(had : HACMDRIVER;
+                            pafd : LPACMFORMATDETAILSA;
+                            fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE acmFormatDetailsW(had : HACMDRIVER;
+                            pafd : LPACMFORMATDETAILSW;
+                            fdwDetails : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmFormatDetails = acmFormatDetailsW;
+%ELSE
+PROCEDURE acmFormatDetails = acmFormatDetailsA;
+%END
+
+CONST
+    ACM_FORMATDETAILSF_INDEX    = 000000000h;
+    ACM_FORMATDETAILSF_FORMAT   = 000000001h;
+    ACM_FORMATDETAILSF_QUERYMASK= 00000000Fh;
+
+TYPE
+    ACMFORMATENUMCBA     = PROCEDURE (HACMDRIVERID, LPACMFORMATDETAILSA, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFormatEnumA(had : HACMDRIVER;
+                         pafd : LPACMFORMATDETAILSA;
+                         fn : ACMFORMATENUMCBA;
+                         dwInstance : DWORD_PTR;
+                         fdwEnum : DWORD) : MMRESULT;
+
+
+TYPE
+    ACMFORMATENUMCBW     = PROCEDURE (HACMDRIVERID, LPACMFORMATDETAILSW, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFormatEnumW(had : HACMDRIVER;
+                         pafd : LPACMFORMATDETAILSW;
+                         fn : ACMFORMATENUMCBW;
+                         dwInstance : DWORD_PTR;
+                         fdwEnum : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+TYPE
+    ACMFORMATENUMCB     = ACMFORMATENUMCBW;
+
+PROCEDURE acmFormatEnum = acmFormatEnumW;
+%ELSE
+TYPE
+    ACMFORMATENUMCB     = ACMFORMATENUMCBA;
+
+PROCEDURE acmFormatEnum = acmFormatEnumA;
+%END
+
+CONST
+    ACM_FORMATENUMF_WFORMATTAG          = 000010000h;
+    ACM_FORMATENUMF_NCHANNELS           = 000020000h;
+    ACM_FORMATENUMF_NSAMPLESPERSEC      = 000040000h;
+    ACM_FORMATENUMF_WBITSPERSAMPLE      = 000080000h;
+    ACM_FORMATENUMF_CONVERT             = 000100000h;
+    ACM_FORMATENUMF_SUGGEST             = 000200000h;
+    ACM_FORMATENUMF_HARDWARE            = 000400000h;
+    ACM_FORMATENUMF_INPUT               = 000800000h;
+    ACM_FORMATENUMF_OUTPUT              = 001000000h;
+
+PROCEDURE acmFormatSuggest(had : HACMDRIVER;
+                           pwfxSrc : LPWAVEFORMATEX;
+                           pwfxDst : LPWAVEFORMATEX;
+                           cbwfxDst : DWORD;
+                           fdwSuggest : DWORD) : MMRESULT;
+
+
+CONST
+    ACM_FORMATSUGGESTF_WFORMATTAG       = 000010000h;
+    ACM_FORMATSUGGESTF_NCHANNELS        = 000020000h;
+    ACM_FORMATSUGGESTF_NSAMPLESPERSEC   = 000040000h;
+    ACM_FORMATSUGGESTF_WBITSPERSAMPLE   = 000080000h;
+    ACM_FORMATSUGGESTF_TYPEMASK         = 000FF0000h;
+
+    ACMHELPMSGSTRING                    = "acmchoose_help";
+    ACMHELPMSGSTRINGA                   = ACMHELPMSGSTRING;
+    ACMHELPMSGSTRINGW                   = ACMHELPMSGSTRING;
+
+    ACMHELPMSGCONTEXTMENU               = "acmchoose_contextmenu";
+    ACMHELPMSGCONTEXTMENUA              = ACMHELPMSGCONTEXTMENU;
+    ACMHELPMSGCONTEXTMENUW              = ACMHELPMSGCONTEXTMENU;
+
+    ACMHELPMSGCONTEXTHELP               = "acmchoose_contexthelp";
+    ACMHELPMSGCONTEXTHELPA              = ACMHELPMSGCONTEXTHELP;
+    ACMHELPMSGCONTEXTHELPW              = ACMHELPMSGCONTEXTHELP;
+
+    MM_ACM_FORMATCHOOSE                 = 8000h;
+
+    FORMATCHOOSE_MESSAGE                = 0;
+    FORMATCHOOSE_FORMATTAG_VERIFY       = FORMATCHOOSE_MESSAGE + 0;
+    FORMATCHOOSE_FORMAT_VERIFY          = FORMATCHOOSE_MESSAGE + 1;
+    FORMATCHOOSE_CUSTOM_VERIFY          = FORMATCHOOSE_MESSAGE + 2;
+
+TYPE
+    ACMFORMATCHOOSEHOOKPROCA    = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+    ACMFORMATCHOOSEHOOKPROCW    = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+%IF UNICODE %THEN
+    ACMFORMATCHOOSEHOOKPROC     = ACMFORMATCHOOSEHOOKPROCW;
+%ELSE
+    ACMFORMATCHOOSEHOOKPROC     = ACMFORMATCHOOSEHOOKPROCA;
+%END
+    ACMFORMATCHOOSEA = RECORD
+          cbStruct       : DWORD;
+          fdwStyle       : DWORD;
+          hwndOwner      : HWND;
+          pwfx           : LPWAVEFORMATEX;
+          cbwfx          : DWORD;
+          pszTitle       : LPCSTR;
+          szFormatTag    : ARRAY [0..ACMFORMATTAGDETAILS_FORMATTAG_CHARS - 1] OF ACHAR;
+          szFormat       : ARRAY [0..ACMFORMATDETAILS_FORMAT_CHARS - 1] OF ACHAR;
+          pszName        : LPSTR;
+          cchName        : DWORD;
+          fdwEnum        : DWORD;
+          pwfxEnum       : LPWAVEFORMATEX;
+          hInstance      : HINSTANCE;
+          pszTemplateName: LPCSTR;
+          lCustData      : LPARAM;
+          pfnHook        : ACMFORMATCHOOSEHOOKPROCA;
+    END;
+    LPACMFORMATCHOOSEA   = POINTER TO ACMFORMATCHOOSEA;
+    PACMFORMATCHOOSEA    = POINTER TO ACMFORMATCHOOSEA;
+
+    ACMFORMATCHOOSEW = RECORD
+          cbStruct       : DWORD;
+          fdwStyle       : DWORD;
+          hwndOwner      : HWND;
+          pwfx           : LPWAVEFORMATEX;
+          cbwfx          : DWORD;
+          pszTitle       : LPCWSTR;
+          szFormatTag    : ARRAY [0..ACMFORMATTAGDETAILS_FORMATTAG_CHARS - 1] OF WCHAR;
+          szFormat       : ARRAY [0..ACMFORMATDETAILS_FORMAT_CHARS - 1] OF WCHAR;
+          pszName        : LPWSTR;
+          cchName        : DWORD;
+          fdwEnum        : DWORD;
+          pwfxEnum       : LPWAVEFORMATEX;
+          hInstance      : HINSTANCE;
+          pszTemplateName: LPCWSTR;
+          lCustData      : LPARAM;
+          pfnHook        : ACMFORMATCHOOSEHOOKPROCW;
+    END;
+    LPACMFORMATCHOOSEW   = POINTER TO ACMFORMATCHOOSEW;
+    PACMFORMATCHOOSEW    = POINTER TO ACMFORMATCHOOSEW;
+
+%IF UNICODE %THEN
+    ACMFORMATCHOOSE     = ACMFORMATCHOOSEA;
+%ELSE
+    ACMFORMATCHOOSE     = ACMFORMATCHOOSEA;
+%END
+    LPACMFORMATCHOOSE   = POINTER TO ACMFORMATCHOOSE;
+    PACMFORMATCHOOSE    = POINTER TO ACMFORMATCHOOSE;
+
+CONST
+    ACMFORMATCHOOSE_STYLEF_SHOWHELP             = 000000004h;
+    ACMFORMATCHOOSE_STYLEF_ENABLEHOOK           = 000000008h;
+    ACMFORMATCHOOSE_STYLEF_ENABLETEMPLATE       = 000000010h;
+    ACMFORMATCHOOSE_STYLEF_ENABLETEMPLATEHANDLE = 000000020h;
+    ACMFORMATCHOOSE_STYLEF_INITTOWFXSTRUCT      = 000000040h;
+    ACMFORMATCHOOSE_STYLEF_CONTEXTHELP          = 000000080h;
+
+PROCEDURE acmFormatChooseA(pafmtc : LPACMFORMATCHOOSEA) : MMRESULT;
+
+PROCEDURE acmFormatChooseW(pafmtc : LPACMFORMATCHOOSEW) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmFormatChoose = acmFormatChooseW;
+%ELSE
+PROCEDURE acmFormatChoose = acmFormatChooseA;
+%END
+
+CONST
+    ACMFILTERTAGDETAILS_FILTERTAG_CHARS = 48;
+
+TYPE
+    ACMFILTERTAGDETAILSA = RECORD
+          cbStruct       : DWORD;
+          dwFilterTagIndex: DWORD;
+          dwFilterTag    : DWORD;
+          cbFilterSize   : DWORD;
+          fdwSupport     : DWORD;
+          cStandardFilters: DWORD;
+          szFilterTag    : ARRAY [0..ACMFILTERTAGDETAILS_FILTERTAG_CHARS - 1] OF ACHAR;
+    END;
+    LPACMFILTERTAGDETAILSA      = POINTER TO ACMFILTERTAGDETAILSA;
+    PACMFILTERTAGDETAILSA       = POINTER TO ACMFILTERTAGDETAILSA;
+
+    ACMFILTERTAGDETAILSW = RECORD
+          cbStruct       : DWORD;
+          dwFilterTagIndex: DWORD;
+          dwFilterTag    : DWORD;
+          cbFilterSize   : DWORD;
+          fdwSupport     : DWORD;
+          cStandardFilters: DWORD;
+          szFilterTag    : ARRAY [0..ACMFILTERTAGDETAILS_FILTERTAG_CHARS - 1] OF WCHAR;
+    END;
+    LPACMFILTERTAGDETAILSW      = POINTER TO ACMFILTERTAGDETAILSW;
+    PACMFILTERTAGDETAILSW       = POINTER TO ACMFILTERTAGDETAILSW;
+
+%IF UNICODE %THEN
+    ACMFILTERTAGDETAILS         = ACMFILTERTAGDETAILSW;
+%ELSE
+    ACMFILTERTAGDETAILS         = ACMFILTERTAGDETAILSA;
+%END
+    LPACMFILTERTAGDETAILS       = POINTER TO ACMFILTERTAGDETAILS;
+    PACMFILTERTAGDETAILS        = POINTER TO ACMFILTERTAGDETAILS;
+
+PROCEDURE acmFilterTagDetailsA(had : HACMDRIVER;
+                               paftd : LPACMFILTERTAGDETAILSA;
+                               fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE acmFilterTagDetailsW(had : HACMDRIVER;
+                               paftd : LPACMFILTERTAGDETAILSW;
+                               fdwDetails : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmFilterTagDetails = acmFilterTagDetailsW;
+%ELSE
+PROCEDURE acmFilterTagDetails = acmFilterTagDetailsA;
+%END
+
+CONST
+    ACM_FILTERTAGDETAILSF_INDEX         = 000000000h;
+    ACM_FILTERTAGDETAILSF_FILTERTAG     = 000000001h;
+    ACM_FILTERTAGDETAILSF_LARGESTSIZE   = 000000002h;
+    ACM_FILTERTAGDETAILSF_QUERYMASK     = 00000000Fh;
+
+TYPE
+    ACMFILTERTAGENUMCBA  = PROCEDURE (HACMDRIVERID, LPACMFILTERTAGDETAILSA, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterTagEnumA(had : HACMDRIVER;
+                            paftd : LPACMFILTERTAGDETAILSA;
+                            fn : ACMFILTERTAGENUMCBA;
+                            dwInstance : DWORD_PTR;
+                            fdwEnum : DWORD) : MMRESULT;
+
+
+TYPE
+    ACMFILTERTAGENUMCBW  = PROCEDURE (HACMDRIVERID, LPACMFILTERTAGDETAILSW,
+                                      DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterTagEnumW(had : HACMDRIVER;
+                            paftd : LPACMFILTERTAGDETAILSW;
+                            fn : ACMFILTERTAGENUMCBW;
+                            dwInstance : DWORD_PTR;
+                            fdwEnum : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+TYPE
+    ACMFILTERTAGENUMCB  = PROCEDURE (HACMDRIVERID, LPACMFILTERTAGDETAILSW,
+                                      DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterTagEnum = acmFilterTagEnumW;
+%ELSE
+TYPE
+    ACMFILTERTAGENUMCB  = PROCEDURE (HACMDRIVERID, LPACMFILTERTAGDETAILSA,
+                                      DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterTagEnum = acmFilterTagEnumA;
+%END
+
+CONST
+    ACMFILTERDETAILS_FILTER_CHARS       = 128;
+
+TYPE
+    ACMFILTERDETAILSA = RECORD
+          cbStruct       : DWORD;
+          dwFilterIndex  : DWORD;
+          dwFilterTag    : DWORD;
+          fdwSupport     : DWORD;
+          pwfltr         : LPWAVEFILTER;
+          cbwfltr        : DWORD;
+          szFilter       : ARRAY [0..ACMFILTERDETAILS_FILTER_CHARS - 1] OF ACHAR;
+    END;
+    LPACMFILTERDETAILSA  = POINTER TO ACMFILTERDETAILSA;
+    PACMFILTERDETAILSA   = POINTER TO ACMFILTERDETAILSA;
+
+    ACMFILTERDETAILSW = RECORD
+          cbStruct       : DWORD;
+          dwFilterIndex  : DWORD;
+          dwFilterTag    : DWORD;
+          fdwSupport     : DWORD;
+          pwfltr         : LPWAVEFILTER;
+          cbwfltr        : DWORD;
+          szFilter       : ARRAY [0..ACMFILTERDETAILS_FILTER_CHARS - 1] OF WCHAR;
+    END;
+    LPACMFILTERDETAILSW  = POINTER TO ACMFILTERDETAILSW;
+    PACMFILTERDETAILSW   = POINTER TO ACMFILTERDETAILSW;
+
+%IF UNICODE %THEN
+    ACMFILTERDETAILS    = ACMFILTERDETAILSW;
+%ELSE
+    ACMFILTERDETAILS    = ACMFILTERDETAILSA;
+%END
+    LPACMFILTERDETAILS  = POINTER TO ACMFILTERDETAILS;
+    PACMFILTERDETAILS   = POINTER TO ACMFILTERDETAILS;
+
+PROCEDURE acmFilterDetailsA(had : HACMDRIVER;
+                            pafd : LPACMFILTERDETAILSA;
+                            fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE acmFilterDetailsW(had : HACMDRIVER;
+                            pafd : LPACMFILTERDETAILSW;
+                            fdwDetails : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmFilterDetails = acmFilterDetailsW;
+%ELSE
+PROCEDURE acmFilterDetails = acmFilterDetailsA;
+%END
+
+CONST
+    ACM_FILTERDETAILSF_INDEX    = 000000000h;
+    ACM_FILTERDETAILSF_FILTER   = 000000001h;
+    ACM_FILTERDETAILSF_QUERYMASK= 00000000Fh;
+
+TYPE
+    ACMFILTERENUMCBA     = PROCEDURE (HACMDRIVERID, LPACMFILTERDETAILSA, DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterEnumA(had : HACMDRIVER;
+                         pafd : LPACMFILTERDETAILSA;
+                         fn : ACMFILTERENUMCBA;
+                         dwInstance_PTR : DWORD;
+                         fdwEnum : DWORD) : MMRESULT;
+
+
+TYPE
+    ACMFILTERENUMCBW     = PROCEDURE (HACMDRIVERID, LPACMFILTERDETAILSW,
+                                        DWORD_PTR, DWORD):BOOL;
+
+PROCEDURE acmFilterEnumW(had : HACMDRIVER;
+                         pafd : LPACMFILTERDETAILSW;
+                         fn : ACMFILTERENUMCBW;
+                         dwInstance : DWORD_PTR;
+                         fdwEnum : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+TYPE
+    ACMFILTERENUMCB     = ACMFILTERENUMCBW;
+
+PROCEDURE acmFilterEnum = acmFilterEnumW;
+%ELSE
+TYPE
+    ACMFILTERENUMCB     = ACMFILTERENUMCBA;
+
+PROCEDURE acmFilterEnum = acmFilterEnumA;
+%END
+
+CONST
+    ACM_FILTERENUMF_DWFILTERTAG         = 000010000h;
+
+    MM_ACM_FILTERCHOOSE                 = 8000h;
+
+    FILTERCHOOSE_MESSAGE                = 0;
+    FILTERCHOOSE_FILTERTAG_VERIFY       = FILTERCHOOSE_MESSAGE + 0;
+    FILTERCHOOSE_FILTER_VERIFY          = FILTERCHOOSE_MESSAGE + 1;
+    FILTERCHOOSE_CUSTOM_VERIFY          = FILTERCHOOSE_MESSAGE + 2;
+
+TYPE
+    ACMFILTERCHOOSEHOOKPROCA    = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+    ACMFILTERCHOOSEHOOKPROCW    = PROCEDURE (HWND, UINT, WPARAM, LPARAM) : UINT;
+%IF UNICODE %THEN
+    ACMFILTERCHOOSEHOOKPROC     = ACMFILTERCHOOSEHOOKPROCW;
+%ELSE
+    ACMFILTERCHOOSEHOOKPROC     = ACMFILTERCHOOSEHOOKPROCA;
+%END
+
+    ACMFILTERCHOOSEA = RECORD
+          cbStruct       : DWORD;
+          fdwStyle       : DWORD;
+          hwndOwner      : HWND;
+          pwfltr         : LPWAVEFILTER;
+          cbwfltr        : DWORD;
+          pszTitle       : LPCSTR;
+          szFilterTag    : ARRAY [0..ACMFILTERTAGDETAILS_FILTERTAG_CHARS - 1] OF ACHAR;
+          szFilter       : ARRAY [0..ACMFILTERDETAILS_FILTER_CHARS - 1] OF ACHAR;
+          pszName        : LPSTR;
+          cchName        : DWORD;
+          fdwEnum        : DWORD;
+          pwfltrEnum     : LPWAVEFILTER;
+          hInstance      : HINSTANCE;
+          pszTemplateName: LPCSTR;
+          lCustData      : LPARAM;
+          pfnHook        : ACMFILTERCHOOSEHOOKPROCA;
+    END;
+    LPACMFILTERCHOOSEA   = POINTER TO ACMFILTERCHOOSEA;
+    PACMFILTERCHOOSEA    = POINTER TO ACMFILTERCHOOSEA;
+
+    ACMFILTERCHOOSEW = RECORD
+          cbStruct       : DWORD;
+          fdwStyle       : DWORD;
+          hwndOwner      : HWND;
+          pwfltr         : LPWAVEFILTER;
+          cbwfltr        : DWORD;
+          pszTitle       : LPCWSTR;
+          szFilterTag    : ARRAY [0..ACMFILTERTAGDETAILS_FILTERTAG_CHARS - 1] OF WCHAR;
+          szFilter       : ARRAY [0..ACMFILTERDETAILS_FILTER_CHARS - 1] OF WCHAR;
+          pszName        : LPWSTR;
+          cchName        : DWORD;
+          fdwEnum        : DWORD;
+          pwfltrEnum     : LPWAVEFILTER;
+          hInstance      : HINSTANCE;
+          pszTemplateName: LPCWSTR;
+          lCustData      : LPARAM;
+          pfnHook        : ACMFILTERCHOOSEHOOKPROCW;
+    END;
+    LPACMFILTERCHOOSEW   = POINTER TO ACMFILTERCHOOSEW;
+    PACMFILTERCHOOSEW    = POINTER TO ACMFILTERCHOOSEW;
+
+%IF UNICODE %THEN
+    ACMFILTERCHOOSE     = ACMFILTERCHOOSEW;
+%ELSE
+    ACMFILTERCHOOSE     = ACMFILTERCHOOSEA;
+%END
+    LPACMFILTERCHOOSE   = POINTER TO ACMFILTERCHOOSE;
+    PACMFILTERCHOOSE    = POINTER TO ACMFILTERCHOOSE;
+
+CONST
+    ACMFILTERCHOOSE_STYLEF_SHOWHELP             = 000000004h;
+    ACMFILTERCHOOSE_STYLEF_ENABLEHOOK           = 000000008h;
+    ACMFILTERCHOOSE_STYLEF_ENABLETEMPLATE       = 000000010h;
+    ACMFILTERCHOOSE_STYLEF_ENABLETEMPLATEHANDLE = 000000020h;
+    ACMFILTERCHOOSE_STYLEF_INITTOFILTERSTRUCT   = 000000040h;
+    ACMFILTERCHOOSE_STYLEF_CONTEXTHELP          = 000000080h;
+
+PROCEDURE acmFilterChooseA(pafltrc : LPACMFILTERCHOOSEA) : MMRESULT;
+
+PROCEDURE acmFilterChooseW(pafltrc : LPACMFILTERCHOOSEW) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE acmFilterChoose = acmFilterChooseW;
+%ELSE
+PROCEDURE acmFilterChoose = acmFilterChooseA;
+%END
+
+TYPE
+    ACMSTREAMHEADER = RECORD
+          cbStruct       : DWORD;
+          fdwStatus      : DWORD;
+          dwUser         : DWORD_PTR;
+          pbSrc          : ADDRESS;
+          cbSrcLength    : DWORD;
+          cbSrcLengthUsed: DWORD;
+          dwSrcUser      : DWORD_PTR;
+          pbDst          : ADDRESS;
+          cbDstLength    : DWORD;
+          cbDstLengthUsed: DWORD;
+          dwDstUser      : DWORD_PTR;
+          dwReservedDriver: ARRAY [0..10 - 1] OF DWORD;
+    END;
+    LPACMSTREAMHEADER    = POINTER TO ACMSTREAMHEADER;
+    PACMSTREAMHEADER     = POINTER TO ACMSTREAMHEADER;
+
+CONST
+    ACMSTREAMHEADER_STATUSF_DONE        = 000010000h;
+    ACMSTREAMHEADER_STATUSF_PREPARED    = 000020000h;
+    ACMSTREAMHEADER_STATUSF_INQUEUE     = 000100000h;
+
+PROCEDURE acmStreamOpen(phas : LPHACMSTREAM;
+                        had : HACMDRIVER;
+                        pwfxSrc : LPWAVEFORMATEX;
+                        pwfxDst : LPWAVEFORMATEX;
+                        pwfltr : LPWAVEFILTER;
+                        dw : DWORD_PTR;
+                        dwInstance : DWORD_PTR;
+                        fdwOpen : DWORD) : MMRESULT;
+
+CONST
+    ACM_STREAMOPENF_QUERY               = 000000001h;
+    ACM_STREAMOPENF_ASYNC               = 000000002h;
+    ACM_STREAMOPENF_NONREALTIME         = 000000004h;
+
+PROCEDURE acmStreamClose(has : HACMSTREAM;
+                         fdwClose : DWORD) : MMRESULT;
+
+PROCEDURE acmStreamSize(has : HACMSTREAM;
+                        cbInput : DWORD;
+                        VAR pdwOutputBytes : DWORD;
+                        fdwSize : DWORD) : MMRESULT;
+
+CONST
+    ACM_STREAMSIZEF_SOURCE      = 000000000h;
+    ACM_STREAMSIZEF_DESTINATION = 000000001h;
+    ACM_STREAMSIZEF_QUERYMASK   = 00000000Fh;
+
+PROCEDURE acmStreamReset(has : HACMSTREAM;
+                         fdwReset : DWORD) : MMRESULT;
+
+PROCEDURE acmStreamMessage(has : HACMSTREAM;
+                           uMsg : UINT;
+                           lParam1 : LPARAM;
+                           lParam2 : LPARAM) : MMRESULT;
+
+PROCEDURE acmStreamConvert(has : HACMSTREAM;
+                           pash : LPACMSTREAMHEADER;
+                           fdwConvert : DWORD) : MMRESULT;
+
+CONST
+    ACM_STREAMCONVERTF_BLOCKALIGN       = 000000004h;
+    ACM_STREAMCONVERTF_START            = 000000010h;
+    ACM_STREAMCONVERTF_END              = 000000020h;
+
+PROCEDURE acmStreamPrepareHeader(has : HACMSTREAM;
+                                 pash : LPACMSTREAMHEADER;
+                                 fdwPrepare : DWORD) : MMRESULT;
+
+PROCEDURE acmStreamUnprepareHeader(has : HACMSTREAM;
+                                   pash : LPACMSTREAMHEADER;
+                                   fdwUnprepare : DWORD) : MMRESULT;
+
+END MSACM.

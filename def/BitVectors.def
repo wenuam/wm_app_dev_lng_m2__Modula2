@@ -1,0 +1,226 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE BitVectors;
+(* bit vectors are similar to Modula-2 SETs, however they are dynamically sized *)
+
+(* make sure this version tag is set the same in the DEF and MOD *)
+<*/VALIDVERSION:PROTECT*>
+%IF Windows %OR UNIX %THEN
+    <*/VERSION:PROTECT*>
+%END
+
+%IF DLL %THEN
+    <*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    ADRCARD;
+
+FROM ExStorage IMPORT
+    HeapInfoPointer;
+
+CONST
+    BitVectorBits       = SIZE(ADRCARD)*8;
+
+    %IF PROTECT %THEN
+    CacheLinePad        = 128;
+    %END
+TYPE
+    BitVectorElement    = PACKEDSET OF [0..BitVectorBits-1];
+
+    (* this is defined in the DEF only to support the inline macro procedures
+       FastSetBit and FastClearBit.
+       you should ignore this record and use the provided APIs.
+    *)
+    BitVectorRecord =
+        RECORD
+        %IF PROTECT %THEN
+        lock            : CARDINAL;
+        pad             : ARRAY [1..CacheLinePad] OF CARDINAL8;
+        (* separate the lock and the data by a cache line *)
+        %END
+        lowBit          : CARDINAL;
+        highBit         : CARDINAL;
+        numElements     : CARDINAL;
+        heap            : HeapInfoPointer;
+        bits            : ARRAY [0..63] OF BitVectorElement;
+        (* the record is allocated to its appropriate size
+           depending on the range of the BitVector.
+           this means the size of the .bits field varies.
+           the small initial size for the array helps debugging.
+        *)
+        END;
+    BitVector           = POINTER TO BitVectorRecord;
+
+CONST
+    EmptyElement        = BitVectorElement{};
+    FullElement         = BitVectorElement{0..BitVectorBits-1};
+
+PROCEDURE NewVector(VAR OUT v : BitVector; lowBit, highBit : CARDINAL);
+(* allocate a new bit vector with a lower bound of lowBit and upper bound *)
+(* of highBit. *)
+(* v = NIL if the operation does not succeed *)
+(* a bit outside the allocated range of a bit vector is considered clear, *)
+(* meaning the bit is not set, and obviously never can be set *)
+(* the bits in the new vector default to clear *)
+
+PROCEDURE DisposeVector(VAR INOUT v : BitVector);
+(* deallocate a previously allocated bit vector *)
+(* v = NIL after this procedure *)
+
+PROCEDURE ReallocVector(VAR INOUT v : BitVector; newHighBit : CARDINAL);
+(* change the upper bound of the previously allocated bit vector v *)
+(* to the new bound in newHighBit. the lower bound is unchanged *)
+(* the value v will change as a result of this call *)
+(* if the high bound is increased then the new bits will default to clear *)
+
+PROCEDURE SetBit(b : CARDINAL; v : BitVector);
+(* set the bit value in b in the bit vector v *)
+(* if b is outside the valid range of v it is ignored and this procedure *)
+(* performs no action *)
+
+PROCEDURE ClearBit(b : CARDINAL; v : BitVector);
+(* clear the bit value in b in the bit vector v *)
+(* if b is outside the valid range of v it is ignored and this procedure *)
+(* performs no action *)
+
+PROCEDURE FastSetBit(b : CARDINAL; v : BitVector); MACRO;
+(* as SetBit, except this gets generated inline.
+   it is not thread safe and it does not range check the set bit.
+*)
+BEGIN
+    b := b - v^.lowBit;
+    INCL(v^.bits[b / BitVectorBits], b REM BitVectorBits);
+END FastSetBit;
+
+PROCEDURE FastClearBit(b : CARDINAL; v : BitVector); MACRO;
+(* as ClearBit, except this gets generated inline.
+   it is not thread safe and it does not range check the set bit.
+*)
+BEGIN
+    b := b - v^.lowBit;
+    EXCL(v^.bits[b / BitVectorBits], b REM BitVectorBits);
+END FastClearBit;
+
+PROCEDURE SetBits(bottom, top : CARDINAL; v : BitVector);
+(* set the range of bits from bottom..top in the bit vector v *)
+(* if any bit is outside the valid range of v it is ignored *)
+(* any bit within the valid range of v will be set *)
+
+PROCEDURE ClearBits(bottom, top : CARDINAL; v : BitVector);
+(* clear the range of bits from bottom..top in the bit vector v *)
+(* if any bit is outside the valid range of v it is ignored *)
+(* any bit within the valid range of v will be cleared *)
+
+PROCEDURE BitIsSet(b : CARDINAL; v : BitVector) : BOOLEAN;
+(* returns TRUE if the bit value b is set in the bit vector v, *)
+(* otherwise FALSE is returned *)
+(* if the bit value b is outside the range of v then FALSE is returned *)
+
+PROCEDURE AnyBitSet(bottom, top : CARDINAL; v : BitVector) : BOOLEAN;
+(* returns TRUE if any bit in the range bottom..top is set *)
+(* in the bit vector v, otherwise FALSE *)
+
+PROCEDURE AnyBitClear(bottom, top : CARDINAL; v : BitVector) : BOOLEAN;
+(* returns TRUE if any bit in the range bottom..top is clear *)
+(* in the bit vector v, otherwise FALSE *)
+(* if any bit from bottom..top is outside the range of v *)
+(* then TRUE is returned since these bits are defined as always clear *)
+
+PROCEDURE FindSetBits(startBit, numBits : CARDINAL;
+                      v : BitVector;
+                      VAR OUT bottom : CARDINAL) : BOOLEAN;
+PROCEDURE FindClearBits(startBit, numBits : CARDINAL;
+                        v : BitVector;
+                        VAR OUT bottom : CARDINAL) : BOOLEAN;
+(* this scans the BitVector for a group of set/clear bits *)
+(* the search begins at the bit specified by startBit. *)
+(* returns TRUE if a group of bits was found and then bottom contains *)
+(* the first bit position in the found group. *)
+
+TYPE
+    BitRange =
+        RECORD
+        bottom, top     : CARDINAL;
+        END;
+
+PROCEDURE FindSetBitsEx(startBit, minBits : CARDINAL;
+                        v : BitVector;
+                        VAR OUT result : ARRAY OF BitRange) : CARDINAL;
+PROCEDURE FindClearBitsEx(startBit, minBits : CARDINAL;
+                          v : BitVector;
+                          VAR OUT result : ARRAY OF BitRange) : CARDINAL;
+(* this scans the BitVector for a group of set/clear bits with a
+   minimum count of minBits *)
+(* the search begins at the bit specified by startBit. *)
+(* returns the number of bit ranges stored in the result array. *)
+
+PROCEDURE Empty(v : BitVector) : BOOLEAN;
+(* returns TRUE if all bits in the bit vector v are clear *)
+
+PROCEDURE And(v1, v2 : BitVector);
+(* perform a boolean "and" operation on the two bit vectors *)
+(* v2 is the destination of this operation *)
+(* v2 := v2 "and" v1 *)
+(* if v1 is smaller than v2 then these bits are assumed clear for this *)
+(* "and" operation *)
+(* if v1 is larger than v2 the extra bits are ignored *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Or(v1, v2 : BitVector);
+(* perform a boolean "or" operation on the two bit vectors *)
+(* v2 is the destination of this operation *)
+(* v2 := v2 "or" v1 *)
+(* if v1 is smaller than v2 then these bits are assumed clear for this *)
+(* "or" operation *)
+(* if v1 is larger than v2 the extra bits are ignored *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Minus(v1, v2 : BitVector);
+(* remove any bit values set in bit vector v1 from bit vector v2 *)
+(* v2 is the destination of this operation *)
+(* v2 := v2 "-" v1 *)
+(* if v1 is smaller than v2 then these bits are assumed clear for this *)
+(* operation *)
+(* if v1 is larger than v2 the extra bits are ignored *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Invert(v1 : BitVector);
+(* perform a bitwise NOT operation on the bit vector *)
+
+PROCEDURE ShiftLeft(v : BitVector; bits : CARDINAL);
+PROCEDURE ShiftRight(v : BitVector; bits : CARDINAL);
+(* perform a logical shift of the bits in the bit vector. *)
+
+PROCEDURE BitsInCommon(v1, v2 : BitVector) : BOOLEAN;
+(* returns TRUE if any bit value in the two bit vectors *)
+(* is set in both bit vectors, otherwise FALSE is returned *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Equal(v1, v2 : BitVector) : BOOLEAN;
+(* returns TRUE if the two bit vectors contain the same set and clear bits *)
+(* otherwise FALSE is returned *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Copy(v1, v2 : BitVector);
+(* copy the bits in bit vector v1 into bit vector v2 *)
+(* if v1 is smaller than v2 then these bits are cleared in v2 *)
+(* if v1 is larger than v2 then these extra bits are ignored *)
+(* maximum performance comes when two bit vectors have the same lower bound *)
+
+PROCEDURE Duplicate(v1 : BitVector; VAR OUT v2 : BitVector);
+(* allocate a new bit vector in v2 with the same range a bit vector v1 *)
+(* and copy the bits from v1 into v2 *)
+
+PROCEDURE Zap(val : BitVectorElement; v : BitVector);
+(* assign all bit vector storage elements in v with the value val *)
+(* this procedure is useful to assign all clear or set bits in a bit vector *)
+(* using the constants EmptyElement or FullElement *)
+
+END BitVectors.

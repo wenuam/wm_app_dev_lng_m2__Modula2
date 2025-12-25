@@ -1,0 +1,92 @@
+(*
+Name:     SMTP
+Creation: 18-11-2003
+LastEdit: 21-01-2004
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+DEFINITION MODULE SMTP;
+
+TYPE T;
+
+PROCEDURE SendShortMessage(szHost:    ARRAY OF CHAR;
+                           szFrom:    ARRAY OF CHAR;
+                           szTo:      ARRAY OF CHAR;
+                           szCC:      ARRAY OF CHAR;
+                           szBCC:     ARRAY OF CHAR;
+                           szSubject: ARRAY OF CHAR;
+                           szMessage: ARRAY OF CHAR): BOOLEAN;
+(* sends short message to SMTP host *)
+(* szTo, szCC, szBCC may contain multiple addresses separated by a , *)
+(* each address should follow the format: *)
+(* "Egbert van der Haring" <eh@kermanog.com> *)
+(* the part between "" is optional *)
+
+(* next three procedures can be used for longer messages, like this:
+
+   IF SMTP.SendMailHeader('server','<the@from.address>','<the@to.address>',
+                                   '<the@cc.address>','<the@bcc@address>','subject',smtp) THEN
+    IF  SMTP.SendMailText(smtp,'first line')
+    AND SMTP.SendMailText(smtp,'second line')
+    AND SMTP.SendMailText(smtp,'third line') THEN
+      IF SMTP.SendAndClose(smtp) THEN
+        ...
+*)
+
+PROCEDURE SendMailHeader(    szHost:    ARRAY OF CHAR;
+                             szFrom:    ARRAY OF CHAR;
+                             szTo:      ARRAY OF CHAR;
+                             szCC:      ARRAY OF CHAR;
+                             szBCC:     ARRAY OF CHAR;
+                             szSubject: ARRAY OF CHAR;
+                         VAR smtp:      T): BOOLEAN;
+(* sends mail header to SMTP host *)
+(* szTo, szCC, szBCC may contain multiple addresses separated by a , *)
+
+PROCEDURE SendMailText(smtp:   T;
+                       szLine: ARRAY OF CHAR): BOOLEAN;
+(* sends mail text line *)
+
+PROCEDURE SendAndClose(VAR INOUT smtp: T): BOOLEAN;
+(* sends mail and closes connection to SMTP host *)
+
+
+(* the following procedures are a very straight-forward *)
+(* implementation of the SMTP protocol. Use these procedures *)
+(* only when you know what you're doing, or for debugging *)
+(* purposes. Use the procedures above instead *)
+PROCEDURE Connect(    szHost: ARRAY OF CHAR;
+                  VAR smtp:   T): BOOLEAN;
+(* returns TRUE when connected *)
+
+PROCEDURE DisConnect(VAR INOUT smtp: T);
+(* disconnects from host *)
+
+PROCEDURE From(smtp:   T;
+               szFrom: ARRAY OF CHAR): BOOLEAN;
+(* starts mail from ... *)
+(* szFrom must be in the format eh@kermanog.com *)
+
+PROCEDURE To(smtp: T;
+             szTo: ARRAY OF CHAR): BOOLEAN;
+(* sets one recipient, may be called multiple times *)
+(* szTo must be in the format eh@kermanog.com *)
+
+PROCEDURE Data(smtp:   T;
+               szText: ARRAY OF CHAR): BOOLEAN;
+(* sets text of message, may be called multiple times *)
+
+PROCEDURE AddEmptyLine(smtp: T): BOOLEAN;
+(* adds empty line to message *)
+
+PROCEDURE Send(smtp: T): BOOLEAN;
+(* sends message *)
+
+PROCEDURE GetLastReply(    smtp:    T;
+                       VAR szReply: ARRAY OF CHAR);
+(* returns last reply from SMTP server *)
+
+
+END SMTP.

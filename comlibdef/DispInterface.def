@@ -1,0 +1,33 @@
+(*
+Name:     DispInterface
+Creation: 24-03-2000
+LastEdit: 24-03-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+UNSAFEGUARDED DEFINITION MODULE DispInterface;
+
+IMPORT WIN32;
+IMPORT Ole2;
+
+CLASS C;
+  REVEAL Init,
+         Invoke,
+         READONLY bValid,
+         READONLY iDispatch;
+
+  PROCEDURE Init(clsid: WIN32.GUID);
+  PROCEDURE Invoke(    szuName:    ARRAY OF UCHAR;
+                   VAR INOUT dispId: Ole2.DISPID;
+                       wFlags:     WIN32.WORD;
+                       dispparams: Ole2.DISPPARAMS;
+                   VAR vResult:    Ole2.VARIANT): WIN32.HRESULT;
+
+  VAR iDispatch: Ole2.IDispatch;
+      bValid:    BOOLEAN;
+END C;
+
+
+END DispInterface.

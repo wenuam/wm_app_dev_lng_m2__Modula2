@@ -1,0 +1,170 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE ConfigSettings;
+(*
+  This module provides an API for accessing configuration settings in
+  a portable manner. It supports both system wide and per user config
+  settings.
+
+  Settings are identified by name, and multiple data formats are supported
+  for the individual settings. The setting key names are not case sensitive.
+  The settings are always written in a human readable format.
+
+  Each setting is limited to 1024 bytes of data.
+
+  Win32 - this module writes the settings into the system registry.
+          System wide settings go into "LOCAL_MACHINE"
+          Per user settings go into "CURRENT_USER"
+          The location of the settings is
+          Software/CompanyName/AppName/...
+          Where company name and app name are registry directories,
+          and the settings are items within the AppName directory.
+
+  Unix - this module writes the settings into a text file.
+         System wide settings go into the /opt directory.
+             /opt/CompanyName/AppName
+             Where AppName is the text file and CompanyName is a directory.
+             Note that you will not be able to write to the system
+             wide settings unless you have super user access, since the
+             /opt directory is generally owned by the super user.
+         Per user settings go into the users HOME directory.
+             $HOME/.CompanyName/AppName
+             Where AppName is a text file, and CompanyName is a hidden
+             directory.
+        Remember than in Unix systems, file names are case sensitive.
+*)
+
+FROM SYSTEM IMPORT
+    LOC;
+
+TYPE
+    CfgOpenStatus       = (CfgOpened, CfgCreated, CfgFailed);
+
+    EnumCallBack        = PROCEDURE(ARRAY OF CHAR);
+
+PROCEDURE OpenConfig(companyName, appName : ARRAY OF CHAR;
+                     user : BOOLEAN) : CfgOpenStatus;
+(*
+  open a config settings "file". this module only allows one config
+  file to be open at a time.
+  companyName = the name of the company.
+  appName = the name of the application.
+  user = TRUE, then the per user settings are opened. Otherwise the system
+      wide settings are opened.
+  returns CfgOpened if the config file already exists and has been opened.
+  returns CfgCreated if the config file did not exist. The config file is
+      ready to receive items.
+  returns CfgFailed if a config file is already open, or some other error.
+*)
+
+PROCEDURE CloseConfig;
+(*
+  closes the currently open config settings.
+*)
+
+PROCEDURE ReadCfgString(keyName : ARRAY OF CHAR; VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(*
+ reads a string from the config
+ keyName = the name of the config key
+ str = the data returned
+ return TRUE if successful
+*)
+
+PROCEDURE WriteCfgString(keyName : ARRAY OF CHAR; str : ARRAY OF CHAR) : BOOLEAN;
+(*
+ writes a string to the config
+ keyName = the name of the config key
+ str = the data to be written
+ return TRUE if successful
+*)
+
+PROCEDURE ReadCfgInt(keyName : ARRAY OF CHAR; VAR OUT val : INTEGER) : BOOLEAN;
+(*
+ reads an integer from the config
+ keyName = the name of the config key
+ val = the data returned
+ return TRUE if successful
+*)
+
+PROCEDURE WriteCfgInt(keyName : ARRAY OF CHAR; val : INTEGER) : BOOLEAN;
+(*
+ writes an integer to the config
+ keyName = the name of the config key
+ val = the data to be written
+ return TRUE if successful
+*)
+
+PROCEDURE ReadCfgCard(keyName : ARRAY OF CHAR; VAR OUT val : CARDINAL) : BOOLEAN;
+(*
+ reads a cardinal from the config
+ keyName = the name of the config key
+ val = the data returned
+ return TRUE if successful
+*)
+
+PROCEDURE WriteCfgCard(keyName : ARRAY OF CHAR; val : CARDINAL) : BOOLEAN;
+(*
+ writes a cardinal to the config
+ keyName = the name of the config key
+ val = the data to be written
+ return TRUE if successful
+*)
+
+PROCEDURE ReadCfgBool(keyName : ARRAY OF CHAR; VAR OUT val : BOOLEAN) : BOOLEAN;
+(*
+ reads a boolean from the config
+ keyName = the name of the config key
+ val = the data returned
+ return TRUE if successful
+*)
+
+PROCEDURE WriteCfgBool(keyName : ARRAY OF CHAR; val : BOOLEAN) : BOOLEAN;
+(*
+ writes a boolean to the config
+ keyName = the name of the config key
+ val = the data to be written
+ return TRUE if successful
+*)
+
+PROCEDURE ReadCfgBin(keyName : ARRAY OF CHAR; VAR OUT bin : ARRAY OF LOC) : BOOLEAN;
+(*
+ reads binary data from the config
+ the size of the data is taken from the high bound of the passed array
+ keyName = the name of the config key
+ return TRUE if successful
+ the data element must be the same size as you are requesting otherwise FALSE is returned
+*)
+
+PROCEDURE WriteCfgBin(keyName : ARRAY OF CHAR; bin : ARRAY OF LOC) : BOOLEAN;
+(*
+ writes binary data to the config
+ the size of the data is taken from the high bound of the passed array
+ keyName = the name of the config key
+ bin = the data to be written
+ return TRUE if successful
+*)
+
+PROCEDURE RemoveCfgItem(keyName : ARRAY OF CHAR);
+(*
+ removes the config item identified by keyName
+ keyName = the name of the config key
+*)
+
+PROCEDURE RemoveAllCfgItems;
+(*
+ removes all the config items
+*)
+
+PROCEDURE EnumCfgItems(call : EnumCallBack);
+(*
+  enumerate all config items. the callback procedure is passed the key name
+  of each config item.
+*)
+
+END ConfigSettings.

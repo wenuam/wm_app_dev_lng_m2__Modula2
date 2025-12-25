@@ -1,0 +1,45 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE RConversions;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE RealToString(num : LONGREAL;
+                       digits : CARDINAL;
+                       VAR OUT str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT done : BOOLEAN);
+(* Convert a real number into a string buf starting at position pos. *)
+(* pos is left pointing at the next character after the converted number. *)
+(* done signifies the success of the conversion *)
+
+PROCEDURE RealToStringFixed(num : LONGREAL;
+                            digits, before : CARDINAL;
+                            VAR OUT str : ARRAY OF CHAR;
+                            VAR INOUT pos : CARDINAL;
+                            VAR OUT done : BOOLEAN);
+(* Convert a real number into a string buf starting at position pos using *)
+(* fixed point notation with "digits" total digits and "before" digits before the *)
+(* decimal point. *)
+(* 0 <= before <= digits *)
+(* done signifies the success of the conversion *)
+(* the position "pos" is updated to the string position immediately after the real
+   number output *)
+
+PROCEDURE StringToReal(str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT num : LONGREAL;
+                       VAR OUT done : BOOLEAN);
+(* Get a longreal number from a string starting at position pos. *)
+(* pos is left pointing to the first character that is not part of *)
+(* the number. done signifies the success of the conversion *)
+
+END RConversions.

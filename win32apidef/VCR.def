@@ -1,0 +1,359 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE VCR;
+
+FROM WIN32 IMPORT
+    DWORD, LPCSTR;
+
+FROM MMSYSTEM IMPORT
+    MCI_USER_MESSAGES, MCIERR_CUSTOM_DRIVER_BASE;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/NOPACK*>
+
+CONST
+    MCI_VCR_OFFSET       = 1280;
+    MCI_LIST             = 00878h;
+    MCI_SETAUDIO         = 00873h;
+    MCI_SETVIDEO         = 00876h;
+    MCI_SIGNAL           = 00875h;
+
+    MCI_MARK             = MCI_USER_MESSAGES + 0;
+    MCI_INDEX            = MCI_USER_MESSAGES + 1;
+    MCI_SETTUNER         = MCI_USER_MESSAGES + 2;
+    MCI_SETVCR           = MCI_USER_MESSAGES + 3;
+    MCI_SETTIMECODE      = MCI_USER_MESSAGES + 4;
+
+    MCI_TEST             = 000000020h;
+
+    MCI_VCR_GETDEVCAPS_CAN_DETECT_LENGTH        = 000004001h;
+    MCI_VCR_GETDEVCAPS_SEEK_ACCURACY            = 000004002h;
+    MCI_VCR_GETDEVCAPS_HAS_CLOCK                = 000004003h;
+    MCI_VCR_GETDEVCAPS_CAN_REVERSE              = 000004004h;
+    MCI_VCR_GETDEVCAPS_NUMBER_OF_MARKS          = 000004005h;
+    MCI_VCR_GETDEVCAPS_CAN_TEST                 = 000004006h;
+    MCI_VCR_GETDEVCAPS_CAN_PREROLL              = 000004007h;
+    MCI_VCR_GETDEVCAPS_CAN_PREVIEW              = 000004008h;
+    MCI_VCR_GETDEVCAPS_CAN_MONITOR_SOURCES      = 000004009h;
+    MCI_VCR_GETDEVCAPS_HAS_TIMECODE             = 00000400Ah;
+    MCI_VCR_GETDEVCAPS_CAN_FREEZE               = 00000401Bh;
+    MCI_VCR_GETDEVCAPS_CLOCK_INCREMENT_RATE     = 00000401Ch;
+
+    MCI_VCR_INFO_VERSION                        = 000010000h;
+
+    MCI_VCR_PLAY_REVERSE                        = 000010000h;
+    MCI_VCR_PLAY_AT                             = 000020000h;
+    MCI_VCR_PLAY_SCAN                           = 000040000h;
+
+    MCI_VCR_RECORD_INITIALIZE                   = 000010000h;
+    MCI_VCR_RECORD_AT                           = 000020000h;
+    MCI_VCR_RECORD_PREVIEW                      = 000040000h;
+
+    MCI_VCR_CUE_INPUT                           = 000010000h;
+    MCI_VCR_CUE_OUTPUT                          = 000020000h;
+    MCI_VCR_CUE_PREROLL                         = 000040000h;
+    MCI_VCR_CUE_REVERSE                         = 000080000h;
+
+    MCI_VCR_SEEK_REVERSE                        = 000010000h;
+    MCI_VCR_SEEK_MARK                           = 000020000h;
+    MCI_VCR_SEEK_AT                             = 000040000h;
+
+    MCI_VCR_SETTUNER_CHANNEL                    = 000010000h;
+    MCI_VCR_SETTUNER_CHANNEL_UP                 = 000020000h;
+    MCI_VCR_SETTUNER_CHANNEL_DOWN               = 000040000h;
+    MCI_VCR_SETTUNER_CHANNEL_SEEK_UP            = 000080000h;
+    MCI_VCR_SETTUNER_CHANNEL_SEEK_DOWN          = 000100000h;
+    MCI_VCR_SETTUNER_NUMBER                     = 000200000h;
+
+    MCI_VCR_SET_TIME_MODE                       = 000010000h;
+    MCI_VCR_SET_POWER                           = 000020000h;
+    MCI_VCR_SET_RECORD_FORMAT                   = 000040000h;
+    MCI_VCR_SET_COUNTER_FORMAT                  = 000080000h;
+    MCI_VCR_SET_INDEX                           = 000100000h;
+    MCI_VCR_SET_ASSEMBLE_RECORD                 = 000200000h;
+    MCI_VCR_SET_TRACKING                        = 000400000h;
+    MCI_VCR_SET_SPEED                           = 000800000h;
+    MCI_VCR_SET_TAPE_LENGTH                     = 001000000h;
+    MCI_VCR_SET_COUNTER_VALUE                   = 002000000h;
+    MCI_VCR_SET_CLOCK                           = 004000000h;
+    MCI_VCR_SET_PAUSE_TIMEOUT                   = 008000000h;
+    MCI_VCR_SET_PREROLL_DURATION                = 010000000h;
+    MCI_VCR_SET_POSTROLL_DURATION               = 020000000h;
+
+    MCI_VCR_SETTIMECODE_RECORD                  = 000010000h;
+
+    MCI_VCR_STATUS_FRAME_RATE                   = 000004001h;
+    MCI_VCR_STATUS_SPEED                        = 000004002h;
+    MCI_VCR_STATUS_MEDIA_TYPE                   = 000004003h;
+    MCI_VCR_STATUS_RECORD_FORMAT                = 000004004h;
+    MCI_VCR_STATUS_PLAY_FORMAT                  = 000004005h;
+    MCI_VCR_STATUS_AUDIO_SOURCE                 = 000004006h;
+    MCI_VCR_STATUS_AUDIO_SOURCE_NUMBER          = 000004007h;
+    MCI_VCR_STATUS_VIDEO_SOURCE                 = 000004008h;
+    MCI_VCR_STATUS_VIDEO_SOURCE_NUMBER          = 000004009h;
+    MCI_VCR_STATUS_AUDIO_MONITOR                = 00000400Ah;
+    MCI_VCR_STATUS_AUDIO_MONITOR_NUMBER         = 00000400Bh;
+    MCI_VCR_STATUS_VIDEO_MONITOR                = 00000400Ch;
+    MCI_VCR_STATUS_VIDEO_MONITOR_NUMBER         = 00000400Dh;
+    MCI_VCR_STATUS_INDEX_ON                     = 00000400Eh;
+    MCI_VCR_STATUS_INDEX                        = 00000400Fh;
+    MCI_VCR_STATUS_COUNTER_FORMAT               = 000004010h;
+    MCI_VCR_STATUS_COUNTER_RESOLUTION           = 000004011h;
+    MCI_VCR_STATUS_TIMECODE_TYPE                = 000004012h;
+    MCI_VCR_STATUS_COUNTER_VALUE                = 000004013h;
+    MCI_VCR_STATUS_TUNER_CHANNEL                = 000004014h;
+    MCI_VCR_STATUS_WRITE_PROTECTED              = 000004015h;
+    MCI_VCR_STATUS_TIMECODE_RECORD              = 000004016h;
+    MCI_VCR_STATUS_VIDEO_RECORD                 = 000004017h;
+    MCI_VCR_STATUS_AUDIO_RECORD                 = 000004018h;
+    MCI_VCR_STATUS_TIME_TYPE                    = 000004019h;
+    MCI_VCR_STATUS_TIME_MODE                    = 00000401Ah;
+    MCI_VCR_STATUS_POWER_ON                     = 00000401Bh;
+    MCI_VCR_STATUS_CLOCK                        = 00000401Ch;
+    MCI_VCR_STATUS_ASSEMBLE_RECORD              = 00000401Dh;
+    MCI_VCR_STATUS_TIMECODE_PRESENT             = 00000401Eh;
+    MCI_VCR_STATUS_NUMBER_OF_VIDEO_TRACKS       = 00000401Fh;
+    MCI_VCR_STATUS_NUMBER_OF_AUDIO_TRACKS       = 000004020h;
+    MCI_VCR_STATUS_CLOCK_ID                     = 000004021h;
+    MCI_VCR_STATUS_PAUSE_TIMEOUT                = 000004022h;
+    MCI_VCR_STATUS_PREROLL_DURATION             = 000004023h;
+    MCI_VCR_STATUS_POSTROLL_DURATION            = 000004024h;
+    MCI_VCR_STATUS_VIDEO                        = 000004025h;
+    MCI_VCR_STATUS_AUDIO                        = 000004026h;
+    MCI_VCR_STATUS_NUMBER                       = 000080000h;
+
+    MCI_VCR_ESCAPE_STRING                       = 000000100h;
+    MCI_VCR_LIST_VIDEO_SOURCE                   = 000010000h;
+    MCI_VCR_LIST_AUDIO_SOURCE                   = 000020000h;
+    MCI_VCR_LIST_COUNT                          = 000040000h;
+    MCI_VCR_LIST_NUMBER                         = 000080000h;
+    MCI_VCR_MARK_WRITE                          = 000010000h;
+    MCI_VCR_MARK_ERASE                          = 000020000h;
+    MCI_VCR_SETAUDIO_RECORD                     = 000010000h;
+    MCI_VCR_SETAUDIO_SOURCE                     = 000020000h;
+    MCI_VCR_SETAUDIO_MONITOR                    = 000040000h;
+    MCI_VCR_SETAUDIO_TO                         = 000200000h;
+    MCI_VCR_SETAUDIO_NUMBER                     = 000400000h;
+    MCI_VCR_SETVIDEO_RECORD                     = 000010000h;
+    MCI_VCR_SETVIDEO_SOURCE                     = 000020000h;
+    MCI_VCR_SETVIDEO_MONITOR                    = 000040000h;
+    MCI_VCR_SETVIDEO_TO                         = 000100000h;
+    MCI_VCR_SETVIDEO_NUMBER                     = 000200000h;
+
+(* Code is in the .MOD but the user must supply the DriverCallback function
+PROCEDURE SEND_VCRSIGNAL(dwFlags : DWORD;
+                         dwCallback: DWORD;
+                         hDriver : HANDLE;
+                         wDeviceID : WORD;
+                         dwUser : DWORD;
+                         dwPos : DWORD) : WINT;
+*)
+
+CONST
+    MM_MCISIGNAL                                = 03CBh;
+
+    MCI_VCR_SIGNAL_AT                           = 000010000h;
+    MCI_VCR_SIGNAL_EVERY                        = 000020000h;
+    MCI_VCR_SIGNAL_USERVAL                      = 000040000h;
+    MCI_VCR_SIGNAL_CANCEL                       = 000080000h;
+    MCI_VCR_SIGNAL_POSITION                     = 000100000h;
+    MCI_VCR_STEP_FRAMES                         = 000010000h;
+    MCI_VCR_STEP_REVERSE                        = 000020000h;
+    MCI_VCR_FREEZE_INPUT                        = 000010000h;
+    MCI_VCR_FREEZE_OUTPUT                       = 000020000h;
+    MCI_VCR_FREEZE_FIELD                        = 000040000h;
+    MCI_VCR_FREEZE_FRAME                        = 000080000h;
+    MCI_VCR_UNFREEZE_INPUT                      = 000010000h;
+    MCI_VCR_UNFREEZE_OUTPUT                     = 000020000h;
+
+    MCI_VCR_MEDIA_8MM                           = MCI_VCR_OFFSET + 1;
+    MCI_VCR_MEDIA_HI8                           = MCI_VCR_OFFSET + 2;
+    MCI_VCR_MEDIA_VHS                           = MCI_VCR_OFFSET + 3;
+    MCI_VCR_MEDIA_SVHS                          = MCI_VCR_OFFSET + 4;
+    MCI_VCR_MEDIA_BETA                          = MCI_VCR_OFFSET + 5;
+    MCI_VCR_MEDIA_EDBETA                        = MCI_VCR_OFFSET + 6;
+    MCI_VCR_MEDIA_OTHER                         = MCI_VCR_OFFSET + 7;
+    MCI_VCR_FORMAT_SP                           = MCI_VCR_OFFSET + 8;
+    MCI_VCR_FORMAT_LP                           = MCI_VCR_OFFSET + 9;
+    MCI_VCR_FORMAT_EP                           = MCI_VCR_OFFSET + 10;
+    MCI_VCR_FORMAT_OTHER                        = MCI_VCR_OFFSET + 11;
+    MCI_VCR_TIME_TIMECODE                       = MCI_VCR_OFFSET + 12;
+    MCI_VCR_TIME_COUNTER                        = MCI_VCR_OFFSET + 13;
+    MCI_VCR_TIME_DETECT                         = MCI_VCR_OFFSET + 14;
+    MCI_VCR_SRC_TYPE_TUNER                      = MCI_VCR_OFFSET + 15;
+    MCI_VCR_SRC_TYPE_LINE                       = MCI_VCR_OFFSET + 16;
+    MCI_VCR_SRC_TYPE_SVIDEO                     = MCI_VCR_OFFSET + 17;
+    MCI_VCR_SRC_TYPE_RGB                        = MCI_VCR_OFFSET + 18;
+    MCI_VCR_SRC_TYPE_AUX                        = MCI_VCR_OFFSET + 19;
+    MCI_VCR_SRC_TYPE_GENERIC                    = MCI_VCR_OFFSET + 20;
+    MCI_VCR_SRC_TYPE_MUTE                       = MCI_VCR_OFFSET + 21;
+    MCI_VCR_SRC_TYPE_OUTPUT                     = MCI_VCR_OFFSET + 22;
+    MCI_VCR_INDEX_TIMECODE                      = MCI_VCR_OFFSET + 23;
+    MCI_VCR_INDEX_COUNTER                       = MCI_VCR_OFFSET + 24;
+    MCI_VCR_INDEX_DATE                          = MCI_VCR_OFFSET + 25;
+    MCI_VCR_INDEX_TIME                          = MCI_VCR_OFFSET + 26;
+    MCI_VCR_COUNTER_RES_SECONDS                 = MCI_VCR_OFFSET + 27;
+    MCI_VCR_COUNTER_RES_FRAMES                  = MCI_VCR_OFFSET + 28;
+    MCI_VCR_TIMECODE_TYPE_SMPTE                 = MCI_VCR_OFFSET + 29;
+    MCI_VCR_TIMECODE_TYPE_SMPTE_DROP            = MCI_VCR_OFFSET + 30;
+    MCI_VCR_TIMECODE_TYPE_OTHER                 = MCI_VCR_OFFSET + 31;
+    MCI_VCR_TIMECODE_TYPE_NONE                  = MCI_VCR_OFFSET + 32;
+    MCI_VCR_PLUS                                = MCI_VCR_OFFSET + 33;
+    MCI_VCR_MINUS                               = MCI_VCR_OFFSET + 34;
+    MCI_VCR_RESET                               = MCI_VCR_OFFSET + 35;
+
+TYPE
+    MCI_VCR_SEEK_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwTo           : DWORD;
+          dwMark         : DWORD;
+          dwAt           : DWORD;
+    END;
+
+    LPMCI_VCR_SEEK_PARMS                  = MCI_VCR_SEEK_PARMS;
+
+    MCI_VCR_SET_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwTimeFormat   : DWORD;
+          dwAudio        : DWORD;
+          dwTimeMode     : DWORD;
+          dwRecordFormat : DWORD;
+          dwCounterFormat: DWORD;
+          dwIndex        : DWORD;
+          dwTracking     : DWORD;
+          dwSpeed        : DWORD;
+          dwLength       : DWORD;
+          dwCounter      : DWORD;
+          dwClock        : DWORD;
+          dwPauseTimeout : DWORD;
+          dwPrerollDuration: DWORD;
+          dwPostrollDuration: DWORD;
+    END;
+
+    LPMCI_VCR_SET_PARMS  = POINTER TO MCI_VCR_SET_PARMS;
+
+    MCI_VCR_SETTUNER_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwChannel      : DWORD;
+          dwNumber       : DWORD;
+    END;
+
+    LPMCI_VCR_SETTUNER_PARMS= POINTER TO MCI_VCR_SETTUNER_PARMS;
+
+    %IF AMD64 %THEN
+    <*/PUSH/NOWARN:A*>
+    %END
+    MCI_VCR_ESCAPE_PARMS = RECORD
+          dwCallback     : DWORD;
+          lpstrCommand   : LPCSTR;
+    END;
+    %IF AMD64 %THEN
+    <*/POP*>
+    %END
+
+    LPMCI_VCR_ESCAPE_PARMS= POINTER TO MCI_VCR_ESCAPE_PARMS;
+
+    MCI_VCR_LIST_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwReturn       : DWORD;
+          dwNumber       : DWORD;
+    END;
+
+    LPMCI_VCR_LIST_PARMS = POINTER TO MCI_VCR_LIST_PARMS;
+
+    MCI_VCR_RECORD_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwFrom         : DWORD;
+          dwTo           : DWORD;
+          dwAt           : DWORD;
+    END;
+
+    LPMCI_VCR_RECORD_PARMS= POINTER TO MCI_VCR_RECORD_PARMS;
+
+    MCI_VCR_PLAY_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwFrom         : DWORD;
+          dwTo           : DWORD;
+          dwAt           : DWORD;
+    END;
+
+    LPMCI_VCR_PLAY_PARMS = POINTER TO MCI_VCR_PLAY_PARMS;
+
+    MCI_VCR_SETAUDIO_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwTrack        : DWORD;
+          dwTo           : DWORD;
+          dwNumber       : DWORD;
+    END;
+
+    LPMCI_VCR_SETAUDIO_PARMS= POINTER TO MCI_VCR_SETAUDIO_PARMS;
+
+    MCI_VCR_SIGNAL_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwPosition     : DWORD;
+          dwPeriod       : DWORD;
+          dwUserParm     : DWORD;
+    END;
+
+    LPMCI_VCR_SIGNAL_PARMS= POINTER TO MCI_VCR_SIGNAL_PARMS;
+
+    MCI_VCR_STATUS_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwReturn       : DWORD;
+          dwItem         : DWORD;
+          dwTrack        : DWORD;
+          dwNumber       : DWORD;
+    END;
+
+    LPMCI_VCR_STATUS_PARMS= POINTER TO MCI_VCR_STATUS_PARMS;
+
+    MCI_VCR_SETVIDEO_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwTrack        : DWORD;
+          dwTo           : DWORD;
+          dwNumber       : DWORD;
+    END;
+
+    LPMCI_VCR_SETVIDEO_PARMS= POINTER TO MCI_VCR_SETVIDEO_PARMS;
+
+    MCI_VCR_STEP_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwFrames       : DWORD;
+    END;
+
+    LPMCI_VCR_STEP_PARMS = POINTER TO MCI_VCR_STEP_PARMS;
+
+    MCI_VCR_CUE_PARMS = RECORD
+          dwCallback     : DWORD;
+          dwFrom         : DWORD;
+          dwTo           : DWORD;
+    END;
+
+    LPMCI_VCR_CUE_PARMS  = POINTER TO MCI_VCR_CUE_PARMS;
+
+CONST
+    MCIERR_VCR_CANNOT_OPEN_COMM         = MCIERR_CUSTOM_DRIVER_BASE + 1;
+    MCIERR_VCR_CANNOT_WRITE_COMM        = MCIERR_CUSTOM_DRIVER_BASE + 2;
+    MCIERR_VCR_READ_TIMEOUT             = MCIERR_CUSTOM_DRIVER_BASE + 3;
+    MCIERR_VCR_COMMAND_BUFFER_FULL      = MCIERR_CUSTOM_DRIVER_BASE + 4;
+    MCIERR_VCR_COMMAND_CANCELLED        = MCIERR_CUSTOM_DRIVER_BASE + 5;
+    MCIERR_VCR_POWER_OFF                = MCIERR_CUSTOM_DRIVER_BASE + 6;
+    MCIERR_VCR_COMMAND_FAILED           = MCIERR_CUSTOM_DRIVER_BASE + 7;
+    MCIERR_VCR_SEARCH                   = MCIERR_CUSTOM_DRIVER_BASE + 8;
+    MCIERR_VCR_CONDITION                = MCIERR_CUSTOM_DRIVER_BASE + 9;
+    MCIERR_VCR_CAMERA_MODE              = MCIERR_CUSTOM_DRIVER_BASE + 10;
+    MCIERR_VCR_VCR_MODE                 = MCIERR_CUSTOM_DRIVER_BASE + 11;
+    MCIERR_VCR_COUNTER_TYPE             = MCIERR_CUSTOM_DRIVER_BASE + 12;
+    MCIERR_VCR_TUNER                    = MCIERR_CUSTOM_DRIVER_BASE + 13;
+    MCIERR_VCR_EMERGENCY_STOP           = MCIERR_CUSTOM_DRIVER_BASE + 14;
+    MCIERR_VCR_MEDIA_UNMOUNTED          = MCIERR_CUSTOM_DRIVER_BASE + 15;
+    MCIERR_VCR_REGISTER                 = MCIERR_CUSTOM_DRIVER_BASE + 16;
+    MCIERR_VCR_TRACK_FAILURE            = MCIERR_CUSTOM_DRIVER_BASE + 17;
+    MCIERR_VCR_CUE_FAILED_FLAGS         = MCIERR_CUSTOM_DRIVER_BASE + 18;
+    MCIERR_VCR_ISWRITEPROTECTED         = MCIERR_CUSTOM_DRIVER_BASE + 19;
+END VCR.

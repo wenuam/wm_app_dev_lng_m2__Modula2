@@ -1,0 +1,3 @@
+"Difference source with BAK file"       > diff.exe %S %B
+"Symbolic object dump"                  > sbdump.exe -v %O
+"Search SDK .h files" > search.exe -e "%P" "C:\Program Files\Microsoft SDKs\Windows\v7.1\Include\*.h"

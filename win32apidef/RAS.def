@@ -1,0 +1,1342 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE RAS;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    DWORD, UINT, BOOL, LPVOID, WCHAR, HWND, LPSTR, LPWSTR, BYTE, LONG, PBYTE,
+    MAX_PATH, HANDLE, ULONG_PTR;
+
+FROM lmcons IMPORT
+    UNLEN, PWLEN, DNLEN, NETBIOS_NAME_LEN;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+%IF AMD64 %THEN
+<*/ALIGN:8/NOPACK*>
+%ELSE
+<*/ALIGN:4/NOPACK*>
+%END
+
+CONST
+    RASBASE                             = 600;
+    SUCCESS                             = 0;
+
+    PENDING                             = RASBASE + 0;
+    ERROR_INVALID_PORT_HANDLE           = RASBASE + 1;
+    ERROR_PORT_ALREADY_OPEN             = RASBASE + 2;
+    ERROR_BUFFER_TOO_SMALL              = RASBASE + 3;
+    ERROR_WRONG_INFO_SPECIFIED          = RASBASE + 4;
+    ERROR_CANNOT_SET_PORT_INFO          = RASBASE + 5;
+    ERROR_PORT_NOT_CONNECTED            = RASBASE + 6;
+    ERROR_EVENT_INVALID                 = RASBASE + 7;
+    ERROR_DEVICE_DOES_NOT_EXIST         = RASBASE + 8;
+    ERROR_DEVICETYPE_DOES_NOT_EXIST     = RASBASE + 9;
+    ERROR_BUFFER_INVALID                = RASBASE + 10;
+    ERROR_ROUTE_NOT_AVAILABLE           = RASBASE + 11;
+    ERROR_ROUTE_NOT_ALLOCATED           = RASBASE + 12;
+    ERROR_INVALID_COMPRESSION_SPECIFIED = RASBASE + 13;
+    ERROR_OUT_OF_BUFFERS                = RASBASE + 14;
+    ERROR_PORT_NOT_FOUND                = RASBASE + 15;
+    ERROR_ASYNC_REQUEST_PENDING         = RASBASE + 16;
+    ERROR_ALREADY_DISCONNECTING         = RASBASE + 17;
+    ERROR_PORT_NOT_OPEN                 = RASBASE + 18;
+    ERROR_PORT_DISCONNECTED             = RASBASE + 19;
+    ERROR_NO_ENDPOINTS                  = RASBASE + 20;
+    ERROR_CANNOT_OPEN_PHONEBOOK         = RASBASE + 21;
+    ERROR_CANNOT_LOAD_PHONEBOOK         = RASBASE + 22;
+    ERROR_CANNOT_FIND_PHONEBOOK_ENTRY   = RASBASE + 23;
+    ERROR_CANNOT_WRITE_PHONEBOOK        = RASBASE + 24;
+    ERROR_CORRUPT_PHONEBOOK             = RASBASE + 25;
+    ERROR_CANNOT_LOAD_STRING            = RASBASE + 26;
+    ERROR_KEY_NOT_FOUND                 = RASBASE + 27;
+    ERROR_DISCONNECTION                 = RASBASE + 28;
+    ERROR_REMOTE_DISCONNECTION          = RASBASE + 29;
+    ERROR_HARDWARE_FAILURE              = RASBASE + 30;
+    ERROR_USER_DISCONNECTION            = RASBASE + 31;
+    ERROR_INVALID_SIZE                  = RASBASE + 32;
+    ERROR_PORT_NOT_AVAILABLE            = RASBASE + 33;
+    ERROR_CANNOT_PROJECT_CLIENT         = RASBASE + 34;
+    ERROR_UNKNOWN                       = RASBASE + 35;
+    ERROR_WRONG_DEVICE_ATTACHED         = RASBASE + 36;
+    ERROR_BAD_STRING                    = RASBASE + 37;
+    ERROR_REQUEST_TIMEOUT               = RASBASE + 38;
+    ERROR_CANNOT_GET_LANA               = RASBASE + 39;
+    ERROR_NETBIOS_ERROR                 = RASBASE + 40;
+    ERROR_SERVER_OUT_OF_RESOURCES       = RASBASE + 41;
+    ERROR_NAME_EXISTS_ON_NET            = RASBASE + 42;
+    ERROR_SERVER_GENERAL_NET_FAILURE    = RASBASE + 43;
+    WARNING_MSG_ALIAS_NOT_ADDED         = RASBASE + 44;
+    ERROR_AUTH_INTERNAL                 = RASBASE + 45;
+    ERROR_RESTRICTED_LOGON_HOURS        = RASBASE + 46;
+    ERROR_ACCT_DISABLED                 = RASBASE + 47;
+    ERROR_PASSWD_EXPIRED                = RASBASE + 48;
+    ERROR_NO_DIALIN_PERMISSION          = RASBASE + 49;
+    ERROR_SERVER_NOT_RESPONDING         = RASBASE + 50;
+    ERROR_FROM_DEVICE                   = RASBASE + 51;
+    ERROR_UNRECOGNIZED_RESPONSE         = RASBASE + 52;
+    ERROR_MACRO_NOT_FOUND               = RASBASE + 53;
+    ERROR_MACRO_NOT_DEFINED             = RASBASE + 54;
+    ERROR_MESSAGE_MACRO_NOT_FOUND       = RASBASE + 55;
+    ERROR_DEFAULTOFF_MACRO_NOT_FOUND    = RASBASE + 56;
+    ERROR_FILE_COULD_NOT_BE_OPENED      = RASBASE + 57;
+    ERROR_DEVICENAME_TOO_LONG           = RASBASE + 58;
+    ERROR_DEVICENAME_NOT_FOUND          = RASBASE + 59;
+    ERROR_NO_RESPONSES                  = RASBASE + 60;
+    ERROR_NO_COMMAND_FOUND              = RASBASE + 61;
+    ERROR_WRONG_KEY_SPECIFIED           = RASBASE + 62;
+    ERROR_UNKNOWN_DEVICE_TYPE           = RASBASE + 63;
+    ERROR_ALLOCATING_MEMORY             = RASBASE + 64;
+    ERROR_PORT_NOT_CONFIGURED           = RASBASE + 65;
+    ERROR_DEVICE_NOT_READY              = RASBASE + 66;
+    ERROR_READING_INI_FILE              = RASBASE + 67;
+    ERROR_NO_CONNECTION                 = RASBASE + 68;
+    ERROR_BAD_USAGE_IN_INI_FILE         = RASBASE + 69;
+    ERROR_READING_SECTIONNAME           = RASBASE + 70;
+    ERROR_READING_DEVICETYPE            = RASBASE + 71;
+    ERROR_READING_DEVICENAME            = RASBASE + 72;
+    ERROR_READING_USAGE                 = RASBASE + 73;
+    ERROR_READING_MAXCONNECTBPS         = RASBASE + 74;
+    ERROR_READING_MAXCARRIERBPS         = RASBASE + 75;
+    ERROR_LINE_BUSY                     = RASBASE + 76;
+    ERROR_VOICE_ANSWER                  = RASBASE + 77;
+    ERROR_NO_ANSWER                     = RASBASE + 78;
+    ERROR_NO_CARRIER                    = RASBASE + 79;
+    ERROR_NO_DIALTONE                   = RASBASE + 80;
+    ERROR_IN_COMMAND                    = RASBASE + 81;
+    ERROR_WRITING_SECTIONNAME           = RASBASE + 82;
+    ERROR_WRITING_DEVICETYPE            = RASBASE + 83;
+    ERROR_WRITING_DEVICENAME            = RASBASE + 84;
+    ERROR_WRITING_MAXCONNECTBPS         = RASBASE + 85;
+    ERROR_WRITING_MAXCARRIERBPS         = RASBASE + 86;
+    ERROR_WRITING_USAGE                 = RASBASE + 87;
+    ERROR_WRITING_DEFAULTOFF            = RASBASE + 88;
+    ERROR_READING_DEFAULTOFF            = RASBASE + 89;
+    ERROR_EMPTY_INI_FILE                = RASBASE + 90;
+    ERROR_AUTHENTICATION_FAILURE        = RASBASE + 91;
+    ERROR_PORT_OR_DEVICE                = RASBASE + 92;
+    ERROR_NOT_BINARY_MACRO              = RASBASE + 93;
+    ERROR_DCB_NOT_FOUND                 = RASBASE + 94;
+    ERROR_STATE_MACHINES_NOT_STARTED    = RASBASE + 95;
+    ERROR_STATE_MACHINES_ALREADY_STARTED= RASBASE + 96;
+    ERROR_PARTIAL_RESPONSE_LOOPING      = RASBASE + 97;
+    ERROR_UNKNOWN_RESPONSE_KEY          = RASBASE + 98;
+    ERROR_RECV_BUF_FULL                 = RASBASE + 99;
+    ERROR_CMD_TOO_LONG                  = RASBASE + 100;
+    ERROR_UNSUPPORTED_BPS               = RASBASE + 101;
+    ERROR_UNEXPECTED_RESPONSE           = RASBASE + 102;
+    ERROR_INTERACTIVE_MODE              = RASBASE + 103;
+    ERROR_BAD_CALLBACK_NUMBER           = RASBASE + 104;
+    ERROR_INVALID_AUTH_STATE            = RASBASE + 105;
+    ERROR_WRITING_INITBPS               = RASBASE + 106;
+    ERROR_X25_DIAGNOSTIC                = RASBASE + 107;
+    ERROR_ACCT_EXPIRED                  = RASBASE + 108;
+    ERROR_CHANGING_PASSWORD             = RASBASE + 109;
+    ERROR_OVERRUN                       = RASBASE + 110;
+    ERROR_RASMAN_CANNOT_INITIALIZE      = RASBASE + 111;
+    ERROR_BIPLEX_PORT_NOT_AVAILABLE     = RASBASE + 112;
+    ERROR_NO_ACTIVE_ISDN_LINES          = RASBASE + 113;
+    ERROR_NO_ISDN_CHANNELS_AVAILABLE    = RASBASE + 114;
+    ERROR_TOO_MANY_LINE_ERRORS          = RASBASE + 115;
+    ERROR_IP_CONFIGURATION              = RASBASE + 116;
+    ERROR_NO_IP_ADDRESSES               = RASBASE + 117;
+    ERROR_PPP_TIMEOUT                   = RASBASE + 118;
+    ERROR_PPP_REMOTE_TERMINATED         = RASBASE + 119;
+    ERROR_PPP_NO_PROTOCOLS_CONFIGURED   = RASBASE + 120;
+    ERROR_PPP_NO_RESPONSE               = RASBASE + 121;
+    ERROR_PPP_INVALID_PACKET            = RASBASE + 122;
+    ERROR_PHONE_NUMBER_TOO_LONG         = RASBASE + 123;
+    ERROR_IPXCP_NO_DIALOUT_CONFIGURED   = RASBASE + 124;
+    ERROR_IPXCP_NO_DIALIN_CONFIGURED    = RASBASE + 125;
+    ERROR_IPXCP_DIALOUT_ALREADY_ACTIVE  = RASBASE + 126;
+    ERROR_ACCESSING_TCPCFGDLL           = RASBASE + 127;
+    ERROR_NO_IP_RAS_ADAPTER             = RASBASE + 128;
+    ERROR_SLIP_REQUIRES_IP              = RASBASE + 129;
+    ERROR_PROJECTION_NOT_COMPLETE       = RASBASE + 130;
+    ERROR_PROTOCOL_NOT_CONFIGURED       = RASBASE + 131;
+    ERROR_PPP_NOT_CONVERGING            = RASBASE + 132;
+    ERROR_PPP_CP_REJECTED               = RASBASE + 133;
+    ERROR_PPP_LCP_TERMINATED            = RASBASE + 134;
+    ERROR_PPP_REQUIRED_ADDRESS_REJECTED = RASBASE + 135;
+    ERROR_PPP_NCP_TERMINATED            = RASBASE + 136;
+    ERROR_PPP_LOOPBACK_DETECTED         = RASBASE + 137;
+    ERROR_PPP_NO_ADDRESS_ASSIGNED       = RASBASE + 138;
+    ERROR_CANNOT_USE_LOGON_CREDENTIALS  = RASBASE + 139;
+    ERROR_TAPI_CONFIGURATION            = RASBASE + 140;
+    ERROR_NO_LOCAL_ENCRYPTION           = RASBASE + 141;
+    ERROR_NO_REMOTE_ENCRYPTION          = RASBASE + 142;
+    ERROR_REMOTE_REQUIRES_ENCRYPTION    = RASBASE + 143;
+    ERROR_IPXCP_NET_NUMBER_CONFLICT     = RASBASE + 144;
+    ERROR_INVALID_SMM                   = RASBASE + 145;
+    ERROR_SMM_UNINITIALIZED             = RASBASE + 146;
+    ERROR_NO_MAC_FOR_PORT               = RASBASE + 147;
+    ERROR_SMM_TIMEOUT                   = RASBASE + 148;
+    ERROR_BAD_PHONE_NUMBER              = RASBASE + 149;
+    ERROR_WRONG_MODULE                  = RASBASE + 150;
+    RASBASEEND                          = RASBASE + 150;
+
+    RAS_MaxDeviceType    = 16;
+    RAS_MaxPhoneNumber   = 128;
+    RAS_MaxIpAddress     = 15;
+    RAS_MaxIpxAddress    = 21;
+
+    RAS_MaxEntryName     = 256;
+    RAS_MaxDeviceName    = 128;
+    RAS_MaxCallbackNumber= RAS_MaxPhoneNumber;
+
+    RAS_MaxAreaCode       =10;
+    RAS_MaxPadType        =32;
+    RAS_MaxX25Address     =200;
+    RAS_MaxFacilities     =200;
+    RAS_MaxUserData       =200;
+
+TYPE
+    HRASCONN            = POINTER TO RECORD END;
+    LPHRASCONN          = POINTER TO HRASCONN;
+
+TYPE
+    RASCONNW = RECORD
+      dwSize         : DWORD;
+      hrasconn       : HRASCONN;
+      szEntryName    : ARRAY [0..RAS_MaxEntryName + 1 - 1] OF WCHAR;
+      szDeviceType   : ARRAY [0..RAS_MaxDeviceType + 1 - 1] OF WCHAR;
+      szDeviceName   : ARRAY [0..RAS_MaxDeviceName + 1 - 1] OF WCHAR;
+      szPhonebook    : ARRAY [0.. MAX_PATH-1] OF WCHAR;
+      dwSubEntry     : DWORD;
+    END;
+    LPRASCONNW  = POINTER TO RASCONNW;
+
+    RASCONNA = RECORD
+      dwSize         : DWORD;
+      hrasconn       : HRASCONN;
+      szEntryName    : ARRAY [0..RAS_MaxEntryName + 1 - 1] OF ACHAR;
+      szDeviceType   : ARRAY [0..RAS_MaxDeviceType + 1 - 1] OF ACHAR;
+      szDeviceName   : ARRAY [0..RAS_MaxDeviceName + 1 - 1] OF ACHAR;
+      szPhonebook    : ARRAY [0.. MAX_PATH-1] OF ACHAR;
+      dwSubEntry     : DWORD;
+    END;
+    LPRASCONNA  = POINTER TO RASCONNA;
+
+%IF UNICODE %THEN
+    RASCONN     = RASCONNW;
+    LPRASCONN   = LPRASCONNW;
+%ELSE
+    RASCONN     = RASCONNA;
+    LPRASCONN   = LPRASCONNA;
+%END
+
+CONST
+    RASCS_PAUSED         = 01000h;
+    RASCS_DONE           = 02000h;
+
+TYPE
+    RASCONNSTATE        = DWORD;
+    LPRASCONNSTATE      = POINTER TO RASCONNSTATE;
+
+CONST
+    RASCS_OpenPort              = 0;
+    RASCS_PortOpened            = 1;
+    RASCS_ConnectDevice         = 2;
+    RASCS_DeviceConnected       = 3;
+    RASCS_AllDevicesConnected   = 4;
+    RASCS_Authenticate          = 5;
+    RASCS_AuthNotify            = 6;
+    RASCS_AuthRetry             = 7;
+    RASCS_AuthCallback          = 8;
+    RASCS_AuthChangePassword    = 9;
+    RASCS_AuthProject           = 10;
+    RASCS_AuthLinkSpeed         = 11;
+    RASCS_AuthAck               = 12;
+    RASCS_ReAuthenticate        = 13;
+    RASCS_Authenticated         = 14;
+    RASCS_PrepareForCallback    = 15;
+    RASCS_WaitForModemReset     = 16;
+    RASCS_WaitForCallback       = 17;
+    RASCS_Projected             = 18;
+    RASCS_StartAuthentication   = 19;
+    RASCS_CallbackComplete      = 20;
+    RASCS_LogonNetwork          = 21;
+    RASCS_SubEntryConnected     = 22;
+    RASCS_SubEntryDisconnected  = 23;
+
+    RASCS_Interactive           = RASCS_PAUSED;
+    RASCS_RetryAuthentication   = RASCS_PAUSED + 1;
+    RASCS_CallbackSetByCaller   = RASCS_PAUSED + 2;
+    RASCS_PasswordExpired       = RASCS_PAUSED + 3;
+    RASCS_InvokeEapUI           = RASCS_PAUSED + 4;
+
+    RASCS_Connected             = RASCS_DONE;
+    RASCS_Disconnected          = RASCS_DONE + 1;
+
+TYPE
+    RASCONNSTATUSW = RECORD
+          dwSize         : DWORD;
+          rasconnstate   : RASCONNSTATE;
+          dwError        : DWORD;
+          szDeviceType   : ARRAY [0..RAS_MaxDeviceType + 1 - 1] OF WCHAR;
+          szDeviceName   : ARRAY [0..RAS_MaxDeviceName + 1 - 1] OF WCHAR;
+    END;
+    LPRASCONNSTATUSW            = POINTER TO RASCONNSTATUSW;
+
+    RASCONNSTATUSA = RECORD
+          dwSize         : DWORD;
+          rasconnstate   : RASCONNSTATE;
+          dwError        : DWORD;
+          szDeviceType   : ARRAY [0..RAS_MaxDeviceType + 1 - 1] OF ACHAR;
+          szDeviceName   : ARRAY [0..RAS_MaxDeviceName + 1 - 1] OF ACHAR;
+    END;
+    LPRASCONNSTATUSA            = POINTER TO RASCONNSTATUSA;
+
+%IF UNICODE %THEN
+    RASCONNSTATUS               = RASCONNSTATUSW;
+    LPRASCONNSTATUS             = LPRASCONNSTATUSW;
+%ELSE
+    RASCONNSTATUS               = RASCONNSTATUSA;
+    LPRASCONNSTATUS             = LPRASCONNSTATUSA;
+%END
+
+    RASDIALPARAMSW = RECORD
+          dwSize         : DWORD;
+          szEntryName    : ARRAY [0..RAS_MaxEntryName - 1 - 1] OF WCHAR;
+          szPhoneNumber  : ARRAY [0..RAS_MaxPhoneNumber - 1 - 1] OF WCHAR;
+          szCallbackNumber: ARRAY [0..RAS_MaxCallbackNumber + 1 - 1] OF WCHAR;
+          szUserName     : ARRAY [0..UNLEN + 1 - 1] OF WCHAR;
+          szPassword     : ARRAY [0..PWLEN + 1 - 1] OF WCHAR;
+          szDomain       : ARRAY [0..DNLEN +1 - 1] OF WCHAR;
+          dwSubEntry    : DWORD;
+          dwCallbackId  : ULONG_PTR;
+    END;
+    LPRASDIALPARAMSW    = POINTER TO RASDIALPARAMSW;
+
+    RASDIALPARAMSA = RECORD
+          dwSize         : DWORD;
+          szEntryName    : ARRAY [0..RAS_MaxEntryName + 1 - 1] OF ACHAR;
+          szPhoneNumber  : ARRAY [0..RAS_MaxPhoneNumber + 1 - 1] OF ACHAR;
+          szCallbackNumber: ARRAY [0..RAS_MaxCallbackNumber + 1 - 1] OF ACHAR;
+          szUserName     : ARRAY [0..UNLEN + 1 - 1] OF ACHAR;
+          szPassword     : ARRAY [0..PWLEN + 1 - 1] OF ACHAR;
+          szDomain       : ARRAY [0.. DNLEN + 1 - 1] OF ACHAR;
+          dwSubEntry    : DWORD;
+          dwCallbackId  : ULONG_PTR;
+    END;
+    LPRASDIALPARAMSA    = POINTER TO RASDIALPARAMSA;
+
+%IF UNICODE %THEN
+    RASDIALPARAMS       = RASDIALPARAMSW;
+    LPRASDIALPARAMS     = LPRASDIALPARAMSW;
+%ELSE
+    RASDIALPARAMS       = RASDIALPARAMSA;
+    LPRASDIALPARAMS     = LPRASDIALPARAMSA;
+%END
+
+    RASEAPINFO =
+    RECORD
+    dwSizeofEapInfo     : DWORD;
+    pbEapInfo           : PBYTE;
+    END;
+
+    RASDIALEXTENSIONS = RECORD
+          dwSize         : DWORD;
+          dwfOptions     : DWORD;
+          hwndParent     : HWND;
+          reserved       : ULONG_PTR;
+          reserved1     : ULONG_PTR;
+          RasEapInfo    : RASEAPINFO;
+    END;
+    LPRASDIALEXTENSIONS = POINTER TO RASDIALEXTENSIONS;
+
+CONST
+    RDEOPT_UsePrefixSuffix      = 000000001h;
+    RDEOPT_PausedStates         = 000000002h;
+    RDEOPT_IgnoreModemSpeaker   = 000000004h;
+    RDEOPT_SetModemSpeaker      = 000000008h;
+    RDEOPT_IgnoreSoftwareCompression    = 000000010h;
+    RDEOPT_SetSoftwareCompression       = 000000020h;
+    RDEOPT_DisableConnectedUI        = 00000040h;
+    RDEOPT_DisableReconnectUI        = 00000080h;
+    RDEOPT_DisableReconnect          = 00000100h;
+    RDEOPT_NoUser                    = 00000200h;
+    RDEOPT_PauseOnScript             = 00000400h;
+    RDEOPT_Router                    = 00000800h;
+
+TYPE
+    RASENTRYNAMEW = RECORD
+          dwSize         : DWORD;
+          szEntryName    : ARRAY [0..RAS_MaxEntryName + 1 - 1] OF WCHAR;
+    END;
+    LPRASENTRYNAMEW     = POINTER TO RASENTRYNAMEW;
+
+    RASENTRYNAMEA = RECORD
+          dwSize         : DWORD;
+          szEntryName    : ARRAY [0..RAS_MaxEntryName + 1 - 1] OF ACHAR;
+    END;
+    LPRASENTRYNAMEA     = POINTER TO RASENTRYNAMEA;
+
+%IF UNICODE %THEN
+    RASENTRYNAME        = RASENTRYNAMEW;
+    LPRASENTRYNAME      = LPRASENTRYNAMEW;
+%ELSE
+    RASENTRYNAME        = RASENTRYNAMEA;
+    LPRASENTRYNAME      = LPRASENTRYNAMEA;
+%END
+
+    RASPROJECTION       = DWORD;
+    LPRASPROJECTION     = POINTER TO RASPROJECTION;
+
+CONST
+    RASP_Amb    = 10000h;
+    RASP_PppNbf = 0803fh;
+    RASP_PppIpx = 0802bh;
+    RASP_PppIp  = 08021h;
+    RASP_PppLcp = 0C021h;
+    RASP_Slip = 20000h;
+
+TYPE
+    RASAMBW = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szNetBiosError : ARRAY [0..NETBIOS_NAME_LEN + 1 - 1] OF WCHAR;
+          bLana          : BYTE;
+    END;
+    LPRASAMBW   = POINTER TO RASAMBW;
+
+    RASAMBA = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szNetBiosError : ARRAY [0..NETBIOS_NAME_LEN +  1 - 1] OF ACHAR;
+          bLana          : BYTE;
+    END;
+    LPRASAMBA   = POINTER TO RASAMBA;
+
+%IF UNICODE %THEN
+    RASAMB      = RASAMBW;
+    LPRASAMB    = LPRASAMBW;
+%ELSE
+    RASAMB      = RASAMBA;
+    LPRASAMB    = LPRASAMBA;
+%END
+
+    RASPPPNBFW = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          dwNetBiosError : DWORD;
+          szNetBiosError : ARRAY [0..NETBIOS_NAME_LEN + 1 - 1] OF WCHAR;
+          szWorkstationName: ARRAY [0..NETBIOS_NAME_LEN + 1 - 1] OF WCHAR;
+          bLana          : BYTE;
+    END;
+    LPRASPPPNBFW        = POINTER TO RASPPPNBFW;
+
+    RASPPPNBFA = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          dwNetBiosError : DWORD;
+          szNetBiosError : ARRAY [0..NETBIOS_NAME_LEN + 1 - 1] OF ACHAR;
+          szWorkstationName: ARRAY [0..NETBIOS_NAME_LEN + 1 - 1] OF ACHAR;
+          bLana          : BYTE;
+    END;
+    LPRASPPPNBFA        = POINTER TO RASPPPNBFA;
+
+%IF UNICODE %THEN
+    RASPPPNBF   = RASPPPNBFW;
+    LPRASPPPNBF         = LPRASPPPNBFW;
+%ELSE
+    RASPPPNBF   = RASPPPNBFA;
+    LPRASPPPNBF         = LPRASPPPNBFA;
+%END
+
+    RASPPPIPXW = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szIpxAddress   : ARRAY [0..RAS_MaxIpxAddress + 1 - 1] OF WCHAR;
+    END;
+    LPRASPPPIPXW        = POINTER TO RASPPPIPXW;
+
+    RASPPPIPXA = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szIpxAddress   : ARRAY [0..RAS_MaxIpxAddress + 1 - 1] OF ACHAR;
+    END;
+    LPRASPPPIPXA        = POINTER TO RASPPPIPXA;
+
+%IF UNICODE %THEN
+    RASPPPIPX   = RASPPPIPXW;
+    LPRASPPPIPX         = LPRASPPPIPXW;
+%ELSE
+    RASPPPIPX   = RASPPPIPXA;
+    LPRASPPPIPX         = LPRASPPPIPXA;
+%END
+
+    RASPPPIPW = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szIpAddress    : ARRAY [0..RAS_MaxIpAddress + 1 - 1] OF WCHAR;
+          szServerIpAddress : ARRAY [0..RAS_MaxIpAddress + 1 - 1] OF WCHAR;
+    END;
+    LPRASPPPIPW         = POINTER TO RASPPPIPW;
+
+    RASPPPIPA = RECORD
+          dwSize         : DWORD;
+          dwError        : DWORD;
+          szIpAddress    : ARRAY [0..RAS_MaxIpAddress + 1 - 1] OF ACHAR;
+          szServerIpAddress : ARRAY [0..RAS_MaxIpAddress + 1 - 1] OF ACHAR;
+    END;
+    LPRASPPPIPA         = POINTER TO RASPPPIPA;
+
+%IF UNICODE %THEN
+    RASPPPIP    = RASPPPIPW;
+    LPRASPPPIP          = LPRASPPPIPW;
+%ELSE
+    RASPPPIP    = RASPPPIPA;
+    LPRASPPPIP          = LPRASPPPIPA;
+%END
+
+    RASPPPLCP = RECORD
+    dwSize      : DWORD;
+    fBundled    : BOOL;
+    END;
+    LPRASPPLCP = POINTER TO RASPPPLCP;
+
+    RASSLIPW = RECORD
+    dwSize      : DWORD;
+    dwError     :  DWORD;
+    szIpAddress : ARRAY [0.. RAS_MaxIpAddress + 1 -1] OF WCHAR;
+    END;
+    LPRASSLIPW = POINTER TO RASSLIPW;
+
+    RASSLIPA = RECORD
+    dwSize      : DWORD;
+    dwError     :  DWORD;
+    szIpAddress : ARRAY [0.. RAS_MaxIpAddress + 1 -1] OF ACHAR;
+    END;
+    LPRASSLIPA = POINTER TO RASSLIPA;
+
+%IF UNICODE %THEN
+    RASSLIP     = RASSLIPW;
+    LPRASSLIP   = LPRASSLIPW;
+%ELSE
+    RASSLIP     = RASSLIPA;
+    LPRASSLIP   = LPRASSLIPA;
+%END
+
+CONST
+    RASDIALEVENT         = "RasDialEvent";
+    WM_RASDIALEVENT      = 0CCCDh;
+
+TYPE
+    RASDIALFUNC         = PROCEDURE (UINT, RASCONNSTATE, DWORD);
+    RASDIALFUNC1        = PROCEDURE (HRASCONN, UINT, RASCONNSTATE, DWORD,
+                                      DWORD);
+    RASDIALFUNC2        = PROCEDURE (ULONG_PTR, DWORD, HRASCONN, UINT,
+                                     RASCONNSTATE, DWORD, DWORD) : DWORD;
+
+    RASDEVINFOW = RECORD
+    dwSize              : DWORD;
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF WCHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF WCHAR;
+    END;
+    LPRASDEVINFOW = POINTER TO RASDEVINFOW;
+
+    RASDEVINFOA = RECORD
+    dwSize              : DWORD;
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF ACHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF ACHAR;
+    END;
+    LPRASDEVINFOA = POINTER TO RASDEVINFOA;
+
+%IF UNICODE %THEN
+    RASDEVINFO          = RASDEVINFOW;
+    LPRASDEVINFO        = LPRASDEVINFOW;
+%ELSE
+    RASDEVINFO          = RASDEVINFOA;
+    LPRASDEVINFO        = LPRASDEVINFOA;
+%END
+
+    RASCTRYINFO = RECORD
+        dwSize          : DWORD;
+        dwCountryID     : DWORD;
+        dwNextCountryID : DWORD;
+        dwCountryCode   : DWORD;
+        dwCountryNameOffset     : DWORD;
+    END;
+    LPRASCTRYINFO = POINTER TO RASCTRYINFO;
+
+(* There is currently no difference between
+** RASCTRYINFOA and RASCTRYINFOW.  This may
+** change in the future. *)
+    RASCTRYINFOW = RASCTRYINFO;
+    LPRASCTRYINFOW = LPRASCTRYINFO;
+    RASCTRYINFOA = RASCTRYINFO;
+    LPRASCTRYINFOA = LPRASCTRYINFO;
+
+    RASIPADDR = RECORD
+        a       : BYTE;
+        b       : BYTE;
+        c       : BYTE;
+        d       : BYTE;
+    END;
+
+    RASENTRYA = RECORD
+    dwSize              : DWORD;
+    dwfOptions          : DWORD;
+    (*
+     Location/phone number.
+    *)
+    dwCountryID         : DWORD;
+    dwCountryCode       : DWORD;
+    szAreaCode          : ARRAY [0.. RAS_MaxAreaCode + 1 -1] OF ACHAR;
+    szLocalPhoneNumber  : ARRAY [0.. RAS_MaxPhoneNumber + 1 -1] OF ACHAR;
+    dwAlternateOffset   : DWORD;
+    (*
+     PPP/Ip
+    *)
+    ipaddr              : RASIPADDR;
+    ipaddrDns           : RASIPADDR;
+    ipaddrDnsAlt        : RASIPADDR;
+    ipaddrWins          : RASIPADDR;
+    ipaddrWinsAlt       : RASIPADDR;
+    (*
+     Framing
+    *)
+    dwFrameSize         : DWORD;
+    dwfNetProtocols     : DWORD;
+    dwFramingProtocol   : DWORD;
+    (*
+     Scripting
+    *)
+    szScript            : ARRAY [0.. MAX_PATH -1] OF ACHAR;
+    (*
+     AutoDial
+    *)
+    szAutodialDll       : ARRAY [0.. MAX_PATH -1] OF ACHAR;
+    szAutodialFunc      : ARRAY [0.. MAX_PATH -1] OF ACHAR;
+    (*
+     Device
+    *)
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF ACHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF ACHAR;
+    (*
+     X.25
+    *)
+    szX25PadType        : ARRAY [0.. RAS_MaxPadType + 1 -1] OF  ACHAR;
+    szX25Address        : ARRAY [0.. RAS_MaxX25Address + 1 -1] OF ACHAR;
+    szX25Facilities     : ARRAY [0.. RAS_MaxFacilities + 1 -1] OF ACHAR;
+    szX25UserData       : ARRAY [0.. RAS_MaxUserData + 1 -1] OF ACHAR;
+    dwChannels          : DWORD;
+    (*
+     Reserved
+    *)
+    dwReserved1         : DWORD;
+    dwReserved2         : DWORD;
+    (*
+     Multilink
+    *)
+    dwSubEntries        : DWORD;
+    dwDialMode          : DWORD;
+    dwDialExtraPercent  : DWORD;
+    dwDialExtraSampleSeconds    : DWORD;
+    dwHangUpExtraPercent        : DWORD;
+    dwHangUpExtraSampleSeconds  : DWORD;
+    (*
+     Idle timeout
+    *)
+    dwIdleDisconnectSeconds     : DWORD;
+
+    (*
+     Port Name
+    *)
+    szPortName                  : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF ACHAR;
+    END;
+    LPRASENTRYA = POINTER TO RASENTRYA;
+
+    RASENTRYW = RECORD
+    dwSize              : DWORD;
+    dwfOptions          : DWORD;
+    (*
+     Location/phone number.
+    *)
+    dwCountryID         : DWORD;
+    dwCountryCode       : DWORD;
+    szAreaCode          : ARRAY [0.. RAS_MaxAreaCode + 1 -1] OF WCHAR;
+    szLocalPhoneNumber  : ARRAY [0.. RAS_MaxPhoneNumber + 1 -1] OF WCHAR;
+    dwAlternateOffset   : DWORD;
+    (*
+     PPP/Ip
+    *)
+    ipaddr              : RASIPADDR;
+    ipaddrDns           : RASIPADDR;
+    ipaddrDnsAlt        : RASIPADDR;
+    ipaddrWins          : RASIPADDR;
+    ipaddrWinsAlt       : RASIPADDR;
+    (*
+     Framing
+    *)
+    dwFrameSize         : DWORD;
+    dwfNetProtocols     : DWORD;
+    dwFramingProtocol   : DWORD;
+    (*
+     Scripting
+    *)
+    szScript            : ARRAY [0.. MAX_PATH -1] OF WCHAR;
+    (*
+     AutoDial
+    *)
+    szAutodialDll       : ARRAY [0.. MAX_PATH -1] OF WCHAR;
+    szAutodialFunc      : ARRAY [0.. MAX_PATH -1] OF WCHAR;
+    (*
+     Device
+    *)
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF WCHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF WCHAR;
+    (*
+     X.25
+    *)
+    szX25PadType        : ARRAY [0.. RAS_MaxPadType + 1 -1] OF WCHAR;
+    szX25Address        : ARRAY [0.. RAS_MaxX25Address + 1 -1] OF WCHAR;
+    szX25Facilities     : ARRAY [0.. RAS_MaxFacilities + 1 -1] OF WCHAR;
+    szX25UserData       : ARRAY [0.. RAS_MaxUserData + 1 -1] OF WCHAR;
+    dwChannels          : DWORD;
+    (*
+     Reserved
+    *)
+    dwReserved1         : DWORD;
+    dwReserved2         : DWORD;
+    (*
+     Multilink
+    *)
+    dwSubEntries        : DWORD;
+    dwDialMode          : DWORD;
+    dwDialExtraPercent  : DWORD;
+    dwDialExtraSampleSeconds    : DWORD;
+    dwHangUpExtraPercent        : DWORD;
+    dwHangUpExtraSampleSeconds  : DWORD;
+    (*
+     Idle timeout
+    *)
+    dwIdleDisconnectSeconds     : DWORD;
+
+    (*
+     Port Name
+    *)
+    szPortName                  : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF WCHAR;
+    END;
+    LPRASENTRYW = POINTER TO RASENTRYW;
+
+%IF UNICODE %THEN
+    RASENTRY    = RASENTRYW;
+    LPRASENTRY  = LPRASENTRYW;
+%ELSE
+    RASENTRY    = RASENTRYA;
+    LPRASENTRY  = LPRASENTRYA;
+%END
+
+CONST
+(* RASENTRY "dwfOptions" bit flags. *)
+    RASEO_UseCountryAndAreaCodes    =00000001h;
+    RASEO_SpecificIpAddr            =00000002h;
+    RASEO_SpecificNameServers       =00000004h;
+    RASEO_IpHeaderCompression       =00000008h;
+    RASEO_RemoteDefaultGateway      =00000010h;
+    RASEO_DisableLcpExtensions      =00000020h;
+    RASEO_TerminalBeforeDial        =00000040h;
+    RASEO_TerminalAfterDial         =00000080h;
+    RASEO_ModemLights               =00000100h;
+    RASEO_SwCompression             =00000200h;
+    RASEO_RequireEncryptedPw        =00000400h;
+    RASEO_RequireMsEncryptedPw      =00000800h;
+    RASEO_RequireDataEncryption     =00001000h;
+    RASEO_NetworkLogon              =00002000h;
+    RASEO_UseLogonCredentials       =00004000h;
+    RASEO_PromoteAlternates         =00008000h;
+    RASEO_SecureLocalFiles          =00010000h;
+
+(* RASENTRY "dwProtocols" bit flags. *)
+    RASNP_NetBEUI                   =00000001h;
+    RASNP_Ipx                       =00000002h;
+    RASNP_Ip                        =00000004h;
+
+(* RASENTRY "dwFramingProtocols" bit flags. *)
+    RASFP_Ppp                       =00000001h;
+    RASFP_Slip                      =00000002h;
+    RASFP_Ras                       =00000004h;
+
+(* RASENTRY "szDeviceType" default strings. *)
+    RASDT_Modem                     ="modem";
+    RASDT_Isdn                      ="isdn";
+    RASDT_X25                       ="x25";
+    RASDT_Vpn                       ="vpn";
+    RASDT_Pad                       ="pad";
+
+(* Old AutoDial DLL function prototype.
+**
+** This prototype is documented for backward-compatibility
+** purposes only.  It is superceded by the RASADFUNCA
+** and RASADFUNCW definitions below.  DO NOT USE THIS
+** PROTOTYPE IN NEW CODE.  SUPPORT FOR IT MAY BE REMOVED
+** IN FUTURE VERSIONS OF RAS.
+*)
+TYPE
+    ORASADFUNC = PROCEDURE (HWND, ARRAY OF ACHAR, DWORD, VAR DWORD) : BOOL;
+
+CONST
+(* Flags for RasConnectionNotification(). *)
+    RASCN_Connection        =00000001h;
+    RASCN_Disconnection     =00000002h;
+    RASCN_BandwidthAdded    =00000004h;
+    RASCN_BandwidthRemoved  =00000008h;
+
+(* RASENTRY "dwDialMode" values. *)
+    RASEDM_DialAll                  =1;
+    RASEDM_DialAsNeeded             =2;
+
+(* RASENTRY "dwIdleDisconnectSeconds" constants. *)
+    RASIDS_Disabled                 =0ffffffffh;
+    RASIDS_UseGlobalValue           =0;
+
+(* AutoDial DLL function parameter block.*)
+TYPE
+    RASADPARAMS = RECORD
+    dwSize      : DWORD;
+    hwndOwner   : HWND;
+    dwFlags     : DWORD;
+    xDlg        : LONG;
+    yDlg        : LONG;
+    END;
+    LPRASADPARAMS = POINTER TO RASADPARAMS;
+
+(* AutoDial DLL function parameter block "dwFlags." *)
+CONST
+    RASADFLG_PositionDlg            =00000001h;
+
+(* Prototype AutoDial DLL function.*)
+TYPE
+    RASADFUNCA =  PROCEDURE(ARRAY OF ACHAR,
+                            ARRAY OF ACHAR,
+                            RASADPARAMS,
+                            VAR DWORD) : BOOL;
+    RASADFUNCW =  PROCEDURE(ARRAY OF WCHAR,
+                            ARRAY OF WCHAR,
+                            RASADPARAMS,
+                            VAR DWORD) : BOOL;
+
+%IF UNICODE %THEN
+    RASADFUNC  = RASADFUNCW;
+%ELSE
+    RASADFUNC  = RASADFUNCA;
+%END
+
+(* A RAS phone book multilinked sub-entry. *)
+    RASSUBENTRYA = RECORD
+    dwSize              : DWORD;
+    dwfFlags            : DWORD;
+    (*
+     Device
+    *)
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF ACHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF ACHAR;
+    (*
+     Phone numbers
+    *)
+    szLocalPhoneNumber  : ARRAY [0.. RAS_MaxPhoneNumber + 1 -1] OF ACHAR;
+    dwAlternateOffset   : DWORD;
+
+    (*
+     Port Name
+    *)
+    szPortName          : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF ACHAR;
+    END;
+    LPRASSUBENTRYA = POINTER TO RASSUBENTRYA;
+
+    RASSUBENTRYW = RECORD
+    dwSize              : DWORD;
+    dwfFlags            : DWORD;
+    (*
+     Device
+    *)
+    szDeviceType        : ARRAY [0.. RAS_MaxDeviceType + 1 -1] OF WCHAR;
+    szDeviceName        : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF WCHAR;
+    (*
+     Phone numbers
+    *)
+    szLocalPhoneNumber  : ARRAY [0.. RAS_MaxPhoneNumber + 1 -1] OF WCHAR;
+    dwAlternateOffset   : DWORD;
+
+    (*
+     Port Name
+    *)
+    szPortName          : ARRAY [0.. RAS_MaxDeviceName + 1 -1] OF WCHAR;
+    END;
+    LPRASSUBENTRYW = POINTER TO RASSUBENTRYW;
+
+%IF UNICODE %THEN
+    RASSUBENTRY = RASSUBENTRYW;
+    LPRASSUBENTRY = LPRASSUBENTRYW;
+%ELSE
+    RASSUBENTRY = RASSUBENTRYA;
+    LPRASSUBENTRY = LPRASSUBENTRYA;
+%END
+
+(* Ras{Get,Set}Credentials structure.  These calls
+** supercede Ras{Get,Set}EntryDialParams. *)
+    RASCREDENTIALSA = RECORD
+    dwSize      : DWORD;
+    dwMask      : DWORD;
+    szUserName  : ARRAY [0.. UNLEN + 1 -1] OF ACHAR;
+    szPassword  : ARRAY [0.. PWLEN + 1 -1] OF ACHAR;
+    szDomain    : ARRAY [0.. DNLEN + 1 -1] OF ACHAR;
+    END;
+    LPRASCREDENTIALSA = POINTER TO RASCREDENTIALSA;
+
+    RASCREDENTIALSW = RECORD
+    dwSize      : DWORD;
+    dwMask      : DWORD;
+    szUserName  : ARRAY [0.. UNLEN + 1 -1] OF WCHAR;
+    szPassword  : ARRAY [0.. PWLEN + 1 -1] OF WCHAR;
+    szDomain    : ARRAY [0.. DNLEN + 1 -1] OF WCHAR;
+    END;
+    LPRASCREDENTIALSW = POINTER TO RASCREDENTIALSW;
+
+%IF UNICODE %THEN
+    RASCREDENTIALS = RASCREDENTIALSW;
+    LPRASCREDENTIALS = LPRASCREDENTIALSW;
+%ELSE
+    RASCREDENTIALS = RASCREDENTIALSA;
+    LPRASCREDENTIALS = LPRASCREDENTIALSA;
+%END
+
+(* RASCREDENTIALS "dwMask" values.*)
+CONST
+    RASCM_UserName       =00000001h;
+    RASCM_Password       =00000002h;
+    RASCM_Domain         =00000004h;
+
+(* AutoDial address properties.*)
+TYPE
+    RASAUTODIALENTRYA = RECORD
+    dwSize              : DWORD;
+    dwFlags             : DWORD;
+    dwDialingLocation   : DWORD;
+    szEntry             : ARRAY [0.. RAS_MaxEntryName + 1-1] OF ACHAR;
+    END;
+    LPRASAUTODIALENTRYA = POINTER TO RASAUTODIALENTRYA;
+
+    RASAUTODIALENTRYW = RECORD
+    dwSize              : DWORD;
+    dwFlags             : DWORD;
+    dwDialingLocation   : DWORD;
+    szEntry             : ARRAY [0.. RAS_MaxEntryName + 1-1] OF WCHAR;
+    END;
+    LPRASAUTODIALENTRYW = POINTER TO RASAUTODIALENTRYW;
+
+%IF UNICODE %THEN
+    RASAUTODIALENTRY = RASAUTODIALENTRYW;
+    LPRASAUTODIALENTRY = LPRASAUTODIALENTRYW;
+%ELSE
+    RASAUTODIALENTRY = RASAUTODIALENTRYA;
+    LPRASAUTODIALENTRY = LPRASAUTODIALENTRYA;
+%END
+
+(* AutoDial control parameter values for
+** Ras{Get,Set}AutodialParam.  *)
+CONST
+    RASADP_DisableConnectionQuery           =0;
+    RASADP_LoginSessionDisable              =1;
+    RASADP_SavedAddressesLimit              =2;
+    RASADP_FailedConnectionTimeout          =3;
+    RASADP_ConnectionQueryTimeout           =4;
+
+PROCEDURE RasDialA(a : LPRASDIALEXTENSIONS;
+                   b : ARRAY OF ACHAR;
+                   c : RASDIALPARAMSA;
+                   d : DWORD;
+                   e : LPVOID;
+                   VAR f : HRASCONN) : DWORD;
+
+PROCEDURE RasDialW(a : LPRASDIALEXTENSIONS;
+                   b : ARRAY OF WCHAR;
+                   c : RASDIALPARAMSW;
+                   d : DWORD;
+                   e : LPVOID;
+                   VAR f : HRASCONN) : DWORD;
+
+PROCEDURE RasEnumConnectionsA(VAR a : RASCONNA;
+                              VAR b : DWORD;
+                              VAR c : DWORD) : DWORD;
+
+PROCEDURE RasEnumConnectionsW(VAR a : RASCONNW;
+                              VAR b : DWORD;
+                              VAR c : DWORD) : DWORD;
+
+PROCEDURE RasEnumEntriesA(a : LPSTR;
+                          b : ARRAY OF ACHAR;
+                          VAR c : ARRAY OF RASENTRYNAMEA;
+                          VAR d : DWORD;
+                          VAR e : DWORD) : DWORD;
+
+PROCEDURE RasEnumEntriesW(a : LPWSTR;
+                          b : ARRAY OF WCHAR;
+                          VAR c : ARRAY OF LPRASENTRYNAMEW;
+                          VAR d : DWORD;
+                          VAR e : DWORD) : DWORD;
+
+PROCEDURE RasGetConnectStatusA(a : HRASCONN;
+                               VAR b : RASCONNSTATUSA) : DWORD;
+
+PROCEDURE RasGetConnectStatusW(a : HRASCONN;
+                               VAR b : RASCONNSTATUSW) : DWORD;
+
+PROCEDURE RasGetErrorStringA(a : UINT;
+                             VAR b : ARRAY OF ACHAR;
+                             c : DWORD) : DWORD;
+
+PROCEDURE RasGetErrorStringW(a : UINT;
+                             VAR b : ARRAY OF WCHAR;
+                             c : DWORD) : DWORD;
+
+PROCEDURE RasHangUpA(a : HRASCONN) : DWORD;
+
+PROCEDURE RasHangUpW(a : HRASCONN) : DWORD;
+
+PROCEDURE RasGetProjectionInfoA(a : HRASCONN;
+                                d : RASPROJECTION;
+                                VAR b : ARRAY OF LOC;
+                                VAR c : DWORD) : DWORD;
+
+PROCEDURE RasGetProjectionInfoW(a : HRASCONN;
+                                d : RASPROJECTION;
+                                VAR b : ARRAY OF LOC;
+                                VAR c : DWORD) : DWORD;
+
+PROCEDURE RasCreatePhonebookEntryA(a : HWND;
+                                   b : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE RasCreatePhonebookEntryW(a : HWND;
+                                   b : ARRAY OF WCHAR) : DWORD;
+
+PROCEDURE RasEditPhonebookEntryA(a : HWND;
+                                 b : ARRAY OF ACHAR;
+                                 c : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE RasEditPhonebookEntryW(a : HWND;
+                                 b : ARRAY OF WCHAR;
+                                 c : ARRAY OF WCHAR) : DWORD;
+
+PROCEDURE RasSetEntryDialParamsA(a : ARRAY OF ACHAR;
+                                 b : RASDIALPARAMSA;
+                                 c : BOOL) : DWORD;
+
+PROCEDURE RasSetEntryDialParamsW(a : ARRAY OF WCHAR;
+                                 b : RASDIALPARAMSW;
+                                 c : BOOL) : DWORD;
+
+PROCEDURE RasGetEntryDialParamsA(a : ARRAY OF ACHAR;
+                                 VAR b : RASDIALPARAMSA;
+                                 VAR c : BOOL) : DWORD;
+
+PROCEDURE RasGetEntryDialParamsW(a : LPWSTR;
+                                 VAR b : LPRASDIALPARAMSW;
+                                 VAR c : BOOL) : DWORD;
+
+PROCEDURE RasEnumDevicesA(a : RASDEVINFOA;
+                          VAR b : DWORD;
+                          VAR c : DWORD) : DWORD;
+
+PROCEDURE RasEnumDevicesW(a : RASDEVINFOW;
+                          VAR b : DWORD;
+                          VAR c : DWORD) : DWORD;
+
+PROCEDURE RasGetCountryInfoA(VAR a : RASCTRYINFOA; VAR b : DWORD) : DWORD;
+
+PROCEDURE RasGetCountryInfoW(VAR a : RASCTRYINFOW; VAR b : DWORD) : DWORD;
+
+PROCEDURE RasGetEntryPropertiesA(a : ARRAY OF ACHAR;
+                                 b : ARRAY OF ACHAR;
+                                 VAR c : RASENTRYA;
+                                 VAR d : DWORD;
+                                 VAR e : ARRAY OF LOC;
+                                 VAR f : DWORD) : DWORD;
+
+PROCEDURE RasGetEntryPropertiesW(a : ARRAY OF WCHAR;
+                                 b : ARRAY OF WCHAR;
+                                 VAR c : RASENTRYW;
+                                 VAR d : DWORD;
+                                 VAR e : ARRAY OF LOC;
+                                 VAR f : DWORD) : DWORD;
+
+PROCEDURE RasSetEntryPropertiesA(a : ARRAY OF ACHAR;
+                                 b : ARRAY OF ACHAR;
+                                 c : RASENTRYA;
+                                 d : DWORD;
+                                 e : ARRAY OF LOC;
+                                 f : DWORD) : DWORD;
+
+PROCEDURE RasSetEntryPropertiesW(a : ARRAY OF WCHAR;
+                                 b : ARRAY OF WCHAR;
+                                 c : RASENTRYW;
+                                 d : DWORD;
+                                 e : ARRAY OF LOC;
+                                 f : DWORD) : DWORD;
+
+PROCEDURE RasRenameEntryA(a, b, c : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE RasRenameEntryW(a, b, c : ARRAY OF WCHAR) : DWORD;
+
+PROCEDURE RasDeleteEntryA(a, b : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE RasDeleteEntryW(a, b : ARRAY OF WCHAR) : DWORD;
+
+PROCEDURE RasValidateEntryNameA(a, b : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE RasValidateEntryNameW(a, b : ARRAY OF WCHAR) : DWORD;
+
+PROCEDURE RasGetSubEntryHandleA(a : HRASCONN;
+                                b : DWORD;
+                                VAR c : HRASCONN) : DWORD;
+
+PROCEDURE RasGetSubEntryHandleW(a : HRASCONN;
+                                b : DWORD;
+                                VAR c : HRASCONN) : DWORD;
+
+PROCEDURE RasGetCredentialsA(a, b : ARRAY OF ACHAR;
+                             VAR c : RASCREDENTIALSA) : DWORD;
+
+PROCEDURE RasGetCredentialsW(a, b : ARRAY OF WCHAR;
+                             VAR c : RASCREDENTIALSW) : DWORD;
+
+PROCEDURE RasSetCredentialsA(a, b : ARRAY OF ACHAR;
+                             c : RASCREDENTIALSA;
+                             d : BOOL) : DWORD;
+
+PROCEDURE RasSetCredentialsW(a, b : ARRAY OF WCHAR;
+                             c : RASCREDENTIALSW;
+                             d : BOOL) : DWORD;
+
+PROCEDURE RasConnectionNotificationA(a : HRASCONN;
+                                     b : HANDLE;
+                                     c : DWORD) : DWORD;
+
+PROCEDURE RasConnectionNotificationW(a : HRASCONN;
+                                     b : HANDLE;
+                                     c : DWORD) : DWORD;
+
+PROCEDURE RasGetSubEntryPropertiesA(a, b : ARRAY OF ACHAR;
+                                    c : DWORD;
+                                    VAR d : RASSUBENTRYA;
+                                    VAR e : DWORD;
+                                    VAR f : ARRAY OF LOC;
+                                    VAR g : DWORD) : DWORD;
+
+PROCEDURE RasGetSubEntryPropertiesW(a, b : ARRAY OF WCHAR;
+                                    c : DWORD;
+                                    VAR d : RASSUBENTRYW;
+                                    VAR e : DWORD;
+                                    VAR f : ARRAY OF LOC;
+                                    VAR g : DWORD) : DWORD;
+
+PROCEDURE RasSetSubEntryPropertiesA(a, b : ARRAY OF ACHAR;
+                                    c : DWORD;
+                                    d : RASSUBENTRYA;
+                                    e : DWORD;
+                                    f : ARRAY OF LOC;
+                                    g : DWORD) : DWORD;
+
+PROCEDURE RasSetSubEntryPropertiesW(a, b : ARRAY OF WCHAR;
+                                    c : DWORD;
+                                    d : RASSUBENTRYW;
+                                    e : DWORD;
+                                    f : ARRAY OF LOC;
+                                    g : DWORD) : DWORD;
+
+PROCEDURE RasGetAutodialAddressA(a : ARRAY OF ACHAR;
+                                 VAR b : DWORD;
+                                 VAR c : RASAUTODIALENTRYA;
+                                 VAR d : DWORD;
+                                 VAR e : DWORD) : DWORD;
+
+PROCEDURE RasGetAutodialAddressW(a : ARRAY OF WCHAR;
+                                 VAR b : DWORD;
+                                 VAR c : RASAUTODIALENTRYW;
+                                 VAR d : DWORD;
+                                 VAR e : DWORD) : DWORD;
+
+PROCEDURE RasSetAutodialAddressA(a : ARRAY OF ACHAR;
+                                 b : DWORD;
+                                 c : RASAUTODIALENTRYA;
+                                 d : DWORD;
+                                 e : DWORD) : DWORD;
+
+PROCEDURE RasSetAutodialAddressW(a : ARRAY OF WCHAR;
+                                 b : DWORD;
+                                 c : RASAUTODIALENTRYW;
+                                 d : DWORD;
+                                 e : DWORD) : DWORD;
+
+PROCEDURE RasEnumAutodialAddressesA(VAR a : LPSTR;
+                                    VAR b : DWORD;
+                                    VAR c : DWORD) : DWORD;
+
+PROCEDURE RasEnumAutodialAddressesW(VAR a : LPWSTR;
+                                    VAR b : DWORD;
+                                    VAR c : DWORD) : DWORD;
+
+PROCEDURE RasGetAutodialEnableA(a : DWORD; VAR b : BOOL) : DWORD;
+
+PROCEDURE RasGetAutodialEnableW(a : DWORD; VAR b : BOOL) : DWORD;
+
+PROCEDURE RasSetAutodialEnableA(a : DWORD; b : BOOL) : DWORD;
+
+PROCEDURE RasSetAutodialEnableW(a : DWORD; b : BOOL) : DWORD;
+
+PROCEDURE RasGetAutodialParamA(a : DWORD;
+                               b : LPVOID;
+                               VAR c : DWORD) : DWORD;
+
+PROCEDURE RasGetAutodialParamW(a : DWORD;
+                               b : LPVOID;
+                               VAR c : DWORD) : DWORD;
+
+PROCEDURE RasSetAutodialParamA(a : DWORD;
+                               b : LPVOID;
+                               c : DWORD) : DWORD;
+
+PROCEDURE RasSetAutodialParamW(a : DWORD;
+                               b : LPVOID;
+                               c : DWORD) : DWORD;
+
+PROCEDURE RasInvokeEapUI(a : HRASCONN;
+                         b : DWORD;
+                         c : RASDIALEXTENSIONS;
+                         d : HWND) : DWORD;
+
+%IF UNICODE %THEN
+
+PROCEDURE RasDial = RasDialW;
+
+PROCEDURE RasEnumConnections = RasEnumConnectionsW;
+
+PROCEDURE RasEnumEntries = RasEnumEntriesW;
+
+PROCEDURE RasGetConnectStatus = RasGetConnectStatusW;
+
+PROCEDURE RasGetErrorString = RasGetErrorStringW;
+
+PROCEDURE RasHangUp = RasHangUpW;
+
+PROCEDURE RasGetProjectionInfo = RasGetProjectionInfoW;
+
+PROCEDURE RasCreatePhonebookEntry = RasCreatePhonebookEntryW;
+
+PROCEDURE RasEditPhonebookEntry = RasEditPhonebookEntryW;
+
+PROCEDURE RasSetEntryDialParams = RasSetEntryDialParamsW;
+
+PROCEDURE RasGetEntryDialParams = RasGetEntryDialParamsW;
+
+PROCEDURE RasGetCountryInfo = RasGetCountryInfoW;
+
+PROCEDURE RasGetEntryProperties = RasGetEntryPropertiesW;
+
+PROCEDURE RasSetEntryProperties = RasSetEntryPropertiesW;
+
+PROCEDURE RasRenameEntry = RasRenameEntryW;
+
+PROCEDURE RasDeleteEntry = RasDeleteEntryW;
+
+PROCEDURE RasValidateEntryName = RasValidateEntryNameW;
+
+PROCEDURE RasGetSubEntryHandle = RasGetSubEntryHandleW;
+
+PROCEDURE RasGetCredentials = RasGetCredentialsW;
+
+PROCEDURE RasSetCredentials = RasSetCredentialsW;
+
+PROCEDURE RasConnectionNotification = RasConnectionNotificationW;
+
+PROCEDURE RasGetSubEntryProperties = RasGetSubEntryPropertiesW;
+
+PROCEDURE RasSetSubEntryProperties = RasSetSubEntryPropertiesW;
+
+PROCEDURE RasGetAutodialAddress = RasGetAutodialAddressW;
+
+PROCEDURE RasSetAutodialAddress = RasSetAutodialAddressW;
+
+PROCEDURE RasEnumAutodialAddresses = RasEnumAutodialAddressesW;
+
+PROCEDURE RasGetAutodialEnable = RasGetAutodialEnableW;
+
+PROCEDURE RasSetAutodialEnable = RasSetAutodialEnableW;
+
+PROCEDURE RasGetAutodialParam = RasGetAutodialParamW;
+
+PROCEDURE RasSetAutodialParam = RasSetAutodialParamW;
+
+%ELSE
+
+PROCEDURE RasDial = RasDialA;
+
+PROCEDURE RasEnumConnections = RasEnumConnectionsA;
+
+PROCEDURE RasEnumEntries = RasEnumEntriesA;
+
+PROCEDURE RasGetConnectStatus = RasGetConnectStatusA;
+
+PROCEDURE RasGetErrorString = RasGetErrorStringA;
+
+PROCEDURE RasHangUp = RasHangUpA;
+
+PROCEDURE RasGetProjectionInfo = RasGetProjectionInfoA;
+
+PROCEDURE RasCreatePhonebookEntry = RasCreatePhonebookEntryA;
+
+PROCEDURE RasEditPhonebookEntry = RasEditPhonebookEntryA;
+
+PROCEDURE RasSetEntryDialParams = RasSetEntryDialParamsA;
+
+PROCEDURE RasGetEntryDialParams = RasGetEntryDialParamsA;
+
+PROCEDURE RasGetCountryInfo = RasGetCountryInfoA;
+
+PROCEDURE RasGetEntryProperties = RasGetEntryPropertiesA;
+
+PROCEDURE RasSetEntryProperties = RasSetEntryPropertiesA;
+
+PROCEDURE RasRenameEntry = RasRenameEntryA;
+
+PROCEDURE RasDeleteEntry = RasDeleteEntryA;
+
+PROCEDURE RasValidateEntryName = RasValidateEntryNameA;
+
+PROCEDURE RasGetSubEntryHandle = RasGetSubEntryHandleA;
+
+PROCEDURE RasGetCredentials = RasGetCredentialsA;
+
+PROCEDURE RasSetCredentials = RasSetCredentialsA;
+
+PROCEDURE RasConnectionNotification = RasConnectionNotificationA;
+
+PROCEDURE RasGetSubEntryProperties = RasGetSubEntryPropertiesA;
+
+PROCEDURE RasSetSubEntryProperties = RasSetSubEntryPropertiesA;
+
+PROCEDURE RasGetAutodialAddress = RasGetAutodialAddressA;
+
+PROCEDURE RasSetAutodialAddress = RasSetAutodialAddressA;
+
+PROCEDURE RasEnumAutodialAddresses = RasEnumAutodialAddressesA;
+
+PROCEDURE RasGetAutodialEnable = RasGetAutodialEnableA;
+
+PROCEDURE RasSetAutodialEnable = RasSetAutodialEnableA;
+
+PROCEDURE RasGetAutodialParam = RasGetAutodialParamA;
+
+PROCEDURE RasSetAutodialParam = RasSetAutodialParamA;
+
+%END
+
+END RAS.

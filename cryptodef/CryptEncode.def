@@ -1,0 +1,271 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE CryptEncode;
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS, ADRCARD;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+CONST
+    MaxHashLen          = 64;(*bytes, 512 bits*)
+
+PROCEDURE PadBlock_RFC1423(block : ADDRESS;
+                           VAR INOUT blockSize : CARDINAL;
+                           blockPad : CARDINAL) : BOOLEAN;
+(*
+  pads a block accordining to the generalized RFC 1423 algorithm.
+  this is typically used with symmetric block ciphers such as
+  AES, DES, Blowfish, etc...
+
+  the data block is padded such that the resulting blockSize is an
+  even multiple of blockPad.
+
+  1..blockPad bytes of padding are added to the block.
+
+  on entry blockSize is the size of the padded block.
+  on exit blockSize is the new adjusted size of the data block.
+      and the data block has been padded with the proper padding bytes.
+
+  returns TRUE if successful.
+  reasons for returning FALSE.
+      block is not large enough for the extra padding bytes.
+
+  the algorithm...
+   Let n be the length in bytes of the input.
+   Let k be the block size in bytes.
+   Pad the input by appending k-(n mod k) bytes to the end of the message,
+   each having the value k-(n mod k), the number of bytes being added.
+   All input is padded with 1 to k bytes to produce a multiple of k bytes
+   in length. The padding can be removed unambiguously after decryption.
+*)
+
+PROCEDURE UnpadBlock_RFC1423(block : ADDRESS;
+                             VAR INOUT blockSize : CARDINAL;
+                             blockPad : CARDINAL) : BOOLEAN;
+(*
+  unpads a block accordining to the generalized RFC 1423 algorithm.
+  this is typically used with symmetric block ciphers such as
+  AES, DES, Blowfish, etc...
+
+  1..blockPad bytes of padding are "removed" from the block. actually only
+  the passed block size is adjusted. the pad data is unaltered.
+
+  on entry blockSize is the size of the padded block.
+  on exit blockSize has been adjusted to "remove" the padding.
+
+  returns TRUE if successful.
+  reasons for returning FALSE.
+      blockSize <= blockPad on entry.
+      blockSize on entry is not a multiple of blockPad
+      the padding bytes are not correct according to algorithm.
+*)
+
+TYPE
+    EncodeHashFunction = PROCEDURE((*userData:*) ADDRESS,
+                                   (*input:*) ADDRESS,
+                                   (*inputSize:*) CARDINAL,
+                                   VAR OUT (*output:*) ARRAY OF BYTE);
+    (*
+      userData = whatever data you wish passed to your hash procedure.
+      input = the data to be hashed.
+      inputSize = the number of bytes to be hashed.
+                  this parameter can have a value of zero.
+      output = the hash result. this can be at most MaxHashLen bytes.
+    *)
+
+PROCEDURE HashFunc_SHA1(userData : ADDRESS;
+                        input : ADDRESS;
+                        inputSize : CARDINAL;
+                        VAR OUT output : ARRAY OF BYTE);
+(*
+  this function is exported as a convenience for use with various
+  encoding procedures.
+  it assumes the userData parameter is a data value of type SHA1.SHA1,
+  and it computes a SHA-1 hash value with the input data.
+*)
+
+PROCEDURE Encode_OAEP(message : ADDRESS;
+                      messageLen : CARDINAL;
+                      encodingParams : ADDRESS;
+                      encodingParamsLen : CARDINAL;
+                      encodedMessage : ADDRESS;
+                      emLen : CARDINAL;
+                      hashFunc : EncodeHashFunction;
+                      hashUserData : ADDRESS;
+                      hashLen : CARDINAL
+                     ) : BOOLEAN;
+(*
+  encodes the message according to the EME-OAEP algorithm.
+      information on EME-OAEP can be found in the document
+      rsa-oaep_spec.pdf found at www.rsasecurity.com
+
+  OAEP encoding is used with encryption operations using public/private key
+      encryption algorithms.
+
+  OAEP allows for any hash function. as such this procedure uses a procedure
+      type for the hash function. you may use any hash function you desire.
+      SHA-1 is typically recomended.
+
+  hashLen = the size in bytes of the hash function you are using.
+      this value cannot be any larger than MaxHashLen.
+
+  emLen is the requested encoded message length.
+      emLen for RSA is typically 1 byte less than the size of the modulus 'n'
+      for 1024-bit RSA this is 127 bytes. 2048 = 255 bytes.
+
+  encodedMessage = the returned encoded message.
+                   buffer size should be at least the size of emLen.
+
+  encodingParamsLen can be zero.
+      the parties that encode/decode a message must agree on the encoding parameters.
+      these params can be public or secret.
+
+  returns TRUE if successful.
+  reasons for returning false
+      message size is too large
+      the output buffer was not large enough.
+      hashLen > MaxHashLen
+*)
+
+PROCEDURE Decode_OAEP(encodedMessage : ADDRESS;
+                      emLen : ADRCARD;
+                      encodingParams : ADDRESS;
+                      encodingParamsLen : CARDINAL;
+                      message : ADDRESS;
+                      VAR INOUT messageLen : CARDINAL;
+                      hashFunc : EncodeHashFunction;
+                      hashUserData : ADDRESS;
+                      hashLen : ADRCARD
+                     ) : BOOLEAN;
+(*
+  decodes a message encoded in the EME-OAEP algorithm.
+  returns TRUE if successful.
+
+  OAEP allows for any hash function. as such this procedure uses a procedure
+      type for the hash function. you may use any hash function you desire.
+      SHA-1 is typically recomended.
+
+  emLen = the encoded message length.
+
+  hashLen = the size in bytes of the hash function you are using.
+      this value cannot be any larger than MaxHashLen.
+
+  on entry messageLen = the maximum size in bytes of the message buffer.
+  on return messageLen is assigned the size of the returned message.
+
+  encodingParamsLen can be zero.
+      the parties that encode/decode a message must agree on the encoding parameters.
+      these params can be public or secret.
+
+  reasons for returning false
+      emLen is not large enough.
+      the encoding hash signatures do not match.
+      message is not large enough to contain the message.
+      hashLen > MaxHashLen
+*)
+
+PROCEDURE Encode_PSS(messageHash : ADDRESS;
+                     saltLen : CARDINAL;
+                     encodedMessage : ADDRESS;
+                     emLen : CARDINAL;
+                     hashFunc : EncodeHashFunction;
+                     hashUserData : ADDRESS;
+                     hashLen : CARDINAL
+                    ) : BOOLEAN;
+(*
+  encodes the message according to the EMSA-PSS algorithm.
+      information on EMSA-PSS can be found in the document PKCS #1 v2.1
+      at www.rsasecurity.com
+
+  PSS encoding is used in signature operations with public/private key
+      encryption algorithms.
+
+  PSS allows for any hash function. as such this procedure uses a procedure
+      type for the hash function. you may use any hash function you desire.
+      SHA-1 is typically recomended.
+
+  hashLen = the size in bytes of the hash function you are using.
+      this value cannot be any larger than MaxHashLen.
+
+  messageHash = the hash of the message to be encoded.
+                while this procedure could hash the messaage for you, this would
+                mean the message would need to exist in a single buffer, which is
+                not flexible for large messages.
+
+                the size of messageHash is hashLen.
+                the hash algorithm must be the same as used by hashFunc.
+
+  emLen is the requested encoded message length.
+      emLen for RSA is typically 1 byte less than the size of the modulus 'n'
+      for 1024-bit RSA this is 127 bytes. 2048 = 255 bytes.
+
+  encodedMessage = the returned encoded message.
+                   buffer size should be at least the size of emLen.
+
+  saltLen can be zero.
+      the parties that encode/decode a message must agree on the salt length.
+      this can be public or secret.
+
+  returns TRUE if successful.
+  reasons for returning false
+      message size is too large
+      the output buffer was not large enough.
+      hashLen > MaxHashLen
+*)
+
+PROCEDURE Verify_PSS(encodedMessage : ADDRESS;
+                     emLen : CARDINAL;
+                     saltLen : CARDINAL;
+                     messageHash : ADDRESS;
+                     hashFunc : EncodeHashFunction;
+                     hashUserData : ADDRESS;
+                     hashLen : CARDINAL
+                    ) : BOOLEAN;
+(*
+  decodes a message encoded in the EMSA-PSS algorithm.
+
+  PSS allows for any hash function. as such this procedure uses a procedure
+      type for the hash function. you may use any hash function you desire.
+      SHA-1 is typically recomended.
+
+  emLen = the encoded message length.
+
+  hashLen = the size in bytes of the hash function you are using.
+      this value cannot be any larger than MaxHashLen.
+
+  messageHash = the hash of the message to be encoded.
+                while this procedure could hash the messaage for you, this would
+                mean the message would need to exist in a single buffer, which is
+                not flexible for large messages.
+
+                the size of messageHash is hashLen.
+                the hash algorithm must be the same as used by hashFunc.
+
+  saltLen can be zero.
+      the parties that encode/decode a message must agree on the salt length.
+      this can be public or secret.
+
+  returns TRUE if successful.
+      this means the encoded signature matches the unencoded plain message.
+  reasons for returning false
+      emLen is is an invalid size.
+      the encoded hash signature does not match the hashed message.
+      hashLen > MaxHashLen
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END CryptEncode.

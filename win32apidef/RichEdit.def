@@ -1,0 +1,996 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE RichEdit;
+
+FROM WIN32 IMPORT
+    DWORD, WPARAM, WORD, LPSTR, LPCSTR, LPWSTR, LPARAM, UINT, BYTE, LCID,
+    LONG, PLONG, COLORREF, HDC, RECT, SHORT, HANDLE, BOOL, WINT, HRESULT,
+    LPBOOL, DWORD_PTR;
+
+FROM WINUSER IMPORT
+    WM_USER, NMHDR;
+
+FROM WINGDI IMPORT
+    LF_FACESIZE;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+%IF AMD64 %THEN
+<*/ALIGN:8/NOPACK*>
+%ELSE
+<*/ALIGN:4/NOPACK*>
+%END
+
+<*/VALIDVER:RichEdit20*>
+<*/VER:RichEdit20*>(*also change directive in IMP module*)
+
+CONST
+    RICHEDIT_CLASSA     = "RichEdit20A";(* >= 2.0*)
+    RICHEDIT_CLASSW     = "RichEdit20W";
+
+    RICHEDIT_CLASS10A   = "RICHEDIT";(* Richedit 1.0*)
+
+%IF RichEdit20 %THEN
+%IF UNICODE %THEN
+    RICHEDIT_CLASS      = RICHEDIT_CLASSW;
+%ELSE
+    RICHEDIT_CLASS      = RICHEDIT_CLASSA;
+%END
+%ELSE
+    RICHEDIT_CLASS      = RICHEDIT_CLASS10A;
+%END
+
+    cchTextLimitDefault  = 32767;
+
+    WM_CONTEXTMENU       = 0007Bh;
+    WM_PRINTCLIENT       = 00318h;
+    WM_NOTIFY            = 0004Eh;
+
+    EM_GETLIMITTEXT      = WM_USER + 37;
+    EM_POSFROMCHAR       = WM_USER + 38;
+    EM_CHARFROMPOS       = WM_USER + 39;
+    EM_SCROLLCARET       = WM_USER + 49;
+    EM_CANPASTE          = WM_USER + 50;
+    EM_DISPLAYBAND       = WM_USER + 51;
+    EM_EXGETSEL          = WM_USER + 52;
+    EM_EXLIMITTEXT       = WM_USER + 53;
+    EM_EXLINEFROMCHAR    = WM_USER + 54;
+    EM_EXSETSEL          = WM_USER + 55;
+    EM_FINDTEXT          = WM_USER + 56;
+    EM_FORMATRANGE       = WM_USER + 57;
+    EM_GETCHARFORMAT     = WM_USER + 58;
+    EM_GETEVENTMASK      = WM_USER + 59;
+    EM_GETOLEINTERFACE   = WM_USER + 60;
+    EM_GETPARAFORMAT     = WM_USER + 61;
+    EM_GETSELTEXT        = WM_USER + 62;
+    EM_HIDESELECTION     = WM_USER + 63;
+    EM_PASTESPECIAL      = WM_USER + 64;
+    EM_REQUESTRESIZE     = WM_USER + 65;
+    EM_SELECTIONTYPE     = WM_USER + 66;
+    EM_SETBKGNDCOLOR     = WM_USER + 67;
+    EM_SETCHARFORMAT     = WM_USER + 68;
+    EM_SETEVENTMASK      = WM_USER + 69;
+    EM_SETOLECALLBACK    = WM_USER + 70;
+    EM_SETPARAFORMAT     = WM_USER + 71;
+    EM_SETTARGETDEVICE   = WM_USER + 72;
+    EM_STREAMIN          = WM_USER + 73;
+    EM_STREAMOUT         = WM_USER + 74;
+    EM_GETTEXTRANGE      = WM_USER + 75;
+    EM_FINDWORDBREAK     = WM_USER + 76;
+    EM_SETOPTIONS        = WM_USER + 77;
+    EM_GETOPTIONS        = WM_USER + 78;
+    EM_FINDTEXTEX        = WM_USER + 79;
+
+    EM_GETWORDBREAKPROCEX= WM_USER + 80;
+    EM_SETWORDBREAKPROCEX= WM_USER + 81;
+
+(** RichEdit 2.0 messages *)
+    EM_SETUNDOLIMIT             =WM_USER + 82;
+    EM_REDO                     =WM_USER + 84;
+    EM_CANREDO                  =WM_USER + 85;
+    EM_GETUNDONAME              =WM_USER + 86;
+    EM_GETREDONAME              =WM_USER + 87;
+    EM_STOPGROUPTYPING          =WM_USER + 88;
+
+    EM_SETTEXTMODE              =WM_USER + 89;
+    EM_GETTEXTMODE              =WM_USER + 90;
+
+(* enum for use with EM_GET/SETTEXTMODE *)
+TYPE
+    TEXTMODE = (
+        TM_PLAINTEXT                    = 1,
+        TM_RICHTEXT                             = 2,    (* default behavior *)
+        TM_SINGLELEVELUNDO              = 4,
+        TM_MULTILEVELUNDO               = 8,    (* default behavior *)
+        TM_SINGLECODEPAGE               = 16,
+        TM_MULTICODEPAGE                = 32    (* default behavior *)
+        );
+
+CONST
+    EM_AUTOURLDETECT            =WM_USER + 91;
+    EM_GETAUTOURLDETECT         =WM_USER + 92;
+    EM_SETPALETTE               =WM_USER + 93;
+    EM_GETTEXTEX                =WM_USER + 94;
+    EM_GETTEXTLENGTHEX          =WM_USER + 95;
+    EM_SHOWSCROLLBAR            =WM_USER + 96;
+    EM_SETTEXTEX                =WM_USER + 97;
+
+    EM_SETPUNCTUATION    = WM_USER + 100;
+    EM_GETPUNCTUATION    = WM_USER + 101;
+    EM_SETWORDWRAPMODE   = WM_USER + 102;
+    EM_GETWORDWRAPMODE   = WM_USER + 103;
+    EM_SETIMECOLOR       = WM_USER + 104;
+    EM_GETIMECOLOR       = WM_USER + 105;
+    EM_SETIMEOPTIONS     = WM_USER + 106;
+    EM_GETIMEOPTIONS     = WM_USER + 107;
+    EM_CONVPOSITION      = WM_USER + 108;
+
+    EM_SETLANGOPTIONS    =WM_USER + 120;
+    EM_GETLANGOPTIONS    =WM_USER + 121;
+    EM_GETIMECOMPMODE    =WM_USER + 122;
+
+    EM_FINDTEXTW         =WM_USER + 123;
+    EM_FINDTEXTEXW       =WM_USER + 124;
+
+(* RE3.0 FE messages *)
+    EM_RECONVERSION                 =WM_USER + 125;
+    EM_SETIMEMODEBIAS               =WM_USER + 126;
+    EM_GETIMEMODEBIAS               =WM_USER + 127;
+
+(* BiDi specific messages *)
+    EM_SETBIDIOPTIONS               =WM_USER + 200;
+    EM_GETBIDIOPTIONS               =WM_USER + 201;
+
+    EM_SETTYPOGRAPHYOPTIONS =WM_USER + 202;
+    EM_GETTYPOGRAPHYOPTIONS =WM_USER + 203;
+
+(* Extended edit style specific messages *)
+    EM_SETEDITSTYLE                 =WM_USER + 204;
+    EM_GETEDITSTYLE                 =WM_USER + 205;
+
+(* Extended edit style masks *)
+    SES_EMULATESYSEDIT              =1;
+    SES_BEEPONMAXTEXT               =2;
+    SES_EXTENDBACKCOLOR             =4;
+    SES_MAPCPS                      =8;
+    SES_EMULATE10                   =16;
+    SES_USECRLF                     =32;
+    SES_USEAIMM                     =64;
+    SES_NOIME                       =128;
+
+    SES_ALLOWBEEPS                  =256;
+    SES_UPPERCASE                   =512;
+    SES_LOWERCASE                   =1024;
+    SES_NOINPUTSEQUENCECHK          =2048;
+    SES_BIDI                        =4096;
+    SES_SCROLLONKILLFOCUS           =8192;
+    SES_XLTCRCRLFTOCR               =16384;
+
+
+(* Options for EM_SETLANGOPTIONS and EM_GETLANGOPTIONS *)
+    IMF_AUTOKEYBOARD                =00001h;
+    IMF_AUTOFONT                    =00002h;
+    IMF_IMECANCELCOMPLETE   =00004h;  (* high completes comp string when aborting, low cancels.*)
+    IMF_IMEALWAYSSENDNOTIFY =00008h;
+    IMF_AUTOFONTSIZEADJUST  =00010h;
+    IMF_UIFONTS                             =00020h;
+    IMF_DUALFONT                    =00080h;
+
+(* Values for EM_GETIMECOMPMODE *)
+    ICM_NOTOPEN                             =00000h;
+    ICM_LEVEL3                              =00001h;
+    ICM_LEVEL2                              =00002h;
+    ICM_LEVEL2_5                    =00003h;
+    ICM_LEVEL2_SUI                  =00004h;
+
+(* Options for EM_SETTYPOGRAPHYOPTIONS *)
+    TO_ADVANCEDTYPOGRAPHY       =1;
+    TO_SIMPLELINEBREAK          =2;
+
+(* Pegasus outline mode messages (RE 3.0) *)
+
+(* Outline mode message *)
+    EM_OUTLINE              =WM_USER + 220;
+(* Message for getting and restoring scroll pos*)
+    EM_GETSCROLLPOS         =WM_USER + 221;
+    EM_SETSCROLLPOS         =WM_USER + 222;
+(* Change fontsize in current selection by wParam*)
+    EM_SETFONTSIZE          =WM_USER + 223;
+    EM_GETZOOM                          =WM_USER + 224;
+    EM_SETZOOM                          =WM_USER + 225;
+
+(* Outline mode wparam values*)
+    EMO_EXIT                =0;       (* enter normal mode,  lparam ignored*)
+    EMO_ENTER               =1;       (* enter outline mode, lparam ignored*)
+    EMO_PROMOTE             =2;       (* LOWORD(lparam) == 0 ==>*)
+                                        (* promote  to body-text*)
+                                        (* LOWORD(lparam) != 0 ==>*)
+                                        (* promote/demote current selection*)
+                                        (* by indicated number of levels*)
+    EMO_EXPAND              =3;       (* HIWORD(lparam) = EMO_EXPANDSELECTION*)
+                                        (* -> expands selection to level*)
+                                        (* indicated in LOWORD(lparam)*)
+                                        (* LOWORD(lparam) = -1/+1 corresponds*)
+                                        (* to collapse/expand button presses*)
+                                        (* in winword (other values are*)
+                                        (* equivalent to having pressed these*)
+                                        (* buttons more than once)*)
+                                        (* HIWORD(lparam) = EMO_EXPANDDOCUMENT*)
+                                        (* -> expands whole document to*)
+                                        (* indicated level*)
+    EMO_MOVESELECTION       =4;       (* LOWORD(lparam) != 0 -> move current*)
+                                        (* selection up/down by indicated*)
+                                        (* amount*)
+    EMO_GETVIEWMODE             =5;             (* Returns VM_NORMAL or VM_OUTLINE*)
+
+(* EMO_EXPAND options*)
+    EMO_EXPANDSELECTION     =0;
+    EMO_EXPANDDOCUMENT      =1;
+    VM_NORMAL                           =4;(* Agrees with RTF \viewkindN*)
+    VM_OUTLINE                          =2;
+
+    EN_MSGFILTER         = 00700h;
+    EN_REQUESTRESIZE     = 00701h;
+    EN_SELCHANGE         = 00702h;
+    EN_DROPFILES         = 00703h;
+    EN_PROTECTED         = 00704h;
+    EN_CORRECTTEXT       = 00705h;
+    EN_STOPNOUNDO        = 00706h;
+    EN_IMECHANGE         = 00707h;
+    EN_SAVECLIPBOARD     = 00708h;
+    EN_OLEOPFAILED       = 00709h;
+    EN_OBJECTPOSITIONS          =0070ah;
+    EN_LINK                                     =0070bh;
+    EN_DRAGDROPDONE                     =0070ch;
+    EN_PARAGRAPHEXPANDED        =0070dh;
+
+(* BiDi specific notifications *)
+    EN_ALIGNLTR                         =00710h;
+    EN_ALIGNRTL                         =00711h;
+
+    ENM_NONE             = 000000000h;
+    ENM_CHANGE           = 000000001h;
+    ENM_UPDATE           = 000000002h;
+    ENM_SCROLL           = 000000004h;
+    ENM_KEYEVENTS        = 000010000h;
+    ENM_MOUSEEVENTS      = 000020000h;
+    ENM_REQUESTRESIZE    = 000040000h;
+    ENM_SELCHANGE        = 000080000h;
+    ENM_DROPFILES        = 000100000h;
+    ENM_PROTECTED        = 000200000h;
+    ENM_CORRECTTEXT      = 000400000h;
+    ENM_SCROLLEVENTS            =000000008h;
+    ENM_DRAGDROPDONE            =000000010h;
+    ENM_PARAGRAPHEXPANDED       =000000020h;
+    ENM_IMECHANGE        = 000800000h;
+    ENM_LANGCHANGE                      =001000000h;
+    ENM_OBJECTPOSITIONS         =002000000h;
+    ENM_LINK                            =004000000h;
+
+    ES_SAVESEL           = 000008000h;
+    ES_SUNKEN            = 000004000h;
+    ES_DISABLENOSCROLL   = 000002000h;
+    ES_SELECTIONBAR      = 001000000h;
+(* same as ES_UPPERCASE, but re-used to completely disable OLE drag'n'drop *)
+    ES_NOOLEDRAGDROP     =000000008h;
+
+    ES_EX_NOCALLOLEINIT  = 001000000h;
+
+    ES_VERTICAL          = 000020000h;
+    ES_NOIME             = 000080000h;
+    ES_SELFIME           = 000040000h;
+    ES_NOWORDWRAP        = 000010000h;
+
+    ECO_AUTOWORDSELECTION= 000000001h;
+    ECO_AUTOVSCROLL      = 000000040h;
+    ECO_AUTOHSCROLL      = 000000080h;
+    ECO_NOHIDESEL        = 000000100h;
+    ECO_READONLY         = 000000800h;
+    ECO_WANTRETURN       = 000001000h;
+    ECO_SAVESEL          = 000008000h;
+    ECO_SELECTIONBAR     = 001000000h;
+    ECO_VERTICAL         = 000020000h;
+
+    ECOOP_SET            = 00001h;
+    ECOOP_OR             = 00002h;
+    ECOOP_AND            = 00003h;
+    ECOOP_XOR            = 00004h;
+
+    WB_CLASSIFY          = 3;
+    WB_MOVEWORDLEFT      = 4;
+    WB_MOVEWORDRIGHT     = 5;
+    WB_LEFTBREAK         = 6;
+    WB_RIGHTBREAK        = 7;
+    WB_MOVEWORDPREV      = 4;
+    WB_MOVEWORDNEXT      = 5;
+    WB_PREVBREAK         = 6;
+    WB_NEXTBREAK         = 7;
+
+    PC_FOLLOWING         = 1;
+    PC_LEADING           = 2;
+    PC_OVERFLOW          = 3;
+    PC_DELIMITER         = 4;
+
+    WBF_WORDWRAP         = 0010h;
+    WBF_WORDBREAK        = 0020h;
+    WBF_OVERFLOW         = 0040h;
+    WBF_LEVEL1           = 0080h;
+    WBF_LEVEL2           = 0100h;
+    WBF_CUSTOM           = 0200h;
+
+    WBF_CLASS            = 0Fh;
+    WBF_ISWHITE          = 10h;
+    WBF_BREAKLINE        = 20h;
+    WBF_BREAKAFTER       = 40h;
+
+(* Far East specific flags *)
+    IMF_FORCENONE           =00001h;
+    IMF_FORCEENABLE         =00002h;
+    IMF_FORCEDISABLE        =00004h;
+    IMF_CLOSESTATUSWINDOW   =00008h;
+    IMF_VERTICAL            =00020h;
+    IMF_FORCEACTIVE         =00040h;
+    IMF_FORCEINACTIVE       =00080h;
+    IMF_FORCEREMEMBER       =00100h;
+    IMF_MULTIPLEEDIT        =00400h;
+
+    IMC_SETCOMPOSITIONCOLOR= 0100h;
+    IMC_GETCOMPOSITIONCOLOR= 0101h;
+
+TYPE
+    EDITWORDBREAKPROCEX = PROCEDURE(VAR ARRAY OF ACHAR,
+                                    LONG,
+                                    BYTE,
+                                    WINT) : LONG [EXPORT];
+
+    CHARFORMATA = RECORD
+          cbSize         : UINT;
+          dwMask         : DWORD;
+          dwEffects      : DWORD;
+          yHeight        : LONG;
+          yOffset        : LONG;
+          crTextColor    : COLORREF;
+          bCharSet       : BYTE;
+          bPitchAndFamily: BYTE;
+          szFaceName     : ARRAY [0..LF_FACESIZE - 1] OF ACHAR;
+    END;
+
+    CHARFORMATW = RECORD
+          cbSize         : UINT;
+          dwMask         : DWORD;
+          dwEffects      : DWORD;
+          yHeight        : LONG;
+          yOffset        : LONG;
+          crTextColor    : COLORREF;
+          bCharSet       : BYTE;
+          bPitchAndFamily: BYTE;
+          szFaceName     : ARRAY [0..LF_FACESIZE - 1] OF UCHAR;
+    END;
+
+%IF UNICODE %THEN
+    CHARFORMAT = CHARFORMATW;
+%ELSE
+    CHARFORMAT = CHARFORMATA;
+%END
+
+CONST
+    CFM_BOLD             = 000000001h;
+    CFM_ITALIC           = 000000002h;
+    CFM_UNDERLINE        = 000000004h;
+    CFM_STRIKEOUT        = 000000008h;
+    CFM_PROTECTED        = 000000010h;
+    CFM_SIZE             = 080000000h;
+    CFM_COLOR            = 040000000h;
+    CFM_FACE             = 020000000h;
+    CFM_OFFSET           = 010000000h;
+    CFM_CHARSET          = 008000000h;
+    CFM_LINK            =000000020h;(* Exchange hyperlink extension *)
+
+    CFE_BOLD             = 00001h;
+    CFE_ITALIC           = 00002h;
+    CFE_UNDERLINE        = 00004h;
+    CFE_STRIKEOUT        = 00008h;
+    CFE_PROTECTED        = 00010h;
+    CFE_AUTOCOLOR        = 040000000h;
+    CFE_LINK            =00020h;
+
+    yHeightCharPtsMost   = 1638;
+
+    SCF_SELECTION        = 00001h;
+    SCF_WORD             = 00002h;
+    SCF_DEFAULT         =00000h;(* Set default charformat or paraformat*)
+    SCF_ALL             =00004h;(*Not valid with SCF_SELECTION or SCF_WORD*)
+    SCF_USEUIRULES      =00008h;(* Modifier for SCF_SELECTION; says that*)
+    SCF_ASSOCIATEFONT   =00010h;(* Associate fontname with bCharSet (one*)
+    SCF_NOKBUPDATE      =00020h;(*Do not update the KB layput for this change*)
+
+TYPE
+    CHARRANGE = RECORD
+          cpMin          : LONG;
+          cpMax          : LONG;
+    END;
+
+    TEXTRANGEA = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPSTR;
+    END;
+
+    TEXTRANGEW = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPWSTR;
+    END;
+
+    %IF UNICODE %THEN
+    TEXTRANGE = TEXTRANGEW;
+    %ELSE
+    TEXTRANGE = TEXTRANGEA;
+    %END
+
+    EDITSTREAMCALLBACK   = PROCEDURE(DWORD_PTR,
+                                     VAR ARRAY OF BYTE,
+                                     LONG,
+                                     VAR LONG) : DWORD [EXPORT];
+
+    EDITSTREAM = RECORD
+          dwCookie       : DWORD_PTR;
+          dwError        : DWORD;
+          pfnCallback    : EDITSTREAMCALLBACK;
+    END;
+
+CONST
+    SF_TEXT              = 00001h;
+    SF_RTF               = 00002h;
+    SF_RTFNOOBJS         = 00003h;
+    SF_TEXTIZED          = 00004h;
+    SF_UNICODE          =00010h;(* Unicode file (UCS2 little endian) *)
+    SF_USECODEPAGE      =00020h;(* CodePage given by high word *)
+    SF_NCRFORNONASCII   =040h;(* Output /uN for nonASCII *)
+
+    SFF_SELECTION        = 08000h;
+    SFF_PLAINRTF         = 04000h;
+
+(* Flag telling file stream output (SFF_SELECTION flag not set) to persist *)
+(* \viewscaleN control word. *)
+    SFF_PERSISTVIEWSCALE =02000h;
+
+(* Flag telling file stream input with SFF_SELECTION flag not set not to *)
+(* close the document *)
+    SFF_KEEPDOCINFO     =01000h;
+
+(* Flag telling stream operations to output in Pocket Word format *)
+    SFF_PWD                     =00800h;
+
+(* 3-bit field specifying the value of N - 1 to use for \rtfN or \pwdN *)
+    SF_RTFVAL           =00700h;
+
+TYPE
+    FINDTEXTA = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPSTR;
+    END;
+    FINDTEXTW = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPWSTR;
+    END;
+
+    %IF UNICODE %THEN
+    FINDTEXT = FINDTEXTW;
+    %ELSE
+    FINDTEXT = FINDTEXTA;
+    %END
+
+    FINDTEXTEXA = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPSTR;
+          chrgText       : CHARRANGE;
+    END;
+    FINDTEXTEXW = RECORD
+          chrg           : CHARRANGE;
+          lpstrText      : LPWSTR;
+          chrgText       : CHARRANGE;
+    END;
+    %IF UNICODE %THEN
+    FINDTEXTEX = FINDTEXTEXW;
+    %ELSE
+    FINDTEXTEX = FINDTEXTEXA;
+    %END
+
+    FORMATRANGE = RECORD
+          hdc            : HDC;
+          hdcTarget      : HDC;
+          rc             : RECT;
+          rcPage         : RECT;
+          chrg           : CHARRANGE;
+    END;
+
+
+CONST
+    MAX_TAB_STOPS        = 32;
+    lDefaultTab          = 720;
+
+TYPE
+    PARAFORMAT = RECORD
+          cbSize         : UINT;
+          dwMask         : DWORD;
+          wNumbering     : WORD;
+          wEffects       : WORD;
+          dxStartIndent  : LONG;
+          dxRightIndent  : LONG;
+          dxOffset       : LONG;
+          wAlignment     : WORD;
+          cTabCount      : SHORT;
+          rgxTabs        : ARRAY [0..MAX_TAB_STOPS - 1] OF LONG;
+    END;
+
+    PARAFORMAT2 =
+    RECORD
+        cbSize  : UINT;
+        dwMask  : DWORD;
+        wNumbering      : WORD;
+        wReserved       : WORD;
+        dxStartIndent   : LONG;
+        dxRightIndent   : LONG;
+        dxOffset        : LONG;
+        wAlignment      : WORD;
+        cTabCount       : SHORT;
+        rgxTabs         : ARRAY [0..MAX_TAB_STOPS-1] OF LONG;
+        dySpaceBefore   : LONG; (* Vertical spacing before para*)
+        dySpaceAfter    : LONG;(* Vertical spacing after para*)
+        dyLineSpacing   : LONG;(* Line spacing depending on Rule*)
+        sStyle          : SHORT;        (* Style handle *)
+        bLineSpacingRule        : BYTE;(* Rule for line spacing (see tom.doc)   *)
+        bOutlineLevel   : BYTE;  (* Outline Level*)
+        wShadingWeight  : WORD;  (* Shading in hundredths of a per cent *)
+        wShadingStyle   : WORD;  (* Byte 0: style, nib 2: cfpat, 3: cbpat*)
+        wNumberingStart : WORD; (* Starting value for numbering*)
+        wNumberingStyle : WORD; (* Alignment, Roman/Arabic, (), ), ., etc.*)
+        wNumberingTab   : WORD;  (* Space bet 1st indent and 1st-line text*)
+        wBorderSpace    : WORD;  (* Border-text spaces (nbl/bdr in pts) *)
+        wBorderWidth    : WORD;  (* Pen widths (nbl/bdr in half twips)  *)
+        wBorders        : WORD;  (* Border styles (nibble/border)*)
+    END;
+
+    CHARFORMAT2W =
+    RECORD
+        cbSize          : UINT;
+        dwMask          : DWORD;
+        dwEffects       : DWORD;
+        yHeight         : LONG;
+        yOffset         : LONG; (* > 0 for superscript, < 0 for subscript *)
+        crTextColor     : COLORREF;
+        bCharSet        : BYTE;
+        bPitchAndFamily : BYTE;
+        szFaceName      : ARRAY [0..LF_FACESIZE-1] OF UCHAR;
+        wWeight         : WORD; (* Font weight (LOGFONT value) *)
+        sSpacing        : SHORT;(* Amount to space between letters *)
+        crBackColor     : COLORREF;(* Background color *)
+        lcid            : LCID; (* Locale ID  *)
+        dwReserved      : DWORD;(* Reserved. Must be 0 *)
+        sStyle          : SHORT;(* Style handle *)
+        wKerning        : WORD;(* Twip size above which to kern char pair*)
+        bUnderlineType  : BYTE;(* Underline type *)
+        bAnimation      : BYTE; (* Animated text like marching ants *)
+        bRevAuthor      : BYTE; (* Revision author index *)
+        bReserved1      : BYTE;
+    END;
+
+    CHARFORMAT2A =
+    RECORD
+        cbSize          : UINT;
+        dwMask          : DWORD;
+        dwEffects       : DWORD;
+        yHeight         : LONG;
+        yOffset         : LONG; (* > 0 for superscript, < 0 for subscript *)
+        crTextColor     : COLORREF;
+        bCharSet        : BYTE;
+        bPitchAndFamily : BYTE;
+        szFaceName      : ARRAY [0..LF_FACESIZE-1] OF ACHAR;
+        wWeight         : WORD; (* Font weight (LOGFONT value) *)
+        sSpacing        : SHORT;(* Amount to space between letters *)
+        crBackColor     : COLORREF;(* Background color *)
+        lcid            : LCID; (* Locale ID  *)
+        dwReserved      : DWORD;(* Reserved. Must be 0 *)
+        sStyle          : SHORT;(* Style handle *)
+        wKerning        : WORD;(* Twip size above which to kern char pair*)
+        bUnderlineType  : BYTE;(* Underline type *)
+        bAnimation      : BYTE; (* Animated text like marching ants *)
+        bRevAuthor      : BYTE; (* Revision author index *)
+        bReserved1      : BYTE;
+    END;
+
+    %IF UNICODE %THEN
+    CHARFORMAT2 = CHARFORMAT2W;
+    %ELSE
+    CHARFORMAT2 = CHARFORMAT2A;
+    %END
+
+CONST
+    CHARFORMATDELTA = (SIZE(CHARFORMAT2) - SIZE(CHARFORMAT));
+
+    PFM_STARTINDENT      = 000000001h;
+    PFM_RIGHTINDENT      = 000000002h;
+    PFM_OFFSET           = 000000004h;
+    PFM_ALIGNMENT        = 000000008h;
+    PFM_TABSTOPS         = 000000010h;
+    PFM_NUMBERING        = 000000020h;
+    PFM_OFFSETINDENT     = 080000000h;
+
+    PFN_BULLET           = 00001h;
+
+    PFA_LEFT             = 00001h;
+    PFA_RIGHT            = 00002h;
+    PFA_CENTER           = 00003h;
+
+(* PARAFORMAT 2.0 masks and effects *)
+
+    PFM_SPACEBEFORE     =000000040h;
+    PFM_SPACEAFTER      =000000080h;
+    PFM_LINESPACING     =000000100h;
+    PFM_STYLE           =000000400h;
+    PFM_BORDER          =000000800h;      (* *    *)
+    PFM_SHADING         =000001000h;      (* *    *)
+    PFM_NUMBERINGSTYLE  =000002000h;      (* RE 3.0       *)
+    PFM_NUMBERINGTAB    =000004000h;      (* RE 3.0       *)
+    PFM_NUMBERINGSTART  =000008000h;      (* RE 3.0       *)
+
+    PFM_RTLPARA         =000010000h;
+    PFM_KEEP            =000020000h;      (* *    *)
+    PFM_KEEPNEXT        =000040000h;      (* *    *)
+    PFM_PAGEBREAKBEFORE =000080000h;      (* *    *)
+    PFM_NOLINENUMBER    =000100000h;      (* *    *)
+    PFM_NOWIDOWCONTROL  =000200000h;      (* *    *)
+    PFM_DONOTHYPHEN     =000400000h;      (* *    *)
+    PFM_SIDEBYSIDE      =000800000h;      (* *    *)
+    PFM_TABLE           =040000000h;      (* RE 3.0 *)
+
+(* The following three properties are read only*)
+    PFM_COLLAPSED       =001000000h;      (* RE 3.0 *)
+    PFM_OUTLINELEVEL    =002000000h;      (* RE 3.0 *)
+    PFM_BOX             =004000000h;      (* RE 3.0 *)
+
+
+(* Note: PARAFORMAT has no effects *)
+    PFM_EFFECTS =(PFM_RTLPARA BOR PFM_KEEP BOR PFM_KEEPNEXT BOR PFM_TABLE
+                                        BOR PFM_PAGEBREAKBEFORE BOR PFM_NOLINENUMBER
+                                        BOR PFM_NOWIDOWCONTROL BOR PFM_DONOTHYPHEN BOR PFM_SIDEBYSIDE
+                                        BOR PFM_TABLE);
+
+    PFM_ALL =(PFM_STARTINDENT BOR PFM_RIGHTINDENT BOR PFM_OFFSET        BOR
+                                 PFM_ALIGNMENT   BOR PFM_TABSTOPS    BOR PFM_NUMBERING BOR
+                                 PFM_OFFSETINDENT BOR PFM_RTLPARA);
+
+    PFM_ALL2    =(PFM_ALL BOR PFM_EFFECTS BOR PFM_SPACEBEFORE BOR PFM_SPACEAFTER
+                                        BOR PFM_LINESPACING BOR PFM_STYLE BOR PFM_SHADING BOR PFM_BORDER
+                                        BOR PFM_NUMBERINGTAB BOR PFM_NUMBERINGSTART BOR PFM_NUMBERINGSTYLE);
+
+    PFE_RTLPARA =PFM_RTLPARA             SHR 16;
+    PFE_KEEP    =PFM_KEEP                        SHR 16; (* *    *)
+    PFE_KEEPNEXT=PFM_KEEPNEXT            SHR 16; (* *    *)
+    PFE_PAGEBREAKBEFORE =PFM_PAGEBREAKBEFORE SHR 16;     (* *    *)
+    PFE_NOLINENUMBER    =PFM_NOLINENUMBER    SHR 16; (* *    *)
+    PFE_NOWIDOWCONTROL  =PFM_NOWIDOWCONTROL  SHR 16; (* *    *)
+    PFE_DONOTHYPHEN     =PFM_DONOTHYPHEN     SHR 16; (* *    *)
+    PFE_SIDEBYSIDE      =PFM_SIDEBYSIDE      SHR 16; (* *    *)
+
+(* The following four effects are read only*)
+    PFE_OUTLINELEVEL    =PFM_OUTLINELEVEL    SHR 16; (* (+)  *)
+    PFE_COLLAPSED       =PFM_COLLAPSED       SHR 16; (* (+)  *)
+    PFE_BOX             =PFM_BOX             SHR 16; (* (+)  *)
+    PFE_TABLE           =04000h;          (* Para is a table row. RE 3.0 *)
+
+(* PARAFORMAT2 wNumbering options (see also PFN_BULLET) *)
+    PFN_ARABIC          =2;               (* tomListNumberAsArabic:   0, 1, 2,    ...*)
+    PFN_LCLETTER        =3;               (* tomListNumberAsLCLetter: a, b, c,    ...*)
+    PFN_UCLETTER        =4;               (* tomListNumberAsUCLetter: A, B, C,    ...*)
+    PFN_LCROMAN         =5;               (* tomListNumberAsLCRoman:  i, ii, iii, ...*)
+    PFN_UCROMAN         =6;               (* tomListNumberAsUCRoman:  I, II, III, ...*)
+
+(* PARAFORMAT2 wNumberingStyle options *)
+    PFNS_PAREN          =0000h;   (* default, e.g.,                                 1)    *)
+    PFNS_PARENS         =0100h;   (* tomListParentheses/256, e.g., (1)    *)
+    PFNS_PERIOD         =0200h;   (* tomListPeriod/256, e.g.,               1.    *)
+    PFNS_PLAIN          =0300h;   (* tomListPlain/256, e.g.,                1             *)
+    PFNS_NONUMBER       =0400h;   (* Used for continuation w/o number             *)
+
+    PFA_JUSTIFY          =4;      (* New paragraph-alignment option 2.0 * *)
+    PFA_FULL_INTERWORD   =4;
+    PFA_FULL_INTERLETTER =5;
+    PFA_FULL_SCALED      =6;
+    PFA_FULL_GLYPHS      =7;
+    PFA_SNAP_GRID        =8;
+
+(* New masks and effects -- a parenthesized asterisk indicates that
+   the data is stored by RichEdit 2.0/3.0, but not displayed *)
+
+    CFM_SMALLCAPS               =00040h;                  (* *    *)
+    CFM_ALLCAPS                     =00080h;                  (* Displayed by 3.0     *)
+    CFM_HIDDEN                      =00100h;                  (* Hidden by 3.0 *)
+    CFM_OUTLINE                     =00200h;                  (* *    *)
+    CFM_SHADOW                      =00400h;                  (* *    *)
+    CFM_EMBOSS                      =00800h;                  (* *    *)
+    CFM_IMPRINT                     =01000h;                  (* *    *)
+    CFM_DISABLED                =02000h;
+    CFM_REVISED                     =04000h;
+
+    CFM_BACKCOLOR               =004000000h;
+    CFM_LCID                    =002000000h;
+    CFM_UNDERLINETYPE       =000800000h;              (* Many displayed by 3.0 *)
+    CFM_WEIGHT                      =000400000h;
+    CFM_SPACING                 =000200000h;              (* Displayed by 3.0     *)
+    CFM_KERNING                 =000100000h;              (* *    *)
+    CFM_STYLE                   =000080000h;              (* *    *)
+    CFM_ANIMATION               =000040000h;              (* *    *)
+    CFM_REVAUTHOR               =000008000h;
+
+    CFE_SUBSCRIPT               =000010000h;              (* Superscript and subscript are *)
+    CFE_SUPERSCRIPT             =000020000h;              (*  mutually exclusive                   *)
+
+    CFM_SUBSCRIPT               =CFE_SUBSCRIPT BOR CFE_SUPERSCRIPT;
+    CFM_SUPERSCRIPT             =CFM_SUBSCRIPT;
+
+(* CHARFORMAT and PARAFORMAT "ALL" masks
+   CFM_COLOR mirrors CFE_AUTOCOLOR, a little hack to easily deal with autocolor*)
+
+    CFM_EFFECTS =(CFM_BOLD BOR CFM_ITALIC BOR CFM_UNDERLINE BOR CFM_COLOR BOR
+                                         CFM_STRIKEOUT BOR CFE_PROTECTED BOR CFM_LINK);
+    CFM_EFFECTS2 = (CFM_EFFECTS BOR CFM_DISABLED BOR CFM_SMALLCAPS BOR CFM_ALLCAPS
+                                        BOR CFM_HIDDEN  BOR CFM_OUTLINE BOR CFM_SHADOW BOR CFM_EMBOSS
+                                        BOR CFM_IMPRINT BOR CFM_DISABLED BOR CFM_REVISED
+                                        BOR CFM_SUBSCRIPT BOR CFM_SUPERSCRIPT BOR CFM_BACKCOLOR);
+
+    CFM_ALL =(CFM_EFFECTS BOR CFM_SIZE BOR CFM_FACE BOR CFM_OFFSET BOR CFM_CHARSET);
+
+
+    CFM_ALL2     = (CFM_ALL BOR CFM_EFFECTS2 BOR CFM_BACKCOLOR BOR CFM_LCID
+                                        BOR CFM_UNDERLINETYPE BOR CFM_WEIGHT BOR CFM_REVAUTHOR
+                                        BOR CFM_SPACING BOR CFM_KERNING BOR CFM_STYLE BOR CFM_ANIMATION);
+
+    CFE_SMALLCAPS           =CFM_SMALLCAPS;
+    CFE_ALLCAPS                     =CFM_ALLCAPS;
+    CFE_HIDDEN                      =CFM_HIDDEN;
+    CFE_OUTLINE                     =CFM_OUTLINE;
+    CFE_SHADOW                      =CFM_SHADOW;
+    CFE_EMBOSS                      =CFM_EMBOSS;
+    CFE_IMPRINT                     =CFM_IMPRINT;
+    CFE_DISABLED            =CFM_DISABLED;
+    CFE_REVISED                     =CFM_REVISED;
+
+(* NOTE: CFE_AUTOCOLOR and CFE_AUTOBACKCOLOR correspond to CFM_COLOR and
+   CFM_BACKCOLOR, respectively, which control them *)
+    CFE_AUTOBACKCOLOR   = CFM_BACKCOLOR;
+
+(* Underline types. RE 1.0 displays only CFU_UNDERLINE *)
+    CFU_CF1UNDERLINE    =0FFh;    (* map charformat's bit underline to CF2.*)
+    CFU_INVERT                  =0FEh;    (* For IME composition fake a selection.*)
+    CFU_UNDERLINEHAIRLINE       =10;      (* * displayed as ordinary underline    *)
+    CFU_UNDERLINETHICK          =9;
+    CFU_UNDERLINEWAVE           =8;
+    CFU_UNDERLINEDASHDOTDOT =7;
+    CFU_UNDERLINEDASHDOT    =6;
+    CFU_UNDERLINEDASH               =5;
+    CFU_UNDERLINEDOTTED             =4;
+    CFU_UNDERLINEDOUBLE             =3;       (* * displayed as ordinary underline    *)
+    CFU_UNDERLINEWORD           =2;       (* * displayed as ordinary underline    *)
+    CFU_UNDERLINE                       =1;
+    CFU_UNDERLINENONE           =0;
+
+TYPE
+    MSGFILTER =
+		RECORD
+			nmhdr          : NMHDR;
+			msg            : UINT;
+			wParam         : WPARAM;
+			lParam         : LPARAM;
+		END;
+
+    REQRESIZE =
+		RECORD
+			nmhdr          : NMHDR;
+			rc             : RECT;
+		END;
+
+    SELCHANGE =
+		RECORD
+			nmhdr          : NMHDR;
+			chrg           : CHARRANGE;
+			seltyp         : WORD;
+		END;
+
+
+CONST
+    SEL_EMPTY            = 00000h;
+    SEL_TEXT             = 00001h;
+    SEL_OBJECT           = 00002h;
+    SEL_MULTICHAR        = 00004h;
+    SEL_MULTIOBJECT      = 00008h;
+
+(* Used with IRichEditOleCallback::GetContextMenu, this flag will be
+   passed as a "selection type".  It indicates that a context menu for
+   a right-mouse drag drop should be generated.  The IOleObject parameter
+   will really be the IDataObject for the drop
+ *)
+    GCM_RIGHTMOUSEDROP  =08000h;
+
+TYPE
+    ENDROPFILES = RECORD
+          nmhdr          : NMHDR;
+          hDrop          : HANDLE;
+          cp             : LONG;
+          fProtected     : BOOL;
+    END;
+
+    ENPROTECTED = RECORD
+          nmhdr          : NMHDR;
+          msg            : UINT;
+          wParam         : WPARAM;
+          lParam         : LPARAM;
+          chrg           : CHARRANGE;
+    END;
+
+    ENSAVECLIPBOARD = RECORD
+        nmhdr           : NMHDR;
+        cObjectCount    : LONG;
+        cch             : LONG;
+    END;
+
+    ENOLEOPFAILED = RECORD
+        nmhdr           : NMHDR;
+        iob             : LONG;
+        lOper           : LONG;
+        hr              : HRESULT;
+    END;
+
+CONST
+    OLEOP_DOVERB        = 1;
+
+TYPE
+    OBJECTPOSITIONS =
+    RECORD
+    nmhdr               : NMHDR;
+    cObjectCount        : LONG;
+    pcpPositions        : PLONG;
+    END;
+
+    ENLINK =
+    RECORD
+    nmhdr       : NMHDR;
+    msg         : UINT;
+    wParam      : WPARAM;
+    lParam      : LPARAM;
+    chrg        : CHARRANGE;
+    END;
+
+    ENCORRECTTEXT = RECORD
+          nmhdr          : NMHDR;
+          chrg           : CHARRANGE;
+          seltyp         : WORD;
+    END;
+
+    PUNCTUATION = RECORD
+        iSize           : UINT;
+        szPunctuation   : LPSTR;
+    END;
+
+    COMPCOLOR = RECORD
+        crText          : COLORREF;
+        crBackground    : COLORREF;
+        dwEffects       : DWORD;
+    END;
+
+CONST
+    CF_RTF                = 'Rich Text Format';
+    CF_RTFNOOBJS          = 'Rich Text Format Without Objects';
+    CF_RETEXTOBJ          = 'RichEdit Text and Objects';
+
+TYPE
+    REPASTESPECIAL = RECORD
+          dwAspect       : DWORD;
+          dwParam        : DWORD_PTR;
+    END;
+
+(*      UndoName info *)
+    UNDONAMEID = (
+        UID_UNKNOWN,
+        UID_TYPING,
+        UID_DELETE,
+        UID_DRAGDROP,
+        UID_CUT,
+        UID_PASTE
+        );
+
+CONST
+(* Flags for the SETEXTEX data structure *)
+    ST_DEFAULT          =0;
+    ST_KEEPUNDO         =1;
+    ST_SELECTION        =2;
+
+(* EM_SETTEXTEX info; this struct is passed in the wparam of the message *)
+TYPE
+    SETTEXTEX =
+    RECORD
+    flags       : DWORD;(* flags (see the ST_XXX defines                        *)
+    codepage    : UINT;(* code page for translation (CP_ACP for sys default;
+                       1200 for Unicode, -1 for control default *)
+    END;
+
+CONST
+(* Flags for the GETEXTEX data structure *)
+    GT_DEFAULT          =0;
+    GT_USECRLF          =1;
+    GT_SELECTION        =2;
+
+TYPE
+(* EM_GETTEXTEX info; this struct is passed in the wparam of the message *)
+    GETTEXTEX =
+    RECORD
+        cb      : DWORD;(* count of bytes in the string *)
+        flags   : DWORD;(* flags (see the GT_XXX defines*)
+        codepage : UINT;(* code page for translation (CP_ACP for sys default,
+                           1200 for Unicode, -1 for control default     *)
+        lpDefaultChar : LPCSTR; (* replacement for unmappable chars*)
+        lpUsedDefChar : LPBOOL; (* pointer to flag set when def char used*)
+    END;
+
+CONST
+(* Flags for the GETTEXTLENGTHEX data structure *)
+    GTL_DEFAULT         =0;       (* do the default (return # of chars)*)
+    GTL_USECRLF         =1;       (* compute answer using CRLFs for paragraphs*)
+    GTL_PRECISE         =2;       (* compute a precise answer*)
+    GTL_CLOSE           =4;       (* fast computation of a "close" answer *)
+    GTL_NUMCHARS        =8;       (* return the number of characters*)
+    GTL_NUMBYTES        =16;      (* return the number of _bytes_ *)
+
+TYPE
+(* EM_GETTEXTLENGTHEX info; this struct is passed in the wparam of the msg *)
+    GETTEXTLENGTHEX =
+    RECORD
+        flags   : DWORD;(* flags (see GTL_XXX defines)  *)
+        codepage : UINT;(* code page for translation (CP_ACP for default,
+                           1200 for Unicode*)
+    END;
+
+(* BiDi specific features *)
+    BIDIOPTIONS =
+    RECORD
+        cbSize  : UINT;
+        wMask   : WORD;
+        wEffects : WORD;
+    END;
+
+CONST
+(* BIDIOPTIONS masks *)
+(*
+#if (_RICHEDIT_VER == 0x0100)
+    BOM_DEFPARADIR      =00001h;(* Default paragraph direction (implies alignment) (obsolete) *)
+    BOM_PLAINTEXT       =00002h;(* Use plain text layout (obsolete) *)
+#endif (* _RICHEDIT_VER == 0x0100 *)
+*)
+    BOM_NEUTRALOVERRIDE         =00004h;(* Override neutral layout (obsolete) *)
+    BOM_CONTEXTREADING          =00008h;(* Context reading order *)
+    BOM_CONTEXTALIGNMENT        =00010h;(* Context alignment *)
+
+(* BIDIOPTIONS effects *)
+(*
+#if (_RICHEDIT_VER == 0x0100)
+    BOE_RTLDIR                  =00001h;(* Default paragraph direction (implies alignment) (obsolete) *)
+    BOE_PLAINTEXT               =00002h;(* Use plain text layout (obsolete) *)
+#endif (* _RICHEDIT_VER == 0x0100 *)
+*)
+
+    BOE_NEUTRALOVERRIDE         =00004h;(* Override neutral layout (obsolete) *)
+    BOE_CONTEXTREADING          =00008h;(* Context reading order *)
+    BOE_CONTEXTALIGNMENT        =00010h;(* Context alignment *)
+
+(* Additional EM_FINDTEXT[EX] flags *)
+    FR_MATCHDIAC                =020000000h;
+    FR_MATCHKASHIDA             =040000000h;
+    FR_MATCHALEFHAMZA           =080000000h;
+
+(* UNICODE embedding character *)
+    WCH_EMBEDDING = UCHR(0FFFCh);
+
+END RichEdit.

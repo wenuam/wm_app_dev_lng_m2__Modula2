@@ -1,0 +1,29 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE FormEditUI;
+(* this module provides some features for using the WinShell FormClient
+   form editor.
+*)
+
+FROM WinShell IMPORT
+    Window, ControlProperties;
+
+PROCEDURE BasicPropertiesProc(w : Window;
+                              VAR INOUT prop : ControlProperties) : BOOLEAN;
+(* provides the basic needs to change control properties *)
+
+PROCEDURE BasicNewControlProc(w : Window; VAR INOUT prop : ControlProperties);
+(* provides the basic needs of control creation.
+   the system default initial setting are accepted.
+*)
+
+PROCEDURE BasicEndEditProc(w : Window);
+(* simplly calls WinShell.EndFormEditMode *)
+
+END FormEditUI.

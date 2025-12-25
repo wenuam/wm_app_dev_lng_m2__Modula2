@@ -1,0 +1,1492 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE WINX;
+
+FROM SYSTEM IMPORT
+    ADDRESS, CAST;
+IMPORT SYSTEM;
+
+FROM WIN32 IMPORT
+    HINSTANCE, HMODULE, DWORD, BOOL, HGLOBAL, HPEN, HDC, HBRUSH, HRGN, LPTSTR,
+    HPALETTE, HGDIOBJ, HFONT, HBITMAP, RECT, HWND, WPARAM, LPARAM, POINT, HTASK,
+    WORD, LRESULT, UINT, GUID, HICON, HLOCAL, WINT, LPSTR, HMETAFILE, FILETIME, PSECURITY_DESCRIPTOR,
+    HANDLE, HCURSOR, HMENU, HACCEL, WSIZE, HHOOK, HRSRC, LONG, PVOID, COLORREF, HENHMETAFILE;
+IMPORT WIN32;
+
+FROM WINUSER IMPORT
+    WNDPROC, DLGPROC, EDITWORDBREAKPROC, EDITWORDBREAKPROCA, EDITWORDBREAKPROCW, ACCEL, LOWORD, HIWORD,
+    WM_CTLCOLORMSGBOX, MAKELONG, WM_COMMAND;
+
+FROM WINGDI IMPORT
+    DEVMODE, LOGPEN, LOGBRUSH, LOGFONT, LOGFONTW, BITMAP, DEVMODEA, DEVMODEW;
+
+
+VAR
+    Instance            : HINSTANCE;
+    PrevInstance        : HINSTANCE;
+    CmdShow             : UINT;
+    CmdLine             : LPTSTR;
+
+(* the various NULL_ constants provide a values to indicate *)
+(* null pointer *)
+
+CONST
+    NULL                = WIN32.NULL;
+    NULL_HANDLE         = CAST(HANDLE, NULL);
+    NULL_HWND           = CAST(HWND, NULL);
+    NULL_HICON          = CAST(HICON, NULL);
+    NULL_HCURSOR        = CAST(HCURSOR, NULL);
+    NULL_HGLOBAL        = CAST(HGLOBAL, NULL);
+    NULL_HINSTANCE      = CAST(HINSTANCE, NULL);
+    NULL_HMODULE        = CAST(HMODULE,NULL);
+    NULL_HMENU          = CAST(HMENU, NULL);
+    NULL_HDC            = CAST(HDC, NULL);
+    NULL_HBITMAP        = CAST(HBITMAP, NULL);
+    NULL_HGDIOBJ        = CAST(HGDIOBJ, NULL);
+    NULL_HPALETTE       = CAST(HPALETTE, NULL);
+    NULL_HPEN           = CAST(HPEN, NULL);
+    NULL_HBRUSH         = CAST(HBRUSH, NULL);
+    NULL_HFONT          = CAST(HFONT, NULL);
+    NULL_HRGN           = CAST(HRGN, NULL);
+    NULL_HACCEL         = CAST(HACCEL, NULL);
+    NULL_HHOOK          = CAST(HHOOK, NULL);
+    NULL_HRSRC          = CAST(HRSRC, NULL);
+    NULL_HMETAFILE      = CAST(HMETAFILE,NULL);
+    NULL_PVOID          = CAST(PVOID, NULL);
+    NULL_COLORREF       = CAST(COLORREF, NULL);
+    NULL_HENHMETAFILE   = CAST(HENHMETAFILE, NULL);
+    NULL_HTASK          = CAST(HTASK, NULL);
+    NULL_HLOCAL         = CAST(HLOCAL, NULL);
+
+    NULL_SECURITY_DESCRIPTOR = CAST(PSECURITY_DESCRIPTOR, NULL);
+
+	NIL_GUID			= GUID{0,0,0,{0,0,0,0,0,0,0,0}};
+
+(* the following NIL_ absolute variables are provided because we have *)
+(* altered the API calls to use VAR and reference parameters to make *)
+(* the resulting code be in a more Modula-2 programming style than a *)
+(* C programming style. In the API some procedure have optional parameters *)
+(* these optional parameters many times are documented as taking a null *)
+(* pointer value, when the parameter was converted to a VAR or reference *)
+(* parameter the compiler is taking the address of the passed variable *)
+(* thus these NIL_ variables. Since these variables have an absolute *)
+(* address of NULL, when the compiler takes their address a value of null *)
+(* will be passed thus giving the desired effect *)
+
+VAR
+    NIL_ASTR            [SYSTEM.MAKEADR(0)]  : ARRAY [0..0] OF ACHAR;
+    NIL_USTR            [SYSTEM.MAKEADR(0)]  : ARRAY [0..0] OF UCHAR;
+    NIL_STR             [SYSTEM.MAKEADR(0)]  : ARRAY [0..0] OF CHAR;
+    NIL_SIZE            [SYSTEM.MAKEADR(0)]  : WSIZE;
+    NIL_POINT           [SYSTEM.MAKEADR(0)]  : POINT;
+    NIL_RECT            [SYSTEM.MAKEADR(0)]  : RECT;
+    NIL_INT             [SYSTEM.MAKEADR(0)]  : INTEGER;
+    NIL_WINT            [SYSTEM.MAKEADR(0)]  : WINT;
+    NIL_DWORD           [SYSTEM.MAKEADR(0)]  : DWORD;
+    NIL_BOOL            [SYSTEM.MAKEADR(0)]  : BOOL;
+    NIL_ACCEL           [SYSTEM.MAKEADR(0)]  : ACCEL;
+    NIL_LONG            [SYSTEM.MAKEADR(0)]  : LONG;
+    NIL_DEVMODE         [SYSTEM.MAKEADR(0)]  : DEVMODE;
+    NIL_DEVMODEA        [SYSTEM.MAKEADR(0)]  : DEVMODEA;
+    NIL_DEVMODEW        [SYSTEM.MAKEADR(0)]  : DEVMODEW;
+
+    NIL_OVERLAPPED      [SYSTEM.MAKEADR(0)]  : WIN32.OVERLAPPED;
+    NIL_FILETIME        [SYSTEM.MAKEADR(0)]  : WIN32.FILETIME;
+    NIL_SECURITY_ATTRIBUTES     [SYSTEM.MAKEADR(0)]  : WIN32.SECURITY_ATTRIBUTES;
+
+PROCEDURE GetInstanceModule(hInstance : HINSTANCE) : HMODULE;
+(* return the HMODULE handle associated with the HINSTANCE handle *)
+
+PROCEDURE GlobalPtrHandle(lp : ADDRESS) : HGLOBAL;
+(* takes a pointer address and returns the object handle *)
+
+PROCEDURE GlobalLockPtr(lp : ADDRESS) : BOOL;
+(* takes a pointer address and "locks" the memory location *)
+(* returns TRUE if successfull *)
+
+PROCEDURE GlobalUnlockPtr(lp : ADDRESS) : BOOL;
+(* reverses a call to GlobalLockPtr *)
+(* returns TRUE if successfull *)
+
+PROCEDURE GlobalAllocPtr(flags, cb : DWORD) : ADDRESS;
+(* allocates and locks memory returning a pointer address *)
+(* flags = the allocation flags *)
+(* cb = the size of the allocation in bytes *)
+
+PROCEDURE GlobalReAllocPtr(lp : ADDRESS; cbNew, flags : DWORD) : ADDRESS;
+(* changes the size of the allocation *)
+(* the old address is invalid after this call *)
+(* lp = the old address *)
+(* flags = the allocation flags *)
+(* cbNew = the size of the allocation in bytes *)
+
+PROCEDURE GlobalFreePtr(lp : ADDRESS) : BOOL;
+(* deallocates a previously allocated and locked memory location *)
+
+PROCEDURE DeletePen(hpen : HPEN) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE SelectPen(hdc : HDC; hpen : HPEN) : HPEN;
+(* provides a type checked interface to the SelectObject API *)
+
+PROCEDURE GetStockPen(i : DWORD) : HPEN;
+(* provides a type checked interface to the GetStockObject API *)
+
+PROCEDURE GetLOGPEN(h : HPEN; VAR pen : LOGPEN) : BOOLEAN;
+(* provides a type checked interface to the GetObject API *)
+(* return TRUE if successfull, if FALSE then pen is undefined *)
+(* returns the LOGPEN structure in pen *)
+
+PROCEDURE DeleteBrush(hbrush : HBRUSH) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE SelectBrush(hdc : HDC; hbrush : HBRUSH) : HBRUSH;
+(* provides a type checked interface to the SelectObject API *)
+
+PROCEDURE GetStockBrush(i : DWORD) : HBRUSH;
+(* provides a type checked interface to the GetStockObject API *)
+
+PROCEDURE GetLOGBRUSH(h : HBRUSH; VAR br : LOGBRUSH) : BOOLEAN;
+(* provides a type checked interface to the GetObject API *)
+(* return TRUE if successfull, if FALSE then br is undefined *)
+(* returns the LOGBRUSH structure in br *)
+
+PROCEDURE DeleteRgn(hrgn : HRGN) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE CopyRgn(hrgnDst, hrgnSrc : HRGN) : INTEGER;
+(* provides a simplified interface to the CombineRgn API *)
+(* uses the RGN_COPY parameter *)
+
+PROCEDURE IntersectRgn(hrgnResult, hrgnA, hrgnB : HRGN) : INTEGER;
+(* provides a simplified interface to the CombineRgn API *)
+(* uses the RGN_AND parameter *)
+
+PROCEDURE SubtractRgn(hrgnResult, hrgnA, hrgnB : HRGN) : INTEGER;
+(* provides a simplified interface to the CombineRgn API *)
+(* uses the RGN_DIFF parameter *)
+
+PROCEDURE UnionRgn(hrgnResult, hrgnA, hrgnB : HRGN) : INTEGER;
+(* provides a simplified interface to the CombineRgn API *)
+(* uses the RGN_OR parameter *)
+
+PROCEDURE XorRgn(hrgnResult, hrgnA, hrgnB : HRGN) : INTEGER;
+(* provides a simplified interface to the CombineRgn API *)
+(* uses the RGN_XOR parameter *)
+
+PROCEDURE DeletePalette(h : HPALETTE) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE GetPaletteSize(hpal : HPALETTE; VAR numEntries : CARDINAL) : BOOLEAN;
+(* provides a type checked interface to the GetObject API *)
+(* it returns the number of entries in the palette in the numEntries *)
+(* parameter, and returns TRUE if successfull, if FALSE is returned *)
+(* then numEntries is undefined *)
+
+PROCEDURE DeleteFont(hfont : HFONT) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE SelectFont(hdc : HDC; hfont : HFONT) : HFONT;
+(* provides a type checked interface to the SelectObject API *)
+
+PROCEDURE GetStockFont(i : DWORD) : HFONT;
+(* provides a type checked interface to the GetStockObject API *)
+
+PROCEDURE GetLOGFONT(h : HFONT; VAR logfont : LOGFONT) : BOOLEAN;
+PROCEDURE GetLOGFONTW(h : HFONT; VAR logfont : LOGFONTW) : BOOLEAN;
+(* provides a type checked interface to the GetObject API *)
+(* return TRUE if successfull, if FALSE then logfont is undefined *)
+(* returns the LOGFONT structure in logfont *)
+
+PROCEDURE DeleteBitmap(h : HBITMAP) : BOOL;
+(* provides a type checked interface to the DeleteObject API *)
+
+PROCEDURE SelectBitmap(hdc : HDC; h : HBITMAP) : HBITMAP;
+(* provides a type checked interface to the SelectObject API *)
+
+PROCEDURE GetBITMAP(h : HBITMAP; VAR OUT map : BITMAP) : BOOLEAN;
+(* provides a type checked interface to the GetObject API *)
+(* return TRUE if successfull, if FALSE then map is undefined *)
+(* returns the BITMAP structure in map *)
+
+PROCEDURE InsetRect(VAR INOUT lprc : RECT; dx, dy : INTEGER);
+(* implemented as *)
+(*    InflateRect(lprc, -dx, -dy); *)
+
+PROCEDURE GetWindowInstance(hwnd : HWND) : HMODULE;
+(* return the instance and window is associated with *)
+
+PROCEDURE GetWindowStyle(hwnd : HWND) : DWORD;
+(* return the style flags associated with a window *)
+
+PROCEDURE GetWindowExStyle(hwnd : HWND) : DWORD;
+(* return the exstyle flags associated with a window *)
+
+PROCEDURE GetWindowOwner(hwnd : HWND) : HWND;
+(* return the owner of a window *)
+
+PROCEDURE GetFirstChild(hwnd : HWND) : HWND;
+(* return the window handle of the first child window contained in *)
+(* the passed window *)
+
+PROCEDURE GetFirstSibling(hwnd : HWND) : HWND;
+(* return the window handle of the first child window contained in *)
+(* the parent of the passed window *)
+
+PROCEDURE GetLastSibling(hwnd : HWND) : HWND;
+(* return the window handle of the last child window contained in *)
+(* the parent of the passed window *)
+
+PROCEDURE GetNextSibling(hwnd : HWND) : HWND;
+(* child windows have a defined order, this procedure lets you walk *)
+(* the list of child windows *)
+(* return the window handle of the next child window contained in *)
+(* the parent of the passed window *)
+(* generally you will use FirstSibling and then call this procedure *)
+(* until NULL_HWND is returned *)
+
+PROCEDURE GetPrevSibling(hwnd : HWND) : HWND;
+(* child windows have a defined order, this procedure lets you walk *)
+(* the list of child windows *)
+(* return the window handle of the previous child window contained in *)
+(* the parent of the passed window *)
+
+PROCEDURE GetWindowID(hwnd : HWND) : INTEGER;
+(* implemented as *)
+(* RETURN GetDlgCtrlID(hwnd); *)
+
+PROCEDURE SetWindowRedraw(hwnd : HWND; fRedraw : BOOL);
+(* if fRedraw = TRUE then painting will we enabled for the *)
+(* specified window; otherwise painting will be disabled *)
+
+PROCEDURE SubclassWindow(hwnd : HWND; lpfn : WNDPROC) : WNDPROC;
+(* replace the window procedure of the specified window with lpfn *)
+(* the previous window procedure is returned allowing you to *)
+(* chain message calls *)
+
+PROCEDURE IsMinimized(hwnd : HWND) : BOOL;
+(* is the window minimized?, returns TRUE if it is *)
+
+PROCEDURE IsMaximized(hwnd : HWND) : BOOL;
+(* is the window maximized?, returns TRUE if it is *)
+
+PROCEDURE IsRestored(hwnd : HWND) : BOOL;
+(* is the window restored?, returns TRUE if it is *)
+
+PROCEDURE SetWindowFont(hwnd : HWND; hfont : HFONT; fRedraw : BOOL);
+(* set the defined font for a window *)
+(* if fRedraw = TRUE then the window will repaint itself *)
+
+PROCEDURE GetWindowFont(hwnd : HWND) : HFONT;
+(* return the current set font for a window *)
+
+PROCEDURE MapWindowRect(hwndFrom, hwndTo : HWND; VAR lprc : RECT);
+(* implemented as a call to MapWindowPoints *)
+(* this is a easy way to map a soingle rectangle *)
+
+PROCEDURE IsLButtonDown() : BOOL;
+(* returns TRUE if the left button state is down *)
+
+PROCEDURE IsRButtonDown() : BOOL;
+(* returns TRUE if the right button state is down *)
+
+PROCEDURE IsMButtonDown() : BOOL;
+(* returns TRUE if the middle button state is down *)
+
+PROCEDURE IsShiftKeyDown() : BOOL;
+(* returns TRUE if the shift key is pressed down *)
+
+PROCEDURE IsControlKeyDown() : BOOL;
+(* returns TRUE if the control key is pressed down *)
+
+PROCEDURE CharUpperCase(ch : CHAR) : CHAR;
+PROCEDURE CharUpperCaseA(ch : ACHAR) : ACHAR;
+PROCEDURE CharUpperCaseW(ch : UCHAR) : UCHAR;
+(* convert a character to upper case using the currently defined language *)
+
+PROCEDURE CharLowerCase(ch : CHAR) : CHAR;
+PROCEDURE CharLowerCaseA(ch : ACHAR) : ACHAR;
+PROCEDURE CharLowerCaseW(ch : UCHAR) : UCHAR;
+(* convert a character to lower case using the currently defined language *)
+
+PROCEDURE SubclassDialog(hwndDlg : HWND; lpfn : DLGPROC) : DLGPROC;
+(* replace the window procedure of the specified dialog with lpfn *)
+(* the previous window procedure is returned allowing you to *)
+(* chain message calls *)
+
+PROCEDURE DialogBoxId(a : HINSTANCE;
+                      idNum : CARDINAL;
+                      hWndParent : HWND;
+                      lpDialogFunc : DLGPROC) : INTEGER;
+(* this is a typed call to DialogBox *)
+(* the implementation does the necessary type casting *)
+(* use this when a dialog box is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE DialogBoxParamId(a : HINSTANCE;
+                           idNum : CARDINAL;
+                           hWndParent : HWND;
+                           lpDialogFunc : DLGPROC;
+                           dwInitParam : LPARAM) : INTEGER;
+(* this is a typed call to DialogBoxParam *)
+(* the implementation does the necessary type casting *)
+(* use this when a dialog box is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadMenuId(inst : HINSTANCE; idNum : CARDINAL) : HMENU;
+(* this is a typed call to LoadMenu *)
+(* the implementation does the necessary type casting *)
+(* use this when a menu is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadAcceleratorsId(inst : HINSTANCE; idNum : CARDINAL) : HACCEL;
+(* this is a typed call to LoadAccelerators *)
+(* the implementation does the necessary type casting *)
+(* use this when an accelerator is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadIconId(inst : HINSTANCE; idNum : CARDINAL) : HICON;
+(* this is a typed call to LoadIcon *)
+(* the implementation does the necessary type casting *)
+(* use this when a icon is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadImageId(a: HINSTANCE;
+                      idNum: CARDINAL;
+                      c: UINT;
+                      d: WINT;
+                      e: WINT;
+                      f: UINT) : HANDLE;
+(* this is a typed call to LoadImage *)
+(* the implementation does the necessary type casting *)
+(* use this when a icon is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadCursorId(inst : HINSTANCE; idNum : CARDINAL) : HCURSOR;
+(* this is a typed call to LoadCursor *)
+(* the implementation does the necessary type casting *)
+(* use this when a cursor is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE LoadBitmapId(inst : HINSTANCE; idNum : CARDINAL) : HBITMAP;
+(* this is a typed call to LoadBitmap *)
+(* the implementation does the necessary type casting *)
+(* use this when a bitmap is identified by a numeric value *)
+(* rather than a named string *)
+
+PROCEDURE GetClassExtra ( hwnd : HWND ) : CARDINAL;
+PROCEDURE GetClassWindowExtra ( hwnd : HWND ) : CARDINAL;
+PROCEDURE GetClassBackgroundBrush ( hwnd : HWND ) : HBRUSH;
+PROCEDURE SetClassBackgroundBrush ( hwnd : HWND; hbr : HBRUSH );
+PROCEDURE GetClassCursor ( hwnd : HWND ) : HCURSOR;
+PROCEDURE GetClassIcon ( hwnd : HWND ) : HICON;
+PROCEDURE GetClassModule ( hwnd : HWND ) : HMODULE;
+PROCEDURE GetClassStyle ( hwnd : HWND ) : CARDINAL;
+PROCEDURE GetClassWindowProc ( hwnd : HWND ) : WNDPROC;
+PROCEDURE SetClassWindowProc ( hwnd : HWND; proc : WNDPROC );
+PROCEDURE SetWindowWindowProc(hwnd : HWND; proc : WNDPROC );
+
+PROCEDURE LoadDefaultIcon ( idc : LPTSTR ) : HICON;(*ok*)
+PROCEDURE LoadDefaultCursor ( idc : LPTSTR ) : HCURSOR;(*ok*)
+
+PROCEDURE SetWindowExStyle(hwnd : HWND; style : DWORD );
+PROCEDURE SetWindowStyle(hwnd : HWND; style : DWORD );
+
+PROCEDURE CreateDialogId(a : HINSTANCE; b : INTEGER32; c : HWND; d : DLGPROC) : HWND;
+
+<*/PUSH/NOWARN:U*>
+PROCEDURE MakeWndProcInstance (a : WNDPROC; b : HINSTANCE) : WNDPROC; MACRO;
+  BEGIN
+    RETURN a;
+  END MakeWndProcInstance;
+
+PROCEDURE FreeWndProcInstance (a : WNDPROC); MACRO;
+  BEGIN
+  END FreeWndProcInstance;
+<*/POP*>
+
+PROCEDURE GetStockPalette(i : DWORD) : HPALETTE;
+
+(************* message crackers ********************************)
+
+<*/PUSH/NOWARN:U*>
+PROCEDURE WM_ACTIVATE_STATE ( wp : WPARAM; lp : LPARAM ) : CARDINAL; MACRO;
+  BEGIN
+    RETURN ORD(LOWORD(wp));
+  END WM_ACTIVATE_STATE;
+
+PROCEDURE WM_ACTIVATE_FMINIMIZED ( wp : WPARAM; lp : LPARAM ) : BOOL; MACRO;
+  BEGIN
+    RETURN HIWORD(wp) # 0;
+  END WM_ACTIVATE_FMINIMIZED;
+
+PROCEDURE WM_ACTIVATE_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_ACTIVATE_HWND;
+
+PROCEDURE WM_CHARTOITEM_CHAR ( wp : WPARAM; lp : LPARAM ) : CHAR; MACRO;
+  BEGIN
+    RETURN CHR(LOWORD(wp))
+  END WM_CHARTOITEM_CHAR;
+
+PROCEDURE WM_CHARTOITEM_CHARW ( wp : WPARAM; lp : LPARAM ) : UCHAR; MACRO;
+  BEGIN
+    RETURN UCHR(LOWORD(wp))
+  END WM_CHARTOITEM_CHARW;
+
+PROCEDURE WM_CHARTOITEM_POS ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_CHARTOITEM_POS;
+
+PROCEDURE WM_CHARTOITEM_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_CHARTOITEM_HWND;
+
+PROCEDURE WM_COMMAND_ID ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_COMMAND_ID;
+
+PROCEDURE WM_COMMAND_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_COMMAND_HWND;
+
+PROCEDURE WM_COMMAND_CMD ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_COMMAND_CMD;
+
+PROCEDURE WM_CTLCOLOR_HDC ( wp : WPARAM; lp : LPARAM; msg : UINT ) : HDC; MACRO;
+  BEGIN
+    RETURN CAST( HDC,wp);
+  END WM_CTLCOLOR_HDC;
+
+PROCEDURE WM_CTLCOLOR_HWND ( wp : WPARAM; lp : LPARAM; msg : UINT ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_CTLCOLOR_HWND;
+
+PROCEDURE WM_CTLCOLOR_TYPE ( wp : WPARAM; lp : LPARAM; msg : UINT ) : WORD; MACRO;
+  BEGIN
+    RETURN CAST( WORD,msg-WM_CTLCOLORMSGBOX);
+  END WM_CTLCOLOR_TYPE;
+
+PROCEDURE WM_MENUSELECT_CMD ( wp : WPARAM; lp : LPARAM ) : UINT; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_MENUSELECT_CMD;
+
+PROCEDURE WM_MENUSELECT_FLAGS ( wp : WPARAM; lp : LPARAM ) : UINT; MACRO;
+  BEGIN
+    RETURN VAL( UINT,HIWORD(wp));
+  END WM_MENUSELECT_FLAGS;
+
+PROCEDURE WM_MENUSELECT_HMENU ( wp : WPARAM; lp : LPARAM ) : HMENU; MACRO;
+  BEGIN
+    RETURN CAST( HMENU,lp);
+  END WM_MENUSELECT_HMENU;
+
+PROCEDURE WM_MDIACTIVATE_FACTIVATE ( hwnd : HWND; wp : WPARAM; lp : LPARAM ) : BOOL; MACRO;
+  BEGIN
+    RETURN CAST( LPARAM,hwnd) = lp;
+  END WM_MDIACTIVATE_FACTIVATE;
+
+PROCEDURE WM_MDIACTIVATE_HWNDDEACT ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,wp);
+  END WM_MDIACTIVATE_HWNDDEACT;
+
+PROCEDURE WM_MDIACTIVATE_HWNDACTIVATE ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_MDIACTIVATE_HWNDACTIVATE;
+
+PROCEDURE WM_MENUCHAR_CHAR ( wp : WPARAM; lp : LPARAM ) : CHAR; MACRO;
+  BEGIN
+    RETURN CHR(LOWORD(wp));
+  END WM_MENUCHAR_CHAR;
+
+PROCEDURE WM_MENUCHAR_CHARW ( wp : WPARAM; lp : LPARAM ) : UCHAR; MACRO;
+  BEGIN
+    RETURN UCHR(LOWORD(wp));
+  END WM_MENUCHAR_CHARW;
+
+PROCEDURE WM_MENUCHAR_HMENU ( wp : WPARAM; lp : LPARAM ) : HMENU; MACRO;
+  BEGIN
+    RETURN CAST( HMENU,lp);
+  END WM_MENUCHAR_HMENU;
+
+PROCEDURE WM_MENUCHAR_FMENU ( wp : WPARAM; lp : LPARAM ) : UINT; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_MENUCHAR_FMENU;
+
+PROCEDURE WM_PARENTNOTIFY_MSG ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_PARENTNOTIFY_MSG;
+
+PROCEDURE WM_PARENTNOTIFY_ID ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_PARENTNOTIFY_ID;
+
+PROCEDURE WM_PARENTNOTIFY_HWNDCHILD ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_PARENTNOTIFY_HWNDCHILD;
+
+PROCEDURE WM_PARENTNOTIFY_X ( wp : WPARAM; lp : LPARAM ) : WINT; MACRO;
+  BEGIN
+    RETURN LOWORD(lp);
+  END WM_PARENTNOTIFY_X;
+
+PROCEDURE WM_PARENTNOTIFY_Y ( wp : WPARAM; lp : LPARAM ) : WINT; MACRO;
+  BEGIN
+    RETURN HIWORD(lp);
+  END WM_PARENTNOTIFY_Y;
+
+PROCEDURE WM_VKEYTOITEM_CODE ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_VKEYTOITEM_CODE;
+
+PROCEDURE WM_VKEYTOITEM_ITEM ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_VKEYTOITEM_ITEM;
+
+PROCEDURE WM_VKEYTOITEM_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_VKEYTOITEM_HWND;
+
+PROCEDURE EM_SETSEL_START ( wp : WPARAM; lp : LPARAM ) : WINT; MACRO;
+  BEGIN
+    RETURN wp;
+  END EM_SETSEL_START;
+
+PROCEDURE EM_SETSEL_END ( wp : WPARAM; lp : LPARAM ) : WINT; MACRO;
+  BEGIN
+    RETURN lp;
+  END EM_SETSEL_END;
+
+PROCEDURE WM_CHANGECBCHAIN_HWNDNEXT ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_CHANGECBCHAIN_HWNDNEXT;
+
+PROCEDURE WM_HSCROLL_CODE ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_HSCROLL_CODE;
+
+PROCEDURE WM_HSCROLL_POS ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_HSCROLL_POS;
+
+PROCEDURE WM_HSCROLL_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_HSCROLL_HWND;
+
+PROCEDURE WM_VSCROLL_CODE ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN LOWORD(wp);
+  END WM_VSCROLL_CODE;
+
+PROCEDURE WM_VSCROLL_POS ( wp : WPARAM; lp : LPARAM ) : WORD; MACRO;
+  BEGIN
+    RETURN HIWORD(wp);
+  END WM_VSCROLL_POS;
+
+PROCEDURE WM_VSCROLL_HWND ( wp : WPARAM; lp : LPARAM ) : HWND; MACRO;
+  BEGIN
+    RETURN CAST( HWND,lp);
+  END WM_VSCROLL_HWND;
+
+PROCEDURE MAKE_WM_COMMAND(     hWnd  : HWND;
+                               id    : WORD;
+                               cmd   : WORD;
+                           VAR OUT wMsg  : UINT;
+                           VAR OUT wp    : WPARAM;
+                           VAR OUT lp    : LPARAM ); MACRO;
+
+BEGIN
+  lp := CAST(LPARAM, hWnd );
+  wp := MAKELONG(id, cmd);
+  wMsg := WM_COMMAND;
+END MAKE_WM_COMMAND;
+<*/POP*>
+
+(*******************************************************************)
+(* the following sets of procedure are for interfacing with controls *)
+(* each procedure is associated with a specific message and the *)
+(* implementation performans the necessary typecasting and packing *)
+(* to send the messages *)
+
+(* Static_ = static text controls *)
+(* Edit_ = edit controls *)
+(* Button_ = buttons, check boxes, radio buttons *)
+(* ListBox_ = list boxes *)
+(* ComboBox_ = combo boxes *)
+(* ScrollBar_ = scroll bars *)
+
+PROCEDURE Static_Enable(hwndCtl : HWND; fEnable : BOOL) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE Static_GetText(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF CHAR;
+                         cchMax : INTEGER) : INTEGER;
+PROCEDURE Static_GetTextA(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF ACHAR;
+                         cchMax : INTEGER) : INTEGER;
+PROCEDURE Static_GetTextW(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF UCHAR;
+                         cchMax : INTEGER) : INTEGER;
+(* implemented as a call To GetWindowText *)
+(* cchMax = the maximum number of character to retrieve *)
+
+PROCEDURE Static_GetTextLength(hwndCtl : HWND) : INTEGER;
+PROCEDURE Static_GetTextLengthA(hwndCtl : HWND) : INTEGER;
+PROCEDURE Static_GetTextLengthW(hwndCtl : HWND) : INTEGER;
+(* implemented as a call To GetWindowTextLength *)
+
+PROCEDURE Static_SetText(hwndCtl : HWND; lpsz : ARRAY OF CHAR) : BOOL;
+PROCEDURE Static_SetTextA(hwndCtl : HWND; lpsz : ARRAY OF ACHAR) : BOOL;
+PROCEDURE Static_SetTextW(hwndCtl : HWND; lpsz : ARRAY OF UCHAR) : BOOL;
+(* implemented as a call To SetWindowText *)
+(* returns true if successfull *)
+
+PROCEDURE Static_SetIcon(hwndCtl : HWND; hIcon : HICON) : HICON;
+(* STM_SETICON *)
+
+PROCEDURE Static_GetIcon(hwndCtl : HWND) : HICON;
+(* STM_GETICON *)
+
+PROCEDURE Static_SetBitmap(hwndCtl : HWND; hIcon : HBITMAP) : HBITMAP;
+(* STM_SETBITMAP *)
+
+PROCEDURE Static_GetBitmap(hwndCtl : HWND) : HBITMAP;
+(* STM_GETBITMAP *)
+
+PROCEDURE Button_Enable(hwndCtl : HWND; fEnable : BOOL) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE Button_GetText(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF CHAR;
+                         cchMax : INTEGER) : INTEGER;
+PROCEDURE Button_GetTextA(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF ACHAR;
+                         cchMax : INTEGER) : INTEGER;
+PROCEDURE Button_GetTextW(hwndCtl : HWND;
+                         VAR lpch : ARRAY OF UCHAR;
+                         cchMax : INTEGER) : INTEGER;
+(* implemented as a call To GetWindowText *)
+(* cchMax = the maximum number of character to retrieve *)
+
+PROCEDURE Button_GetTextLength(hwndCtl : HWND) : INTEGER;
+PROCEDURE Button_GetTextLengthA(hwndCtl : HWND) : INTEGER;
+PROCEDURE Button_GetTextLengthW(hwndCtl : HWND) : INTEGER;
+(* implemented as a call To GetWindowTextLength *)
+
+PROCEDURE Button_SetText(hwndCtl : HWND; lpsz : ARRAY OF CHAR) : BOOL;
+PROCEDURE Button_SetTextA(hwndCtl : HWND; lpsz : ARRAY OF ACHAR) : BOOL;
+PROCEDURE Button_SetTextW(hwndCtl : HWND; lpsz : ARRAY OF UCHAR) : BOOL;
+(* implemented as a call To SetWindowText *)
+(* returns true if successfull *)
+
+PROCEDURE Button_GetCheck(hwndCtl : HWND) : INTEGER;
+(* BM_GETCHECK *)
+
+PROCEDURE Button_SetCheck(hwndCtl : HWND; check : UINT);
+(* BM_SETCHECK *)
+
+PROCEDURE Button_Click(hwndCtl : HWND);
+(* BM_CLICK *)
+
+PROCEDURE Button_GetState(hwndCtl : HWND) : INTEGER;
+(* BM_GETSTATE *)
+
+PROCEDURE Button_SetState(hwndCtl : HWND; state : INTEGER) : UINT;
+(* BM_SETSTATE *)
+
+PROCEDURE Button_SetStyle(hwndCtl : HWND; style : DWORD; fRedraw : BOOL);
+(* BM_SETSTYLE *)
+
+PROCEDURE Button_SetImage_Bitmap(hwndCtl : HWND; image : HBITMAP) : HBITMAP;
+PROCEDURE Button_SetImage_Icon(hwndCtl : HWND; image : HICON) : HICON;
+(* BM_SETIMAGE *)
+
+PROCEDURE Edit_Enable(hwndCtl : HWND; fEnable : BOOL) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE Edit_GetText(hwndCtl : HWND;
+                       VAR OUT lpch : ARRAY OF CHAR;
+                       cchMax : INTEGER) : INTEGER;
+PROCEDURE Edit_GetTextA(hwndCtl : HWND;
+                       VAR OUT lpch : ARRAY OF ACHAR;
+                       cchMax : INTEGER) : INTEGER;
+PROCEDURE Edit_GetTextW(hwndCtl : HWND;
+                       VAR OUT lpch : ARRAY OF UCHAR;
+                       cchMax : INTEGER) : INTEGER;
+(* implemented as a call To GetWindowText *)
+(* cchMax = the maximum number of character to retrieve *)
+
+PROCEDURE Edit_GetTextLength(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetTextLengthA(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetTextLengthW(hwndCtl : HWND) : INTEGER;
+(* implemented as a call To GetWindowTextLength *)
+
+PROCEDURE Edit_SetText(hwndCtl : HWND; lpsz : ARRAY OF CHAR) : BOOL;
+PROCEDURE Edit_SetTextA(hwndCtl : HWND; lpsz : ARRAY OF ACHAR) : BOOL;
+PROCEDURE Edit_SetTextW(hwndCtl : HWND; lpsz : ARRAY OF UCHAR) : BOOL;
+(* implemented as a call To SetWindowText *)
+(* returns true if successfull *)
+
+PROCEDURE Edit_LimitText(hwndCtl : HWND; cchMax : DWORD);
+PROCEDURE Edit_LimitTextA(hwndCtl : HWND; cchMax : DWORD);
+PROCEDURE Edit_LimitTextW(hwndCtl : HWND; cchMax : DWORD);
+(* EM_LIMITTEXT *)
+
+PROCEDURE Edit_GetLineCount(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetLineCountA(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetLineCountW(hwndCtl : HWND) : INTEGER;
+(* EM_GETLINECOUNT *)
+
+PROCEDURE Edit_GetLine(hwndCtl : HWND;
+                       line : DWORD;
+                       VAR lpch : ARRAY OF CHAR;
+                       cchMax : DWORD) : INTEGER;
+PROCEDURE Edit_GetLineA(hwndCtl : HWND;
+                       line : DWORD;
+                       VAR lpch : ARRAY OF ACHAR;
+                       cchMax : DWORD) : INTEGER;
+PROCEDURE Edit_GetLineW(hwndCtl : HWND;
+                        line : DWORD;
+                        VAR lpch : ARRAY OF UCHAR;
+                        cchMax : DWORD) : INTEGER;
+(* EM_GETLINE *)
+
+PROCEDURE Edit_GetRect(hwndCtl : HWND; VAR lprc : RECT);
+PROCEDURE Edit_GetRectA(hwndCtl : HWND; VAR lprc : RECT);
+PROCEDURE Edit_GetRectW(hwndCtl : HWND; VAR lprc : RECT);
+(* EM_GETRECT *)
+
+PROCEDURE Edit_SetRect(hwndCtl : HWND; lprc : RECT);
+PROCEDURE Edit_SetRectA(hwndCtl : HWND; lprc : RECT);
+PROCEDURE Edit_SetRectW(hwndCtl : HWND; lprc : RECT);
+(* EM_SETRECT *)
+
+PROCEDURE Edit_SetRectNoPaint(hwndCtl : HWND; lprc : RECT);
+PROCEDURE Edit_SetRectNoPaintA(hwndCtl : HWND; lprc : RECT);
+PROCEDURE Edit_SetRectNoPaintW(hwndCtl : HWND; lprc : RECT);
+(* EM_SETRECTNP *)
+
+PROCEDURE Edit_GetSel(hwndCtl : HWND; VAR OUT startPos, endPos : CARDINAL);
+PROCEDURE Edit_GetSelA(hwndCtl : HWND; VAR OUT startPos, endPos : CARDINAL);
+PROCEDURE Edit_GetSelW(hwndCtl : HWND; VAR OUT startPos, endPos : CARDINAL);
+(* EM_GETSEL *)
+
+PROCEDURE Edit_SetSel(hwndCtl : HWND; startPos, endPos : INTEGER);
+PROCEDURE Edit_SetSelA(hwndCtl : HWND; startPos, endPos : INTEGER);
+PROCEDURE Edit_SetSelW(hwndCtl : HWND; startPos, endPos : INTEGER);
+(* EM_SETSEL *)
+
+PROCEDURE Edit_ScrollCaret(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_ScrollCaretA(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_ScrollCaretW(hwndCtl : HWND) : BOOL;
+(* EM_SCROLLCARET on Win32 *)
+(* emulated on Win16 *)
+
+PROCEDURE Edit_ReplaceSel(hwndCtl : HWND; lpszReplace : ARRAY OF CHAR);
+PROCEDURE Edit_ReplaceSelA(hwndCtl : HWND; lpszReplace : ARRAY OF ACHAR);
+PROCEDURE Edit_ReplaceSelW(hwndCtl : HWND; lpszReplace : ARRAY OF UCHAR);
+(* EM_REPLACESEL *)
+
+PROCEDURE Edit_GetModify(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_GetModifyA(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_GetModifyW(hwndCtl : HWND) : BOOL;
+(* EM_GETMODIFY *)
+
+PROCEDURE Edit_SetModify(hwndCtl : HWND; fModified : BOOL);
+PROCEDURE Edit_SetModifyA(hwndCtl : HWND; fModified : BOOL);
+PROCEDURE Edit_SetModifyW(hwndCtl : HWND; fModified : BOOL);
+(* EM_SETMODIFY *)
+
+PROCEDURE Edit_LineFromChar(hwndCtl : HWND; ich : INTEGER) : INTEGER;
+PROCEDURE Edit_LineFromCharA(hwndCtl : HWND; ich : INTEGER) : INTEGER;
+PROCEDURE Edit_LineFromCharW(hwndCtl : HWND; ich : INTEGER) : INTEGER;
+(* EM_LINEFROMCHAR *)
+
+PROCEDURE Edit_LineIndex(hwndCtl : HWND; line : INTEGER) : INTEGER;
+PROCEDURE Edit_LineIndexA(hwndCtl : HWND; line : INTEGER) : INTEGER;
+PROCEDURE Edit_LineIndexW(hwndCtl : HWND; line : INTEGER) : INTEGER;
+(* EM_LINEINDEX *)
+
+PROCEDURE Edit_LineLength(hwndCtl : HWND; line : INTEGER) : INTEGER;
+PROCEDURE Edit_LineLengthA(hwndCtl : HWND; line : INTEGER) : INTEGER;
+PROCEDURE Edit_LineLengthW(hwndCtl : HWND; line : INTEGER) : INTEGER;
+(* EM_LINELENGTH *)
+
+PROCEDURE Edit_Scroll(hwndCtl : HWND; dv, dh : INTEGER);
+PROCEDURE Edit_ScrollA(hwndCtl : HWND; dv, dh : INTEGER);
+PROCEDURE Edit_ScrollW(hwndCtl : HWND; dv, dh : INTEGER);
+(* EM_LINESCROLL *)
+
+PROCEDURE Edit_CanUndo(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_CanUndoA(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_CanUndoW(hwndCtl : HWND) : BOOL;
+(* EM_CANUNDO *)
+
+PROCEDURE Edit_Undo(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_UndoA(hwndCtl : HWND) : BOOL;
+PROCEDURE Edit_UndoW(hwndCtl : HWND) : BOOL;
+(* EN_UNDO *)
+
+PROCEDURE Edit_EmptyUndoBuffer(hwndCtl : HWND);
+PROCEDURE Edit_EmptyUndoBufferA(hwndCtl : HWND);
+PROCEDURE Edit_EmptyUndoBufferW(hwndCtl : HWND);
+(* EM_EMPTYUNDOBUFFER *)
+
+PROCEDURE Edit_SetPasswordChar(hwndCtl : HWND; ch : CHAR);
+PROCEDURE Edit_SetPasswordCharA(hwndCtl : HWND; ch : ACHAR);
+PROCEDURE Edit_SetPasswordCharW(hwndCtl : HWND; ch : UCHAR);
+(* EM_SETPASSWORDCHAR *)
+
+PROCEDURE Edit_SetTabStops(hwndCtl : HWND;
+                           cTabs : DWORD;
+                           lpTabs : ARRAY OF DWORD);
+PROCEDURE Edit_SetTabStopsA(hwndCtl : HWND;
+                           cTabs : DWORD;
+                           lpTabs : ARRAY OF DWORD);
+PROCEDURE Edit_SetTabStopsW(hwndCtl : HWND;
+                           cTabs : DWORD;
+                           lpTabs : ARRAY OF DWORD);
+(* EM_SETTABSTOPS *)
+
+PROCEDURE Edit_FmtLines(hwndCtl : HWND; fAddEOL : BOOL) : BOOL;
+PROCEDURE Edit_FmtLinesA(hwndCtl : HWND; fAddEOL : BOOL) : BOOL;
+PROCEDURE Edit_FmtLinesW(hwndCtl : HWND; fAddEOL : BOOL) : BOOL;
+(* EM_FMTLINES *)
+
+PROCEDURE Edit_GetHandle(hwndCtl : HWND) : HLOCAL;
+PROCEDURE Edit_GetHandleA(hwndCtl : HWND) : HLOCAL;
+PROCEDURE Edit_GetHandleW(hwndCtl : HWND) : HLOCAL;
+(* EM_GETHANDLE *)
+
+PROCEDURE Edit_SetHandle(hwndCtl : HWND; h : HLOCAL);
+PROCEDURE Edit_SetHandleA(hwndCtl : HWND; h : HLOCAL);
+PROCEDURE Edit_SetHandleW(hwndCtl : HWND; h : HLOCAL);
+(* EM_SETHANDLE *)
+
+PROCEDURE Edit_GetFirstVisibleLine(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetFirstVisibleLineA(hwndCtl : HWND) : INTEGER;
+PROCEDURE Edit_GetFirstVisibleLineW(hwndCtl : HWND) : INTEGER;
+(* EM_GETFIRSTVISIBLELINE *)
+
+PROCEDURE Edit_SetReadOnly(hwndCtl : HWND; fReadOnly : BOOL) : BOOL;
+PROCEDURE Edit_SetReadOnlyA(hwndCtl : HWND; fReadOnly : BOOL) : BOOL;
+PROCEDURE Edit_SetReadOnlyW(hwndCtl : HWND; fReadOnly : BOOL) : BOOL;
+(* EM_SETREADONLY *)
+
+PROCEDURE Edit_GetPasswordChar(hwndCtl : HWND) : CHAR;
+PROCEDURE Edit_GetPasswordCharA(hwndCtl : HWND) : ACHAR;
+PROCEDURE Edit_GetPasswordCharW(hwndCtl : HWND) : UCHAR;
+(* EM_GETPASSWORDCHAR *)
+
+PROCEDURE Edit_SetWordBreakProc(hwndCtl : HWND;
+                                lpfnWordBreak : EDITWORDBREAKPROC);
+PROCEDURE Edit_SetWordBreakProcA(hwndCtl : HWND;
+                                lpfnWordBreak : EDITWORDBREAKPROCA);
+PROCEDURE Edit_SetWordBreakProcW(hwndCtl : HWND;
+                                lpfnWordBreak : EDITWORDBREAKPROCW);
+(* EM_SETWORDBREAKPROC *)
+
+PROCEDURE Edit_GetWordBreakProc(hwndCtl : HWND) : EDITWORDBREAKPROC;
+PROCEDURE Edit_GetWordBreakProcA(hwndCtl : HWND) : EDITWORDBREAKPROCA;
+PROCEDURE Edit_GetWordBreakProcW(hwndCtl : HWND) : EDITWORDBREAKPROCW;
+(* EM_GETWORDBREAKPROC *)
+
+PROCEDURE ScrollBar_Enable(hwndCtl : HWND; flags : INTEGER) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE ScrollBar_Show(hwndCtl : HWND; fShow : BOOL) : BOOL;
+(* implemented as a call to ShowWindow, TRUE if visible *)
+
+PROCEDURE ScrollBar_SetPos(hwndCtl : HWND;
+                           pos : DWORD;
+                           fRedraw : BOOL) : INTEGER;
+(* implemented as a call to SetScrollPos with a SB_CTL parameter *)
+
+PROCEDURE ScrollBar_GetPos(hwndCtl : HWND) : INTEGER;
+(* implemented as a call to GetScrollPos with a SB_CTL parameter *)
+
+PROCEDURE ScrollBar_SetRange(hwndCtl : HWND;
+                             posMin, posMax : DWORD;
+                             fRedraw : BOOL) : BOOL;
+(* implemented as a call to SetScrollRange with a SB_CTL parameter *)
+
+PROCEDURE ScrollBar_GetRange(hwndCtl : HWND;
+                             VAR lpposMin : WINT;
+                             VAR lpposMax : WINT) : BOOL;
+(* implemented as a call to GetScrollRange with a SB_CTL parameter *)
+
+PROCEDURE ListBox_Enable(hwndCtl : HWND; fEnable : BOOL) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE ListBox_GetCount(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCountA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCountW(hwndCtl : HWND) : INTEGER;
+(* LB_GETCOUNT *)
+
+PROCEDURE ListBox_ResetContent(hwndCtl : HWND) : BOOL;
+PROCEDURE ListBox_ResetContentA(hwndCtl : HWND) : BOOL;
+PROCEDURE ListBox_ResetContentW(hwndCtl : HWND) : BOOL;
+(* LB_RESETCONTENT *)
+
+PROCEDURE ListBox_AddString(hwndCtl : HWND; lpsz : ARRAY OF CHAR; VAR OUT index : CARDINAL) : BOOL;
+PROCEDURE ListBox_AddStringA(hwndCtl : HWND; lpsz : ARRAY OF ACHAR; VAR OUT index : CARDINAL) : BOOL;
+PROCEDURE ListBox_AddStringW(hwndCtl : HWND; lpsz : ARRAY OF UCHAR; VAR OUT index : CARDINAL) : BOOL;
+(* LB_ADDSTRING *)
+
+PROCEDURE ListBox_InsertString(hwndCtl : HWND;
+                               index : INTEGER;
+                               lpsz : ARRAY OF CHAR;
+                               VAR OUT idx : CARDINAL) : BOOL;
+PROCEDURE ListBox_InsertStringA(hwndCtl : HWND;
+                               index : INTEGER;
+                               lpsz : ARRAY OF ACHAR;
+                               VAR OUT idx : CARDINAL) : BOOL;
+PROCEDURE ListBox_InsertStringW(hwndCtl : HWND;
+                               index : INTEGER;
+                               lpsz : ARRAY OF UCHAR;
+                               VAR OUT idx : CARDINAL) : BOOL;
+(* LB_INSERTSTRING *)
+
+PROCEDURE ListBox_AddItemData(hwndCtl : HWND; data : LRESULT; VAR OUT index : CARDINAL) : BOOL;
+PROCEDURE ListBox_AddItemDataA(hwndCtl : HWND; data : LRESULT; VAR OUT index : CARDINAL) : BOOL;
+PROCEDURE ListBox_AddItemDataW(hwndCtl : HWND; data : LRESULT; VAR OUT index : CARDINAL) : BOOL;
+(* LB_ADDSTRING *)
+
+PROCEDURE ListBox_InsertItemData(hwndCtl : HWND;
+                                 index : DWORD;
+                                 data : LRESULT;
+                                 VAR OUT idx : CARDINAL) : BOOL;
+PROCEDURE ListBox_InsertItemDataA(hwndCtl : HWND;
+                                 index : DWORD;
+                                 data : LRESULT;
+                                 VAR OUT idx : CARDINAL) : BOOL;
+PROCEDURE ListBox_InsertItemDataW(hwndCtl : HWND;
+                                 index : DWORD;
+                                 data : LRESULT;
+                                 VAR OUT idx : CARDINAL) : BOOL;
+(* LB_INSERTSTRING *)
+
+PROCEDURE ListBox_DeleteString(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_DeleteStringA(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_DeleteStringW(hwndCtl : HWND; index : DWORD) : LRESULT;
+(* LB_DELETESTRING *)
+
+PROCEDURE ListBox_GetTextLen(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_GetTextLenA(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_GetTextLenW(hwndCtl : HWND; index : DWORD) : LRESULT;
+(* LB_GETTEXTLEN *)
+
+PROCEDURE ListBox_GetText(hwndCtl : HWND;
+                          index : DWORD;
+                          VAR lpszBuffer : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ListBox_GetTextA(hwndCtl : HWND;
+                          index : DWORD;
+                          VAR lpszBuffer : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ListBox_GetTextW(hwndCtl : HWND;
+                          index : DWORD;
+                          VAR lpszBuffer : ARRAY OF UCHAR) : INTEGER;
+(* LB_GETTEXT *)
+
+PROCEDURE ListBox_GetItemData(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_GetItemDataA(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ListBox_GetItemDataW(hwndCtl : HWND; index : DWORD) : LRESULT;
+(* LB_GETITEMDATA *)
+
+PROCEDURE ListBox_SetItemData(hwndCtl : HWND; index : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ListBox_SetItemDataA(hwndCtl : HWND; index : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ListBox_SetItemDataW(hwndCtl : HWND; index : DWORD; data : LRESULT) : LRESULT;
+(* LB_SETITEMDATA *)
+
+PROCEDURE ListBox_FindString(hwndCtl : HWND;
+                             indexStart : INTEGER;
+                             lpszFind : ARRAY OF CHAR;
+                             VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindStringA(hwndCtl : HWND;
+                             indexStart : INTEGER;
+                             lpszFind : ARRAY OF ACHAR;
+                             VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindStringW(hwndCtl : HWND;
+                             indexStart : INTEGER;
+                             lpszFind : ARRAY OF UCHAR;
+                             VAR OUT index : UINT) : BOOL;
+(* LB_FINDSTRING *)
+
+PROCEDURE ListBox_FindItemData(hwndCtl : HWND;
+                               indexStart : INTEGER;
+                               data : LRESULT;
+                               VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindItemDataA(hwndCtl : HWND;
+                               indexStart : INTEGER;
+                               data : LRESULT;
+                               VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindItemDataW(hwndCtl : HWND;
+                               indexStart : INTEGER;
+                               data : LRESULT;
+                               VAR OUT index : UINT) : BOOL;
+(* LB_FINDSTRING *)
+
+PROCEDURE ListBox_SetSel(hwndCtl : HWND; fSelect : BOOL; index : DWORD) : INTEGER;
+PROCEDURE ListBox_SetSelA(hwndCtl : HWND; fSelect : BOOL; index : DWORD) : INTEGER;
+PROCEDURE ListBox_SetSelW(hwndCtl : HWND; fSelect : BOOL; index : DWORD) : INTEGER;
+(* LB_SETSEL *)
+
+PROCEDURE ListBox_SelItemRange(hwndCtl : HWND;
+                               fSelect : BOOL;
+                               first, last : WORD) : INTEGER;
+PROCEDURE ListBox_SelItemRangeA(hwndCtl : HWND;
+                               fSelect : BOOL;
+                               first, last : WORD) : INTEGER;
+PROCEDURE ListBox_SelItemRangeW(hwndCtl : HWND;
+                               fSelect : BOOL;
+                               first, last : WORD) : INTEGER;
+(* LB_SETITEMRANGE *)
+
+PROCEDURE ListBox_GetCurSel(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCurSelA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCurSelW(hwndCtl : HWND) : INTEGER;
+(* LB_GTECURSEL *)
+
+PROCEDURE ListBox_SetCurSel(hwndCtl : HWND; index : INTEGER) : INTEGER;
+PROCEDURE ListBox_SetCurSelA(hwndCtl : HWND; index : INTEGER) : INTEGER;
+PROCEDURE ListBox_SetCurSelW(hwndCtl : HWND; index : INTEGER) : INTEGER;
+(* LB_SETCURSEL *)
+
+PROCEDURE ListBox_SelectString(hwndCtl : HWND;
+                               indexStart: INTEGER;
+                               lpszFind : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ListBox_SelectStringA(hwndCtl : HWND;
+                               indexStart: INTEGER;
+                               lpszFind : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ListBox_SelectStringW(hwndCtl : HWND;
+                               indexStart: INTEGER;
+                               lpszFind : ARRAY OF UCHAR) : INTEGER;
+(* LB_SELECTSTRING *)
+
+PROCEDURE ListBox_SelectItemData(hwndCtl : HWND;
+                                 indexStart : DWORD;
+                                 data : DWORD) : INTEGER;
+PROCEDURE ListBox_SelectItemDataA(hwndCtl : HWND;
+                                 indexStart : DWORD;
+                                 data : DWORD) : INTEGER;
+PROCEDURE ListBox_SelectItemDataW(hwndCtl : HWND;
+                                 indexStart : DWORD;
+                                 data : DWORD) : INTEGER;
+(* LB_SELECTSTRING *)
+
+PROCEDURE ListBox_GetSel(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ListBox_GetSelA(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ListBox_GetSelW(hwndCtl : HWND; index : DWORD) : INTEGER;
+(* LB_GETSEL *)
+
+PROCEDURE ListBox_GetSelCount(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetSelCountA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetSelCountW(hwndCtl : HWND) : INTEGER;
+(* LB_GETSELCOUNT *)
+
+PROCEDURE ListBox_GetTopIndex(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetTopIndexA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetTopIndexW(hwndCtl : HWND) : INTEGER;
+(* LB_GETTOPINDEX *)
+
+PROCEDURE ListBox_GetSelItems(hwndCtl : HWND;
+                              cItems : DWORD;
+                              VAR OUT lpItems : ARRAY OF WINT;
+                              VAR OUT count : UINT) : BOOL;
+PROCEDURE ListBox_GetSelItemsA(hwndCtl : HWND;
+                              cItems : DWORD;
+                              VAR OUT lpItems : ARRAY OF WINT;
+                              VAR OUT count : UINT) : BOOL;
+PROCEDURE ListBox_GetSelItemsW(hwndCtl : HWND;
+                              cItems : DWORD;
+                              VAR OUT lpItems : ARRAY OF WINT;
+                              VAR OUT count : UINT) : BOOL;
+(* LB_GETSELITEMS *)
+
+PROCEDURE ListBox_SetTopIndex(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+PROCEDURE ListBox_SetTopIndexA(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+PROCEDURE ListBox_SetTopIndexW(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+(* LB_SETTOPINDEX *)
+
+PROCEDURE ListBox_SetColumnWidth(hwndCtl : HWND; cxColumn : DWORD);
+PROCEDURE ListBox_SetColumnWidthA(hwndCtl : HWND; cxColumn : DWORD);
+PROCEDURE ListBox_SetColumnWidthW(hwndCtl : HWND; cxColumn : DWORD);
+(* LB_SETCOLUMNWIDTH *)
+
+PROCEDURE ListBox_GetHorizontalExtent(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetHorizontalExtentA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetHorizontalExtentW(hwndCtl : HWND) : INTEGER;
+(* LB_GETHORIZONTALEXTENT *)
+
+PROCEDURE ListBox_SetHorizontalExtent(hwndCtl : HWND; cxExtent : DWORD);
+PROCEDURE ListBox_SetHorizontalExtentA(hwndCtl : HWND; cxExtent : DWORD);
+PROCEDURE ListBox_SetHorizontalExtentW(hwndCtl : HWND; cxExtent : DWORD);
+(* LB_SETHORIZONTALEXTENT *)
+
+PROCEDURE ListBox_SetTabStops(hwndCtl : HWND;
+                              cTabs : DWORD;
+                              lpTabs : ARRAY OF INTEGER) : BOOL;
+PROCEDURE ListBox_SetTabStopsA(hwndCtl : HWND;
+                              cTabs : DWORD;
+                              lpTabs : ARRAY OF INTEGER) : BOOL;
+PROCEDURE ListBox_SetTabStopsW(hwndCtl : HWND;
+                              cTabs : DWORD;
+                              lpTabs : ARRAY OF INTEGER) : BOOL;
+(* LB_SETTABSTOPS *)
+
+PROCEDURE ListBox_GetItemRect(hwndCtl : HWND;
+                              index : DWORD;
+                              VAR lprc : RECT) : INTEGER;
+PROCEDURE ListBox_GetItemRectA(hwndCtl : HWND;
+                              index : DWORD;
+                              VAR lprc : RECT) : INTEGER;
+PROCEDURE ListBox_GetItemRectW(hwndCtl : HWND;
+                              index : DWORD;
+                              VAR lprc : RECT) : INTEGER;
+(* LB_GETITEMRECT *)
+
+PROCEDURE ListBox_SetCaretIndex(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ListBox_SetCaretIndexA(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ListBox_SetCaretIndexW(hwndCtl : HWND; index : DWORD) : INTEGER;
+(* LB_SETCARETINDEX *)
+
+PROCEDURE ListBox_GetCaretIndex(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCaretIndexA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ListBox_GetCaretIndexW(hwndCtl : HWND) : INTEGER;
+(* LB_GETCARETINDEX *)
+
+PROCEDURE ListBox_FindStringExact(hwndCtl : HWND;
+                                  indexStart : DWORD;
+                                  lpszFind : ARRAY OF CHAR;
+                                  VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindStringExactA(hwndCtl : HWND;
+                                  indexStart : DWORD;
+                                  lpszFind : ARRAY OF ACHAR;
+                                  VAR OUT index : UINT) : BOOL;
+PROCEDURE ListBox_FindStringExactW(hwndCtl : HWND;
+                                  indexStart : DWORD;
+                                  lpszFind : ARRAY OF UCHAR;
+                                  VAR OUT index : UINT) : BOOL;
+(* LB_FINDSTRINGEXACT *)
+
+PROCEDURE ListBox_SetItemHeight(hwndCtl : HWND;
+                                index : DWORD;
+                                cy : WORD) : INTEGER;
+PROCEDURE ListBox_SetItemHeightA(hwndCtl : HWND;
+                                index : DWORD;
+                                cy : WORD) : INTEGER;
+PROCEDURE ListBox_SetItemHeightW(hwndCtl : HWND;
+                                index : DWORD;
+                                cy : WORD) : INTEGER;
+(* LB_SETITEMHEIGHT *)
+
+PROCEDURE ListBox_GetItemHeight(hwndCtl : HWND;
+                                index : DWORD) : INTEGER;
+PROCEDURE ListBox_GetItemHeightA(hwndCtl : HWND;
+                                index : DWORD) : INTEGER;
+PROCEDURE ListBox_GetItemHeightW(hwndCtl : HWND;
+                                index : DWORD) : INTEGER;
+(* LB_GETITEMHEIGHT *)
+
+PROCEDURE ListBox_Dir(hwndCtl : HWND;
+                      attrs : DWORD;
+                      lpszFileSpec : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ListBox_DirA(hwndCtl : HWND;
+                      attrs : DWORD;
+                      lpszFileSpec : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ListBox_DirW(hwndCtl : HWND;
+                      attrs : DWORD;
+                      lpszFileSpec : ARRAY OF UCHAR) : INTEGER;
+(* LB_DIR *)
+
+PROCEDURE ComboBox_Enable(hwndCtl : HWND; fEnable : BOOL) : BOOL;
+(* implemented as a call EnableWindow *)
+(* fEnable = TRUE to enable the window, FALSE to disable *)
+
+PROCEDURE ComboBox_GetText(hwndCtl : HWND;
+                           VAR lpch : ARRAY OF CHAR;
+                           cchMax : INTEGER) : INTEGER;
+PROCEDURE ComboBox_GetTextA(hwndCtl : HWND;
+                           VAR lpch : ARRAY OF ACHAR;
+                           cchMax : INTEGER) : INTEGER;
+PROCEDURE ComboBox_GetTextW(hwndCtl : HWND;
+                           VAR lpch : ARRAY OF UCHAR;
+                           cchMax : INTEGER) : INTEGER;
+(* implemented as a call To GetWindowText *)
+(* cchMax = the maximum number of character to retrieve *)
+
+PROCEDURE ComboBox_GetTextLength(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetTextLengthA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetTextLengthW(hwndCtl : HWND) : INTEGER;
+(* implemented as a call To GetWindowTextLength *)
+
+PROCEDURE ComboBox_SetText(hwndCtl : HWND; lpsz : ARRAY OF CHAR) : BOOL;
+PROCEDURE ComboBox_SetTextA(hwndCtl : HWND; lpsz : ARRAY OF ACHAR) : BOOL;
+PROCEDURE ComboBox_SetTextW(hwndCtl : HWND; lpsz : ARRAY OF UCHAR) : BOOL;
+(* implemented as a call To SetWindowText *)
+(* returns true if successfull *)
+
+PROCEDURE ComboBox_LimitText(hwndCtl : HWND; cchLimit : DWORD) : INTEGER;
+PROCEDURE ComboBox_LimitTextA(hwndCtl : HWND; cchLimit : DWORD) : INTEGER;
+PROCEDURE ComboBox_LimitTextW(hwndCtl : HWND; cchLimit : DWORD) : INTEGER;
+(* CB_LIMITTEXT *)
+
+PROCEDURE ComboBox_GetEditSel(hwndCtl : HWND; VAR startPos, endPos : INTEGER);
+PROCEDURE ComboBox_GetEditSelA(hwndCtl : HWND; VAR startPos, endPos : INTEGER);
+PROCEDURE ComboBox_GetEditSelW(hwndCtl : HWND; VAR startPos, endPos : INTEGER);
+(* CB_GETEDITSEL *)
+
+PROCEDURE ComboBox_SetEditSel(hwndCtl : HWND;
+                              startPos, endPos : INTEGER) : BOOL;
+PROCEDURE ComboBox_SetEditSelA(hwndCtl : HWND;
+                              startPos, endPos : INTEGER) : BOOL;
+PROCEDURE ComboBox_SetEditSelW(hwndCtl : HWND;
+                              startPos, endPos : INTEGER) : BOOL;
+(* CB_SETEDITSEL *)
+
+PROCEDURE ComboBox_GetCount(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetCountA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetCountW(hwndCtl : HWND) : INTEGER;
+(* CB_GETCOUNT *)
+
+PROCEDURE ComboBox_ResetContent(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_ResetContentA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_ResetContentW(hwndCtl : HWND) : INTEGER;
+(* CB_RESETCONTENT *)
+
+PROCEDURE ComboBox_AddString(hwndCtl : HWND;
+                             lpsz : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ComboBox_AddStringA(hwndCtl : HWND;
+                             lpsz : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ComboBox_AddStringW(hwndCtl : HWND;
+                             lpsz : ARRAY OF UCHAR) : INTEGER;
+(* CB_ADDSTRING *)
+
+PROCEDURE ComboBox_InsertString(hwndCtl : HWND;
+                                index : INTEGER;
+                                lpsz : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ComboBox_InsertStringA(hwndCtl : HWND;
+                                index : INTEGER;
+                                lpsz : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ComboBox_InsertStringW(hwndCtl : HWND;
+                                index : INTEGER;
+                                lpsz : ARRAY OF UCHAR) : INTEGER;
+(* CB_INSERTSTRING *)
+
+PROCEDURE ComboBox_AddItemData(hwndCtl : HWND; data : DWORD) : INTEGER;
+PROCEDURE ComboBox_AddItemDataA(hwndCtl : HWND; data : DWORD) : INTEGER;
+PROCEDURE ComboBox_AddItemDataW(hwndCtl : HWND; data : DWORD) : INTEGER;
+(* CB_ADDSTRING *)
+
+PROCEDURE ComboBox_InsertItemData(hwndCtl : HWND;
+                                  index : DWORD;
+                                  data : DWORD) : INTEGER;
+PROCEDURE ComboBox_InsertItemDataA(hwndCtl : HWND;
+                                  index : DWORD;
+                                  data : DWORD) : INTEGER;
+PROCEDURE ComboBox_InsertItemDataW(hwndCtl : HWND;
+                                  index : DWORD;
+                                  data : DWORD) : INTEGER;
+(* CB_INSERTSTRING *)
+
+PROCEDURE ComboBox_DeleteString(hwndCtl : HWND;
+                                index : INTEGER) : INTEGER;
+PROCEDURE ComboBox_DeleteStringA(hwndCtl : HWND;
+                                index : INTEGER) : INTEGER;
+PROCEDURE ComboBox_DeleteStringW(hwndCtl : HWND;
+                                index : INTEGER) : INTEGER;
+(* CB_DELETESTRING *)
+
+PROCEDURE ComboBox_GetLBTextLen(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ComboBox_GetLBTextLenA(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ComboBox_GetLBTextLenW(hwndCtl : HWND; index : DWORD) : INTEGER;
+(* CB_GETLBTEXTLN *)
+
+PROCEDURE ComboBox_GetLBText(hwndCtl : HWND;
+                             index : DWORD;
+                             VAR OUT lpszBuffer : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ComboBox_GetLBTextA(hwndCtl : HWND;
+                             index : DWORD;
+                             VAR OUT lpszBuffer : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ComboBox_GetLBTextW(hwndCtl : HWND;
+                             index : DWORD;
+                             VAR OUT lpszBuffer : ARRAY OF UCHAR) : INTEGER;
+(* CB_GETLBTEXT *)
+
+PROCEDURE ComboBox_GetItemData(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ComboBox_GetItemDataA(hwndCtl : HWND; index : DWORD) : LRESULT;
+PROCEDURE ComboBox_GetItemDataW(hwndCtl : HWND; index : DWORD) : LRESULT;
+(* CB_GETITEMDATA *)
+
+PROCEDURE ComboBox_SetItemData(hwndCtl : HWND;
+                               index : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ComboBox_SetItemDataA(hwndCtl : HWND;
+                               index : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ComboBox_SetItemDataW(hwndCtl : HWND;
+                               index : DWORD; data : LRESULT) : LRESULT;
+(* CB_SETITEMDATA *)
+
+PROCEDURE ComboBox_FindString(hwndCtl : HWND;
+                              indexStart : INTEGER;
+                              lpszFind : ARRAY OF CHAR;
+                              VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindStringA(hwndCtl : HWND;
+                              indexStart : INTEGER;
+                              lpszFind : ARRAY OF ACHAR;
+                              VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindStringW(hwndCtl : HWND;
+                              indexStart : INTEGER;
+                              lpszFind : ARRAY OF UCHAR;
+                              VAR OUT index : UINT) : BOOL;
+(* CB_FINDSTRING *)
+
+PROCEDURE ComboBox_FindItemData(hwndCtl : HWND;
+                                indexStart : INTEGER;
+                                data : LRESULT;
+                                VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindItemDataA(hwndCtl : HWND;
+                                indexStart : INTEGER;
+                                data : LRESULT;
+                                VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindItemDataW(hwndCtl : HWND;
+                                indexStart : INTEGER;
+                                data : LRESULT;
+                                VAR OUT index : UINT) : BOOL;
+(* CB_FINDSTRING *)
+
+PROCEDURE ComboBox_GetCurSel(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetCurSelA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetCurSelW(hwndCtl : HWND) : INTEGER;
+(* CB_GETCURSEL *)
+
+PROCEDURE ComboBox_SetCurSel(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetCurSelA(hwndCtl : HWND; index : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetCurSelW(hwndCtl : HWND; index : DWORD) : INTEGER;
+(* CB_SETCURSEL *)
+
+PROCEDURE ComboBox_SelectString(hwndCtl : HWND;
+                                indexStart : DWORD;
+                                lpszSelect : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ComboBox_SelectStringA(hwndCtl : HWND;
+                                indexStart : DWORD;
+                                lpszSelect : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ComboBox_SelectStringW(hwndCtl : HWND;
+                                indexStart : DWORD;
+                                lpszSelect : ARRAY OF UCHAR) : INTEGER;
+(* CG_SELECTSTRING *)
+
+PROCEDURE ComboBox_SelectItemData(hwndCtl : HWND;
+                                  indexStart : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ComboBox_SelectItemDataA(hwndCtl : HWND;
+                                  indexStart : DWORD; data : LRESULT) : LRESULT;
+PROCEDURE ComboBox_SelectItemDataW(hwndCtl : HWND;
+                                  indexStart : DWORD; data : LRESULT) : LRESULT;
+(* CB_SELECTSTRING *)
+
+PROCEDURE ComboBox_Dir(hwndCtl : HWND;
+                       attrs : DWORD;
+                       lpszFileSpec : ARRAY OF CHAR) : INTEGER;
+PROCEDURE ComboBox_DirA(hwndCtl : HWND;
+                       attrs : DWORD;
+                       lpszFileSpec : ARRAY OF ACHAR) : INTEGER;
+PROCEDURE ComboBox_DirW(hwndCtl : HWND;
+                       attrs : DWORD;
+                       lpszFileSpec : ARRAY OF UCHAR) : INTEGER;
+(* CB_DIR *)
+
+PROCEDURE ComboBox_ShowDropdown(hwndCtl : HWND; fShow : BOOL) : BOOL;
+PROCEDURE ComboBox_ShowDropdownA(hwndCtl : HWND; fShow : BOOL) : BOOL;
+PROCEDURE ComboBox_ShowDropdownW(hwndCtl : HWND; fShow : BOOL) : BOOL;
+(* CB_SHOWDROPDOWN *)
+
+PROCEDURE ComboBox_FindStringExact(hwndCtl : HWND;
+                                   indexStart : INTEGER;
+                                   lpszFind : ARRAY OF CHAR;
+                                   VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindStringExactA(hwndCtl : HWND;
+                                   indexStart : INTEGER;
+                                   lpszFind : ARRAY OF ACHAR;
+                                   VAR OUT index : UINT) : BOOL;
+PROCEDURE ComboBox_FindStringExactW(hwndCtl : HWND;
+                                   indexStart : INTEGER;
+                                   lpszFind : ARRAY OF UCHAR;
+                                   VAR OUT index : UINT) : BOOL;
+(* CB_FINDSTRINGEXACT *)
+
+PROCEDURE ComboBox_GetDroppedState(hwndCtl : HWND) : BOOL;
+PROCEDURE ComboBox_GetDroppedStateA(hwndCtl : HWND) : BOOL;
+PROCEDURE ComboBox_GetDroppedStateW(hwndCtl : HWND) : BOOL;
+(* CB_GETDROPPEDSTATE *)
+
+PROCEDURE ComboBox_GetDroppedControlRect(hwndCtl : HWND; VAR lprc : RECT);
+PROCEDURE ComboBox_GetDroppedControlRectA(hwndCtl : HWND; VAR lprc : RECT);
+PROCEDURE ComboBox_GetDroppedControlRectW(hwndCtl : HWND; VAR lprc : RECT);
+(* CB_GETDROPPEDCONTROLRECT *)
+
+PROCEDURE ComboBox_GetItemHeight(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetItemHeightA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetItemHeightW(hwndCtl : HWND) : INTEGER;
+(* CB_GETITEMHEIGHT *)
+
+PROCEDURE ComboBox_SetItemHeight(hwndCtl : HWND; cyItem : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetItemHeightA(hwndCtl : HWND; cyItem : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetItemHeightW(hwndCtl : HWND; cyItem : DWORD) : INTEGER;
+(* CB_SETITEMHEIGHT *)
+
+PROCEDURE ComboBox_GetExtendedUI(hwndCtl : HWND) : UINT;
+PROCEDURE ComboBox_GetExtendedUIA(hwndCtl : HWND) : UINT;
+PROCEDURE ComboBox_GetExtendedUIW(hwndCtl : HWND) : UINT;
+(* CB_GETEXTENDEDUI *)
+
+PROCEDURE ComboBox_SetExtendedUI(hwndCtl : HWND; flags : UINT) : INTEGER;
+PROCEDURE ComboBox_SetExtendedUIA(hwndCtl : HWND; flags : UINT) : INTEGER;
+PROCEDURE ComboBox_SetExtendedUIW(hwndCtl : HWND; flags : UINT) : INTEGER;
+(* CB_SETEXTENDEDUI *)
+
+PROCEDURE ComboBox_GetTopIndex(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetTopIndexA(hwndCtl : HWND) : INTEGER;
+PROCEDURE ComboBox_GetTopIndexW(hwndCtl : HWND) : INTEGER;
+(* CB_GETTOPINDEX *)
+
+PROCEDURE ComboBox_SetTopIndex(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetTopIndexA(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+PROCEDURE ComboBox_SetTopIndexW(hwndCtl : HWND; indexTop : DWORD) : INTEGER;
+(* CB_SETTOPINDEX *)
+
+PROCEDURE IsCurrentThread(hw : HWND) : BOOL;
+
+PROCEDURE ShowWindowGen(hWnd : HWND; nCmdShow : INTEGER) : BOOL;
+
+END WINX.

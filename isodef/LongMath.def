@@ -1,0 +1,78 @@
+DEFINITION MODULE LongMath;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+
+===========================================*)
+
+%IF IA32 %OR AMD64 %THEN
+IMPORT Float;
+%END
+
+CONST
+    pi          = 3.141592653589793238463;
+    expi        = 2.718281828459045235360;
+
+%IF InlineFpp %THEN
+PROCEDURE sqrt(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+%ELSE
+PROCEDURE sqrt(x : LONGREAL) : LONGREAL [Invariant];
+%END
+
+%IF InlineFpp %AND IA32 %THEN
+
+PROCEDURE exp(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+PROCEDURE ln(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+(* these functions compute values in radians *)
+
+PROCEDURE sin(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+PROCEDURE cos(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+PROCEDURE tan(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+PROCEDURE arctan(x : LONGREAL) : LONGREAL [FppPrim, Invariant];
+
+%ELSE
+
+PROCEDURE exp(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE ln(x : LONGREAL) : LONGREAL [Invariant];
+
+(* these functions compute values in radians *)
+
+PROCEDURE sin(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE cos(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE tan(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE arctan(x : LONGREAL) : LONGREAL [Invariant];
+
+%END
+
+PROCEDURE arcsin(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE arccos(x : LONGREAL) : LONGREAL [Invariant];
+
+PROCEDURE power(base, exponent : LONGREAL) : LONGREAL [Invariant];
+(* base must be > 0.0 *)
+(* exponent may have any value *)
+(* this function is functionally identical to (exp(exponent * ln(base))) *)
+
+%IF IA32 %OR AMD64 %THEN
+PROCEDURE round = Float.NearestToInt32;
+%ELSE
+PROCEDURE round(x : LONGREAL) : INTEGER [Invariant];
+(* return the nearest integer to x *)
+%END
+
+PROCEDURE IsRMathException() : BOOLEAN;
+
+END LongMath.

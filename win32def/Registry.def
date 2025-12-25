@@ -1,0 +1,219 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Registry;
+(* this module contains functions to simplify access to the WIN32 registry *)
+(* the first group of functions are for general purpose use of the registry *)
+(* the second group of functions are used in registering an application *)
+(* and its files and icons into the operating system *)
+(* you need to understand the Win32 regestry to understand these functions *)
+
+FROM WIN32 IMPORT
+    DWORD;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+TYPE
+    RegistryBase = (CurrentUser, LocalMachine);
+
+    EnumCallBack        = PROCEDURE(ARRAY OF CHAR);
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(*********** General purpose registry functions ***********)
+
+PROCEDURE InitRegistry(base : RegistryBase;
+                       pathStr : ARRAY OF CHAR;
+                       create : BOOLEAN) : BOOLEAN;
+(* You must call this before using any function in this module *)
+(* base = the registry base key you are going to use *)
+(* pathStr = the full path from the base of the directory that you *)
+(* are going to use. *)
+(* If create = TRUE the path is created if it does not exist. *)
+(* If create = FALSE the path must exist *)
+(* This procedure sets the "current directory" that the following *)
+(* functions operate under *)
+(* returns TRUE if successful *)
+
+PROCEDURE ReadRegString(keyName : ARRAY OF CHAR;
+                        VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* reads a string from the registry *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* str = the data returned *)
+(* return TRUE if successful *)
+
+PROCEDURE WriteRegString(keyName : ARRAY OF CHAR;
+                         str : ARRAY OF CHAR) : BOOLEAN;
+(* writes a string to the registry *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* str = the data to be written *)
+(* return TRUE if successful *)
+
+PROCEDURE ReadRegInt(keyName : ARRAY OF CHAR;
+                     VAR OUT val : INTEGER) : BOOLEAN;
+(* reads an integer from the registry *)
+(* the integer is in readable form. *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data returned *)
+(* return TRUE if successful *)
+
+PROCEDURE WriteRegInt(keyName : ARRAY OF CHAR;
+                      val : INTEGER) : BOOLEAN;
+(* writes an integer to the registry *)
+(* the integer is in readable form. *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data to be written *)
+(* return TRUE if successful *)
+
+PROCEDURE ReadRegCard(keyName : ARRAY OF CHAR;
+                      VAR OUT val : CARDINAL) : BOOLEAN;
+(* reads a cardinal from the registry *)
+(* the cardinal is in readable form. *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data returned *)
+(* return TRUE if successful *)
+
+PROCEDURE WriteRegCard(keyName : ARRAY OF CHAR;
+                       val : CARDINAL) : BOOLEAN;
+(* writes a cardinal to the registry *)
+(* the cardinal is in readable form. *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data to be written *)
+(* return TRUE if successful *)
+
+PROCEDURE ReadRegBool(keyName : ARRAY OF CHAR;
+                      VAR OUT val : BOOLEAN) : BOOLEAN;
+(* reads a boolean from the registry *)
+(* the boolean is in readable form. 0=FALSE, 1=TRUE *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data returned *)
+(* return TRUE if successful *)
+
+PROCEDURE WriteRegBool(keyName : ARRAY OF CHAR;
+                       val : BOOLEAN) : BOOLEAN;
+(* writes a boolean to the registry *)
+(* the boolean is in readable form. 0=FALSE, 1=TRUE *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* val = the data to be written *)
+(* return TRUE if successful *)
+
+PROCEDURE ReadRegBin(keyName : ARRAY OF CHAR;
+                     VAR OUT bin : ARRAY OF LOC) : BOOLEAN;
+(* reads binary data from the registry *)
+(* the size of the data is taken from the high bound of the passed array *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* bin = the data returned *)
+(* return TRUE if successful *)
+
+PROCEDURE WriteRegBin(keyName : ARRAY OF CHAR;
+                      bin : ARRAY OF LOC) : BOOLEAN;
+(* writes binary data to the registry *)
+(* the size of the data is taken from the high bound of the passed array *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+(* bin = the data to be written *)
+(* return TRUE if successful *)
+
+PROCEDURE ReadRegDWord(keyName : ARRAY OF CHAR;
+                        VAR OUT val : DWORD) : BOOLEAN;
+PROCEDURE WriteRegDWord(keyName : ARRAY OF CHAR;
+                         val : DWORD) : BOOLEAN;
+
+PROCEDURE RemoveRegItem(keyName : ARRAY OF CHAR);
+(* removes the registry item identified by keyName *)
+(* keyName = the name of the registry key *)
+(*           and empty string specifies the default entry *)
+
+PROCEDURE RemoveRegDir(base : RegistryBase; keyName : ARRAY OF CHAR);
+(* removes the registry directory identified by keyName *)
+(* all subdirectories below keyName will be removed *)
+(* keyName = the name of the registry directory *)
+
+PROCEDURE EnumRegItems(call : EnumCallBack);
+
+(*********** Application registering functions ***********)
+
+PROCEDURE RegisterProgramPath(program, searchPath : ARRAY OF CHAR);
+(* this function registers your program executable *)
+(* program = a fully qualified file specification for your executable *)
+(* searchPath = if your program needs to have items set into the system *)
+(* search path, then specify these in this paramer. The format is the *)
+(* same as the system path environment variable. *)
+
+PROCEDURE RegisterFileExtAppName(ext : ARRAY OF CHAR;
+                                 appName : ARRAY OF CHAR;
+                                 description : ARRAY OF CHAR);
+(* this function registers a file extension to the registry *)
+(* ext = the file extension. eg ".DEF" *)
+(* appName = the registry application name for the extension *)
+(*           this should be something that will be unique to your program *)
+(*           it is possible that other programs may use the same extension *)
+(*           that your program does *)
+(*           the rest of the file registry items refer to this appName *)
+(* description = describes what the file is/and/or contains *)
+
+PROCEDURE RegisterFileIcon(appName : ARRAY OF CHAR;
+                           exeName : ARRAY OF CHAR;
+                           icon : INTEGER);
+(* registers an icon to be displaed by the system when listing the file *)
+(* appName = a registry appName previously registered *)
+(* exeName = a full path to an executable file that contains the icon *)
+(* icon = the n'th icon in the file is the icon used *)
+
+PROCEDURE RegisterFileOpen(appName : ARRAY OF CHAR;
+                           command : ARRAY OF CHAR);
+(* registers the "open" command for the file *)
+(* appName = a registry appName previously registered *)
+(* command is a command line to execute for the command *)
+(* eg command might be *)
+(* C:\DEV\MYEDITOR.EXE "%1" *)
+(* %1 is replaced with the file spec of the file to opened *)
+(* You should place a double quote around the %1 because filenames can *)
+(* contain space characters. This implies that your program knows what *)
+(* to do with the double quote character on the command line *)
+
+PROCEDURE RegisterFilePrint(appName : ARRAY OF CHAR;
+                            command : ARRAY OF CHAR);
+(* registers the "print" command for the file *)
+(* appName = a registry appName previously registered *)
+(* command is a command line to execute for the command *)
+(* eg command might be *)
+(* C:\DEV\MYEDITOR.EXE /PRINT:"%1" *)
+(* %1 is replaced with the file spec of the file to printed *)
+(* You should place a double quote around the %1 because filenames can *)
+(* contain space characters. This implies that your program knows what *)
+(* to do with the double quote character on the command line *)
+
+PROCEDURE RegisterFilePrintTo(appName : ARRAY OF CHAR;
+                              command : ARRAY OF CHAR);
+(* registers the drag and drop printing feature of the shell for the file *)
+(* appName = a registry appName previously registered *)
+(* command is a command line to execute for the command *)
+(* eg command might be *)
+(* C:\DEV\MYEDITOR.EXE /PRINTTO:"%1","%2","%3","%4" *)
+(* %1 is replaced with the file spec of the file to printed *)
+(* %2 is the printer name *)
+(* %3 is the driver name *)
+(* %4 is the port name *)
+(* You should place a double quote around the %1 because filenames can *)
+(* contain space characters. This implies that your program knows what *)
+(* to do with the double quote character on the command line *)
+
+END Registry.

@@ -1,0 +1,91 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE lmcons;
+
+FROM WIN32 IMPORT
+    WINT, DWORD;
+
+FROM lmerr IMPORT
+    NERR_BASE;
+
+CONST
+    CNLEN                = 15;
+    LM20_CNLEN           = 15;
+    DNLEN                = CNLEN;
+    LM20_DNLEN           = LM20_CNLEN;
+
+    UNCLEN               = CNLEN + 2;
+    LM20_UNCLEN          = LM20_CNLEN + 2;
+
+    NNLEN                = 80;
+    LM20_NNLEN           = 12;
+
+    RMLEN                = UNCLEN+1+NNLEN;
+    LM20_RMLEN           = LM20_UNCLEN+1+LM20_NNLEN;
+
+    SNLEN                = 80;
+    LM20_SNLEN           = 15;
+    STXTLEN              = 256;
+    LM20_STXTLEN         = 63;
+    PATHLEN              = 256;
+    LM20_PATHLEN         = 256;
+    DEVLEN               = 80;
+    LM20_DEVLEN          = 8;
+    EVLEN                = 16;
+    UNLEN                = 256;
+    LM20_UNLEN           = 20;
+
+    GNLEN                = UNLEN;
+    LM20_GNLEN           = LM20_UNLEN;
+
+    PWLEN                = 256;
+    LM20_PWLEN           = 14;
+    SHPWLEN              = 8;
+    CLTYPE_LEN           = 12;
+    MAXCOMMENTSZ         = 256;
+    LM20_MAXCOMMENTSZ    = 48;
+
+    QNLEN                = NNLEN;
+    LM20_QNLEN           = LM20_NNLEN;
+
+    ALERTSZ              = 128;
+
+    MAXDEVENTRIES        = SIZE(WINT) * 8;
+
+    NETBIOS_NAME_LEN     = 16;
+
+    MAX_PREFERRED_LENGTH = 0ffffFFFFh;
+
+    CRYPT_KEY_LEN        = 7;
+    CRYPT_TXT_LEN        = 8;
+    ENCRYPTED_PWLEN      = 16;
+    SESSION_PWLEN        = 24;
+    SESSION_CRYPT_KLEN   = 21;
+    PARMNUM_ALL          = 0;
+
+    PARM_ERROR_UNKNOWN   = 0ffffFFFFh;
+    PARM_ERROR_NONE      = 0;
+    PARMNUM_BASE_INFOLEVEL= 1000;
+
+    MESSAGE_FILENAME     = "NETMSG";
+    OS2MSG_FILENAME      = "BASE";
+    HELP_MSG_FILENAME    = "NETH";
+    BACKUP_MSG_FILENAME  = "BAK.MSG";
+
+    PLATFORM_ID_DOS      = 300;
+    PLATFORM_ID_OS2      = 400;
+    PLATFORM_ID_NT       = 500;
+    PLATFORM_ID_OSF      = 600;
+    PLATFORM_ID_VMS      = 700;
+
+    MIN_LANMAN_MESSAGE_ID= NERR_BASE;
+    MAX_LANMAN_MESSAGE_ID= 5799;
+
+TYPE
+    NET_API_STATUS      = DWORD;
+
+END lmcons.

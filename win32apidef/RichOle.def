@@ -1,0 +1,182 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+UNSAFEGUARDED DEFINITION MODULE RichOle;
+
+FROM SYSTEM IMPORT
+    CAST;
+
+FROM WIN32 IMPORT
+    DWORD, LONG, SIZEL, ULONG, HRESULT, BOOL, HGLOBAL, WORD, HMENU, GUID;
+
+FROM RPCCore IMPORT
+    CLSID;
+
+FROM OOle2 IMPORT
+    CLIPFORMAT, OLEINPLACEFRAMEINFO,
+    IUnknown, IOleClientSite, IOleObject, IStorage, IDataObject,
+    IOleInPlaceFrame, IOleInPlaceUIWindow;
+
+FROM RichEdit IMPORT
+    CHARRANGE;
+
+(*MVN+*)
+<*/Foreign*>
+(*MVN-*)
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+
+TYPE
+    REOBJECT = RECORD
+          cbStruct       : DWORD;
+          cp             : LONG;
+          clsid          : CLSID;
+          poleobj        : IOleObject;
+          pstg           : IStorage;
+          polesite       : IOleClientSite;
+          sizel          : SIZEL;
+          dvaspect       : DWORD;
+          dwFlags        : DWORD;
+          dwUser         : DWORD;
+    END;
+
+CONST
+    REO_GETOBJ_NO_INTERFACES    = 00000000h;
+    REO_GETOBJ_POLEOBJ          = 00000001h;
+    REO_GETOBJ_PSTG             = 00000002h;
+    REO_GETOBJ_POLESITE         = 00000004h;
+    REO_GETOBJ_ALL_INTERFACES   = 00000007h;
+
+    REO_CP_SELECTION            = CAST(ULONG, -1);
+
+    REO_IOB_SELECTION           = CAST(ULONG, -1);
+    REO_IOB_USE_CP              = CAST(ULONG, -2);
+
+    REO_NULL                    = 00000000h;
+    REO_READWRITEMASK           = 0000003Fh;
+    REO_DONTNEEDPALETTE         = 00000020h;
+    REO_BLANK                   = 00000010h;
+    REO_DYNAMICSIZE             = 00000008h;
+    REO_INVERTEDSELECT          = 00000004h;
+    REO_BELOWBASELINE           = 00000002h;
+    REO_RESIZABLE               = 00000001h;
+    REO_LINK                    = 80000000h;
+    REO_STATIC                  = 40000000h;
+    REO_SELECTED                = 08000000h;
+    REO_OPEN                    = 04000000h;
+    REO_INPLACEACTIVE           = 02000000h;
+    REO_HILITED                 = 01000000h;
+    REO_LINKAVAILABLE           = 00800000h;
+    REO_GETMETAFILE             = 00400000h;
+
+    RECO_PASTE                  = 00000000h;
+    RECO_DROP                   = 00000001h;
+    RECO_COPY                   = 00000002h;
+    RECO_CUT                    = 00000003h;
+    RECO_DRAG                   = 00000004h;
+
+    IID_IRichEditOle = GUID{20D00h, 0, 0, {0C0h, 0, 0, 0, 0,0, 0, 46h}};
+    IID_IRichEditOleCallBack = GUID{20D03h, 0, 0, {0C0h, 0, 0, 0, 0,0, 0, 46h}};
+
+ABSTRACT CLASS IRichEditOle;
+
+INHERIT IUnknown;
+REVEAL GetClientSite, GetObjectCount,  GetObject, InsertObject,
+       ConvertObject, ActivateAs, SetHostNames, SetLinkAvailable,
+       SetDvaspect, HandsOffStorage, SaveCompleted, InPlaceDeactivate,
+       ContextSensitiveHelp, GetClipboardData, ImportData;
+
+ABSTRACT PROCEDURE GetClientSite(VAR oleSite : IOleClientSite) : HRESULT;
+
+ABSTRACT PROCEDURE GetObjectCount() : LONG;
+
+ABSTRACT PROCEDURE GetLinkCount() : LONG;
+
+ABSTRACT PROCEDURE GetObject(VAR data : REOBJECT; flags : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE InsertObject(a : REOBJECT) : HRESULT;
+
+ABSTRACT PROCEDURE ConvertObject(iob : LONG;
+                                 clsidNew : CLSID;
+                                 userTypeNew : ARRAY OF ACHAR) : HRESULT;
+
+ABSTRACT PROCEDURE ActivateAs(thisClass : CLSID;
+                              asThisClass : CLSID) : HRESULT;
+
+ABSTRACT PROCEDURE SetHostNames(containerApp : ARRAY OF ACHAR;
+                                containerObj : ARRAY OF ACHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetLinkAvailable(iob : LONG; available : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE SetDvaspect(iob : LONG; dvaspect : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE HandsOffStorage(iob : LONG) : HRESULT;
+
+ABSTRACT PROCEDURE SaveCompleted(iob : LONG; b : IStorage) : HRESULT;
+
+ABSTRACT PROCEDURE InPlaceDeactivate() : HRESULT;
+
+ABSTRACT PROCEDURE ContextSensitiveHelp(enterMode : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE GetClipboardData(a : CHARRANGE;
+                                    reco : DWORD;
+                                    VAR data : IDataObject) : HRESULT;
+
+ABSTRACT PROCEDURE ImportData(data : IDataObject;
+                              metaPict : CLIPFORMAT) : HRESULT;
+
+END IRichEditOle;
+
+TYPE
+    LPRICHEDITOLE = POINTER TO IRichEditOle;
+
+ABSTRACT CLASS IRichEditOleCallback;
+INHERIT IUnknown;
+REVEAL GetNewStorage, GetInPlaceContext, ShowContainerUI,
+       QueryInsertObject, DeleteObject, QueryAcceptData, ContextSensitiveHelp,
+       GetClipboardData, GetDragDropEffect, GetContextMenu;
+
+ABSTRACT PROCEDURE GetNewStorage(VAR a : IStorage) : HRESULT;
+
+ABSTRACT PROCEDURE GetInPlaceContext(VAR frame : IOleInPlaceFrame;
+                                     VAR doc : IOleInPlaceUIWindow;
+                                     VAR frameInfo : OLEINPLACEFRAMEINFO) : HRESULT;
+
+ABSTRACT PROCEDURE ShowContainerUI(show : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE QueryInsertObject(a : CLSID;
+                                     VAR b : IStorage;
+                                     cp : LONG) : HRESULT;
+
+ABSTRACT PROCEDURE DeleteObject(VAR a : IOleObject) : HRESULT;
+
+ABSTRACT PROCEDURE QueryAcceptData(a : IDataObject;
+                                   VAR cfFormat : CLIPFORMAT;
+                                   reco : DWORD;
+                                   really : BOOL;
+                                   metaPict : HGLOBAL) : HRESULT;
+
+ABSTRACT PROCEDURE ContextSensitiveHelp(enterMode : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE GetClipboardData(VAR a : CHARRANGE;
+                                    reco : DWORD;
+                                    VAR data : IDataObject) : HRESULT;
+
+ABSTRACT PROCEDURE GetDragDropEffect(drag : BOOL;
+                                     keyState : DWORD;
+                                     VAR effect : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE GetContextMenu(selType : WORD;
+                                  oleObj : IOleObject;
+                                  VAR c : CHARRANGE;
+                                  VAR menu : HMENU) : HRESULT;
+
+END IRichEditOleCallback;
+
+TYPE
+    LPRICHEDITOLECALLBACK = POINTER TO IRichEditOleCallback;
+
+END RichOle.

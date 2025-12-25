@@ -1,0 +1,160 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE FormatString;
+
+FROM SYSTEM IMPORT
+    VA_LIST;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL*>
+%END
+<*/COPYATTRIBUTES*>
+
+PROCEDURE FormatString(formatStr : ARRAY OF CHAR;
+                       VAR OUT destStr : ARRAY OF CHAR) : BOOLEAN
+                         [RightToLeft, LEAVES, VARIABLE];
+
+(* destStr can be the same string as formatStr. *)
+(* this procedure takes a variable number of parameters *)
+(* to accomodate the contents of the format string *)
+
+(* note that when you pass a numeric constant you are *)
+(* passing a longint, since in the compiler all constants *)
+(* are longint size until typed by an assignment or expression. *)
+(* there is no formal parameter for a variable parameter to type check the constant to. *)
+(* use ORD or INT if you need a CARDINAL or INTEGER sized constant *)
+(* passed as one of the variable parameters. *)
+
+(* the following character combinations allow simple entry of some *)
+(* control characters into a format string *)
+(* control characters are prefixed by a backslash character *)
+(* \n = new line
+        on Unix systems this is a single linefeed character CHR(10).
+        on Microsoft systems this outputs two characters CHR(13)CHR(10)
+*)
+(* \t = horizontal tab *)
+(* \v = vertical tab *)
+(* \f = form feed *)
+(* \x000 = character in hexidecimal form *)
+(* if you want a backslash character in the output string then you need *)
+(* to use a double backslash character sequence. \\ *)
+(* if an unknown control specifier follows a backslash it is simply output *)
+(* as itself, remember that the \ preceeding the char is not output *)
+
+(*
+  Format specifications, discussed below, always begin with a percent
+  sign (%). If a percent sign is followed by a character that has no
+  meaning as a format field, the function immediately returns FALSE,
+  unless the next character is also a percent sign. In this case a
+  single percent sign is placed into the output string.
+  The format-control string is read from left to right. When the first
+  format specification (if any) is encountered, it causes the value of
+  the first variable argument to be converted and copied to the output string
+  according to the format specification.
+  The second format specification causes the second argument to be
+  converted and copied, and so on. If there are more arguments than
+  format specifications, the extra arguments are ignored. If there are
+  not enough arguments for all of the format specifications, the results
+  are undefined.
+
+  The function will return FALSE if the output string cannot fully contain
+  the results of the formatting.
+  An illegal format field will cause a return of FALSE.
+  A hex control character that is too large will cause a return of FALSE.
+  A field width that is too large will cause a return of FALSE.
+  Otherwise the function returns TRUE.
+
+  A format specification has the following form:
+    %[-]['][width]type
+
+  Each field is a single character or a number signifying a particular
+  format option. The type characters that appear after the last optional
+  format field determine whether the associated argument is interpreted
+  as a string, or a number. The simplest format specification contains
+  only the percent sign and a type character (for example, %s).
+  The optional fields control other aspects of the formatting.
+  Following are the optional and required fields and their meanings:
+
+  Field         Meaning
+  -             Pad the output to the right to fill the field width, thus
+                justifying output to the left.
+                If this field is omitted, the output is padded to the left,
+                thus justifying it to the right.
+
+  '             The single quote character is followed by a character
+                which will be used as the padding character if padding
+                of the field is necessary. The default padding character
+                is a blank space.
+
+  width         A field width is specified by a cardinal constant or
+                an asterisk. An asterisk specifies the field width is a
+                variable and is the next parameter in the format parameters.
+                The parameter type is CARDINAL.
+
+                Width must be <= 256.
+
+                Copy the specified minimum number of characters to the
+                output string. The width field is a cardinal and the
+                default is zero.
+
+                The width specification never causes a value to be
+                truncated; if the number of characters in the output value
+                is greater than the specified width, or if the width field
+                is not present, all characters of the value are printed.
+
+                Pad characters will be output as necessary to fill the
+                field width if the value does not fully occupy the
+                specified width.
+
+  type          Output the corresponding argument as a string, or a number.
+
+                This field can be any of the following character sequences:
+                The output type specifiers are not case sensitive.
+
+        c       the type is CARDINAL, output is in decimal
+        i       the type is INTEGER, output is in decimal
+        l       the type is LONGINT, output is in decimal
+        u       the type is LONGCARD, output is in decimal
+        h       the type is CARDINAL/INTEGER, output is in hexadecimal
+        x       the type is LONGCARD/LONGINT, output is in hexadecimal
+                the number is output without leading zeros. if you want leading zeros
+                use the width and padding character features. for example
+                %'08h  => outputs a hex number with eight digits. zeros will be used for
+                leading pad characters.
+        b       the type is BOOLEAN, output is 'FALSE' or 'TRUE'
+        a       the type is ADDRESS, output is in hexadecimal
+        s       the type is a null terminated ARRAY OF CHAR.
+                The terminating null character is mandatory.
+*)
+
+PROCEDURE FormatStringEx(formatStr : ARRAY OF CHAR;
+                         VAR OUT destStr : ARRAY OF CHAR;
+                         VAR INOUT args : VA_LIST) : BOOLEAN;
+(*
+  as FormatString except the base address of the "variable" arguments is
+  passed in the args parameter.
+
+  this function can be useful within a procedure that accepts a variable number of
+  arguments and still wants to call FormatString with those variable arguments.
+  in this case do the following.
+
+  for example this is how the FormatString procedure of this module is implemented.
+
+  PROCEDURE FormatString(formatStr : ARRAY OF CHAR;
+                         VAR OUT destStr : ARRAY OF CHAR) : BOOLEAN;
+  VAR
+      args      : VA_LIST;
+  BEGIN
+      VA_START(args);(* <= to get the variable arguments base address *)
+
+      RETURN FormatStringEx(formatStr, destStr, args);
+  END FormatString;
+*)
+
+END FormatString.

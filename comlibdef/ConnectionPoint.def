@@ -1,0 +1,29 @@
+(*
+Name:     ConnectionPoint
+Creation: 02-03-2000
+LastEdit: 02-03-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+UNSAFEGUARDED DEFINITION MODULE ConnectionPoint;
+
+IMPORT WIN32;
+IMPORT Ole2;
+
+CLASS C;
+  REVEAL Connect;
+
+  PROCEDURE Connect(iUnknownSource: Ole2.IUnknown;
+                    iUnknownSink:   Ole2.IUnknown;
+                    iidSink:        WIN32.IID): BOOLEAN;
+  (* connects a source interface on a sink object to a connectable object *)
+  (* iUnknownSource = iUnknown of connectable object *)
+  (* iUnknownSink   = iUnknown of sink object *)
+  (* iidSink        = IID of the sink interface *)
+END C;
+
+
+
+END ConnectionPoint.

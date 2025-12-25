@@ -1,0 +1,117 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE SortLib;
+(* This module provides implementations of various sort algorithms. *)
+(* The QuickSort is by far the fastest and best all around sort. *)
+(* This QuickSort implements all the popular quicksort optimizations *)
+(* and as such performs very well on most all input data sets including *)
+(* fully sorted. Its one weakness is data already sorted in reverse order. *)
+
+(* The sort procedures are designed to work with sequences of elements *)
+(* that are referenced with an index. This is exaclty like an array however *)
+(* your data need not be in array format since these sort procedures never *)
+(* access the actual data being sorted. *)
+(* This is where the procedure parameters come into play. You pass the sort *)
+(* procedure access procedures that the sort calls passing those procedures *)
+(* in the index locations of the elements the sort wishes to access. *)
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+TYPE
+    LessEqProc          = PROCEDURE((*left:*) CARDINAL,
+                                    (*right:*) CARDINAL,
+                                    (*eqAlso:*) BOOLEAN) : BOOLEAN;
+    LessEqProcEx        = PROCEDURE((*left:*) CARDINAL,
+                                    (*right:*) CARDINAL,
+                                    (*eqAlso:*) BOOLEAN,
+                                    (*userData:*)ADDRESS) : BOOLEAN;
+    (* The left element is compared for less than the right element *)
+    (* and returns TRUE if the left element is less than the right *)
+    (* If eqAlso = TRUE then the comparison should test for *)
+    (* less than or equal and return TRUE if the left is less than or equal *)
+    (* to the right *)
+
+    SwapProc            = PROCEDURE(CARDINAL, CARDINAL);
+    SwapProcEx          = PROCEDURE(CARDINAL, CARDINAL,(*userData:*)ADDRESS);
+    (* the two elements exchange positions in the sequence *)
+
+    AssignProc          = PROCEDURE((*left:*) CARDINAL,
+                                    (*right:*) CARDINAL);
+    AssignProcEx        = PROCEDURE((*left:*) CARDINAL,
+                                    (*right:*) CARDINAL,
+                                    (*userData:*)ADDRESS);
+    (* The right element assigned to the left element *)
+
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE QuickSort(numItems : CARDINAL;
+                    lessEq : LessEqProc;
+                    swap : SwapProc);
+PROCEDURE QuickSortEx(numItems : CARDINAL;
+                      lessEq : LessEqProcEx;
+                      swap : SwapProcEx;
+                      userData : ADDRESS);
+(* this procedure sorts into accending order a sequence of numItems *)
+(* elements. The elements are indexed from 1..numItems *)
+(* The QuickSort is not a stable sort *)
+
+PROCEDURE HeapSort(numItems : CARDINAL;
+                   lessEq : LessEqProc;
+                   swap : SwapProc);
+PROCEDURE HeapSortEx(numItems : CARDINAL;
+                     lessEq : LessEqProcEx;
+                     swap : SwapProcEx;
+                     userData : ADDRESS);
+(* this procedure sorts into accending order a sequence of numItems *)
+(* elements. The elements are indexed from 1..numItems *)
+(* The HeapSort is not a stable sort *)
+
+PROCEDURE ShellSort(numItems : CARDINAL;
+                    lessEq : LessEqProc;
+                    assign : AssignProc);
+PROCEDURE ShellSortEx(numItems : CARDINAL;
+                      lessEq : LessEqProcEx;
+                      assign : AssignProcEx;
+                      userData : ADDRESS);
+(* this procedure sorts into accending order a sequence of numItems *)
+(* elements. The elements are indexed from 1..numItems *)
+(* A temporary storage location is used during the sort *)
+(* and this location is indexed as element 0 *)
+(* The ShellSort is not a stable sort *)
+
+PROCEDURE BinaryInsertSort(numItems : CARDINAL;
+                           lessEq : LessEqProc;
+                           assign : AssignProc);
+PROCEDURE BinaryInsertSortEx(numItems : CARDINAL;
+                             lessEq : LessEqProcEx;
+                             assign : AssignProcEx;
+                             userData : ADDRESS);
+(* this procedure sorts into accending order a sequence of numItems *)
+(* elements. The elements are indexed from 1..numItems *)
+(* A temporary storage location is used during the sort *)
+(* and this location is indexed as element 0 *)
+(* The BinaryInsertionSort is a stable sort *)
+
+PROCEDURE MergeSort(numItems : CARDINAL;
+                    lessEq : LessEqProc;
+                    assign : AssignProc);
+PROCEDURE MergeSortEx(numItems : CARDINAL;
+                      lessEq : LessEqProcEx;
+                      assign : AssignProcEx;
+                      userData : ADDRESS);
+(* this procedure sorts into accending order a sequence of numItems *)
+(* elements. The elements are indexed from 1..numItems *)
+(* Temporary locations are indexed from numItems+1..2*numItems *)
+(* The MergeSort is a stable sort *)
+
+END SortLib.

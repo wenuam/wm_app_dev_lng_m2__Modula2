@@ -1,0 +1,309 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINPERF;
+
+FROM WIN32 IMPORT
+    WCHAR, DWORD, LONG, SYSTEMTIME, LARGE_INTEGER, LPWSTR, LPVOID;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    PERF_DATA_VERSION    = 1;
+    PERF_DATA_REVISION   = 1;
+
+TYPE
+    PERF_DATA_BLOCK = RECORD
+          Signature      : ARRAY [0..4 - 1] OF WCHAR;
+          LittleEndian   : DWORD;
+          Version        : DWORD;
+          Revision       : DWORD;
+          TotalByteLength: DWORD;
+          HeaderLength   : DWORD;
+          NumObjectTypes : DWORD;
+          DefaultObject  : LONG;
+          SystemTime     : SYSTEMTIME;
+          PerfTime       : LARGE_INTEGER;
+          PerfFreq       : LARGE_INTEGER;
+          PerfTime100nSec: LARGE_INTEGER;
+          SystemNameLength: DWORD;
+          SystemNameOffset: DWORD;
+    END;
+    PPERF_DATA_BLOCK     = POINTER TO PERF_DATA_BLOCK;
+
+    PERF_OBJECT_TYPE = RECORD
+          TotalByteLength: DWORD;
+          DefinitionLength: DWORD;
+          HeaderLength   : DWORD;
+          ObjectNameTitleIndex: DWORD;
+          ObjectNameTitle: LPWSTR;
+          ObjectHelpTitleIndex: DWORD;
+          ObjectHelpTitle: LPWSTR;
+          DetailLevel    : DWORD;
+          NumCounters    : DWORD;
+          DefaultCounter : LONG;
+          NumInstances   : LONG;
+          CodePage       : DWORD;
+          PerfTime       : LARGE_INTEGER;
+          PerfFreq       : LARGE_INTEGER;
+    END;
+    PPERF_OBJECT_TYPE    = POINTER TO PERF_OBJECT_TYPE;
+
+CONST
+    PERF_NO_INSTANCES    = - 1 ;
+    PERF_SIZE_DWORD      = 000000000h;
+    PERF_SIZE_LARGE      = 000000100h;
+    PERF_SIZE_ZERO       = 000000200h;
+    PERF_SIZE_VARIABLE_LEN= 000000300h;
+    PERF_TYPE_NUMBER     = 000000000h;
+    PERF_TYPE_COUNTER    = 000000400h;
+    PERF_TYPE_TEXT       = 000000800h;
+    PERF_TYPE_ZERO       = 000000C00h;
+    PERF_NUMBER_HEX      = 000000000h;
+    PERF_NUMBER_DECIMAL  = 000010000h;
+    PERF_NUMBER_DEC_1000 = 000020000h;
+    PERF_COUNTER_VALUE   = 000000000h;
+    PERF_COUNTER_RATE    = 000010000h;
+    PERF_COUNTER_FRACTION= 000020000h;
+    PERF_COUNTER_BASE    = 000030000h;
+    PERF_COUNTER_ELAPSED = 000040000h;
+    PERF_COUNTER_QUEUELEN= 000050000h;
+    PERF_COUNTER_HISTOGRAM= 000060000h;
+    PERF_TEXT_UNICODE    = 000000000h;
+    PERF_TEXT_ASCII      = 000010000h;
+    PERF_TIMER_TICK      = 000000000h;
+    PERF_TIMER_100NS     = 000100000h;
+    PERF_OBJECT_TIMER    = 000200000h;
+    PERF_DELTA_COUNTER   = 000400000h;
+    PERF_DELTA_BASE      = 000800000h;
+    PERF_INVERSE_COUNTER = 001000000h;
+    PERF_MULTI_COUNTER   = 002000000h;
+    PERF_DISPLAY_NO_SUFFIX= 000000000h;
+    PERF_DISPLAY_PER_SEC = 010000000h;
+    PERF_DISPLAY_PERCENT = 020000000h;
+    PERF_DISPLAY_SECONDS = 030000000h;
+    PERF_DISPLAY_NOSHOW  = 040000000h;
+
+    PERF_COUNTER_COUNTER        = ( PERF_SIZE_DWORD BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_RATE BOR PERF_TIMER_TICK BOR PERF_DELTA_COUNTER BOR PERF_DISPLAY_PER_SEC ) ;
+    PERF_COUNTER_TIMER          = ( PERF_SIZE_LARGE BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_RATE BOR PERF_TIMER_TICK BOR PERF_DELTA_COUNTER BOR PERF_DISPLAY_PERCENT ) ;
+    PERF_COUNTER_QUEUELEN_TYPE  = ( PERF_SIZE_DWORD BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_QUEUELEN BOR PERF_TIMER_TICK BOR PERF_DELTA_COUNTER BOR PERF_DISPLAY_NO_SUFFIX ) ;
+    PERF_COUNTER_LARGE_QUEUELEN_TYPE  =
+            (PERF_SIZE_LARGE BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_QUEUELEN BOR
+            PERF_TIMER_TICK BOR PERF_DELTA_COUNTER BOR PERF_DISPLAY_NO_SUFFIX);
+    PERF_COUNTER_BULK_COUNT     = ( PERF_SIZE_LARGE BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_RATE BOR PERF_TIMER_TICK BOR PERF_DELTA_COUNTER BOR PERF_DISPLAY_PER_SEC ) ;
+    PERF_COUNTER_TEXT           = ( PERF_SIZE_VARIABLE_LEN BOR PERF_TYPE_TEXT BOR PERF_TEXT_UNICODE BOR PERF_DISPLAY_NO_SUFFIX ) ;
+    PERF_COUNTER_RAWCOUNT       = ( PERF_SIZE_DWORD BOR PERF_TYPE_NUMBER BOR PERF_NUMBER_DECIMAL BOR PERF_DISPLAY_NO_SUFFIX ) ;
+    PERF_COUNTER_LARGE_RAWCOUNT = ( PERF_SIZE_LARGE BOR PERF_TYPE_NUMBER BOR PERF_NUMBER_DECIMAL BOR PERF_DISPLAY_NO_SUFFIX ) ;
+    PERF_COUNTER_RAWCOUNT_HEX   = PERF_SIZE_DWORD BOR
+                                PERF_TYPE_NUMBER BOR
+                                PERF_NUMBER_HEX BOR
+                                PERF_DISPLAY_NO_SUFFIX;
+    PERF_COUNTER_LARGE_RAWCOUNT_HEX     = PERF_SIZE_LARGE BOR
+                                PERF_TYPE_NUMBER BOR
+                                PERF_NUMBER_HEX BOR
+                                PERF_DISPLAY_NO_SUFFIX;
+
+    PERF_SAMPLE_FRACTION        = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_FRACTION BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_DELTA_BASE BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_SAMPLE_COUNTER         = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_TICK BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_DISPLAY_NO_SUFFIX;
+
+    PERF_COUNTER_NODATA         = PERF_SIZE_ZERO BOR
+                                  PERF_DISPLAY_NOSHOW;
+
+    PERF_COUNTER_TIMER_INV      = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_TICK BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_INVERSE_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_SAMPLE_BASE            = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_BASE BOR
+                                  PERF_DISPLAY_NOSHOW BOR
+                                  00000001h;
+
+    PERF_AVERAGE_TIMER          = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_FRACTION BOR
+                                  PERF_DISPLAY_SECONDS;
+
+    PERF_AVERAGE_BASE           = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_BASE BOR
+                                  PERF_DISPLAY_NOSHOW BOR 00000002h;
+
+    PERF_AVERAGE_BULK           = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_FRACTION BOR
+                                  PERF_DISPLAY_NOSHOW;
+
+    PERF_100NSEC_TIMER          = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_100NS BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_100NSEC_TIMER_INV      = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_100NS BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_INVERSE_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_COUNTER_MULTI_TIMER    = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_TIMER_TICK BOR
+                                  PERF_MULTI_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_COUNTER_MULTI_TIMER_INV= PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_MULTI_COUNTER BOR
+                                  PERF_TIMER_TICK BOR
+                                  PERF_INVERSE_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_COUNTER_MULTI_BASE     = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_BASE BOR
+                                  PERF_MULTI_COUNTER BOR
+                                  PERF_DISPLAY_NOSHOW;
+
+    PERF_100NSEC_MULTI_TIMER    = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_100NS BOR
+                                  PERF_MULTI_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_100NSEC_MULTI_TIMER_INV= PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_DELTA_COUNTER BOR
+                                  PERF_COUNTER_RATE BOR
+                                  PERF_TIMER_100NS BOR
+                                  PERF_MULTI_COUNTER BOR
+                                  PERF_INVERSE_COUNTER BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_RAW_FRACTION           = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_FRACTION BOR
+                                  PERF_DISPLAY_PERCENT;
+
+    PERF_RAW_BASE               = PERF_SIZE_DWORD BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_BASE BOR
+                                  PERF_DISPLAY_NOSHOW BOR 00000003h;
+
+    PERF_ELAPSED_TIME           = PERF_SIZE_LARGE BOR
+                                  PERF_TYPE_COUNTER BOR
+                                  PERF_COUNTER_ELAPSED BOR
+                                  PERF_OBJECT_TIMER BOR
+                                  PERF_DISPLAY_SECONDS;
+
+    PERF_COUNTER_HISTOGRAM_TYPE= 080000000h;
+
+(*
+/  This counter is used to display the difference from one sample
+/  to the next. The counter value is a constantly increasing number
+/  and the value displayed is the difference between the current
+/  value and the previous value. Negative numbers are not allowed
+/  which shouldn't be a problem as long as the counter value is
+/  increasing or unchanged.
+*)
+
+    PERF_COUNTER_DELTA =
+            (PERF_SIZE_DWORD BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_VALUE BOR
+            PERF_DELTA_COUNTER BOR PERF_DISPLAY_NO_SUFFIX);
+
+    PERF_COUNTER_LARGE_DELTA =
+            (PERF_SIZE_LARGE BOR PERF_TYPE_COUNTER BOR PERF_COUNTER_VALUE BOR
+            PERF_DELTA_COUNTER BOR PERF_DISPLAY_NO_SUFFIX);
+
+    PERF_DETAIL_NOVICE   = 100;
+    PERF_DETAIL_ADVANCED = 200;
+    PERF_DETAIL_EXPERT   = 300;
+    PERF_DETAIL_WIZARD   = 400;
+
+TYPE
+    PERF_COUNTER_DEFINITION = RECORD
+          ByteLength     : DWORD;
+          CounterNameTitleIndex: DWORD;
+          CounterNameTitle: LPWSTR;
+          CounterHelpTitleIndex: DWORD;
+          CounterHelpTitle: LPWSTR;
+          DefaultScale   : LONG;
+          DetailLevel    : DWORD;
+          CounterType    : DWORD;
+          CounterSize    : DWORD;
+          CounterOffset  : DWORD;
+    END;
+    PPERF_COUNTER_DEFINITION= POINTER TO PERF_COUNTER_DEFINITION;
+
+CONST
+    PERF_NO_UNIQUE_ID    = - 1 ;
+
+TYPE
+    PERF_INSTANCE_DEFINITION = RECORD
+          ByteLength     : DWORD;
+          ParentObjectTitleIndex: DWORD;
+          ParentObjectInstance: DWORD;
+          UniqueID       : LONG;
+          NameOffset     : DWORD;
+          NameLength     : DWORD;
+    END;
+    PPERF_INSTANCE_DEFINITION= POINTER TO PERF_INSTANCE_DEFINITION;
+
+    PERF_COUNTER_BLOCK = RECORD
+          ByteLength     : DWORD;
+    END;
+    PPERF_COUNTER_BLOCK  = POINTER TO PERF_COUNTER_BLOCK;
+
+(*
+/ Support for New Extensible API starting with NT 5.0
+*)
+CONST
+     PERF_QUERY_OBJECTS      =80000000h;
+     PERF_QUERY_GLOBAL       =80000001h;
+     PERF_QUERY_COSTLY       =80000002h;
+
+TYPE
+    PM_OPEN_PROC         = PROCEDURE(ARRAY OF UCHAR) : DWORD [EXPORT];
+    PM_COLLECT_PROC      = PROCEDURE (ARRAY OF UCHAR,
+                                      VAR LPVOID,
+                                      VAR DWORD,
+                                      VAR DWORD) : DWORD [EXPORT];
+    PM_CLOSE_PROC        = PROCEDURE() : DWORD [EXPORT];
+    PM_QUERY_PROC        = PROCEDURE(VAR DWORD,
+                                     VAR LPVOID,
+                                     VAR DWORD,
+                                     VAR DWORD) : DWORD [EXPORT];
+
+CONST
+    MAX_PERF_OBJECTS_IN_QUERY_FUNCTION      = 8;
+
+END WINPERF.

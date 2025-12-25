@@ -1,0 +1,1130 @@
+DEFINITION MODULE BitsMsg;
+(***************************************************************************
+*                                                                          *
+*   bitsmsg.h --  error code definitions for the background file copier    *
+*                                                                          *
+*   Copyright (c) 2000, Microsoft Corp. All rights reserved.               *
+*                                                                          *
+***************************************************************************)
+
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2012, ADW Software. All rights reserved. *)
+
+(*
+//  Values are 32 bit values laid out as follows:
+//
+//   3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+//   1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+//  +---+-+-+-----------------------+-------------------------------+
+//  |Sev|C|R|     Facility          |               Code            |
+//  +---+-+-+-----------------------+-------------------------------+
+//
+//  where
+//
+//      Sev - is the severity code
+//
+//          00 - Success
+//          01 - Informational
+//          10 - Warning
+//          11 - Error
+//
+//      C - is the Customer code flag
+//
+//      R - is a reserved bit
+//
+//      Facility - is the facility code
+//
+//      Code - is the facility's status code
+//
+//
+// Define the facility codes
+*)
+
+FROM WIN32 IMPORT LONG;
+FROM SYSTEM IMPORT CAST;
+
+(*
+// Define the severity codes
+*)
+
+CONST
+
+(*
+// MessageId: BG_E_NOT_FOUND
+//
+// MessageText:
+//
+// The requested job was not found.
+*)
+    BG_E_NOT_FOUND = CAST(LONG, 080200001h);
+
+(*
+// MessageId: BG_E_INVALID_STATE
+//
+// MessageText:
+//
+// The requested action is not allowed in the current job state. The job might have been canceled or completed transferring. It is in a read-only state now.
+*)
+    BG_E_INVALID_STATE = CAST(LONG, 080200002h);
+
+(*
+// MessageId: BG_E_EMPTY
+//
+// MessageText:
+//
+// There are no files attached to this job. Attach files to the job, and then try again.
+*)
+    BG_E_EMPTY = CAST(LONG, 080200003h);
+
+(*
+// MessageId: BG_E_FILE_NOT_AVAILABLE
+//
+// MessageText:
+//
+// No file is available because no URL generated an error.
+*)
+    BG_E_FILE_NOT_AVAILABLE = CAST(LONG, 080200004h);
+
+(*
+// MessageId: BG_E_PROTOCOL_NOT_AVAILABLE
+//
+// MessageText:
+//
+// No protocol is available because no URL generated an error.
+*)
+    BG_E_PROTOCOL_NOT_AVAILABLE = CAST(LONG, 080200005h);
+
+(*
+// MessageId: BG_S_ERROR_CONTEXT_NONE
+//
+// MessageText:
+//
+// No errors have occurred.
+*)
+    BG_S_ERROR_CONTEXT_NONE = CAST(LONG, 000200006h);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_UNKNOWN
+//
+// MessageText:
+//
+// The error occurred in an unknown location.
+*)
+    BG_E_ERROR_CONTEXT_UNKNOWN = CAST(LONG, 080200007h);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_GENERAL_QUEUE_MANAGER
+//
+// MessageText:
+//
+// The error occurred in the Background Intelligent Transfer Service (BITS) queue manager.
+*)
+    BG_E_ERROR_CONTEXT_GENERAL_QUEUE_MANAGER = CAST(LONG, 080200008h);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_LOCAL_FILE
+//
+// MessageText:
+//
+// The error occurred while the local file was being processed. Verify that the file is not in use, and then try again.
+*)
+    BG_E_ERROR_CONTEXT_LOCAL_FILE = CAST(LONG, 080200009h);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_REMOTE_FILE
+//
+// MessageText:
+//
+// The error occurred while the remote file was being processed.
+*)
+    BG_E_ERROR_CONTEXT_REMOTE_FILE = CAST(LONG, 08020000Ah);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_GENERAL_TRANSPORT
+//
+// MessageText:
+//
+// The error occurred in the transport layer. The client could not connect to the server.
+*)
+    BG_E_ERROR_CONTEXT_GENERAL_TRANSPORT = CAST(LONG, 08020000Bh);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_QUEUE_MANAGER_NOTIFICATION
+//
+// MessageText:
+//
+// The error occurred while the notification callback was being processed. Background Intelligent Transfer Service (BITS) will try again later.
+*)
+    BG_E_ERROR_CONTEXT_QUEUE_MANAGER_NOTIFICATION = CAST(LONG, 08020000Ch);
+
+(*
+// MessageId: BG_E_DESTINATION_LOCKED
+//
+// MessageText:
+//
+// The destination file system volume is not available. Verify that another program, such as CheckDisk, is not running, which would lock the volume. When the volume is available, Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_DESTINATION_LOCKED = CAST(LONG, 08020000Dh);
+
+(*
+// MessageId: BG_E_VOLUME_CHANGED
+//
+// MessageText:
+//
+// The destination volume has changed. If the disk is removable, it might have been replaced with a different disk. Reinsert the original disk and resume the job.
+*)
+    BG_E_VOLUME_CHANGED = CAST(LONG, 08020000Eh);
+
+(*
+// MessageId: BG_E_ERROR_INFORMATION_UNAVAILABLE
+//
+// MessageText:
+//
+// No errors have occurred.
+*)
+    BG_E_ERROR_INFORMATION_UNAVAILABLE = CAST(LONG, 08020000Fh);
+
+(*
+// MessageId: BG_E_NETWORK_DISCONNECTED
+//
+// MessageText:
+//
+// There are currently no active network connections. Background Intelligent Transfer Service (BITS) will try again when an adapter is connected.
+*)
+    BG_E_NETWORK_DISCONNECTED = CAST(LONG, 080200010h);
+
+(*
+// MessageId: BG_E_MISSING_FILE_SIZE
+//
+// MessageText:
+//
+// The server did not return the file size. The URL might point to dynamic content. The Content-Length header is not available in the server's HTTP reply.
+*)
+    BG_E_MISSING_FILE_SIZE = CAST(LONG, 080200011h);
+
+(*
+// MessageId: BG_E_INSUFFICIENT_HTTP_SUPPORT
+//
+// MessageText:
+//
+// The server does not support HTTP 1.1.
+*)
+    BG_E_INSUFFICIENT_HTTP_SUPPORT = CAST(LONG, 080200012h);
+
+(*
+// MessageId: BG_E_INSUFFICIENT_RANGE_SUPPORT
+//
+// MessageText:
+//
+// The server does not support the necessary HTTP protocol. Background Intelligent Transfer Service (BITS) requires that the server support the Range protocol header.
+*)
+    BG_E_INSUFFICIENT_RANGE_SUPPORT = CAST(LONG, 080200013h);
+
+(*
+// MessageId: BG_E_REMOTE_NOT_SUPPORTED
+//
+// MessageText:
+//
+// Background Intelligent Transfer Service (BITS) cannot be used remotely.
+*)
+    BG_E_REMOTE_NOT_SUPPORTED = CAST(LONG, 080200014h);
+
+(*
+// MessageId: BG_E_NEW_OWNER_DIFF_MAPPING
+//
+// MessageText:
+//
+// The drive mapping for the job is different for the current owner than for the previous owner. Use a UNC path instead.
+*)
+    BG_E_NEW_OWNER_DIFF_MAPPING = CAST(LONG, 080200015h);
+
+(*
+// MessageId: BG_E_NEW_OWNER_NO_FILE_ACCESS
+//
+// MessageText:
+//
+// The new owner has insufficient access to the local files for the job. The new owner might not have permissions to access the job files. Verify that the new owner has sufficient permissions, and then try again.
+*)
+    BG_E_NEW_OWNER_NO_FILE_ACCESS = CAST(LONG, 080200016h);
+
+(*
+// MessageId: BG_S_PARTIAL_COMPLETE
+//
+// MessageText:
+//
+// Some of the transferred files were deleted because they were incomplete.
+*)
+    BG_S_PARTIAL_COMPLETE = CAST(LONG, 000200017h);
+
+(*
+// MessageId: BG_E_PROXY_LIST_TOO_LARGE
+//
+// MessageText:
+//
+// The HTTP proxy list cannot be longer than 32,000 characters. Try again with a shorter proxy list.
+*)
+    BG_E_PROXY_LIST_TOO_LARGE = CAST(LONG, 080200018h);
+
+(*
+// MessageId: BG_E_PROXY_BYPASS_LIST_TOO_LARGE
+//
+// MessageText:
+//
+// The HTTP proxy bypass list cannot be longer than 32,000 characters. Try again with a shorter bypass proxy list.
+*)
+    BG_E_PROXY_BYPASS_LIST_TOO_LARGE = CAST(LONG, 080200019h);
+
+(*
+// MessageId: BG_S_UNABLE_TO_DELETE_FILES
+//
+// MessageText:
+//
+// Some of the temporary files could not be deleted. Check the system event log for the complete list of files that could not be deleted.
+*)
+    BG_S_UNABLE_TO_DELETE_FILES = CAST(LONG, 00020001Ah);
+
+(*
+// MessageId: BG_E_INVALID_SERVER_RESPONSE
+//
+// MessageText:
+//
+// The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_INVALID_SERVER_RESPONSE = CAST(LONG, 08020001Bh);
+
+(*
+// MessageId: BG_E_TOO_MANY_FILES
+//
+// MessageText:
+//
+// No more files can be added to this job.
+*)
+    BG_E_TOO_MANY_FILES = CAST(LONG, 08020001Ch);
+
+(*
+// MessageId: BG_E_LOCAL_FILE_CHANGED
+//
+// MessageText:
+//
+// The local file was changed during the transfer. Recreate the job, and then try to transfer it again.
+*)
+    BG_E_LOCAL_FILE_CHANGED = CAST(LONG, 08020001Dh);
+
+(*
+// MessageId: BG_E_ERROR_CONTEXT_REMOTE_APPLICATION
+//
+// MessageText:
+//
+// The program on the remote server reported the error.
+*)
+    BG_E_ERROR_CONTEXT_REMOTE_APPLICATION = CAST(LONG, 08020001Eh);
+
+(*
+// MessageId: BG_E_SESSION_NOT_FOUND
+//
+// MessageText:
+//
+// The specified session could not be found on the server. Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_SESSION_NOT_FOUND = CAST(LONG, 08020001Fh);
+
+(*
+// MessageId: BG_E_TOO_LARGE
+//
+// MessageText:
+//
+// The job is too large for the server to accept. This job might exceed a job size limit set by the server administrator. Reduce the size of the job, and then try again.
+*)
+    BG_E_TOO_LARGE = CAST(LONG, 080200020h);
+
+(*
+// MessageId: BG_E_STRING_TOO_LONG
+//
+// MessageText:
+//
+// The specified string is too long.
+*)
+    BG_E_STRING_TOO_LONG = CAST(LONG, 080200021h);
+
+(*
+// MessageId: BG_E_CLIENT_SERVER_PROTOCOL_MISMATCH
+//
+// MessageText:
+//
+// The client and server versions of Background Intelligent Transfer Service (BITS) are incompatible.
+*)
+    BG_E_CLIENT_SERVER_PROTOCOL_MISMATCH = CAST(LONG, 080200022h);
+
+(*
+// MessageId: BG_E_SERVER_EXECUTE_ENABLE
+//
+// MessageText:
+//
+// Scripting OR execute permissions are enabled on the IIS virtual directory associated with the job. To upload files to the virtual directory, disable the scripting and execute permissions on the virtual directory.
+*)
+    BG_E_SERVER_EXECUTE_ENABLE = CAST(LONG, 080200023h);
+
+(*
+// MessageId: BG_E_NO_PROGRESS
+//
+// MessageText:
+//
+// The job is not making headway.  The server may be misconfigured.  Background Intelligent Transfer Service (BITS) will try again later.
+*)
+    BG_E_NO_PROGRESS = CAST(LONG, 080200024h);
+
+(*
+// MessageId: BG_E_USERNAME_TOO_LARGE
+//
+// MessageText:
+//
+// The user name cannot be longer than 300 characters. Try again with a shorter name.
+*)
+    BG_E_USERNAME_TOO_LARGE = CAST(LONG, 080200025h);
+
+(*
+// MessageId: BG_E_PASSWORD_TOO_LARGE
+//
+// MessageText:
+//
+// The password cannot be longer than 65536 characters. Try again with a shorter password.
+*)
+    BG_E_PASSWORD_TOO_LARGE = CAST(LONG, 080200026h);
+
+(*
+// MessageId: BG_E_INVALID_AUTH_TARGET
+//
+// MessageText:
+//
+// The authentication target specified in the credentials is not defined.
+*)
+    BG_E_INVALID_AUTH_TARGET = CAST(LONG, 080200027h);
+
+(*
+// MessageId: BG_E_INVALID_AUTH_SCHEME
+//
+// MessageText:
+//
+// The authentication scheme specified in the credentials is not defined.
+*)
+    BG_E_INVALID_AUTH_SCHEME = CAST(LONG, 080200028h);
+
+(*
+// MessageId: BG_E_FILE_NOT_FOUND
+//
+// MessageText:
+//
+// The specified file name does not match any of the files in the job.
+*)
+    BG_E_FILE_NOT_FOUND = CAST(LONG, 080200029h);
+
+(*
+// MessageId: BG_S_PROXY_CHANGED
+//
+// MessageText:
+//
+// The proxy server was changed.
+*)
+    BG_S_PROXY_CHANGED = CAST(LONG, 00020002Ah);
+
+(*
+// MessageId: BG_E_INVALID_RANGE
+//
+// MessageText:
+//
+// The requested byte range extends beyond the end of the web page.  Use byte ranges that are wholly within the page.
+*)
+    BG_E_INVALID_RANGE = CAST(LONG, 08020002Bh);
+
+(*
+// MessageId: BG_E_OVERLAPPING_RANGES
+//
+// MessageText:
+//
+// The list of byte ranges contains some overlapping ranges, which are not supported.
+*)
+    BG_E_OVERLAPPING_RANGES = CAST(LONG, 08020002Ch);
+
+(*
+// MessageId: BG_E_CONNECT_FAILURE
+//
+// MessageText:
+//
+// A connection could not be established.
+*)
+    BG_E_CONNECT_FAILURE = CAST(LONG, 08020002Dh);
+
+(*
+// MessageId: BG_E_CONNECTION_CLOSED
+//
+// MessageText:
+//
+// The connection was closed prematurely.
+*)
+    BG_E_CONNECTION_CLOSED = CAST(LONG, 08020002Eh);
+
+(*
+// Codes 2F through 3D are reserved for future use.
+//
+//
+// MessageId: BG_E_BLOCKED_BY_POLICY
+//
+// MessageText:
+//
+// Group Policy settings prevent background jobs from running at this time.
+*)
+    BG_E_BLOCKED_BY_POLICY = CAST(LONG, 08020003Eh);
+
+(*
+// MessageId: BG_E_INVALID_PROXY_INFO
+//
+// MessageText:
+//
+// The supplied proxy server or bypass list is invalid.
+*)
+    BG_E_INVALID_PROXY_INFO = CAST(LONG, 08020003Fh);
+
+(*
+// MessageId: BG_E_INVALID_CREDENTIALS
+//
+// MessageText:
+//
+// The format of the supplied security credentials is invalid.
+*)
+    BG_E_INVALID_CREDENTIALS = CAST(LONG, 080200040h);
+
+(*
+// MessageId: BG_E_INVALID_HASH_ALGORITHM
+//
+// MessageText:
+//
+// The application chose an unsupported hashing algorithm.
+*)
+    BG_E_INVALID_HASH_ALGORITHM = CAST(LONG, 080200041h);
+
+(*
+// MessageId: BG_E_RECORD_DELETED
+//
+// MessageText:
+//
+// The chosen cache record has been deleted.  The attempt to update it has been abandoned.
+*)
+    BG_E_RECORD_DELETED = CAST(LONG, 080200042h);
+
+(*
+// MessageId: BG_E_COMMIT_IN_PROGRESS
+//
+// MessageText:
+//
+// Another application thread is already updating the cache record.
+*)
+    BG_E_COMMIT_IN_PROGRESS = CAST(LONG, 080200043h);
+
+(*
+// MessageId: BG_E_DISCOVERY_IN_PROGRESS
+//
+// MessageText:
+//
+// The system is already searching for neighbors.  Retry the operation after a few seconds.
+*)
+    BG_E_DISCOVERY_IN_PROGRESS = CAST(LONG, 080200044h);
+
+(*
+// MessageId: BG_E_UPNP_ERROR
+//
+// MessageText:
+//
+// A Universal Plug and Play (UPnP) error has occured.  Please check your Internet Gateway Device.
+*)
+    BG_E_UPNP_ERROR = CAST(LONG, 080200045h);
+
+(*
+// MessageId: BG_E_TEST_OPTION_BLOCKED_DOWNLOAD
+//
+// MessageText:
+//
+// The test option is blocking the download after the search completed.
+*)
+    BG_E_TEST_OPTION_BLOCKED_DOWNLOAD = CAST(LONG, 080200046h);
+
+(*
+// MessageId: BG_E_PEERCACHING_DISABLED
+//
+// MessageText:
+//
+// Peer-caching is disabled.
+*)
+    BG_E_PEERCACHING_DISABLED = CAST(LONG, 080200047h);
+
+(*
+// MessageId: BG_E_BUSYCACHERECORD
+//
+// MessageText:
+//
+// The cache record is in use and can not be changed or deleted at this time.  Try again after a few seconds.
+*)
+    BG_E_BUSYCACHERECORD = CAST(LONG, 080200048h);
+
+(*
+// MessageId: BG_E_TOO_MANY_JOBS_PER_USER
+//
+// MessageText:
+//
+// Job count for the current user has exceeded the per user job limit.
+*)
+    BG_E_TOO_MANY_JOBS_PER_USER = CAST(LONG, 080200049h);
+
+(*
+// MessageId: BG_E_TOO_MANY_JOBS_PER_MACHINE
+//
+// MessageText:
+//
+// Job count for the current machine has exceeded the per machine job limit.
+*)
+    BG_E_TOO_MANY_JOBS_PER_MACHINE = CAST(LONG, 080200050h);
+
+(*
+// MessageId: BG_E_TOO_MANY_FILES_IN_JOB
+//
+// MessageText:
+//
+// File count for the current job has exceeded the per job file limit.
+*)
+    BG_E_TOO_MANY_FILES_IN_JOB = CAST(LONG, 080200051h);
+
+(*
+// MessageId: BG_E_TOO_MANY_RANGES_IN_FILE
+//
+// MessageText:
+//
+// Range count for the current file has exceeded the per file Range limit.
+*)
+    BG_E_TOO_MANY_RANGES_IN_FILE = CAST(LONG, 080200052h);
+
+(*
+// MessageId: BG_E_VALIDATION_FAILED
+//
+// MessageText:
+//
+// The application requested data from a web site, but the response was invalid. Using Event Viewer, check the log 'Application Logs \ Microsoft \ Windows \ Bits-client \ Operational' for more details.
+*)
+    BG_E_VALIDATION_FAILED = CAST(LONG, 080200053h);
+
+(*
+// MessageId: BG_E_MAXDOWNLOAD_TIMEOUT
+//
+// MessageText:
+//
+// BITS timed out downloading the job. The download did not complete within the maximum download time set on the job.
+*)
+    BG_E_MAXDOWNLOAD_TIMEOUT = CAST(LONG, 080200054h);
+
+(*
+// MessageId: BG_S_OVERRIDDEN_BY_POLICY
+//
+// MessageText:
+//
+// The configuration preferences have been saved successfully, but one or more of them are overridden by Group Policy.
+*)
+    BG_S_OVERRIDDEN_BY_POLICY = CAST(LONG, 000200055h);
+
+(*
+// MessageId: BG_E_TOKEN_REQUIRED
+//
+// MessageText:
+//
+// The job is configured to use a different security token for some operations, but the token is not currently available.  The application must provide a token and then resume the job.
+*)
+    BG_E_TOKEN_REQUIRED = CAST(LONG, 080200056h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_100
+//
+// MessageText:
+//
+// HTTP status 100: The request can be continued.
+*)
+    BG_E_HTTP_ERROR_100 = CAST(LONG, 080190064h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_101
+//
+// MessageText:
+//
+// HTTP status 101: The server switched protocols in an upgrade header.
+*)
+    BG_E_HTTP_ERROR_101 = CAST(LONG, 080190065h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_200
+//
+// MessageText:
+//
+// HTTP status 200: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_200 = CAST(LONG, 0801900C8h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_201
+//
+// MessageText:
+//
+// HTTP status 201: The request was fulfilled and resulted in the creation of a new resource.
+*)
+    BG_E_HTTP_ERROR_201 = CAST(LONG, 0801900C9h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_202
+//
+// MessageText:
+//
+// HTTP status 202: The request was accepted for processing, but the processing has not been completed yet.
+*)
+    BG_E_HTTP_ERROR_202 = CAST(LONG, 0801900CAh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_203
+//
+// MessageText:
+//
+// HTTP status 203: The returned metadata in the entity-header is not the definitive set available from the server of origin.
+*)
+    BG_E_HTTP_ERROR_203 = CAST(LONG, 0801900CBh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_204
+//
+// MessageText:
+//
+// HTTP status 204: The server has fulfilled the request, but there is no new information to send back.
+*)
+    BG_E_HTTP_ERROR_204 = CAST(LONG, 0801900CCh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_205
+//
+// MessageText:
+//
+// HTTP status 205: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_205 = CAST(LONG, 0801900CDh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_206
+//
+// MessageText:
+//
+// HTTP status 206: The server fulfilled the partial GET request for the resource.
+*)
+    BG_E_HTTP_ERROR_206 = CAST(LONG, 0801900CEh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_300
+//
+// MessageText:
+//
+// HTTP status 300: The server could not return the requested data.
+*)
+    BG_E_HTTP_ERROR_300 = CAST(LONG, 08019012Ch);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_301
+//
+// MessageText:
+//
+// HTTP status 301: The requested resource was assigned to a new permanent Uniform Resource Identifier (URI), and any future references to this resource should use one of the returned URIs.
+*)
+    BG_E_HTTP_ERROR_301 = CAST(LONG, 08019012Dh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_302
+//
+// MessageText:
+//
+// HTTP status 302: The requested resource was assigned a different Uniform Resource Identifier (URI). This change is temporary.
+*)
+    BG_E_HTTP_ERROR_302 = CAST(LONG, 08019012Eh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_303
+//
+// MessageText:
+//
+// HTTP status 303: The response to the request is under a different Uniform Resource Identifier (URI) and must be retrieved using a GET method on that resource.
+*)
+    BG_E_HTTP_ERROR_303 = CAST(LONG, 08019012Fh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_304
+//
+// MessageText:
+//
+// HTTP status 304: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_304 = CAST(LONG, 080190130h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_305
+//
+// MessageText:
+//
+// HTTP status 305: The requested resource must be accessed through the proxy given by the location field.
+*)
+    BG_E_HTTP_ERROR_305 = CAST(LONG, 080190131h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_307
+//
+// MessageText:
+//
+// HTTP status 307: The URL has been temporarily relocated. Try again later.
+*)
+    BG_E_HTTP_ERROR_307 = CAST(LONG, 080190133h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_400
+//
+// MessageText:
+//
+// HTTP status 400: The server cannot process the request because the syntax is not valid.
+*)
+    BG_E_HTTP_ERROR_400 = CAST(LONG, 080190190h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_401
+//
+// MessageText:
+//
+// HTTP status 401: The requested resource requires user authentication.
+*)
+    BG_E_HTTP_ERROR_401 = CAST(LONG, 080190191h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_402
+//
+// MessageText:
+//
+// HTTP status 402: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_402 = CAST(LONG, 080190192h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_403
+//
+// MessageText:
+//
+// HTTP status 403: The client does not have sufficient access rights to the requested server object.
+*)
+    BG_E_HTTP_ERROR_403 = CAST(LONG, 080190193h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_404
+//
+// MessageText:
+//
+// HTTP status 404: The requested URL does not exist on the server.
+*)
+    BG_E_HTTP_ERROR_404 = CAST(LONG, 080190194h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_405
+//
+// MessageText:
+//
+// HTTP status 405: The method used is not allowed.
+*)
+    BG_E_HTTP_ERROR_405 = CAST(LONG, 080190195h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_406
+//
+// MessageText:
+//
+// HTTP status 406: No responses acceptable to the client were found.
+*)
+    BG_E_HTTP_ERROR_406 = CAST(LONG, 080190196h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_407
+//
+// MessageText:
+//
+// HTTP status 407: Proxy authentication is required.
+*)
+    BG_E_HTTP_ERROR_407 = CAST(LONG, 080190197h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_408
+//
+// MessageText:
+//
+// HTTP status 408: The server timed out waiting for the request.
+*)
+    BG_E_HTTP_ERROR_408 = CAST(LONG, 080190198h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_409
+//
+// MessageText:
+//
+// HTTP status 409: The request could not be completed because of a conflict with the current state of the resource. The user should resubmit the request with more information.
+*)
+    BG_E_HTTP_ERROR_409 = CAST(LONG, 080190199h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_410
+//
+// MessageText:
+//
+// HTTP status 410: The requested resource is not currently available at the server, and no forwarding address is known.
+*)
+    BG_E_HTTP_ERROR_410 = CAST(LONG, 08019019Ah);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_411
+//
+// MessageText:
+//
+// HTTP status 411: The server cannot accept the request without a defined content length.
+*)
+    BG_E_HTTP_ERROR_411 = CAST(LONG, 08019019Bh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_412
+//
+// MessageText:
+//
+// HTTP status 412: The precondition given in one or more of the request header fields evaluated to false when it was tested on the server.
+*)
+    BG_E_HTTP_ERROR_412 = CAST(LONG, 08019019Ch);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_413
+//
+// MessageText:
+//
+// HTTP status 413: The server cannot process the request because the request entity is too large.
+*)
+    BG_E_HTTP_ERROR_413 = CAST(LONG, 08019019Dh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_414
+//
+// MessageText:
+//
+// HTTP status 414: The server cannot process the request because the request Uniform Resource Identifier (URI) is longer than the server can interpret.
+*)
+    BG_E_HTTP_ERROR_414 = CAST(LONG, 08019019Eh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_415
+//
+// MessageText:
+//
+// HTTP status 415: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_415 = CAST(LONG, 08019019Fh);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_416
+//
+// MessageText:
+//
+// HTTP status 416: The server could not satisfy the range request.
+*)
+    BG_E_HTTP_ERROR_416 = CAST(LONG, 0801901A0h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_417
+//
+// MessageText:
+//
+// HTTP status 417: The server could not meet the expectation given in an Expect request-header field.
+*)
+    BG_E_HTTP_ERROR_417 = CAST(LONG, 0801901A1h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_449
+//
+// MessageText:
+//
+// HTTP status 449: The server's response was not valid. The server was not following the defined protocol. Resume the job, and then Background Intelligent Transfer Service (BITS) will try again.
+*)
+    BG_E_HTTP_ERROR_449 = CAST(LONG, 0801901C1h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_500
+//
+// MessageText:
+//
+// HTTP status 500: An unexpected condition prevented the server from fulfilling the request.
+*)
+    BG_E_HTTP_ERROR_500 = CAST(LONG, 0801901F4h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_501
+//
+// MessageText:
+//
+// HTTP status 501: The server does not support the functionality required to fulfill the request.
+*)
+    BG_E_HTTP_ERROR_501 = CAST(LONG, 0801901F5h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_502
+//
+// MessageText:
+//
+// HTTP status 502: The server, while acting as a gateway or proxy to fulfill the request, received an invalid response from the upstream server it accessed.
+*)
+    BG_E_HTTP_ERROR_502 = CAST(LONG, 0801901F6h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_503
+//
+// MessageText:
+//
+// HTTP status 503: The service is temporarily overloaded.
+*)
+    BG_E_HTTP_ERROR_503 = CAST(LONG, 0801901F7h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_504
+//
+// MessageText:
+//
+// HTTP status 504: The request was timed out waiting for a gateway.
+*)
+    BG_E_HTTP_ERROR_504 = CAST(LONG, 0801901F8h);
+
+(*
+// MessageId: BG_E_HTTP_ERROR_505
+//
+// MessageText:
+//
+// HTTP status 505: The server does not support the HTTP protocol version that was used in the request message.
+*)
+    BG_E_HTTP_ERROR_505 = CAST(LONG, 0801901F9h);
+
+(*
+// Additional Background Intelligent Transfer Service (BITS) mc entries
+// Reserved range is 0x4000 to 0x4100
+//
+//
+// MessageId: BITS_MC_JOB_CANCELLED
+//
+// MessageText:
+//
+// The administrator %4 canceled job "%2" on behalf of %3.  The job ID was %1.
+*)
+    BITS_MC_JOB_CANCELLED = CAST(LONG, 080194000h);
+
+(*
+// MessageId: BITS_MC_FILE_DELETION_FAILED
+//
+// MessageText:
+//
+// While canceling job "%2", BITS was not able to remove the temporary files listed below.
+// If you can delete them, then you will regain some disk space.  The job ID was %1.
+//
+// %3
+*)
+    BITS_MC_FILE_DELETION_FAILED = CAST(LONG, 080194001h);
+
+(*
+// MessageId: BITS_MC_FILE_DELETION_FAILED_MORE
+//
+// MessageText:
+//
+// While canceling job "%2", BITS was not able to remove the temporary files listed below.
+// If you can delete them, then you will regain some disk space.  The job ID was %1.
+//
+// %3
+//
+// Due to space limitations, not all files are listed here.  Check for additional files of the form BITxxx.TMP in the same directory.
+*)
+    BITS_MC_FILE_DELETION_FAILED_MORE = CAST(LONG, 080194002h);
+
+(*
+// MessageId: BITS_MC_JOB_PROPERTY_CHANGE
+//
+// MessageText:
+//
+// The administrator %3 modified the %4 property of job "%2".  The job ID was %1.
+*)
+    BITS_MC_JOB_PROPERTY_CHANGE = CAST(LONG, 080194003h);
+
+(*
+// MessageId: BITS_MC_JOB_TAKE_OWNERSHIP
+//
+// MessageText:
+//
+// The administrator %4 took ownership of job "%2" from %3.  The job ID was %1.
+*)
+    BITS_MC_JOB_TAKE_OWNERSHIP = CAST(LONG, 080194004h);
+
+(*
+// MessageId: BITS_MC_JOB_SCAVENGED
+//
+// MessageText:
+//
+// Job "%2" owned by %3 was canceled after being inactive for more than %4 days.  The job ID was %1.
+*)
+    BITS_MC_JOB_SCAVENGED = CAST(LONG, 080194005h);
+
+(*
+// MessageId: BITS_MC_JOB_NOTIFICATION_FAILURE
+//
+// MessageText:
+//
+// Job "%2" owned by %3 failed to notify its associated application.  BITS will retry in %4 minutes.  The job ID was %1.
+*)
+    BITS_MC_JOB_NOTIFICATION_FAILURE = CAST(LONG, 080194006h);
+
+(*
+// MessageId: BITS_MC_STATE_FILE_CORRUPT
+//
+// MessageText:
+//
+// The BITS job list is not in a recognized format.  It may have been created by a different version of BITS.  The job list has been cleared.
+*)
+    BITS_MC_STATE_FILE_CORRUPT = CAST(LONG, 080194007h);
+
+(*
+// MessageId: BITS_MC_FAILED_TO_START
+//
+// MessageText:
+//
+// The BITS service failed to start. Try restarting the service at a later time.
+*)
+    BITS_MC_FAILED_TO_START = CAST(LONG, 080194008h);
+
+(*
+// MessageId: BITS_MC_FATAL_IGD_ERROR
+//
+// MessageText:
+//
+// BITS has hit a fatal error communicating with an Internet Gateway Device.  Please check that the device is functioning properly. BITS will not attempt to use this device until the next system reboot.
+*)
+    BITS_MC_FATAL_IGD_ERROR = CAST(LONG, 080194009h);
+
+(*
+// MessageId: BITS_MC_PEERCACHING_PORT
+//
+// MessageText:
+//
+// BITS Peer-caching protocol
+*)
+    BITS_MC_PEERCACHING_PORT = CAST(LONG, 08019400Ah);
+
+(*
+// MessageId: BITS_MC_WSD_PORT
+//
+// MessageText:
+//
+// Web Services-Discovery protocol
+*)
+    BITS_MC_WSD_PORT = CAST(LONG, 08019400Bh);
+
+END BitsMsg.
+

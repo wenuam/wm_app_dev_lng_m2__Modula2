@@ -1,0 +1,8 @@
+UNSAFEGUARDED IMPLEMENTATION MODULE RichOle;
+
+<*/NOWARN:I*>
+(*MVN+*)
+<*/Foreign*>
+(*MVN-*)
+
+END RichOle.

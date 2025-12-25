@@ -1,0 +1,102 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                           by ADW Software                               *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE MemShare;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* functions to allocate inter process shared memory *)
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+IMPORT Threads;
+
+TYPE
+    SharedMemory;
+
+    AllocResults        = (AllocMemOpened, AllocMemCreated);
+
+CONST
+    WaitForever         = Threads.SemWaitForever;
+
+PROCEDURE AllocateSharedMemory(VAR OUT sm : SharedMemory;
+                               name : ARRAY OF CHAR;
+                               size : CARDINAL;
+                               VAR OUT allocResult : AllocResults) : ADDRESS;
+(* allocates share memory.
+   size = the amount of memory in bytes to allocate.
+   name = the name of the shared memory object.
+   all processes must know this name to gain access to the shared memory.
+   if the call fails the returned address will be NIL, otherwise a pointer
+   that can be used to access the shared memory is returned.
+   allocResult = AllocMemOpened if the shared memory has already
+                 been created and this call opened the memory object
+   allocResult = AllocMemCreated if the shared memory was created by
+                 this call
+*)
+
+(*
+ the format of the name passed is dependent on the operating system.
+ on Unix systems it takes the form of a file name.
+ eg. /tmp/MyObject, or the path and name of your executable.
+ This file need not exist and will be created/deleted when necessary.
+ Using a name like this is also compatible with Win32, thus easing portability
+ considerations.
+
+ if your program does not properly close a shared object, or it crashes
+ then the shared memory may not be deleted from the system, and may
+ even still exist after the operating system is rebooted. in this case
+ "created" may never be TRUE until the object is deleted manually.
+ this is only a concern on some Unix systems.
+ Win32 fully cleans up shared objects on process termination.
+
+ on Unix systems the shared memory has a very strict creator/owner and
+ clients relationship. Only the owner can remove the memory from the system.
+ Therefore the owner should be the last to close the object.
+ This is not an issue on Win32 since the last process to close the memory
+ will remove it from the system.
+*)
+
+PROCEDURE DeallocateSharedMemory(VAR INOUT sm : SharedMemory);
+(* deallocates previously allocated shared memory.
+  sm = NIL after this call
+*)
+
+PROCEDURE LockSharedMemory(sm : SharedMemory) : BOOLEAN;
+(* when this function returns TRUE, the current process has exclusive
+  access to the shared memory
+  FALSE means there was some sort of failure.
+  you can lock memory recursively, you must call unlock once for each call
+  to lock memory.
+*)
+
+PROCEDURE LockSharedMemoryEx(sm : SharedMemory; timeout : INTEGER) : BOOLEAN;
+(* like LockSharedMemory but will only wait timeout milliseconds
+  to obtain the lock.
+  when this function returns TRUE, the current process has exclusive
+  access to the shared memory
+  FALSE, indicates a timeout or a system error
+  the timeout value is only fully supported on Win32.
+
+   On Unix systems any timeeout value other than 0, is in effect an infinite
+   timeout.
+*)
+
+PROCEDURE UnlockSharedMemory(sm : SharedMemory);
+(* releases exclusive access to the shared memory *)
+
+PROCEDURE IsMemShareException() : BOOLEAN;
+(* returns true if the current exception was raised from this module
+   this module only raises exceptions in situations where a system
+   error occurred and no possibility of returning an error exists.
+*)
+
+END MemShare.

@@ -1,0 +1,547 @@
+UNSAFEGUARDED DEFINITION MODULE PropIdl;
+(*
++-------------------------------------------------------------------------
+//
+//  Microsoft Windows
+//  Copyright (c) Microsoft Corporation. All rights reserved.
+//
+//--------------------------------------------------------------------------
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2019, ADW Software. All rights reserved. *)
+
+
+FROM SYSTEM IMPORT
+	ADR, MAKEADR;
+
+FROM MemUtils IMPORT
+	ZeroMem;
+
+FROM WIN32 IMPORT
+	WUCHAR, SHORT, USHORT, LONG, ULONG, WINT, UINT, LARGE_INTEGER, ULARGE_INTEGER,
+	SCODE, FILETIME, PFILETIME, LPSTR, LPWSTR, PVOID,
+	IID, GUID, CLSID, REFCLSID, FMTID, REFFMTID, BYTE, WORD, DWORD, HRESULT;
+
+FROM WINUSER IMPORT
+	HIWORD, LOWORD, HIBYTE, LOBYTE;
+
+FROM OOle2 IMPORT
+	VARIANT_BOOL, VT_EMPTY, CY, DATE, CLIPDATA, BSTR, BSTRBLOB, BLOB, LPSAFEARRAY, VARTYPE, PROPID, LPOLESTR,
+	IUnknown, IDispatch, IStream, IStorage;
+
+<*/CALLS:WINDOWSCALL/DLLDEF/Foreign*>
+<*/NOHIGH*>
+<*/ALIGN:8*>
+<*/NOPACK*>
+
+
+TYPE
+	VERSIONEDSTREAM =
+		RECORD
+		    guidVersion	: GUID;
+		    pStream		: POINTER TO IStream;
+		END;
+	LPVERSIONEDSTREAM = POINTER TO VERSIONEDSTREAM;
+
+CONST
+     (* Flags for IPropertySetStorageVtbl->Create *)
+	PROPSETFLAG_DEFAULT			= 0;
+	PROPSETFLAG_NONSIMPLE		= 1;
+	PROPSETFLAG_ANSI			= 2;
+	(* This flag is only supported on StgCreatePropStg & StgOpenPropStg *)
+	PROPSETFLAG_UNBUFFERED		= 4;
+	(* This flag causes a version-1 property set to be created *)
+	PROPSETFLAG_CASE_SENSITIVE	= 8;
+
+	(* Flags for the reserved PID_BEHAVIOR property *)
+	PROPSET_BEHAVIOR_CASE_SENSITIVE	= 1;
+
+TYPE
+	IndexType1 = [0..1073741820];
+	IndexType2 = [0.. 536870910];
+	IndexType3 = [0.. 268435455];
+	IndexType4 = [0.. 134217728];
+	IndexType5 = [0..  67108864];
+
+	CAC =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType1 OF ACHAR;
+    	END;
+
+	CAUB =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType1 OF WUCHAR;
+    	END;
+
+	CAI =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType1 OF SHORT;
+    	END;
+
+	CAUI =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType1 OF USHORT;
+    	END;
+
+	CAL =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType2 OF LONG;
+    	END;
+
+	CAUL =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType2 OF ULONG;
+    	END;
+
+	CAFLT =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType2 OF REAL;
+    	END;
+
+	CADBL =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF LONGREAL;
+    	END;
+
+	CACY =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF CY;
+    	END;
+
+	CADATE =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF DATE;
+    	END;
+
+	CABSTR =
+	    RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF BSTR;
+    	END;
+
+	CABSTRBLOB =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF BSTRBLOB;
+    	END;
+
+	CABOOL =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType2 OF VARIANT_BOOL;
+    	END;
+
+	CASCODE =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType2 OF SCODE;
+    	END;
+
+	CAPROPVARIANT =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO PROPVARIANTARRAY;
+    	END;
+
+	CAH =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF LARGE_INTEGER;
+    	END;
+
+	CAUH =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF ULARGE_INTEGER;
+    	END;
+
+	CALPSTR =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF LPSTR;
+    	END;
+
+	CALPWSTR =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF LPWSTR;
+    	END;
+
+	CAFILETIME =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType3 OF FILETIME;
+    	END;
+
+	CACLIPDATA =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType4 OF CLIPDATA;
+    	END;
+
+	CACLSID =
+    	RECORD
+		    cElems	: ULONG;
+		    pElems	: POINTER TO ARRAY IndexType5 OF CLSID;
+    	END;
+
+	PROPVARIANT =
+		RECORD
+			vt			: VARTYPE;
+ 			wReserved1	: WORD;
+			wReserved2	: WORD;
+			wReserved3  : WORD;
+
+			CASE : CARDINAL OF
+			|  0 : cVal				: ACHAR;
+        	|  1 : bVal				: WUCHAR;
+        	|  2 : iVal				: SHORT;
+        	|  3 : uiVal			: USHORT;
+			|  4 : lVal				: LONG;
+        	|  5 : ulVal			: ULONG;
+        	|  6 : intVal			: WINT;
+        	|  7 : uintVal			: UINT;
+        	|  8 : hVal				: LARGE_INTEGER;
+        	|  9 : uhVal			: ULARGE_INTEGER;
+        	| 10 : fltVal			: REAL;
+        	| 11 : dblVal			: LONGREAL;
+        	| 12 : boolVal			: VARIANT_BOOL;
+        	| 13 : bool				: VARIANT_BOOL (*_VARIANT_BOOL*);
+        	! 14 : scode			: SCODE;
+        	| 15 : cyVal			: CY;
+        	| 16 : date				: DATE;
+        	| 17 : filetime			: FILETIME;
+        	| 18 : puuid			: REFCLSID;
+        	| 19 : pclipdata		: POINTER TO CLIPDATA;
+        	| 20 : bstrVal			: BSTR;
+        	| 21 : bstrblobVal		: BSTRBLOB;
+        	| 22 : blob				: BLOB;
+        	| 23 : pszVal			: LPSTR;
+        	| 24 : pwszVal			: LPWSTR;
+        	| 25 : punkVal			: IUnknown;
+        	| 26 : pdispVal			: IDispatch;
+        	| 27 : pStream			: IStream;
+        	| 28 : pStorage			: IStorage;
+        	| 29 : pVersionedStream	: LPVERSIONEDSTREAM;
+        	| 30 : parray			: LPSAFEARRAY;
+        	| 31 : cac				: CAC;
+        	| 32 : caub				: CAUB;
+        	| 33 : cai				: CAI;
+        	| 34 : caui				: CAUI;
+        	| 35 : cal				: CAL;
+        	| 36 : caul				: CAUL;
+        	| 37 : cah				: CAH;
+        	| 38 : cauh				: CAUH;
+        	| 39 : caflt			: CAFLT;
+        	| 40 : cadbl			: CADBL;
+        	| 41 : cabool			: CABOOL;
+        	| 42 : cascode			: CASCODE;
+        	| 43 : cacy				: CACY;
+        	| 44 : cadate			: CADATE;
+        	| 45 : cafiletime		: CAFILETIME;
+        	| 46 : cauuid			: CACLSID;
+        	| 47 : caclipdata		: CACLIPDATA;
+        	| 48 : cabstr			: CABSTR;
+        	| 49 : cabstrblob		: CABSTRBLOB;
+        	| 50 : calpstr			: CALPSTR;
+        	| 51 : calpwstr			: CALPWSTR;
+        	| 52 : capropvar		: CAPROPVARIANT;
+        	| 53 : pcVal			: POINTER TO ACHAR;
+        	| 54 : pbVal			: POINTER TO WUCHAR;
+        	| 55 : piVal			: POINTER TO SHORT;
+        	| 56 : puiVal			: POINTER TO USHORT;
+        	| 57 : plVal			: POINTER TO LONG;
+        	| 58 : pulVal			: POINTER TO ULONG;
+        	| 59 : pintVal			: POINTER TO WINT;
+        	| 60 : puintVal			: POINTER TO UINT;
+        	| 61 : pfltVal			: POINTER TO REAL;
+        	| 62 : pdblVal			: POINTER TO LONGREAL;
+        	| 63 : pboolVal			: POINTER TO VARIANT_BOOL;
+          (*| 64 : pdecVal			: POINTER TO DECIMAL;*)
+        	| 65 : pscode			: POINTER TO SCODE;
+        	| 66 : pcyVal			: POINTER TO CY;
+        	| 67 : pdate			: POINTER TO DATE;
+        	| 68 : pbstrVal			: POINTER TO BSTR;
+        	| 69 : ppunkVal			: POINTER TO IUnknown;
+        	| 70 : ppdispVal		: POINTER TO IDispatch;
+        	| 71 : pparray			: POINTER TO LPSAFEARRAY;
+        	| 72 : pvarVal			: POINTER TO PROPVARIANT;
+			ELSE
+			END;
+		END;
+
+	PROPVARIANTARRAY = ARRAY IndexType5 OF PROPVARIANT;
+
+VAR
+	NIL_PROPVARIANT [MAKEADR(0)] : PROPVARIANT;
+
+CONST
+	EMPTYPROPVARIANT = PROPVARIANT {VT_EMPTY,0,0,0,MAX(CARDINAL)};
+
+	(* Reserved global Property IDs *)
+	PID_DICTIONARY			= 0;
+	PID_CODEPAGE			= 1;
+	PID_FIRST_USABLE		= 2;
+	PID_FIRST_NAME_DEFAULT	= 0fffH;
+	PID_LOCALE				= 80000000H;
+	PID_MODIFY_TIME			= 80000001H;
+	PID_SECURITY			= 80000002H;
+	PID_BEHAVIOR			= 80000003H;
+	PID_ILLEGAL				= 0ffffffffH;
+
+	(* Range which is read-only to downlevel implementations *)
+	PID_MIN_READONLY	= 080000000H;
+	PID_MAX_READONLY	= 0bfffffffH;
+
+	(* Property IDs for the DiscardableInformation Property Set *)
+
+	PIDDI_THUMBNAIL     = 2; (* VT_BLOB *)
+
+	(* Property IDs for the SummaryInformation Property Set *)
+
+	PIDSI_TITLE               = 00000002H;  (* VT_LPSTR *)
+	PIDSI_SUBJECT             = 00000003H;  (* VT_LPSTR *)
+	PIDSI_AUTHOR              = 00000004H;  (* VT_LPSTR *)
+	PIDSI_KEYWORDS            = 00000005H;  (* VT_LPSTR *)
+	PIDSI_COMMENTS            = 00000006H;  (* VT_LPSTR *)
+	PIDSI_TEMPLATE            = 00000007H;  (* VT_LPSTR *)
+	PIDSI_LASTAUTHOR          = 00000008H;  (* VT_LPSTR *)
+	PIDSI_REVNUMBER           = 00000009H;  (* VT_LPSTR *)
+	PIDSI_EDITTIME            = 0000000aH;  (* VT_FILETIME (UTC) *)
+	PIDSI_LASTPRINTED         = 0000000bH;  (* VT_FILETIME (UTC) *)
+	PIDSI_CREATE_DTM          = 0000000cH;  (* VT_FILETIME (UTC) *)
+	PIDSI_LASTSAVE_DTM        = 0000000dH;  (* VT_FILETIME (UTC) *)
+	PIDSI_PAGECOUNT           = 0000000eH;  (* VT_I4 *)
+	PIDSI_WORDCOUNT           = 0000000fH;  (* VT_I4 *)
+	PIDSI_CHARCOUNT           = 00000010H;  (* VT_I4 *)
+	PIDSI_THUMBNAIL           = 00000011H;  (* VT_CF *)
+	PIDSI_APPNAME             = 00000012H;  (* VT_LPSTR *)
+	PIDSI_DOC_SECURITY        = 00000013H;  (* VT_I4 *)
+
+	(* Property IDs for the DocSummaryInformation Property Set *)
+
+	PIDDSI_CATEGORY          = 00000002H; (* VT_LPSTR *)
+	PIDDSI_PRESFORMAT        = 00000003H; (* VT_LPSTR *)
+	PIDDSI_BYTECOUNT         = 00000004H; (* VT_I4 *)
+	PIDDSI_LINECOUNT         = 00000005H; (* VT_I4 *)
+	PIDDSI_PARCOUNT          = 00000006H; (* VT_I4 *)
+	PIDDSI_SLIDECOUNT        = 00000007H; (* VT_I4 *)
+	PIDDSI_NOTECOUNT         = 00000008H; (* VT_I4 *)
+	PIDDSI_HIDDENCOUNT       = 00000009H; (* VT_I4 *)
+	PIDDSI_MMCLIPCOUNT       = 0000000AH; (* VT_I4 *)
+	PIDDSI_SCALE             = 0000000BH; (* VT_BOOL *)
+	PIDDSI_HEADINGPAIR       = 0000000CH; (* VT_VARIANT | VT_VECTOR *)
+	PIDDSI_DOCPARTS          = 0000000DH; (* VT_LPSTR | VT_VECTOR *)
+	PIDDSI_MANAGER           = 0000000EH; (* VT_LPSTR *)
+	PIDDSI_COMPANY           = 0000000FH; (* VT_LPSTR *)
+	PIDDSI_LINKSDIRTY        = 00000010H; (* VT_BOOL *)
+
+
+	(*  FMTID_MediaFileSummaryInfo - Property IDs *)
+
+	PIDMSI_EDITOR                   = 00000002H;  (* VT_LPWSTR *)
+	PIDMSI_SUPPLIER                 = 00000003H;  (* VT_LPWSTR *)
+	PIDMSI_SOURCE                   = 00000004H;  (* VT_LPWSTR *)
+	PIDMSI_SEQUENCE_NO              = 00000005H;  (* VT_LPWSTR *)
+	PIDMSI_PROJECT                  = 00000006H;  (* VT_LPWSTR *)
+	PIDMSI_STATUS                   = 00000007H;  (* VT_UI4 *)
+	PIDMSI_OWNER                    = 00000008H;  (* VT_LPWSTR *)
+	PIDMSI_RATING                   = 00000009H;  (* VT_LPWSTR *)
+	PIDMSI_PRODUCTION               = 0000000AH;  (* VT_FILETIME (UTC) *)
+	PIDMSI_COPYRIGHT                = 0000000BH;  (* VT_LPWSTR *)
+
+	(*  PIDMSI_STATUS value definitions *)
+
+TYPE
+	PIDMSI_STATUS_VALUE =
+    	(
+			PIDMSI_STATUS_NORMAL,
+			PIDMSI_STATUS_NEW,
+			PIDMSI_STATUS_PRELIM,
+			PIDMSI_STATUS_DRAFT,
+			PIDMSI_STATUS_INPROGRESS,
+			PIDMSI_STATUS_EDIT,
+			PIDMSI_STATUS_REVIEW,
+			PIDMSI_STATUS_PROOF,
+			PIDMSI_STATUS_FINAL,
+			PIDMSI_STATUS_OTHER	= 07fffH
+    	);
+
+CONST
+	PRSPEC_INVALID	= 0ffffffffH;
+	PRSPEC_LPWSTR	= 0;
+	PRSPEC_PROPID	= 1;
+
+TYPE
+	PROPSPEC =
+		RECORD
+		    ulKind : LONG;
+			CASE : BOOLEAN OF
+			| FALSE : propid : PROPID;
+			| TRUE  : lpwstr : LPOLESTR;
+        	END;
+		END;
+
+	STATPROPSTG =
+		RECORD
+			lpwstrName	: LPOLESTR;
+			propid		: PROPID;
+			vt			: VARTYPE;
+    	END;
+
+(* Macros for parsing the OS Version of the Property Set Header *)
+
+PROCEDURE PROPSETHDR_OSVER_KIND  (dwOSVer : DWORD) : WORD; MACRO; BEGIN RETURN HIWORD(dwOSVer) END PROPSETHDR_OSVER_KIND;
+
+PROCEDURE PROPSETHDR_OSVER_MAJOR (dwOSVer : DWORD) : BYTE; MACRO;
+BEGIN RETURN LOBYTE(LOWORD(dwOSVer)) END PROPSETHDR_OSVER_MAJOR;
+
+PROCEDURE PROPSETHDR_OSVER_MINOR (dwOSVer: DWORD) : BYTE; MACRO;
+BEGIN RETURN HIBYTE(LOWORD(dwOSVer)) END PROPSETHDR_OSVER_MINOR;
+
+CONST
+	PROPSETHDR_OSVERSION_UNKNOWN = 0FFFFFFFFH;
+
+VAR
+	%IF IA32 %THEN
+		IID_IPropertyStorage 	["_IID_IPropertyStorage"	EXTERNAL] : IID;
+		IID_IPropertySetStorage ["_IID_IPropertySetStorage"	EXTERNAL] : IID;
+		IID_IEnumSTATPROPSTG 	["_IID_IEnumSTATPROPSTG"	EXTERNAL] : IID;
+		IID_IEnumSTATPROPSETSTG ["_IID_IEnumSTATPROPSETSTG"	EXTERNAL] : IID;
+	%ELSE
+		IID_IPropertyStorage 	["IID_IPropertyStorage"	   EXTERNAL] : IID;
+		IID_IPropertySetStorage ["IID_IPropertySetStorage" EXTERNAL] : IID;
+		IID_IEnumSTATPROPSTG 	["IID_IEnumSTATPROPSTG"	   EXTERNAL] : IID;
+		IID_IEnumSTATPROPSETSTG ["IID_IEnumSTATPROPSETSTG" EXTERNAL] : IID;
+	%END
+
+TYPE
+	STATPROPSETSTG =
+		RECORD
+			fmtid		: FMTID;
+			clsid		: CLSID;
+			grfFlags	: DWORD;
+			mtime		: FILETIME;
+			ctime		: FILETIME;
+			atime		: FILETIME;
+			dwOSVersion	: DWORD;
+		END;
+
+ABSTRACT CLASS IEnumSTATPROPSTG; FORWARD;
+
+ABSTRACT CLASS IPropertyStorage;
+INHERIT IUnknown;
+REVEAL
+	ReadMultiple, WriteMultiple, DeleteMultiple, ReadPropertyNames, WritePropertyNames, DeletePropertyNames,
+	Commit, Revert, Enum, SetTimes, Stat;
+	ABSTRACT PROCEDURE ReadMultiple (cppsec : ULONG; rgpspec : ARRAY OF PROPSPEC; VAR rgpropvar : ARRAY OF PROPVARIANT) :
+	HRESULT;
+	ABSTRACT PROCEDURE WriteMultiple (cpspec : ULONG; rgpspec : ARRAY OF PROPSPEC; pgpropvar : ARRAY OF PROPVARIANT;
+		propidNameFirst : PROPID) : HRESULT;
+	ABSTRACT PROCEDURE DeleteMultiple (cpspec : ULONG; rgpspec : ARRAY OF PROPSPEC) : HRESULT;
+	ABSTRACT PROCEDURE ReadPropertyNames (cpropid : ULONG; rgpropid : ARRAY OF PROPID; VAR rglpwstrName : ARRAY OF LPOLESTR) :
+	HRESULT;
+	ABSTRACT PROCEDURE WritePropertyNames (cpropid : ULONG; rgpropid : ARRAY OF PROPID; rglpwstrName : ARRAY OF LPOLESTR) :
+	HRESULT;
+	ABSTRACT PROCEDURE DeletePropertyNames (cpropid : ULONG; rgpropid : ARRAY OF PROPID) : HRESULT;
+	ABSTRACT PROCEDURE Commit (grfCommitFlags : DWORD) : HRESULT;
+	ABSTRACT PROCEDURE Revert () : HRESULT;
+	ABSTRACT PROCEDURE Enum (VAR ppenum : IEnumSTATPROPSTG) : HRESULT;
+	ABSTRACT PROCEDURE SetTimes (pctime : PFILETIME; patime : PFILETIME; pmtime : PFILETIME) : HRESULT;
+	ABSTRACT PROCEDURE SetClass (clsid : CLSID) : HRESULT;
+	ABSTRACT PROCEDURE Stat (VAR pstatpsstg : STATPROPSETSTG) : HRESULT;
+END IPropertyStorage;
+
+ABSTRACT CLASS IPropertySetStorage;
+INHERIT IUnknown;
+REVEAL Create, Open, Delete, Enum;
+	ABSTRACT PROCEDURE Create (fmtid : REFFMTID; pclsid : REFCLSID; grfFlags : DWORD; grfMode : DWORD;
+		VAR ppprstg : IPropertyStorage) : HRESULT;
+	ABSTRACT PROCEDURE Open	(fmtid : REFFMTID; grfMode : DWORD; VAR ppprstg : IPropertyStorage) : HRESULT;
+	ABSTRACT PROCEDURE Delete (fmtid : REFFMTID) : HRESULT;
+	ABSTRACT PROCEDURE Enum (VAR ppenum : IEnumSTATPROPSTG) : HRESULT;
+END IPropertySetStorage;
+
+ABSTRACT CLASS IEnumSTATPROPSTG;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+	ABSTRACT PROCEDURE Next (celt : ULONG; VAR rgelt : ARRAY OF STATPROPSTG; VAR pceltFetched : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Skip (celt : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Reset () : HRESULT;
+	ABSTRACT PROCEDURE Clone (VAR ppenum : IEnumSTATPROPSTG) : HRESULT;
+END IEnumSTATPROPSTG;
+
+ABSTRACT CLASS IEnumSTATPROPSETSTG;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+	ABSTRACT PROCEDURE Next (celt : ULONG; VAR rgelt : ARRAY OF STATPROPSETSTG; VAR pceltFetched : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Skip (celt : ULONG) : HRESULT;
+	ABSTRACT PROCEDURE Reset () : HRESULT;
+	ABSTRACT PROCEDURE Clone (VAR ppEnum : IEnumSTATPROPSETSTG) : HRESULT;
+END IEnumSTATPROPSETSTG;
+
+PROCEDURE PropVariantCopy (VAR pvarDest : PROPVARIANT; pvarSrc : PROPVARIANT) : HRESULT;
+
+PROCEDURE PropVariantClear (VAR pvar : PROPVARIANT) : HRESULT;
+
+PROCEDURE FreePropVariantArray (cVariants : ULONG; VAR rgvars : ARRAY OF PROPVARIANT) : HRESULT;
+
+PROCEDURE PropVariantInit (VAR pvar : PROPVARIANT); MACRO; BEGIN ZeroMem (ADR(pvar), SIZE(pvar)) END PropVariantInit;
+
+PROCEDURE StgCreatePropStg (pUnk : IUnknown; fmtid : REFFMTID; pclsid : REFCLSID; grfFlags : DWORD; dwReserved : DWORD;
+	VAR ppPropStg : IPropertyStorage) : HRESULT;
+
+PROCEDURE StgOpenPropStg (pUnk : IUnknown; fmtid : REFFMTID; pclsid : REFCLSID; grfFlags : DWORD; dwReserved : DWORD;
+	VAR ppPropStg : IPropertyStorage) : HRESULT;
+
+PROCEDURE StgCreatePropSetStg (pStorage : IStorage; dwReserved : DWORD; VAR ppPropSetStg : IPropertySetStorage) : HRESULT;
+
+CONST
+	CCH_MAX_PROPSTG_NAME = 31;
+
+PROCEDURE FmtIdToPropStgName (pmtid : REFFMTID; VAR oszName : ARRAY OF UCHAR (*At least 32 characters long*)) : HRESULT;
+
+PROCEDURE PropStgToNameFmtId (oszName : ARRAY OF UCHAR; VAR pmtid : FMTID) : HRESULT;
+
+TYPE
+	SERIALIZEDPROPERTYVALUE =
+		RECORD
+			dwType	: DWORD;
+			rgb		: ARRAY [0..0] OF BYTE;
+		END;
+	REFSERIALIZEDPROPERTYVALUE = POINTER TO SERIALIZEDPROPERTYVALUE;
+
+PROCEDURE StgConvertVariantToProperty (
+	(*IN*) VAR pvar : PROPVARIANT;
+	CodePage : USHORT;
+	VAR pprop : SERIALIZEDPROPERTYVALUE;
+	VAR pcb : ULONG;
+	pid : PROPID;
+	fReserved : BOOLEAN;
+	VAR pcIndirect : ULONG
+) : REFSERIALIZEDPROPERTYVALUE;
+
+ABSTRACT CLASS IMemoryAllocator;
+REVEAL Allocate, Free;
+	ABSTRACT PROCEDURE Allocate (cbSize : ULONG) : PVOID;
+	ABSTRACT PROCEDURE Free (pv : PVOID);
+END IMemoryAllocator;
+
+PROCEDURE StgConvertPropertyToVariant (
+    pprop : REFSERIALIZEDPROPERTYVALUE;
+    CodePage : USHORT;
+    VAR pvar : PROPVARIANT;
+    pma : IMemoryAllocator
+) : BOOLEAN;
+
+END PropIdl.

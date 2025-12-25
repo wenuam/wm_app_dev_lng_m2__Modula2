@@ -1,0 +1,39 @@
+DEFINITION MODULE ProgramArgs;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs  1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+
+=========================================== *)
+
+(* access to program arguments *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+IMPORT IOChan;
+
+TYPE
+    ChanId      = IOChan.ChanId;
+
+PROCEDURE ArgChan() : ChanId;
+(* returns the value that identifies a channel for reading program arguments *)
+
+PROCEDURE IsArgPresent() : BOOLEAN;
+(* tests if there is a current argument to read from; If not,
+   read <= IOChan.CurrentFlags() will be FALSE, and attempting to read
+   from the argument channel will raise the exception notAvailable
+*)
+
+PROCEDURE NextArg();
+(* if there is another argument, causes subsequent input from the
+   argument device to come from the start of the next argument. Otherwise
+   there is no argument to read from, and a call to IsArgPresent will
+   return FALSE
+*)
+
+END ProgramArgs.

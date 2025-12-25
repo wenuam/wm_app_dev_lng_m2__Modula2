@@ -1,0 +1,32 @@
+DEFINITION MODULE SRawIO;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+=========================================== *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+
+  (* Reading and writing data over default channels using raw operations,
+     that is, with no conversion or interpretation. The read result is of
+     the type IOConsts.ReadResults. *)
+
+IMPORT SYSTEM;
+
+PROCEDURE Read(VAR to : ARRAY OF SYSTEM.LOC);
+  (* Reads storage units from the default input channel, and assigns them
+     to successive components of to. The read result is set to the value
+     allRight, wrongFormat, or endOfInput. *)
+
+PROCEDURE Write(from : ARRAY OF SYSTEM.LOC);
+  (* Writes storage units to cid from successive components of from. *)
+
+END SRawIO.
+
+

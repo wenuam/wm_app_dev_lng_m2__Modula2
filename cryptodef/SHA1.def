@@ -1,0 +1,78 @@
+(*
+Name:     SHA1
+Creation: 29-01-2001
+LastEdit: 10-04-2001
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  NIST Secure Hash Algorith SHA1, based on Netwerkbeveiliging en Cryptografie, pp323-328.
+          RFC 3174
+*)
+(* adapted by ADW Software, 2009 *)
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE SHA1;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    HashLength  = 20;(*bytes, 160 bits*)
+
+    HashBlockSize   = 64;(*not useful information, exists here for the HMAC module*)
+
+TYPE
+    SHA1;
+
+PROCEDURE Create() : SHA1;
+(* create an SHA1 hash object.
+   the hash object is initialized when created.
+   only one thread at a time can use a hash object.
+*)
+
+PROCEDURE Destroy(VAR OUT hash : SHA1);
+(* destroys a previously created SHA1 hash object.
+   hash = NIL after this call.
+*)
+
+PROCEDURE Reset(hash : SHA1);
+(* resets and initializes the hash object.
+   after this you can hash bytes *)
+
+PROCEDURE HashBytes(hash : SHA1; data : ADDRESS; amount : CARDINAL);
+(* adds bytes to hash *)
+
+PROCEDURE Finalize(hash : SHA1);
+(* finalizes hash.
+   you cannot hash additional bytes after a hash has been finalized.
+*)
+
+PROCEDURE GetHash(hash : SHA1; VAR OUT data : ARRAY OF BYTE);
+(* a SHA1 hash is 20 bytes.
+   data is an open array so that you can implement a single buffer
+   large enough to hold different hashes, each of which is likely a different
+   size in bytes.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE GetString(hash : SHA1; VAR OUT str : ARRAY OF CHAR);
+(* the string returned is 40 characters long.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END SHA1.

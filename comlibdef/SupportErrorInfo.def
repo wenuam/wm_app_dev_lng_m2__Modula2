@@ -1,0 +1,31 @@
+(*
+Name:     SupportErrorInfo
+Creation: 29-06-99
+LastEdit: 29-06-99
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+UNSAFEGUARDED DEFINITION MODULE SupportErrorInfo;
+
+IMPORT WIN32;
+IMPORT Ole2;
+
+<*/PUSH*>
+<*/NOPACK*>
+<*/ALIGN:8*>
+<*/NOHIGH*>
+<*/CALLS:WIN32SYSTEM*>
+CLASS C;
+  INHERIT Ole2.ISupportErrorInfo;
+  REVEAL m_iUnknown, m_iid; (* the COM object, and interface that supports ISupportErrorInfo *)
+  OVERRIDE PROCEDURE InterfaceSupportsErrorInfo(iid: WIN32.IID): WIN32.HRESULT;
+
+  VAR m_iUnknown: Ole2.IUnknown;
+      m_iid:      WIN32.IID;
+END C;
+<*/POP*>
+
+
+END SupportErrorInfo.

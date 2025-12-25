@@ -1,0 +1,53 @@
+DEFINITION MODULE CharBuffer;
+
+(* =========================================
+  Definition and Implementation © 1993
+                by R. Sutcliffe
+        Trinity Western University
+7600 Glover Rd., Langley, BC Canada V3A 6H4
+         e-mail: rsutc@twu.ca
+    Last modification date 1993 10 20
+=========================================== *)
+
+        (* provides a first in first out 1024 character buffer facility *)
+
+TYPE
+  Buffer;
+
+PROCEDURE Init (VAR b : Buffer);
+(* create a new empty buffer *)
+
+PROCEDURE Destroy (VAR b: Buffer);
+(* give all memory back to the system *)
+
+PROCEDURE Flush (b : Buffer);
+(* empty a buffer *)
+
+PROCEDURE Full (b: Buffer) : BOOLEAN;
+(* returns TRUE if the buffer cannot take any more characters
+FALSE if it can *)
+
+PROCEDURE Empty (b: Buffer) : BOOLEAN;
+(* returns TRUE if the buffer cannot give back any more characters
+FALSE if it can *)
+
+PROCEDURE Enter (b : Buffer; ch: CHAR);
+(* Enters the character.  If it was full, the first in is lost.
+ If you don't like that way of doing it, write your own. *)
+
+PROCEDURE Look (b : Buffer; VAR ch: CHAR);
+(* get the first in without removing it *)
+
+PROCEDURE Skip (b : Buffer);
+(* remove the first in *)
+
+PROCEDURE Erase (b : Buffer);
+(* remove the last in *)
+
+PROCEDURE Fetch (b : Buffer; VAR ch: CHAR);
+(* get the first in and removes it *)
+
+PROCEDURE Size (b : Buffer) : CARDINAL;
+(* returns number of characters in the buffer *)
+
+END CharBuffer.

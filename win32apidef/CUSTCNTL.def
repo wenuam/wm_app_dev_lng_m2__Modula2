@@ -1,0 +1,158 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 1995-2000, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE CUSTCNTL;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/NOPACK*>
+
+FROM WIN32 IMPORT
+    DWORD, WORD, WINT, LPSTR, LANGID, WCHAR, HWND, BOOL, HFONT, LPWSTR,
+    UINT;
+
+CONST
+    CCHCCCLASS          = 32;
+    CCHCCDESC           = 32;
+    CCHCCTEXT           = 256;
+    CCF_NOTEXT          = 1h;
+
+TYPE
+    CCSTYLEA = RECORD
+        flStyle         : DWORD;
+        flExtStyle      : DWORD;
+        szText          : ARRAY [0..CCHCCTEXT-1] OF ACHAR;
+        lgid            : LANGID;
+        wReserved1      : WORD;
+    END;
+    LPCCSTYLEA = POINTER TO CCSTYLEA;
+
+    CCSTYLEW = RECORD
+        flStyle         : DWORD;
+        flExtStyle      : DWORD;
+        szText          : ARRAY [0..CCHCCTEXT-1] OF WCHAR;
+        lgid            : LANGID;
+        wReserved1      : WORD;
+    END;
+    LPCCSTYLEW = POINTER TO CCSTYLEA;
+
+%IF UNICODE %THEN
+    CCSTYLE     = CCSTYLEW;
+    LPCCSTYLE   = LPCCSTYLEW;
+%ELSE
+    CCSTYLE     = CCSTYLEA;
+    LPCCSTYLE   = LPCCSTYLEA;
+%END
+
+    LPFNCCSTYLEA  = PROCEDURE (HWND,  LPCCSTYLEA) : BOOL [EXPORT];
+    LPFNCCSTYLEW  = PROCEDURE (HWND,  LPCCSTYLEW) : BOOL [EXPORT];
+
+%IF UNICODE %THEN
+    LPFNCCSTYLE  = LPFNCCSTYLEW;
+%ELSE
+    LPFNCCSTYLE  = LPFNCCSTYLEA;
+%END
+
+    LPFNCCSIZETOTEXTA = PROCEDURE(DWORD,
+                                  DWORD,
+                                  HFONT,
+                                  ARRAY OF ACHAR) : WINT [EXPORT];
+
+    LPFNCCSIZETOTEXTW = PROCEDURE(DWORD,
+                                  DWORD,
+                                  HFONT,
+                                  ARRAY OF UCHAR) : WINT [EXPORT];
+
+%IF UNICODE %THEN
+    LPFNCCSIZETOTEXT = LPFNCCSIZETOTEXTW;
+%ELSE
+    LPFNCCSIZETOTEXT = LPFNCCSIZETOTEXTA;
+%END
+
+    CCSTYLEFLAGA = RECORD
+        flStyle : DWORD;
+        flStyleMask     : DWORD;
+        pszStyle        : LPSTR;
+    END;
+    LPCCSTYLEFLAGA = POINTER TO CCSTYLEFLAGA;
+
+    CCSTYLEFLAGW = RECORD
+        flStyle : DWORD;
+        flStyleMask     : DWORD;
+        pszStyle        : LPWSTR;
+    END;
+    LPCCSTYLEFLAGW = POINTER TO CCSTYLEFLAGW;
+
+%IF UNICODE %THEN
+    CCSTYLEFLAG         = CCSTYLEFLAGW;
+    LPCCSTYLEFLAG       = LPCCSTYLEFLAGW;
+%ELSE
+    CCSTYLEFLAG         = CCSTYLEFLAGA;
+    LPCCSTYLEFLAG       = LPCCSTYLEFLAGA;
+%END
+
+%IF AMD64 %THEN
+<*/PUSH/NOWARN:A*>
+%END
+    CCINFOA =RECORD
+        szClass         : ARRAY [0..CCHCCCLASS-1] OF ACHAR;
+        flOptions       : DWORD;
+        szDesc          : ARRAY [0..CCHCCDESC-1] OF ACHAR;
+        cxDefault       : UINT;
+        cyDefault       : UINT;
+        flStyleDefault  : DWORD;
+        flExtStyleDefault       : DWORD;
+        flCtrlTypeMask  : DWORD;
+        szTextDefault   : ARRAY [0..CCHCCTEXT-1] OF ACHAR;
+        cStyleFlags     : WINT;
+        aStyleFlags     : LPCCSTYLEFLAGA;
+        lpfnStyle       : LPFNCCSTYLEA;
+        lpfnSizeToText  : LPFNCCSIZETOTEXTA;
+        dwReserved1     : DWORD;
+        dwReserved2     : DWORD;
+    END;
+    LPCCINFOA = POINTER TO ARRAY [0..0] OF CCINFOA;
+
+    CCINFOW =RECORD
+        szClass         : ARRAY [0..CCHCCCLASS-1] OF WCHAR;
+        flOptions       : DWORD;
+        szDesc          : ARRAY [0..CCHCCDESC-1] OF WCHAR;
+        cxDefault       : UINT;
+        cyDefault       : UINT;
+        flStyleDefault  : DWORD;
+        flExtStyleDefault       : DWORD;
+        flCtrlTypeMask  : DWORD;
+        cStyleFlags     : WINT;
+        aStyleFlags     : LPCCSTYLEFLAGW;
+        szTextDefault   : ARRAY [0..CCHCCTEXT-1] OF WCHAR;
+        lpfnStyle       : LPFNCCSTYLEW;
+        lpfnSizeToText  : LPFNCCSIZETOTEXTW;
+        dwReserved1     : DWORD;
+        dwReserved2     : DWORD;
+    END;
+    LPCCINFOW = POINTER TO ARRAY [0..0] OF CCINFOW;
+%IF AMD64 %THEN
+<*/POP*>
+%END
+
+%IF UNICODE %THEN
+    CCINFO      = CCINFOW;
+    LPCCINFO    = LPCCINFOW;
+%ELSE
+    CCINFO      = CCINFOA;
+    LPCCINFO    = LPCCINFOA;
+%END
+
+    LPFNCCINFOA = PROCEDURE(LPCCINFOA) [EXPORT];
+    LPFNCCINFOW = PROCEDURE(LPCCINFOW) [EXPORT];
+
+%IF UNICODE %THEN
+    LPFNCCINFO  = LPFNCCINFOW;
+%ELSE
+    LPFNCCINFO  = LPFNCCINFOA;
+%END
+
+END CUSTCNTL.

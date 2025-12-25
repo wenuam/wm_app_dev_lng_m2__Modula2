@@ -1,0 +1,52 @@
+(*
+Name:     Bstr
+Creation: 28-10-1998
+LastEdit: 12-01-2001
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  Implements BSTR procedures that can be used for
+          ASCII character strings. Most of these procedures can also
+          be found in Ole2 for OLECHAR character strings.
+*)
+
+DEFINITION MODULE Bstr;
+
+IMPORT Ole2;
+
+TYPE T= Ole2.BSTR;
+
+PROCEDURE Create(szText: ARRAY OF CHAR): T;
+(* Allocates a new string and copies the passed string into it. *)
+(* Returns NULL if insufficient memory exists or if NULL is passed in. *)
+(* NB: same as Ole2.SysAllocString *)
+
+PROCEDURE Create2(cLength: CARDINAL): T;
+(* creates empty Bstr of specified length *)
+
+PROCEDURE Copy(bstr: T): T;
+(* returns a copy of bstr *)
+
+PROCEDURE ReSize(VAR bstr:   T;
+                     szText: ARRAY OF CHAR);
+(* Allocates a new BSTR and copies the passed string into it, *)
+(* then frees the BSTR currently referenced by pbstr and resets *)
+(* pbstr to point to the new BSTR. *)
+(* NB: same as Ole2.SysReAllocString *)
+
+PROCEDURE Dispose(VAR INOUT bstr: T);
+(* Frees a string previously allocated by SysAllocString, *)
+(* SysAllocStringByteLen, SysReAllocString, SysAllocStringLen, *)
+(* or SysReAllocStringLen. *)
+(* NB: calls as Ole2.SysFreeString, sets bstr to NIL *)
+
+PROCEDURE Length(bstr: T): CARDINAL;
+(* Returns the length of a BSTR. *)
+(* NB: same as Ole2.SysStringLen *)
+
+PROCEDURE ToASCII(    bstr:   T;
+                  VAR szText: ARRAY OF CHAR);
+(* returns contents of bstr as ASCII *)
+(* NB: does not appear in Ole2 *)
+
+
+END Bstr.

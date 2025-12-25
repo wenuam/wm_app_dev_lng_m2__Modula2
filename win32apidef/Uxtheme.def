@@ -1,0 +1,1859 @@
+DEFINITION MODULE Uxtheme;
+(*---------------------------------------------------------------------------
+**
+** uxtheme.h - theming API header file.
+**
+** Copyright (c) Microsoft Corporation. All rights reserved.
+**
+---------------------------------------------------------------------------*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2012, ADW Software. All rights reserved. *)
+
+(*
+ * Set up Structure Packing to be 4 bytes for all winhttp structures
+ *)
+
+FROM WIN32 IMPORT
+    DWORD, BOOL, WORD, LONG, LPWSTR, WCHAR,
+    HANDLE, HRESULT, HWND, HDC, RECT, LPRECT, HRGN, WSIZE, POINT, UINT,
+    COLORREF, HBRUSH, ULONG, PVOID, LPARAM, HBITMAP, HINSTANCE, BYTE;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+FROM WINGDI IMPORT
+    TEXTMETRICW, LOGFONTW, BLENDFUNCTION;
+
+FROM COMMCTRL IMPORT
+    HIMAGELIST;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+%IF AMD64 %THEN
+<*/ALIGN:8/NOPACK*>
+%ELSE
+<*/ALIGN:4/NOPACK*>
+%END
+(*
+<*/LIBNEEDED:Uxtheme.lib*>
+*)
+
+(*
+#include <commctrl.h>
+#include <SpecStrings.h>
+
+#ifndef THEMEAPI
+#if !defined(_UXTHEME_)
+#define THEMEAPI          EXTERN_C DECLSPEC_IMPORT HRESULT STDAPICALLTYPE
+#define THEMEAPI_(type)   EXTERN_C DECLSPEC_IMPORT type STDAPICALLTYPE
+#else
+#define THEMEAPI          STDAPI
+#define THEMEAPI_(type)   STDAPI_(type)
+#endif /* _UXTHEME_ */
+#endif /* THEMEAPI */
+*)
+
+
+TYPE
+    HTHEME = HANDLE;      (* handle to a section of theme data for class *)
+    BOOLAPI = BOOL;
+    THEMEAPI = HRESULT;
+    int = INTEGER;
+    LPCRECT = LPRECT;
+
+(*#if (_WIN32_WINNT >= 0x0600)*)
+CONST
+    MAX_THEMECOLOR = 64;
+    MAX_THEMESIZE = 64;
+(*#endif*)
+
+(*#if (NTDDI_VERSION>= NTDDI_WIN7)*)
+(*---------------------------------------------------------------------------
+** BeginPanningFeedback - Visual feedback init function related to pan gesture
+**   - internally called by DefaultGestureHandler
+**   - called by application
+**
+**  HWND hwnd - The handle to the Target window that will receive feedback
+**
+---------------------------------------------------------------------------*)
+PROCEDURE
+BeginPanningFeedback(hwnd : HWND): BOOLAPI;
+
+(*---------------------------------------------------------------------------
+** UpdatePanningFeedback : Visual feedback function related to pan gesture
+** Can Be called only after a BeginPanningFeedback call
+**   - internally called by DefaultGestureHandler
+**   - called by application
+**
+** HWND hwnd                 - The handle to the Target window that will receive feedback
+**                             For the method to succeed this must be the same hwnd as provided in
+**                             BeginPanningFeedback
+**
+** LONG lTotalOverpanOffsetX - The Total displacement that the window has moved in the horizontal direction
+**                             since the end of scrollable region was reached. The API would move the window by the distance specified
+**                             A maximum displacement of 30 pixels is allowed
+**
+** LONG lTotalOverpanOffsetY - The Total displacement that the window has moved in the horizontal direction
+**                             since the end of scrollable
+**                             region was reached. The API would move the window by the distance specified
+**                             A maximum displacement of 30 pixels is allowed
+**
+** BOOL fInInertia           - Flag dictating whether the Application is handling a WM_GESTURE message with the
+**                             GF_INERTIA FLAG set
+**
+**   Incremental calls to UpdatePanningFeedback should make sure they always pass
+**   the sum of the increments and not just the increment themselves
+**   Eg : If the initial displacement is 10 pixels and the next displacement 10 pixels
+**        the second call would be with the parameter as 20 pixels as opposed to 10
+**   Eg : UpdatePanningFeedback(hwnd, 10, 10, TRUE)
+*)
+PROCEDURE
+UpdatePanningFeedback(
+    hwnd : HWND;
+    lTotalOverpanOffsetX : LONG;
+    lTotalOverpanOffsetY : LONG;
+    fInInertia : BOOL) : BOOLAPI;
+
+(*---------------------------------------------------------------------------
+**
+** EndPanningFeedback :Visual feedback reset function related to pan gesture
+**   - internally called by DefaultGestureHandler
+**   - called by application
+**   Terminates any existing animation that was in process or set up by BeginPanningFeedback and UpdatePanningFeedback
+**   The EndPanningFeedBack needs to be called Prior to calling any BeginPanningFeedBack if we have already
+**   called a BeginPanningFeedBack followed by one/ more UpdatePanningFeedback calls
+**
+**  HWND hwnd         - The handle to the Target window that will receive feedback
+**
+**  BOOL fAnimateBack - Flag to indicate whether you wish the displaced window to move back
+**                      to the original position via animation or a direct jump.
+**                      Either ways the method will try to restore the moved window.
+**                      The latter case exists for compatibility with legacy apps.
+*)
+PROCEDURE
+EndPanningFeedback(
+    hwnd : HWND;
+    fAnimateBack : BOOL) : BOOLAPI;
+(*#endif //(NTDDI_VERSION>= NTDDI_WIN7)*)
+
+(*---------------------------------------------------------------------------
+** NOTE: PartId's and StateId's used in the theme API are defined in the
+**       hdr file <vssym32.h> using the TM_PART and TM_STATE macros.  For
+**       example, "TM_PART(BP, PUSHBUTTON)" defines the PartId "BP_PUSHBUTTON".
+
+**---------------------------------------------------------------------------
+**  OpenThemeData()     - Open the theme data for the specified HWND and
+**                        semi-colon separated list of class names.
+**
+**                        OpenThemeData() will try each class name, one at
+**                        a time, and use the first matching theme info
+**                        found.  If a match is found, a theme handle
+**                        to the data is returned.  If no match is found,
+**                        a "NULL" handle is returned.
+**
+**                        When the window is destroyed or a WM_THEMECHANGED
+**                        msg is received, "CloseThemeData()" should be
+**                        called to close the theme handle.
+**
+**  hwnd                - window handle of the control/window to be themed
+**
+**  pszClassList        - class name (or list of names) to match to theme data
+**                        section.  if the list contains more than one name,
+**                        the names are tested one at a time for a match.
+**                        If a match is found, OpenThemeData() returns a
+**                        theme handle associated with the matching class.
+**                        This param is a list (instead of just a single
+**                        class name) to provide the class an opportunity
+**                        to get the "best" match between the class and
+**                        the current theme.  For example, a button might
+**                        pass L"OkButton, Button" if its ID=ID_OK.  If
+**                        the current theme has an entry for OkButton,
+**                        that will be used.  Otherwise, we fall back on
+**                        the normal Button entry.
+---------------------------------------------------------------------------*)
+PROCEDURE
+OpenThemeData(
+    hwnd : HWND;
+    pszClassList : ARRAY OF UCHAR
+    ) : HTHEME;
+
+CONST
+    OTD_FORCE_RECT_SIZING = VAL(LONG, 000000001h);  (* make all parts size to rect *)
+    OTD_NONCLIENT         = VAL(LONG, 000000002h);  (* set if hTheme to be used for nonclient area *)
+    OTD_VALIDBITS         = OTD_FORCE_RECT_SIZING BOR OTD_NONCLIENT;
+
+(*---------------------------------------------------------------------------
+**  OpenThemeDataEx     - Open the theme data for the specified HWND and
+**                        semi-colon separated list of class names.
+**
+**                        OpenThemeData() will try each class name, one at
+**                        a time, and use the first matching theme info
+**                        found.  If a match is found, a theme handle
+**                        to the data is returned.  If no match is found,
+**                        a "NULL" handle is returned.
+**
+**                        When the window is destroyed or a WM_THEMECHANGED
+**                        msg is received, "CloseThemeData()" should be
+**                        called to close the theme handle.
+**
+**  hwnd                - window handle of the control/window to be themed
+**
+**  pszClassList        - class name (or list of names) to match to theme data
+**                        section.  if the list contains more than one name,
+**                        the names are tested one at a time for a match.
+**                        If a match is found, OpenThemeData() returns a
+**                        theme handle associated with the matching class.
+**                        This param is a list (instead of just a single
+**                        class name) to provide the class an opportunity
+**                        to get the "best" match between the class and
+**                        the current theme.  For example, a button might
+**                        pass L"OkButton, Button" if its ID=ID_OK.  If
+**                        the current theme has an entry for OkButton,
+**                        that will be used.  Otherwise, we fall back on
+**                        the normal Button entry.
+**
+**  dwFlags              - allows certain overrides of std features
+**                         (see OTD_XXX defines above)
+---------------------------------------------------------------------------*)
+PROCEDURE
+OpenThemeDataEx(
+    hwnd : HWND;
+    pszClassList : ARRAY OF UCHAR;
+    dwFlags : DWORD
+    ) : HTHEME;
+
+(*---------------------------------------------------------------------------
+**  CloseThemeData()    - closes the theme data handle.  This should be done
+**                        when the window being themed is destroyed or
+**                        whenever a WM_THEMECHANGED msg is received
+**                        (followed by an attempt to create a new Theme data
+**                        handle).
+**
+**  hTheme              - open theme data handle (returned from prior call
+**                        to OpenThemeData() API).
+---------------------------------------------------------------------------*)
+PROCEDURE
+CloseThemeData(
+    hTheme : HTHEME
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+**    functions for basic drawing support
+**---------------------------------------------------------------------------
+** The following methods are the theme-aware drawing services.
+** Controls/Windows are defined in drawable "parts" by their author: a
+** parent part and 0 or more child parts.  Each of the parts can be
+** described in "states" (ex: disabled, hot, pressed).
+**---------------------------------------------------------------------------
+** For the list of all themed classes and the definition of all
+** parts and states, see the file "tmschmea.h".
+**---------------------------------------------------------------------------
+** Each of the below methods takes a "iPartId" param to specify the
+** part and a "iStateId" to specify the state of the part.
+** "iStateId=0" refers to the root part.  "iPartId" = "0" refers to
+** the root class.
+**-----------------------------------------------------------------------
+** Note: draw operations are always scaled to fit (and not to exceed)
+** the specified "Rect".
+-----------------------------------------------------------------------*)
+
+(*------------------------------------------------------------------------
+//  DrawThemeBackground()
+//                      - draws the theme-specified border and fill for
+//                        the "iPartId" and "iStateId".  This could be
+//                        based on a bitmap file, a border and fill, or
+//                        other image description.
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to draw into
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part) to draw
+//  pRect               - defines the size/location of the part
+//  pClipRect           - optional clipping rect (don't draw outside it)
+------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeBackground(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pRect : LPCRECT;
+    (*__in_opt*) pClipRect : LPCRECT
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------*)
+(*---- bits used in dwFlags of DTBGOPTS ----*)
+CONST
+    DTBG_CLIPRECT        = VAL(LONG, 000000001h);   (* rcClip has been specified *)
+    DTBG_DRAWSOLID       = VAL(LONG, 000000002h);   (* DEPRECATED: draw transparent/alpha images as solid *)
+    DTBG_OMITBORDER      = VAL(LONG, 000000004h);   (* don't draw border of part *)
+    DTBG_OMITCONTENT     = VAL(LONG, 000000008h);   (* don't draw content area of part *)
+    DTBG_COMPUTINGREGION = VAL(LONG, 000000010h);   (* TRUE if calling to compute region *)
+    DTBG_MIRRORDC        = VAL(LONG, 000000020h);   (* assume the hdc is mirrorred and *)
+                                                    (* flip images as appropriate (currently *)
+                                                    (* only supported for bgtype=imagefile) *)
+    DTBG_NOMIRROR        = VAL(LONG, 000000040h);
+    DTBG_VALIDBITS       = (DTBG_CLIPRECT BOR
+                                DTBG_DRAWSOLID BOR
+                                DTBG_OMITBORDER BOR
+                                DTBG_OMITCONTENT BOR
+                                DTBG_COMPUTINGREGION BOR
+                                DTBG_MIRRORDC BOR
+                                DTBG_NOMIRROR);
+
+TYPE
+    _DTBGOPTS =
+		RECORD
+			dwSize : DWORD;    (* size of the struct *)
+			dwFlags : DWORD;   (* which options have been specified *)
+			rcClip : RECT;     (* clipping rectangle *)
+		END;
+
+    DTBGOPTS = _DTBGOPTS;
+    PDTBGOPTS = POINTER TO _DTBGOPTS;
+
+(*------------------------------------------------------------------------
+//  DrawThemeBackgroundEx()
+//                      - draws the theme-specified border and fill for
+//                        the "iPartId" and "iStateId".  This could be
+//                        based on a bitmap file, a border and fill, or
+//                        other image description.  NOTE: This will be
+//                        merged back into DrawThemeBackground() after
+//                        BETA 2.
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to draw into
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part) to draw
+//  pRect               - defines the size/location of the part
+//  pOptions            - ptr to optional params
+//------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeBackgroundEx(
+    hTheme : HTHEME ;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pRect : LPCRECT;
+    VAR (*__in_opt const*) pOptions : DTBGOPTS
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//----- DrawThemeText() flags ----*)
+CONST
+    DTT_GRAYED            = VAL(LONG, 020000001h);  (* draw a grayed-out string (this is deprecated) *)
+    DTT_FLAGS2VALIDBITS   = DTT_GRAYED;
+
+(*-------------------------------------------------------------------------
+//  DrawThemeText()     - draws the text using the theme-specified
+//                        color and font for the "iPartId" and
+//                        "iStateId".
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to draw into
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part) to draw
+//  pszText             - actual text to draw
+//  dwCharCount         - number of chars to draw (-1 for all)
+//  dwTextFlags         - same as DrawText() "uFormat" param
+//  dwTextFlags2        - additional drawing options
+//  pRect               - defines the size/location of the part
+//-------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeText(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    VAR pszText : ARRAY OF WCHAR;
+    cchText : int;
+    dwTextFlags : DWORD;
+    dwTextFlags2 : DWORD;
+    pRect : LPCRECT
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------
+//  GetThemeBackgroundContentRect()
+//                      - gets the size of the content for the theme-defined
+//                        background.  This is usually the area inside
+//                        the borders or Margins.
+//
+//      hTheme          - theme data handle
+//      hdc             - (optional) device content to be used for drawing
+//      iPartId         - part number to draw
+//      iStateId        - state number (of the part) to draw
+//      pBoundingRect   - the outer RECT of the part being drawn
+//      pContentRect    - RECT to receive the content area
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeBackgroundContentRect(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pBoundingRect : LPCRECT;
+    (*__out*) pContentRect : LPRECT
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------
+//  GetThemeBackgroundExtent() - calculates the size/location of the theme-
+//                               specified background based on the
+//                               "pContentRect".
+//
+//      hTheme          - theme data handle
+//      hdc             - (optional) device content to be used for drawing
+//      iPartId         - part number to draw
+//      iStateId        - state number (of the part) to draw
+//      pContentRect    - RECT that defines the content area
+//      pBoundingRect   - RECT to receive the overall size/location of part
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeBackgroundExtent(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pContentRect : LPCRECT;
+    pExtentRect : LPRECT
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------
+//  GetThemeBackgroundRegion()
+//                      - computes the region for a regular or partially
+//                        transparent theme-specified background that is
+//                        bound by the specified "pRect".
+//                        If the rectangle is empty, sets the HRGN to NULL
+//                        and return S_FALSE.
+//
+//  hTheme              - theme data handle
+//  hdc                 - optional HDC to draw into (DPI scaling)
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part)
+//  pRect               - the RECT used to draw the part
+//  pRegion             - receives handle to calculated region
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeBackgroundRegion(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pRect : LPCRECT;
+    VAR (*__out*) pRegion : HRGN
+    ) : THEMEAPI;
+
+TYPE
+    THEMESIZE =
+    (
+        TS_MIN,             (* minimum size *)
+        TS_TRUE,            (* size without stretching *)
+        TS_DRAW             (* size that theme mgr will use to draw part *)
+    );
+
+(*-------------------------------------------------------------------------
+//  GetThemePartSize() - returns the specified size of the theme part
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to select font into & measure against
+//  iPartId             - part number to retrieve size for
+//  iStateId            - state number (of the part)
+//  prc                 - (optional) rect for part drawing destination
+//  eSize               - the type of size to be retreived
+//  psz                 - receives the specified size of the part
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemePartSize(
+    hTheme : HTHEME;
+    (*__in_opt*) hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    (*__in_opt*) prc : LPCRECT;
+    eSize : THEMESIZE;
+    VAR (*__out*) psz : WSIZE
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------
+//  GetThemeTextExtent() - calculates the size/location of the specified
+//                         text when rendered in the Theme Font.
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to select font & measure into
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part)
+//  pszText             - the text to be measured
+//  dwCharCount         - number of chars to draw (-1 for all)
+//  dwTextFlags         - same as DrawText() "uFormat" param
+//  pszBoundingRect     - optional: to control layout of text
+//  pszExtentRect       - receives the RECT for text size/location
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeTextExtent(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    (*__in_ecount(cchCharCount)*) pszText : ARRAY OF UCHAR;
+    cchCharCount : int;
+    dwTextFlags : DWORD;
+    (*__in_opt*) pBoundingRect : LPCRECT;
+    (*__out*)  pExtentRect : LPRECT
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------
+//  GetThemeTextMetrics()
+//                      - returns info about the theme-specified font
+//                        for the part/state passed in.
+//
+//  hTheme              - theme data handle
+//  hdc                 - optional: HDC for screen context
+//  iPartId             - part number to draw
+//  iStateId            - state number (of the part)
+//  ptm                 - receives the font info
+//-------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeTextMetrics(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    VAR (*__out*) ptm : TEXTMETRICW
+    ) : THEMEAPI;
+
+(*-------------------------------------------------------------------------*)
+CONST
+(*----- HitTestThemeBackground, HitTestThemeBackgroundRegion flags ----*)
+
+(*  Theme background segment hit test flag (default). possible return values are:
+//  HTCLIENT: hit test succeeded in the middle background segment
+//  HTTOP, HTLEFT, HTTOPLEFT, etc:  // hit test succeeded in the the respective theme background segment.*)
+    HTTB_BACKGROUNDSEG    = VAL(LONG, 000000000h);
+(*  Fixed border hit test option.  possible return values are:
+//  HTCLIENT: hit test succeeded in the middle background segment
+//  HTBORDER: hit test succeeded in any other background segment*)
+    HTTB_FIXEDBORDER      = VAL(LONG, 000000002h);    (* Return code may be either HTCLIENT or HTBORDER. *)
+(*  Caption hit test option.  Possible return values are:
+//  HTCAPTION: hit test succeeded in the top, top left, or top right background segments
+//  HTNOWHERE or another return code, depending on absence or presence of accompanying flags, resp.*)
+    HTTB_CAPTION          = VAL(LONG, 000000004h);
+(*  Resizing border hit test flags.  Possible return values are:
+//  HTCLIENT: hit test succeeded in middle background segment
+//  HTTOP, HTTOPLEFT, HTLEFT, HTRIGHT, etc:    hit test succeeded in the respective system resizing zone
+//  HTBORDER: hit test failed in middle segment and resizing zones, but succeeded in a background border segment*)
+    HTTB_RESIZINGBORDER_LEFT   = VAL(LONG, 000000010h);    (* Hit test left resizing border,  *)
+    HTTB_RESIZINGBORDER_TOP    = VAL(LONG, 000000020h);    (* Hit test top resizing border *)
+    HTTB_RESIZINGBORDER_RIGHT  = VAL(LONG, 000000040h);    (* Hit test right resizing border *)
+    HTTB_RESIZINGBORDER_BOTTOM = VAL(LONG, 000000080h);    (* Hit test bottom resizing border *)
+    HTTB_RESIZINGBORDER        = (HTTB_RESIZINGBORDER_LEFT BOR
+                                      HTTB_RESIZINGBORDER_TOP BOR
+                                      HTTB_RESIZINGBORDER_RIGHT BOR
+                                      HTTB_RESIZINGBORDER_BOTTOM);
+(* Resizing border is specified as a template, not just window edges.
+// This option is mutually exclusive with HTTB_SYSTEMSIZINGWIDTH; HTTB_SIZINGTEMPLATE takes precedence *)
+    HTTB_SIZINGTEMPLATE       = VAL(LONG, 000000100h);
+(* Use system resizing border width rather than theme content margins.
+// This option is mutually exclusive with HTTB_SIZINGTEMPLATE, which takes precedence. *)
+    HTTB_SYSTEMSIZINGMARGINS  = VAL(LONG, 000000100h);
+
+(*-------------------------------------------------------------------------
+//  HitTestThemeBackground()
+//                      - returns a HitTestCode (a subset of the values
+//                        returned by WM_NCHITTEST) for the point "ptTest"
+//                        within the theme-specified background
+//                        (bound by pRect).  "pRect" and "ptTest" should
+//                        both be in the same coordinate system
+//                        (client, screen, etc).
+//
+//      hTheme          - theme data handle
+//      hdc             - HDC to draw into
+//      iPartId         - part number to test against
+//      iStateId        - state number (of the part)
+//      pRect           - the RECT used to draw the part
+//      hrgn            - optional region to use; must be in same coordinates as
+//                      -    pRect and pTest.
+//      ptTest          - the hit point to be tested
+//      dwOptions       - HTTB_xxx constants
+//      pwHitTestCode   - receives the returned hit test code - one of:
+//
+//                        HTNOWHERE, HTLEFT, HTTOPLEFT, HTBOTTOMLEFT,
+//                        HTRIGHT, HTTOPRIGHT, HTBOTTOMRIGHT,
+//                        HTTOP, HTBOTTOM, HTCLIENT
+//-------------------------------------------------------------------------*)
+PROCEDURE
+HitTestThemeBackground(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    dwOptions : DWORD;
+    pRect : LPCRECT;
+    hrgn : HRGN;
+    ptTest : POINT;
+    (*__out*) VAR pwHitTestCode : WORD
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  DrawThemeEdge()     - Similar to the DrawEdge() API, but uses part colors
+//                        and is high-DPI aware
+//  hTheme              - theme data handle
+//  hdc                 - HDC to draw into
+//  iPartId             - part number to draw
+//  iStateId            - state number of part
+//  pDestRect           - the RECT used to draw the line(s)
+//  uEdge               - Same as DrawEdge() API
+//  uFlags              - Same as DrawEdge() API
+//  pContentRect        - Receives the interior rect if (uFlags & BF_ADJUST)
+//------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeEdge(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pDestRect : LPCRECT;
+    uEdge : UINT;
+    uFlags : UINT;
+    (*__out_opt*) pContentRect : LPRECT
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  DrawThemeIcon()     - draws an image within an imagelist based on
+//                        a (possible) theme-defined effect.
+//
+//  hTheme              - theme data handle
+//  hdc                 - HDC to draw into
+//  iPartId             - part number to draw
+//  iStateId            - state number of part
+//  pRect               - the RECT to draw the image within
+//  himl                - handle to IMAGELIST
+//  iImageIndex         - index into IMAGELIST (which icon to draw)
+//------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeIcon(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    pRect : LPCRECT;
+    himl : HIMAGELIST;
+    iImageIndex : int
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  IsThemePartDefined() - returns TRUE if the theme has defined parameters
+//                         for the specified "iPartId" and "iStateId".
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number to find definition for
+//  iStateId            - state number of part
+//---------------------------------------------------------------------------*)
+PROCEDURE
+IsThemePartDefined(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//  IsThemeBackgroundPartiallyTransparent()
+//                      - returns TRUE if the theme specified background for
+//                        the part/state has transparent pieces or
+//                        alpha-blended pieces.
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//---------------------------------------------------------------------------*)
+PROCEDURE
+IsThemeBackgroundPartiallyTransparent(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//    lower-level theme information services
+//---------------------------------------------------------------------------
+// The following methods are getter routines for each of the Theme Data types.
+// Controls/Windows are defined in drawable "parts" by their author: a
+// parent part and 0 or more child parts.  Each of the parts can be
+// described in "states" (ex: disabled, hot, pressed).
+//---------------------------------------------------------------------------
+// Each of the below methods takes a "iPartId" param to specify the
+// part and a "iStateId" to specify the state of the part.
+// "iStateId=0" refers to the root part.  "iPartId" = "0" refers to
+// the root class.
+//-----------------------------------------------------------------------
+// Each method also take a "iPropId" param because multiple instances of
+// the same primitive type can be defined in the theme schema.
+//-----------------------------------------------------------------------*)
+
+(*-----------------------------------------------------------------------
+//  GetThemeColor()     - Get the value for the specified COLOR property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pColor              - receives the value of the property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeColor(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pColor : COLORREF
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeMetric()    - Get the value for the specified metric/size
+//                        property
+//
+//  hTheme              - theme data handle
+//  hdc                 - (optional) hdc to be drawn into (DPI scaling)
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  piVal               - receives the value of the property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeMetric(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR piVal : int
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeString()    - Get the value for the specified string property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pszBuff             - receives the string property value
+//  cchMaxBuffChars     - max. number of chars allowed in pszBuff
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeString(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out_ecount(cchMaxBuffChars)*) pszBuff : LPWSTR;
+    cchMaxBuffChars : int
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeBool()      - Get the value for the specified BOOL property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pfVal               - receives the value of the property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeBool(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pfVal : BOOL
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeInt()       - Get the value for the specified int property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  piVal               - receives the value of the property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeInt(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR piVal : int
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeEnumValue() - Get the value for the specified ENUM property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  piVal               - receives the value of the enum ( cast to int* )
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeEnumValue(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR piVal : int
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemePosition()  - Get the value for the specified position
+//                        property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pPoint              - receives the value of the position property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemePosition(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pPoint : POINT
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeFont()      - Get the value for the specified font property
+//
+//  hTheme              - theme data handle
+//  hdc                 - (optional) hdc to be drawn to (DPI scaling)
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pFont               - receives the value of the LOGFONT property
+//                        (scaled for the current logical screen dpi)
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeFont(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pFont : LOGFONTW
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeRect()      - Get the value for the specified RECT property
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to get the value for
+//  pRect               - receives the value of the RECT property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeRect(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) pRect : LPRECT
+    ) : THEMEAPI;
+
+TYPE
+    _MARGINS =
+    RECORD
+        cxLeftWidth : int;      (* width of left border that retains its size *)
+        cxRightWidth : int;     (* width of right border that retains its size *)
+        cyTopHeight : int;      (* height of top border that retains its size *)
+        cyBottomHeight : int;   (* height of bottom border that retains its size *)
+    END;
+
+    MARGINS = _MARGINS;
+    PMARGINS = POINTER TO _MARGINS;
+
+(*-----------------------------------------------------------------------
+//  GetThemeMargins()   - Get the value for the specified MARGINS property
+//
+//      hTheme          - theme data handle
+//      hdc             - (optional) hdc to be used for drawing
+//      iPartId         - part number
+//      iStateId        - state number of part
+//      iPropId         - the property number to get the value for
+//      prc             - RECT for area to be drawn into
+//      pMargins        - receives the value of the MARGINS property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeMargins(
+    hTheme : HTHEME;
+    (*__in_opt*) hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__in_opt*) prc : LPCRECT;
+    (*__out*) VAR pMargins : MARGINS
+    ) : THEMEAPI;
+
+(*#if (_WIN32_WINNT >= 0x0600)
+#define MAX_INTLIST_COUNT 402
+#else
+#define MAX_INTLIST_COUNT 10
+#endif*)
+CONST
+    MAX_INTLIST_COUNT = 402;
+    MAX_INTLIST_COUNT_WINXP = 10;
+
+TYPE
+    _INTLIST =
+    RECORD
+        iValueCount : int;  (* number of values in iValues *)
+        iValues : ARRAY [0 .. MAX_INTLIST_COUNT - 1] OF int;
+    END;
+    INTLIST = _INTLIST;
+    PINTLIST = POINTER TO _INTLIST;
+
+(*-----------------------------------------------------------------------
+//  GetThemeIntList()   - Get the value for the specified INTLIST struct
+//
+//      hTheme          - theme data handle
+//      iPartId         - part number
+//      iStateId        - state number of part
+//      iPropId         - the property number to get the value for
+//      pIntList        - receives the value of the INTLIST property
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeIntList(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pIntList : INTLIST
+    ) : THEMEAPI;
+
+TYPE
+    PROPERTYORIGIN =
+    (
+        PO_STATE,           (* property was found in the state section *)
+        PO_PART,            (* property was found in the part section *)
+        PO_CLASS,           (* property was found in the class section *)
+        PO_GLOBAL,          (* property was found in [globals] section *)
+        PO_NOTFOUND         (* property was not found *)
+    );
+
+(*-----------------------------------------------------------------------
+//  GetThemePropertyOrigin()
+//                      - searches for the specified theme property
+//                        and sets "pOrigin" to indicate where it was
+//                        found (or not found)
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to search for
+//  pOrigin             - receives the value of the property origin
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemePropertyOrigin(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR pOrigin : PROPERTYORIGIN
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  SetWindowTheme()
+//                      - redirects an existing Window to use a different
+//                        section of the current theme information than its
+//                        class normally asks for.
+//
+//  hwnd                - the handle of the window (cannot be NULL)
+//
+//  pszSubAppName       - app (group) name to use in place of the calling
+//                        app's name.  If NULL, the actual calling app
+//                        name will be used.
+//
+//  pszSubIdList        - semicolon separated list of class Id names to
+//                        use in place of actual list passed by the
+//                        window's class.  if NULL, the id list from the
+//                        calling class is used.
+//---------------------------------------------------------------------------
+// The Theme Manager will remember the "pszSubAppName" and the
+// "pszSubIdList" associations thru the lifetime of the window (even
+// if themes are subsequently changed).  The window is sent a
+// "WM_THEMECHANGED" msg at the end of this call, so that the new
+// theme can be found and applied.
+//---------------------------------------------------------------------------
+// When "pszSubAppName" or "pszSubIdList" are NULL, the Theme Manager
+// removes the previously remember association.  To turn off theme-ing for
+// the specified window, you can pass an empty string (L"") so it
+// won't match any section entries.
+//---------------------------------------------------------------------------*)
+PROCEDURE
+SetWindowTheme(
+    hwnd : HWND;
+    pszSubAppName : ARRAY OF UCHAR;
+    pszSubIdList : ARRAY OF UCHAR
+    ) : THEMEAPI;
+
+
+(*---------------------------------------------------------------------------
+//  GetThemeFilename()  - Get the value for the specified FILENAME property.
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateId            - state number of part
+//  iPropId             - the property number to search for
+//  pszThemeFileName    - output buffer to receive the filename
+//  cchMaxBuffChars     - the size of the return buffer, in chars
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeFilename(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out_ecount(cchMaxBuffChars)*) pszThemeFileName : LPWSTR;
+    cchMaxBuffChars : int
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysColor()  - Get the value of the specified System color.
+//
+//  hTheme              - the theme data handle.  if non-NULL, will return
+//                        color from [SysMetrics] section of theme.
+//                        if NULL, will return the global system color.
+//
+//  iColorId            - the system color index defined in winuser.h
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysColor(
+    hTheme : HTHEME;
+    iColorId : int
+    ) : COLORREF;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysColorBrush()
+//                      - Get the brush for the specified System color.
+//
+//  hTheme              - the theme data handle.  if non-NULL, will return
+//                        brush matching color from [SysMetrics] section of
+//                        theme.  if NULL, will return the brush matching
+//                        global system color.
+//
+//  iColorId            - the system color index defined in winuser.h
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysColorBrush(
+    hTheme : HTHEME;
+    iColorId : int
+    ) : HBRUSH;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysBool()   - Get the boolean value of specified System metric.
+//
+//  hTheme              - the theme data handle.  if non-NULL, will return
+//                        BOOL from [SysMetrics] section of theme.
+//                        if NULL, will return the specified system boolean.
+//
+//  iBoolId             - the TMT_XXX BOOL number (first BOOL
+//                        is TMT_FLATMENUS)
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysBool(
+    hTheme : HTHEME;
+    iBoolId : int
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysSize()   - Get the value of the specified System size metric.
+//                        (scaled for the current logical screen dpi)
+//
+//  hTheme              - the theme data handle.  if non-NULL, will return
+//                        size from [SysMetrics] section of theme.
+//                        if NULL, will return the global system metric.
+//
+//  iSizeId             - the following values are supported when
+//                        hTheme is non-NULL:
+//
+//                          SM_CXBORDER       (border width)
+//                          SM_CXVSCROLL      (scrollbar width)
+//                          SM_CYHSCROLL      (scrollbar height)
+//                          SM_CXSIZE         (caption width)
+//                          SM_CYSIZE         (caption height)
+//                          SM_CXSMSIZE       (small caption width)
+//                          SM_CYSMSIZE       (small caption height)
+//                          SM_CXMENUSIZE     (menubar width)
+//                          SM_CYMENUSIZE     (menubar height)
+//                          SM_CXPADDEDBORDER (padded border width)
+//
+//                        when hTheme is NULL, iSizeId is passed directly
+//                        to the GetSystemMetrics() function
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysSize(
+    hTheme : HTHEME;
+    iSizeId : int
+    ) : int;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysFont()   - Get the LOGFONT for the specified System font.
+//
+//  hTheme              - the theme data handle.  if non-NULL, will return
+//                        font from [SysMetrics] section of theme.
+//                        if NULL, will return the specified system font.
+//
+//  iFontId             - the TMT_XXX font number (first font
+//                        is TMT_CAPTIONFONT)
+//
+//  plf                 - ptr to LOGFONT to receive the font value.
+//                        (scaled for the current logical screen dpi)
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysFont(
+    hTheme : HTHEME;
+    iFontId : int;
+    (*__out*) VAR plf : LOGFONTW
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysString() - Get the value of specified System string metric.
+//
+//  hTheme              - the theme data handle (required)
+//
+//  iStringId           - must be one of the following values:
+//
+//                          TMT_CSSNAME
+//                          TMT_XMLNAME
+//
+//  pszStringBuff       - the buffer to receive the string value
+//
+//  cchMaxStringChars   - max. number of chars that pszStringBuff can hold
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysString(
+     hTheme : HTHEME;
+    iStringId : int;
+    (*__out_ecount(cchMaxStringChars)*) pszStringBuff : LPWSTR;
+    cchMaxStringChars : int
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  GetThemeSysInt() - Get the value of specified System int.
+//
+//  hTheme              - the theme data handle (required)
+//
+//  iIntId              - must be one of the following values:
+//
+//                          TMT_DPIX
+//                          TMT_DPIY
+//                          TMT_MINCOLORDEPTH
+//
+//  piValue             - ptr to int to receive value
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeSysInt(
+    hTheme : HTHEME;
+    iIntId : int;
+    (*__out*) VAR piValue : int
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  IsThemeActive()     - can be used to test if a system theme is active
+//                        for the current user session.
+//
+//                        use the API "IsAppThemed()" to test if a theme is
+//                        active for the calling process.
+//---------------------------------------------------------------------------*)
+PROCEDURE
+IsThemeActive(
+    (*VOID*)
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//  IsAppThemed()       - returns TRUE if a theme is active and available to
+//                        the current process
+//---------------------------------------------------------------------------*)
+PROCEDURE
+IsAppThemed(
+    (*VOID*)
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//  GetWindowTheme()    - if window is themed, returns its most recent
+//                        HTHEME from OpenThemeData() - otherwise, returns
+//                        NULL.
+//
+//      hwnd            - the window to get the HTHEME of
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetWindowTheme(
+    hwnd : HWND
+    ) : HTHEME;
+
+CONST
+    ETDT_DISABLE                  = VAL(LONG, 000000001h);
+    ETDT_ENABLE                   = VAL(LONG, 000000002h);
+    ETDT_USETABTEXTURE            = VAL(LONG, 000000004h);
+
+    ETDT_ENABLETAB                = (ETDT_ENABLE BOR ETDT_USETABTEXTURE);
+
+(*#if (_WIN32_WINNT >= 0x0600)*)
+    ETDT_USEAEROWIZARDTABTEXTURE  = VAL(LONG, 000000008h);
+
+    ETDT_ENABLEAEROWIZARDTAB      = (ETDT_ENABLE BOR ETDT_USEAEROWIZARDTABTEXTURE);
+
+    ETDT_VALIDBITS                = (ETDT_DISABLE BOR
+                                         ETDT_ENABLE BOR
+                                         ETDT_USETABTEXTURE BOR
+                                         ETDT_USEAEROWIZARDTABTEXTURE);
+(*#endif*)
+
+(*---------------------------------------------------------------------------
+//  EnableThemeDialogTexture()
+//
+//  - Enables/disables dialog background theme.  This method can be used to
+//    tailor dialog compatibility with child windows and controls that
+//    may or may not coordinate the rendering of their client area backgrounds
+//    with that of their parent dialog in a manner that supports seamless
+//    background texturing.
+//
+//      hdlg         - the window handle of the target dialog
+//      dwFlags      - ETDT_ENABLE to enable the theme-defined dialog background texturing,
+//                     ETDT_DISABLE to disable background texturing,
+//                     ETDT_ENABLETAB to enable the theme-defined background
+//                          texturing using the Tab texture
+//---------------------------------------------------------------------------*)
+PROCEDURE
+EnableThemeDialogTexture(
+    (*__in*) hwnd : HWND;
+    (*__in*) dwFlags : DWORD
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  IsThemeDialogTextureEnabled()
+//
+//  - Reports whether the dialog supports background texturing.
+//
+//      hdlg         - the window handle of the target dialog
+//---------------------------------------------------------------------------*)
+PROCEDURE
+IsThemeDialogTextureEnabled(
+    (*__in*) hwnd : HWND
+    ) : BOOL;
+
+(*---------------------------------------------------------------------------
+//---- flags to control theming within an app ----*)
+
+CONST
+    STAP_ALLOW_NONCLIENT      = VAL(ULONG, 1);
+    STAP_ALLOW_CONTROLS       = VAL(ULONG, 2);
+    STAP_ALLOW_WEBCONTENT     = VAL(ULONG, 4);
+    STAP_VALIDBITS            = (STAP_ALLOW_NONCLIENT BOR
+                                    STAP_ALLOW_CONTROLS BOR
+                                    STAP_ALLOW_WEBCONTENT);
+
+(*---------------------------------------------------------------------------
+//  GetThemeAppProperties()
+//                      - returns the app property flags that control theming
+//---------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeAppProperties(
+    (*VOID*)
+    ) : DWORD;
+
+(*---------------------------------------------------------------------------
+//  SetThemeAppProperties()
+//                      - sets the flags that control theming within the app
+//
+//      dwFlags         - the flag values to be set
+//---------------------------------------------------------------------------*)
+PROCEDURE
+SetThemeAppProperties(
+    dwFlags : DWORD
+    );
+
+(*---------------------------------------------------------------------------
+//  GetCurrentThemeName()
+//                      - Get the name of the current theme in-use.
+//                        Optionally, return the ColorScheme name and the
+//                        Size name of the theme.
+//
+//  pszThemeFileName    - receives the theme path & filename
+//  cchMaxNameChars     - max chars allowed in pszNameBuff
+//
+//  pszColorBuff        - (optional) receives the canonical color scheme name
+//                        (not the display name)
+//  cchMaxColorChars    - max chars allowed in pszColorBuff
+//
+//  pszSizeBuff         - (optional) receives the canonical size name
+//                        (not the display name)
+//  cchMaxSizeChars     - max chars allowed in pszSizeBuff
+//---------------------------------------------------------------------------*)
+PROCEDURE GetCurrentThemeName(
+    (*__out_ecount(cchMaxNameChars)*) pszThemeFileName : LPWSTR;
+    cchMaxNameChars : int;
+    (*__out_ecount_opt(cchMaxColorChars)*) pszColorBuff : LPWSTR;
+    cchMaxColorChars : int;
+    (*__out_ecount_opt(cchMaxSizeChars)*) pszSizeBuff : LPWSTR;
+    cchMaxSizeChars : int
+    ) : THEMEAPI;
+
+CONST
+    SZ_THDOCPROP_DISPLAYNAME       = "DisplayName"U;
+    SZ_THDOCPROP_CANONICALNAME     = "ThemeName"U;
+    SZ_THDOCPROP_TOOLTIP           = "ToolTip"U;
+    SZ_THDOCPROP_AUTHOR            = "author";
+
+PROCEDURE
+GetThemeDocumentationProperty(
+    pszThemeName : ARRAY OF UCHAR;
+    pszPropertyName : ARRAY OF UCHAR;
+    (*__out_ecount(cchMaxValChars)*) pszValueBuff : LPWSTR;
+    cchMaxValChars : int
+    ) : THEMEAPI;
+
+(*---------------------------------------------------------------------------
+//  Theme API Error Handling
+//
+//      All functions in the Theme API not returning an HRESULT (THEMEAPI_)
+//      use the WIN32 function "SetLastError()" to record any call failures.
+//
+//      To retreive the error code of the last failure on the
+//      current thread for these type of API's, use the WIN32 function
+//      "GetLastError()".
+//
+//      All Theme API error codes (HRESULT's and GetLastError() values)
+//      should be normal win32 errors which can be formatted into
+//      strings using the Win32 API FormatMessage().
+//---------------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------
+// DrawThemeParentBackground()
+//                      - used by partially-transparent or alpha-blended
+//                        child controls to draw the part of their parent
+//                        that they appear in front of.
+//
+//  hwnd                - handle of the child control
+//
+//  hdc                 - hdc of the child control
+//
+//  prc                 - (optional) rect that defines the area to be
+//                        drawn (CHILD coordinates)
+//---------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeParentBackground(
+    hwnd : HWND;
+    hdc : HDC;
+    (*__in_opt const*) VAR prc : RECT
+    ) : THEMEAPI;
+
+
+(*---------------------------------------------------------------------------
+//  EnableTheming()     - enables or disables themeing for the current user
+//                        in the current and future sessions.
+//
+//  fEnable             - if FALSE, disable theming & turn themes off.
+//                      - if TRUE, enable themeing and, if user previously
+//                        had a theme active, make it active now.
+//---------------------------------------------------------------------------*)
+PROCEDURE
+EnableTheming(
+    fEnable : BOOL
+    ) : THEMEAPI;
+
+CONST
+    GBF_DIRECT        = VAL(LONG, 000000001h);  (* direct dereferencing. *)
+    GBF_COPY          = VAL(LONG, 000000002h);  (* create a copy of the bitmap *)
+    GBF_VALIDBITS     = (GBF_DIRECT BOR GBF_COPY);
+
+(*#if (_WIN32_WINNT >= 0x0600)*)
+
+    DTPB_WINDOWDC              = VAL(LONG, 000000001h);
+    DTPB_USECTLCOLORSTATIC     = VAL(LONG, 000000002h);
+    DTPB_USEERASEBKGND         = VAL(LONG, 000000004h);
+
+(*---------------------------------------------------------------------------
+// DrawThemeParentBackgroundEx()
+//                      - used by partially-transparent or alpha-blended
+//                        child controls to draw the part of their parent
+//                        that they appear in front of.
+//                        Sends a WM_ERASEBKGND message followed by a WM_PRINTCLIENT.
+//
+//  hwnd                - handle of the child control
+//
+//  hdc                 - hdc of the child control
+//
+//  dwFlags             - if 0, only returns S_OK if the parent handled
+//                        WM_PRINTCLIENT.
+//                      - if DTPB_WINDOWDC is set, hdc is assumed to be a window DC,
+//                        not a client DC.
+//                      - if DTPB_USEERASEBKGND is set, the function will return S_OK
+//                        without sending a WM_CTLCOLORSTATIC message if the parent
+//                        actually painted on WM_ERASEBKGND.
+//                      - if DTPB_CTLCOLORSTATIC is set, the function will send
+//                        a WM_CTLCOLORSTATIC message to the parent and use the
+//                        brush if one is provided, else COLOR_BTNFACE.
+//
+//  prc                 - (optional) rect that defines the area to be
+//                        drawn (CHILD coordinates)
+//
+//  Return value        - S_OK if something was painted, S_FALSE if not.
+//---------------------------------------------------------------------------*)
+PROCEDURE
+DrawThemeParentBackgroundEx(
+    hwnd : HWND;
+    hdc : HDC;
+    dwFlags : DWORD;
+    (*__in_opt const*) VAR prc : RECT
+    ) : THEMEAPI;
+
+
+TYPE
+    WINDOWTHEMEATTRIBUTETYPE =
+    (
+        WTA_NONCLIENT = 1
+    );
+
+
+    _WTA_OPTIONS =
+    RECORD
+        dwFlags : DWORD;    (* values for each style option specified in the bitmask *)
+        dwMask : DWORD;     (* bitmask for flags that are changing *)
+                            (* valid options are: WTNCA_NODRAWCAPTION, WTNCA_NODRAWICON, WTNCA_NOSYSMENU *)
+    END;
+    WTA_OPTIONS = _WTA_OPTIONS;
+    PWTA_OPTIONS = POINTER TO _WTA_OPTIONS;
+
+CONST
+    WTNCA_NODRAWCAPTION     = VAL(LONG, 000000001h);    (* don't draw the window caption *)
+    WTNCA_NODRAWICON        = VAL(LONG, 000000002h);    (* don't draw the system icon *)
+    WTNCA_NOSYSMENU         = VAL(LONG, 000000004h);    (* don't expose the system menu icon functionality *)
+    WTNCA_NOMIRRORHELP      = VAL(LONG, 000000008h);    (* don't mirror the question mark, even in RTL layout *)
+    WTNCA_VALIDBITS         = (WTNCA_NODRAWCAPTION BOR
+                                   WTNCA_NODRAWICON BOR
+                                   WTNCA_NOSYSMENU BOR
+                                   WTNCA_NOMIRRORHELP);
+
+PROCEDURE
+SetWindowThemeAttribute(
+    hwnd : HWND;
+    eAttribute : WINDOWTHEMEATTRIBUTETYPE;
+    (*__in_bcount(cbAttribute)*) pvAttribute : PVOID;
+    cbAttribute : DWORD
+    ) : THEMEAPI;
+
+(*
+__inline HRESULT SetWindowThemeNonClientAttributes(HWND hwnd, DWORD dwMask, DWORD dwAttributes)
+{
+    WTA_OPTIONS wta;
+    wta.dwFlags = dwAttributes;
+    wta.dwMask = dwMask;
+    return SetWindowThemeAttribute(hwnd, WTA_NONCLIENT, ( void* )&(wta), sizeof(wta));
+}
+*)
+
+(*#endif // #if (_WIN32_WINNT >= 0x0600)*)
+
+(*---------------------------------------------------------------------------
+//
+// DrawThemeTextEx
+//
+// Note: DrawThemeTextEx only exists on Windows Vista and higher, but the
+// following declarations are provided to enable declaring its prototype when
+// compiling for all platforms.*)
+
+(* Callback function used by DrawThemeTextEx, instead of DrawText *)
+TYPE
+    DTT_CALLBACK_PROC = PROCEDURE
+    (
+    (*__in hdc :*) HDC,
+    (*__inout_ecount(cchText) pszText :*) LPWSTR,
+    (*__in cchText :*) int,
+    (*__inout prc :*) LPRECT,
+    (*__in dwFlags :*) UINT,
+    (*__in lParam :*)  LPARAM);
+
+(*
+typedef
+int
+(WINAPI *DTT_CALLBACK_PROC)
+(
+    __in HDC hdc,
+    __inout_ecount(cchText) LPWSTR pszText,
+    __in int cchText,
+    __inout LPRECT prc,
+    __in UINT dwFlags,
+    __in LPARAM lParam);
+*)
+
+(*---- bits used in dwFlags of DTTOPTS ----*)
+CONST
+    DTT_TEXTCOLOR    = VAL(ULONG,1) SHL 0;  (* crText has been specified *)
+    DTT_BORDERCOLOR  = VAL(ULONG,1) SHL 1;  (* crBorder has been specified *)
+    DTT_SHADOWCOLOR  = VAL(ULONG,1) SHL 2;  (* crShadow has been specified *)
+    DTT_SHADOWTYPE   = VAL(ULONG,1) SHL 3;  (* iTextShadowType has been specified *)
+    DTT_SHADOWOFFSET = VAL(ULONG,1) SHL 4;  (* ptShadowOffset has been specified *)
+    DTT_BORDERSIZE   = VAL(ULONG,1) SHL 5;  (* iBorderSize has been specified *)
+    DTT_FONTPROP     = VAL(ULONG,1) SHL 6;  (* iFontPropId has been specified *)
+    DTT_COLORPROP    = VAL(ULONG,1) SHL 7;  (* iColorPropId has been specified *)
+    DTT_STATEID      = VAL(ULONG,1) SHL 8;  (* IStateId has been specified *)
+    DTT_CALCRECT     = VAL(ULONG,1) SHL 9;  (* Use pRect as and in/out parameter *)
+    DTT_APPLYOVERLAY = VAL(ULONG,1) SHL 10; (* fApplyOverlay has been specified *)
+    DTT_GLOWSIZE     = VAL(ULONG,1) SHL 11; (* iGlowSize has been specified *)
+    DTT_CALLBACK     = VAL(ULONG,1) SHL 12; (* pfnDrawTextCallback has been specified *)
+    DTT_COMPOSITED   = VAL(ULONG,1) SHL 13; (* Draws text with antialiased alpha (needs a DIB section) *)
+    DTT_VALIDBITS    = (DTT_TEXTCOLOR BOR
+                           DTT_BORDERCOLOR BOR
+                           DTT_SHADOWCOLOR BOR
+                           DTT_SHADOWTYPE BOR
+                           DTT_SHADOWOFFSET BOR
+                           DTT_BORDERSIZE BOR
+                           DTT_FONTPROP BOR
+                           DTT_COLORPROP BOR
+                           DTT_STATEID BOR
+                           DTT_CALCRECT BOR
+                           DTT_APPLYOVERLAY BOR
+                           DTT_GLOWSIZE BOR
+                           DTT_COMPOSITED);
+
+TYPE
+
+    _DTTOPTS =
+		RECORD
+			dwSize              : DWORD;               (* size of the struct *)
+			dwFlags             : DWORD;               (* which options have been specified *)
+			crText              : COLORREF;            (* color to use for text fill *)
+			crBorder            : COLORREF;            (* color to use for text outline *)
+			crShadow            : COLORREF;            (* color to use for text shadow *)
+			iTextShadowType     : int;                 (* TST_SINGLE or TST_CONTINUOUS *)
+			ptShadowOffset      : POINT;               (* where shadow is drawn (relative to text) *)
+			iBorderSize         : int;                 (* Border radius around text *)
+			iFontPropId         : int;                 (* Font property to use for the text instead of TMT_FONT *)
+			iColorPropId        : int;                 (* Color property to use for the text instead of TMT_TEXTCOLOR *)
+			iStateId            : int;                 (* Alternate state id *)
+			fApplyOverlay       : BOOL;                (* Overlay text on top of any text effect? *)
+			iGlowSize           : int;                 (* Glow radious around text *)
+			pfnDrawTextCallback : DTT_CALLBACK_PROC;   (* Callback for DrawText *)
+			lParam              : LPARAM;              (* Parameter for callback *)
+		END;
+    DTTOPTS = _DTTOPTS;
+    PDTTOPTS = POINTER TO _DTTOPTS;
+
+(*#if (_WIN32_WINNT >= 0x0600)*)
+
+PROCEDURE
+DrawThemeTextEx(
+    hTheme : HTHEME;
+    hdc : HDC;
+    iPartId : int;
+    iStateId : int;
+    (*__in_ecount(cchText)*) pszText : ARRAY OF UCHAR;
+    cchText : int;
+    dwTextFlags : DWORD;
+    (*__inout*) pRect : LPRECT;
+    (*__in_opt const*) VAR pOptions : DTTOPTS
+    ) : THEMEAPI;
+
+
+(*-----------------------------------------------------------------------
+//  GetThemeStream() - Get the value for the specified STREAM property
+//
+//      hTheme      - theme data handle
+//      iPartId     - part number
+//      iStateId    - state number of part
+//      iPropId     - the property number to get the value for
+//      ppvStream   - if non-null receives the value of the STREAM property (not to be freed)
+//      pcbStream   - if non-null receives the size of the STREAM property
+//      hInst       - NULL when iPropId==TMT_STREAM, HINSTANCE of a loaded msstyles
+//                    file when iPropId==TMT_DISKSTREAM (use GetCurrentThemeName
+//                    and LoadLibraryEx(LOAD_LIBRARY_AS_DATAFILE)
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeBitmap(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    dwFlags : ULONG;
+    (*__out*) VAR phBitmap : HBITMAP
+    ) : THEMEAPI;
+
+(*-----------------------------------------------------------------------
+//  GetThemeStream() - Get the value for the specified STREAM property
+//
+//      hTheme      - theme data handle
+//      iPartId     - part number
+//      iStateId    - state number of part
+//      iPropId     - the property number to get the value for
+//      ppvStream   - if non-null receives the value of the STREAM property (not to be freed)
+//      pcbStream   - if non-null receives the size of the STREAM property
+//      hInst       - NULL when iPropId==TMT_STREAM, HINSTANCE of a loaded msstyles
+//                    file when iPropId==TMT_DISKSTREAM (use GetCurrentThemeName
+//                    and LoadLibraryEx(LOAD_LIBRARY_AS_DATAFILE)
+//-----------------------------------------------------------------------*)
+PROCEDURE
+GetThemeStream(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateId : int;
+    iPropId : int;
+    (*__out*) VAR ppvStream : ADDRESS;
+    (*__out_opt*) VAR pcbStream : DWORD;
+    (*__in_opt*) hInst : HINSTANCE
+    ) : THEMEAPI;
+
+
+(*------------------------------------------------------------------------
+//  BufferedPaintInit() - Initialize the Buffered Paint API.
+//                        Should be called prior to BeginBufferedPaint,
+//                        and should have a matching BufferedPaintUnInit.
+//------------------------------------------------------------------------*)
+PROCEDURE
+BufferedPaintInit(
+    (*VOID*)
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  BufferedPaintUnInit() - Uninitialize the Buffered Paint API.
+//                          Should be called once for each call to BufferedPaintInit,
+//                          when calls to BeginBufferedPaint are no longer needed.
+//------------------------------------------------------------------------*)
+PROCEDURE
+BufferedPaintUnInit(
+    (*VOID*)
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  BeginBufferedPaint() - Begins a buffered paint operation.
+//
+//    hdcTarget          - Target DC on which the buffer will be painted
+//    rcTarget           - Rectangle specifying the area of the target DC to paint to
+//    dwFormat           - Format of the buffer (see BP_BUFFERFORMAT)
+//    pPaintParams       - Paint operation parameters (see BP_PAINTPARAMS)
+//    phBufferedPaint    - Pointer to receive handle to new buffered paint context
+//------------------------------------------------------------------------*)
+
+TYPE
+(* HPAINTBUFFER *)
+    HPAINTBUFFER = HANDLE;  (* handle to a buffered paint context *)
+
+(* BP_BUFFERFORMAT *)
+_BP_BUFFERFORMAT =
+(
+    BPBF_COMPATIBLEBITMAP,    (* Compatible bitmap *)
+    BPBF_DIB,                 (* Device-independent bitmap *)
+    BPBF_TOPDOWNDIB,          (* Top-down device-independent bitmap *)
+    BPBF_TOPDOWNMONODIB       (* Top-down monochrome device-independent bitmap *)
+);
+BP_BUFFERFORMAT = _BP_BUFFERFORMAT;
+
+CONST
+    BPBF_COMPOSITED = BPBF_TOPDOWNDIB;
+
+TYPE
+
+(* BP_ANIMATIONSTYLE *)
+_BP_ANIMATIONSTYLE =
+(
+    BPAS_NONE,                (* No animation *)
+    BPAS_LINEAR,              (* Linear fade animation *)
+    BPAS_CUBIC,               (* Cubic fade animation *)
+    BPAS_SINE                 (* Sinusoid fade animation *)
+);
+BP_ANIMATIONSTYLE = _BP_ANIMATIONSTYLE;
+
+(* BP_ANIMATIONPARAMS *)
+_BP_ANIMATIONPARAMS =
+RECORD
+    cbSize     : DWORD;
+    dwFlags    : DWORD;             (* BPAF_ flags *)
+    style      : BP_ANIMATIONSTYLE;
+    dwDuration : DWORD;
+END;
+BP_ANIMATIONPARAMS = _BP_ANIMATIONPARAMS;
+PBP_ANIMATIONPARAMS = POINTER TO _BP_ANIMATIONPARAMS;
+
+CONST
+    BPPF_ERASE               = 00001h; (* Empty the buffer during BeginBufferedPaint() *)
+    BPPF_NOCLIP              = 00002h; (* Don't apply the target DC's clip region to the double buffer *)
+    BPPF_NONCLIENT           = 00004h; (* Using a non-client DC *)
+
+(* BP_PAINTPARAMS *)
+TYPE
+	_BP_PAINTPARAMS =
+		RECORD
+			cbSize         : DWORD;
+			dwFlags        : DWORD;                    (* BPPF_ flags *)
+			prcExclude     : POINTER TO RECT;
+			pBlendFunction : POINTER TO BLENDFUNCTION;
+		END;
+	BP_PAINTPARAMS = _BP_PAINTPARAMS;
+	PBP_PAINTPARAMS = POINTER TO _BP_PAINTPARAMS;
+
+PROCEDURE
+BeginBufferedPaint(
+    hdcTarget : HDC;
+    VAR prcTarget : RECT;
+    dwFormat : BP_BUFFERFORMAT;
+    (*__in_opt*) VAR pPaintParams : BP_PAINTPARAMS;
+    (*__out*) VAR phdc : HDC
+    ) : HPAINTBUFFER;
+
+
+(*------------------------------------------------------------------------
+//  EndBufferedPaint() - Ends a buffered paint operation.
+//
+//    hBufferedPaint   - handle to buffered paint context
+//    fUpdateTarget    - update target DC
+//------------------------------------------------------------------------*)
+PROCEDURE
+EndBufferedPaint(
+    hBufferedPaint : HPAINTBUFFER;
+    fUpdateTarget : BOOL
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  GetBufferedPaintTargetRect() - Returns the target rectangle specified during BeginBufferedPaint
+//
+//    hBufferedPaint             - handle to buffered paint context
+//    prc                        - pointer to receive target rectangle
+//------------------------------------------------------------------------*)
+PROCEDURE
+GetBufferedPaintTargetRect(
+    hBufferedPaint : HPAINTBUFFER;
+    (*__out*) VAR prc : RECT
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  GetBufferedPaintTargetDC() - Returns the target DC specified during BeginBufferedPaint
+//
+//    hBufferedPaint           - handle to buffered paint context
+//------------------------------------------------------------------------*)
+PROCEDURE
+GetBufferedPaintTargetDC(
+    hBufferedPaint : HPAINTBUFFER
+    ) : HDC;
+
+(*------------------------------------------------------------------------
+//  GetBufferedPaintDC() - Returns the same paint DC returned by BeginBufferedPaint
+//
+//    hBufferedPaint     - handle to buffered paint context
+//------------------------------------------------------------------------*)
+PROCEDURE
+GetBufferedPaintDC(
+    hBufferedPaint : HPAINTBUFFER
+    ) : HDC;
+
+(*------------------------------------------------------------------------
+//  GetBufferedPaintBits() - Obtains a pointer to the buffer bitmap, if the buffer is a DIB
+//
+//    hBufferedPaint       - handle to buffered paint context
+//    ppbBuffer            - pointer to receive pointer to buffer bitmap pixels
+//    pcxRow               - pointer to receive width of buffer bitmap, in pixels;
+//                           this value may not necessarily be equal to the buffer width
+//------------------------------------------------------------------------*)
+PROCEDURE
+GetBufferedPaintBits(
+    hBufferedPaint : HPAINTBUFFER;
+    (*__out*) VAR ppbBuffer : ADDRESS;
+    (*__out*) VAR pcxRow : int
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  BufferedPaintClear() - Clears given rectangle to ARGB = {0, 0, 0, 0}
+//
+//    hBufferedPaint     - handle to buffered paint context
+//    prc                - rectangle to clear; NULL specifies entire buffer
+//------------------------------------------------------------------------*)
+PROCEDURE
+BufferedPaintClear(
+    hBufferedPaint : HPAINTBUFFER;
+    (*__in_opt const*) VAR prc : RECT
+    ) : THEMEAPI;
+
+(*------------------------------------------------------------------------
+//  BufferedPaintSetAlpha() - Set alpha to given value in given rectangle
+//
+//    hBufferedPaint        - handle to buffered paint context
+//    prc                   - rectangle to set alpha in; NULL specifies entire buffer
+//    alpha                 - alpha value to set in the given rectangle
+//------------------------------------------------------------------------*)
+PROCEDURE
+BufferedPaintSetAlpha(
+    hBufferedPaint : HPAINTBUFFER;
+    (*__in_opt const*) VAR prc : RECT;
+    alpha : BYTE
+    ) : THEMEAPI;
+
+(* Macro for setting the buffer to opaque (alpha = 255) *)
+(*
+#define BufferedPaintMakeOpaque(hBufferedPaint, prc) BufferedPaintSetAlpha(hBufferedPaint, prc, 255)
+*)
+
+(*------------------------------------------------------------------------
+//  BufferedPaintStopAllAnimations() - Stop all buffer animations for the given window
+//
+//    hwnd                           - window on which to stop all animations
+//------------------------------------------------------------------------*)
+PROCEDURE
+BufferedPaintStopAllAnimations(
+    hwnd : HWND
+    ) : THEMEAPI;
+
+TYPE
+    HANIMATIONBUFFER = HANDLE;  (* handle to a buffered paint animation *)
+
+PROCEDURE
+BeginBufferedAnimation(
+    hwnd : HWND;
+    hdcTarget : HDC;
+    VAR prcTarget : RECT;
+    dwFormat : BP_BUFFERFORMAT;
+    (*__in_opt*) VAR pPaintParams : BP_PAINTPARAMS;
+    (*__in*) VAR pAnimationParams : BP_ANIMATIONPARAMS;
+    (*__out*) VAR phdcFrom : HDC;
+    (*__out*) VAR phdcTo : HDC
+    ) : HANIMATIONBUFFER;
+
+PROCEDURE
+EndBufferedAnimation(
+    hbpAnimation : HANIMATIONBUFFER;
+    fUpdateTarget : BOOL
+    ) : THEMEAPI;
+
+PROCEDURE
+BufferedPaintRenderAnimation(
+    hwnd : HWND;
+    hdcTarget : HDC
+    ) : BOOL;
+
+(*----------------------------------------------------------------------------
+// Tells if the DWM is running, and composition effects are possible for this
+// process (themes are active).
+// Roughly equivalent to "DwmIsCompositionEnabled() && IsAppthemed()"
+//----------------------------------------------------------------------------*)
+PROCEDURE IsCompositionActive() : BOOL;
+
+(*------------------------------------------------------------------------
+//  GetThemeTransitionDuration()
+//                      - Gets the duration for the specified transition
+//
+//  hTheme              - theme data handle
+//  iPartId             - part number
+//  iStateIdFrom        - starting state number of part
+//  iStateIdTo          - ending state number of part
+//  iPropId             - property id
+//  pdwDuration         - receives the transition duration
+//------------------------------------------------------------------------*)
+PROCEDURE
+GetThemeTransitionDuration(
+    hTheme : HTHEME;
+    iPartId : int;
+    iStateIdFrom : int;
+    iStateIdTo : int;
+    iPropId : int;
+    (*__out*) VAR pdwDuration : DWORD
+    ) : THEMEAPI;
+
+(*#endif // #if (_WIN32_WINNT >= 0x0600)*)
+
+END Uxtheme.

@@ -1,0 +1,516 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINCON;
+
+FROM SYSTEM IMPORT
+    MAKEADR, LOC;
+
+FROM WIN32 IMPORT
+    DWORD, WORD, SHORT, BOOL, WCHAR, HANDLE, LPWORD, UINT, HWND,
+    LPVOID, SECURITY_ATTRIBUTES, PVOID;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+TYPE
+    COORD = RECORD
+          X              : SHORT;
+          Y              : SHORT;
+    END;
+    PCOORD               = POINTER TO COORD;
+
+    SMALL_RECT = RECORD
+          Left           : SHORT;
+          Top            : SHORT;
+          Right          : SHORT;
+          Bottom         : SHORT;
+    END;
+    PSMALL_RECT          = POINTER TO SMALL_RECT;
+
+    uChar = RECORD
+        CASE : CARDINAL OF
+          0 : UnicodeChar: WCHAR;
+          |
+          1 : AsciiChar  : ACHAR;
+          ELSE
+        END;
+    END;
+
+    KEY_EVENT_RECORD = RECORD
+          bKeyDown       : BOOL;
+          wRepeatCount   : WORD;
+          wVirtualKeyCode: WORD;
+          wVirtualScanCode: WORD;
+          uChar          : uChar;
+          dwControlKeyState: DWORD;
+    END;
+    PKEY_EVENT_RECORD    = POINTER TO KEY_EVENT_RECORD;
+
+CONST
+    RIGHT_ALT_PRESSED    = 00001h;
+    LEFT_ALT_PRESSED     = 00002h;
+    RIGHT_CTRL_PRESSED   = 00004h;
+    LEFT_CTRL_PRESSED    = 00008h;
+    SHIFT_PRESSED        = 00010h;
+    NUMLOCK_ON           = 00020h;
+    SCROLLLOCK_ON        = 00040h;
+    CAPSLOCK_ON          = 00080h;
+    ENHANCED_KEY         = 00100h;
+
+    NLS_DBCSCHAR         = 00010000h; (* DBCS for JPN: SBCS/DBCS mode.*)
+    NLS_ALPHANUMERIC     = 00000000h; (* DBCS for JPN: Alphanumeric mode.*)
+    NLS_KATAKANA         = 00020000h; (* DBCS for JPN: Katakana mode.*)
+    NLS_HIRAGANA         = 00040000h; (* DBCS for JPN: Hiragana mode.*)
+    NLS_ROMAN            = 00400000h; (* DBCS for JPN: Roman/Noroman mode.*)
+    NLS_IME_CONVERSION   = 00800000h; (* DBCS for JPN: IME conversion.*)
+    NLS_IME_DISABLE      = 20000000h; (* DBCS for JPN: IME enable/disable.*)
+
+TYPE
+    MOUSE_EVENT_RECORD = RECORD
+          dwMousePosition: COORD;
+          dwButtonState  : DWORD;
+          dwControlKeyState: DWORD;
+          dwEventFlags   : DWORD;
+    END;
+    PMOUSE_EVENT_RECORD  = POINTER TO MOUSE_EVENT_RECORD;
+
+CONST
+    FROM_LEFT_1ST_BUTTON_PRESSED= 00001h;
+    RIGHTMOST_BUTTON_PRESSED= 00002h;
+    FROM_LEFT_2ND_BUTTON_PRESSED= 00004h;
+    FROM_LEFT_3RD_BUTTON_PRESSED= 00008h;
+    FROM_LEFT_4TH_BUTTON_PRESSED= 00010h;
+    MOUSE_MOVED          = 00001h;
+    DOUBLE_CLICK         = 00002h;
+    MOUSE_WHEELED = 0004h;
+
+TYPE
+    WINDOW_BUFFER_SIZE_RECORD = RECORD
+          dwSize         : COORD;
+    END;
+    PWINDOW_BUFFER_SIZE_RECORD= POINTER TO WINDOW_BUFFER_SIZE_RECORD;
+
+    MENU_EVENT_RECORD = RECORD
+          dwCommandId    : UINT;
+    END;
+    PMENU_EVENT_RECORD   = POINTER TO MENU_EVENT_RECORD;
+
+    FOCUS_EVENT_RECORD = RECORD
+          bSetFocus      : BOOL;
+    END;
+    PFOCUS_EVENT_RECORD  = POINTER TO FOCUS_EVENT_RECORD;
+
+    EventType = RECORD
+        CASE : CARDINAL OF
+          0 : KeyEvent   : KEY_EVENT_RECORD;
+          |
+          1 : MouseEvent : MOUSE_EVENT_RECORD;
+          |
+          2 : WindowBufferSizeEvent: WINDOW_BUFFER_SIZE_RECORD;
+          |
+          3 : MenuEvent  : MENU_EVENT_RECORD;
+          |
+          4 : FocusEvent : FOCUS_EVENT_RECORD;
+          ELSE
+        END;
+    END;
+
+    INPUT_RECORD = RECORD
+          EventType      : WORD;
+          pad            : WORD; (*??? Missing padding required *)
+          Event          : EventType;
+    END;
+    PINPUT_RECORD        = POINTER TO INPUT_RECORD;
+
+
+CONST
+    KEY_EVENT            = 00001h;
+    MOUSE_EVENT          = 00002h;
+    WINDOW_BUFFER_SIZE_EVENT= 00004h;
+    MENU_EVENT           = 00008h;
+    FOCUS_EVENT          = 00010h;
+
+TYPE
+    Char = RECORD
+        CASE : CARDINAL OF
+          0 : UnicodeChar: WCHAR;
+          |
+          1 : AsciiChar  : ACHAR;
+          ELSE
+        END;
+    END;
+
+    CHAR_INFO = RECORD
+          Char           : Char;
+          Attributes     : WORD;
+    END;
+    PCHAR_INFO           = POINTER TO CHAR_INFO;
+
+
+CONST
+    FOREGROUND_BLUE      = 00001h;
+    FOREGROUND_GREEN     = 00002h;
+    FOREGROUND_RED       = 00004h;
+    FOREGROUND_INTENSITY = 00008h;
+    BACKGROUND_BLUE      = 00010h;
+    BACKGROUND_GREEN     = 00020h;
+    BACKGROUND_RED       = 00040h;
+    BACKGROUND_INTENSITY = 00080h;
+
+    COMMON_LVB_LEADING_BYTE    = 0100h; (* Leading Byte of DBCS*)
+    COMMON_LVB_TRAILING_BYTE   = 0200h; (* Trailing Byte of DBCS*)
+    COMMON_LVB_GRID_HORIZONTAL = 0400h; (* DBCS: Grid attribute: top horizontal.*)
+    COMMON_LVB_GRID_LVERTICAL  = 0800h; (* DBCS: Grid attribute: left vertical.*)
+    COMMON_LVB_GRID_RVERTICAL  = 1000h; (* DBCS: Grid attribute: right vertical.*)
+    COMMON_LVB_REVERSE_VIDEO   = 4000h; (* DBCS: Reverse fore/back ground attribute.*)
+    COMMON_LVB_UNDERSCORE      = 8000h; (* DBCS: Underscore.*)
+
+    COMMON_LVB_SBCSDBCS      =  0300h;(* SBCS or DBCS flag.*)
+
+TYPE
+    CONSOLE_SCREEN_BUFFER_INFO = RECORD
+          dwSize         : COORD;
+          dwCursorPosition: COORD;
+          wAttributes    : WORD;
+          srWindow       : SMALL_RECT;
+          dwMaximumWindowSize: COORD;
+    END;
+    PCONSOLE_SCREEN_BUFFER_INFO= POINTER TO CONSOLE_SCREEN_BUFFER_INFO;
+
+    CONSOLE_CURSOR_INFO = RECORD
+          dwSize         : DWORD;
+          bVisible       : BOOL;
+    END;
+    PCONSOLE_CURSOR_INFO = POINTER TO CONSOLE_CURSOR_INFO;
+
+    PHANDLER_ROUTINE     = PROCEDURE(DWORD) : BOOL [EXPORT];
+
+CONST
+    CTRL_C_EVENT         = 0;
+    CTRL_BREAK_EVENT     = 1;
+    CTRL_CLOSE_EVENT     = 2;
+    CTRL_LOGOFF_EVENT    = 5;
+    CTRL_SHUTDOWN_EVENT  = 6;
+    ENABLE_PROCESSED_INPUT= 00001h;
+    ENABLE_LINE_INPUT    = 00002h;
+    ENABLE_ECHO_INPUT    = 00004h;
+    ENABLE_WINDOW_INPUT  = 00008h;
+    ENABLE_MOUSE_INPUT   = 00010h;
+    ENABLE_PROCESSED_OUTPUT= 00001h;
+    ENABLE_WRAP_AT_EOL_OUTPUT= 00002h;
+
+PROCEDURE PeekConsoleInputA(hConsoleInput : HANDLE;
+                            VAR lpBuffer : ARRAY OF INPUT_RECORD;
+                            nLength : DWORD;
+                            VAR lpNumberOfEventsRead : DWORD) : BOOL;
+
+PROCEDURE PeekConsoleInputW(hConsoleInput : HANDLE;
+                            VAR lpBuffer : ARRAY OF INPUT_RECORD;
+                            nLength : DWORD;
+                            VAR lpNumberOfEventsRead : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE PeekConsoleInput = PeekConsoleInputW;
+%ELSE
+PROCEDURE PeekConsoleInput = PeekConsoleInputA;
+%END
+
+PROCEDURE ReadConsoleInputA(hConsoleInput : HANDLE;
+                            VAR lpBuffer : ARRAY OF INPUT_RECORD;
+                            nLength : DWORD;
+                            VAR NumberOfEventsRead : DWORD) : BOOL;
+
+PROCEDURE ReadConsoleInputW(hConsoleInput : HANDLE;
+                            VAR lpBuffer : ARRAY OF INPUT_RECORD;
+                            nLength : DWORD;
+                            VAR lpNumberOfEventsRead : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ReadConsoleInput = ReadConsoleInputW;
+%ELSE
+PROCEDURE ReadConsoleInput = ReadConsoleInputA;
+%END
+
+PROCEDURE WriteConsoleInputA(hConsoleInput : HANDLE;
+                             lpBuffer : ARRAY OF INPUT_RECORD;
+                             nLength : DWORD;
+                             VAR lpNumberOfEventsWritten : DWORD) : BOOL;
+
+PROCEDURE WriteConsoleInputW(hConsoleInput : HANDLE;
+                             lpBuffer : ARRAY OF INPUT_RECORD;
+                             nLength : DWORD;
+                             VAR lpNumberOfEventsWritten : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE WriteConsoleInput  = WriteConsoleInputW;
+%ELSE
+PROCEDURE WriteConsoleInput  = WriteConsoleInputA;
+%END
+
+PROCEDURE ReadConsoleOutputA(hConsoleOutput : HANDLE;
+                             VAR lpBuffer : ARRAY OF CHAR_INFO;
+                             dwBufferSize : VALUE COORD;
+                             dwBufferCoord : VALUE COORD;
+                             VAR lpReadRegion : SMALL_RECT) : BOOL;
+
+PROCEDURE ReadConsoleOutputW(hConsoleOutput : HANDLE;
+                             VAR lpBuffer : ARRAY OF CHAR_INFO;
+                             dwBufferSize : VALUE COORD;
+                             dwBufferCoord : VALUE COORD;
+                             VAR lpReadRegion : SMALL_RECT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ReadConsoleOutput = ReadConsoleOutputW;
+%ELSE
+PROCEDURE ReadConsoleOutput = ReadConsoleOutputA;
+%END
+
+PROCEDURE WriteConsoleOutputA(hConsoleOutput : HANDLE;
+                              lpBuffer : ARRAY OF CHAR_INFO;
+                              dwBufferSize : VALUE COORD;
+                              dwBufferCoord : VALUE COORD;
+                              VAR lpWriteRegion : SMALL_RECT) : BOOL;
+
+PROCEDURE WriteConsoleOutputW(hConsoleOutput : HANDLE;
+                              lpBuffer : ARRAY OF CHAR_INFO;
+                              dwBufferSize : VALUE COORD;
+                              dwBufferCoord : VALUE COORD;
+                              VAR lpWriteRegion : SMALL_RECT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE WriteConsoleOutput = WriteConsoleOutputW;
+%ELSE
+PROCEDURE WriteConsoleOutput = WriteConsoleOutputA;
+%END
+
+PROCEDURE ReadConsoleOutputCharacterA(hConsoleOutput : HANDLE;
+                                      VAR lpCharacter : ARRAY OF ACHAR;
+                                      nLength : DWORD;
+                                      dwReadCoord : VALUE COORD;
+                                      VAR lpNumberOfCharsRead : DWORD) : BOOL;
+
+PROCEDURE ReadConsoleOutputCharacterW(hConsoleOutput : HANDLE;
+                                      VAR lpCharacter : ARRAY OF UCHAR;
+                                      nLength : DWORD;
+                                      dwReadCoord : VALUE COORD;
+                                      VAR lpNumberOfCharsRead : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ReadConsoleOutputCharacter = ReadConsoleOutputCharacterW;
+%ELSE
+PROCEDURE ReadConsoleOutputCharacter = ReadConsoleOutputCharacterA;
+%END
+
+PROCEDURE ReadConsoleOutputAttribute(hConsoleOutput : HANDLE;
+                                     lpAttribute : LPWORD;
+                                     nLength : DWORD;
+                                     dwReadCoord : VALUE COORD;
+                                     VAR lpNumberOfAttrsRead : DWORD) : BOOL;
+
+PROCEDURE WriteConsoleOutputCharacterA(hConsoleOutput : HANDLE;
+                                       lpCharacter : ARRAY OF ACHAR;
+                                       nLength : DWORD;
+                                       dwWriteCoord : VALUE COORD;
+                                       VAR lpNumberOfCharsWritten : DWORD) : BOOL;
+
+PROCEDURE WriteConsoleOutputCharacterW(hConsoleOutput : HANDLE;
+                                       lpCharacter : ARRAY OF UCHAR;
+                                       nLength : DWORD;
+                                       dwWriteCoord : VALUE COORD;
+                                       VAR lpNumberOfCharsWritten : DWORD) : BOOL;
+
+
+%IF UNICODE %THEN
+PROCEDURE WriteConsoleOutputCharacter = WriteConsoleOutputCharacterW;
+%ELSE
+PROCEDURE WriteConsoleOutputCharacter = WriteConsoleOutputCharacterA;
+%END
+
+PROCEDURE WriteConsoleOutputAttribute(hConsoleOutput : HANDLE;
+                                      lpAttribute : LPWORD;
+                                      nLength : DWORD;
+                                      dwWriteCoord : VALUE COORD;
+                                      VAR lpNumberOfAttrsWritten : DWORD) : BOOL;
+
+PROCEDURE FillConsoleOutputCharacterA(hConsoleOutput : HANDLE;
+                                      cCharacter : ACHAR;
+                                      nLength : DWORD;
+                                      dwWriteCoord : VALUE COORD;
+                                      VAR lpNumberOfCharsWritten : DWORD) : BOOL;
+
+PROCEDURE FillConsoleOutputCharacterW(hConsoleOutput : HANDLE;
+                                      cCharacter : WCHAR;
+                                      nLength : DWORD;
+                                      dwWriteCoord : VALUE COORD;
+                                      VAR lpNumberOfCharsWritten : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE FillConsoleOutputCharacter = FillConsoleOutputCharacterW;
+%ELSE
+PROCEDURE FillConsoleOutputCharacter = FillConsoleOutputCharacterA;
+%END
+
+PROCEDURE FillConsoleOutputAttribute(hConsoleOutput : HANDLE;
+                                     wAttribute : WORD;
+                                     nLength : DWORD;
+                                     dwWriteCoord : VALUE COORD;
+                                     VAR lpNumberOfAttrsWritten : DWORD) : BOOL;
+
+PROCEDURE GetConsoleMode(hConsoleHandle : HANDLE;
+                         VAR lpMode : DWORD) : BOOL;
+
+PROCEDURE GetNumberOfConsoleInputEvents(hConsoleInput : HANDLE;
+                                        VAR lpNumberOfEvents : DWORD) : BOOL;
+
+PROCEDURE GetConsoleScreenBufferInfo(hConsoleOutput : HANDLE;
+                                     VAR lpConsoleScreenBufferInfo : CONSOLE_SCREEN_BUFFER_INFO) : BOOL;
+
+PROCEDURE WINDOWSCALL_GetLargestConsoleWindowSize["_GetLargestConsoleWindowSize@4"]
+                        (hConsoleOutput : HANDLE) : DWORD;
+
+PROCEDURE GetLargestConsoleWindowSize(hConsoleOutput : HANDLE) : COORD [StonyBrook];
+
+PROCEDURE GetConsoleCursorInfo(hConsoleOutput : HANDLE;
+                               VAR lpConsoleCursorInfo : CONSOLE_CURSOR_INFO) : BOOL;
+
+PROCEDURE GetNumberOfConsoleMouseButtons(VAR lpNumberOfMouseButtons : DWORD) : BOOL;
+
+PROCEDURE SetConsoleMode(hConsoleHandle : HANDLE;
+                         dwMode : DWORD) : BOOL;
+
+PROCEDURE SetConsoleActiveScreenBuffer(hConsoleOutput : HANDLE) : BOOL;
+
+PROCEDURE FlushConsoleInputBuffer(hConsoleInput : HANDLE) : BOOL;
+
+PROCEDURE SetConsoleScreenBufferSize(hConsoleOutput : HANDLE;
+                                     dwSize : VALUE COORD) : BOOL;
+
+PROCEDURE SetConsoleCursorPosition(hConsoleOutput : HANDLE;
+                                   dwCursorPosition : VALUE COORD) : BOOL;
+
+PROCEDURE SetConsoleCursorInfo(hConsoleOutput : HANDLE;
+                               lpConsoleCursorInfo : CONSOLE_CURSOR_INFO) : BOOL;
+
+PROCEDURE ScrollConsoleScreenBufferA(hConsoleOutput : HANDLE;
+                                     lpScrollRectangle : SMALL_RECT;
+                                     lpClipRectangle : SMALL_RECT;
+                                     dwDestinationOrigin : VALUE COORD;
+                                     lpFill : PCHAR_INFO) : BOOL;
+
+PROCEDURE ScrollConsoleScreenBufferW(hConsoleOutput : HANDLE;
+                                     lpScrollRectangle : SMALL_RECT;
+                                     lpClipRectangle : SMALL_RECT;
+                                     dwDestinationOrigin : VALUE COORD;
+                                     lpFill : PCHAR_INFO) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ScrollConsoleScreenBuffer = ScrollConsoleScreenBufferW;
+%ELSE
+PROCEDURE ScrollConsoleScreenBuffer = ScrollConsoleScreenBufferA;
+%END
+
+PROCEDURE SetConsoleWindowInfo(hConsoleOutput : HANDLE;
+                               bAbsolute : BOOL;
+                               lpConsoleWindow : SMALL_RECT) : BOOL;
+
+PROCEDURE SetConsoleTextAttribute(hConsoleOutput : HANDLE;
+                                  wAttributes : WORD) : BOOL;
+
+PROCEDURE SetConsoleCtrlHandler(HandlerRoutine : PHANDLER_ROUTINE;
+                                Add : BOOL) : BOOL;
+
+PROCEDURE GenerateConsoleCtrlEvent(dwCtrlEvent : DWORD;
+                                   dwProcessGroupId : DWORD) : BOOL;
+
+PROCEDURE AllocConsole() : BOOL;
+
+PROCEDURE FreeConsole() : BOOL;
+
+PROCEDURE GetConsoleTitleA(VAR lpConsoleTitle : ARRAY OF ACHAR;
+                           nSize : DWORD) : DWORD;
+
+PROCEDURE GetConsoleTitleW(VAR lpConsoleTitle : ARRAY OF UCHAR;
+                           nSize : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE GetConsoleTitle = GetConsoleTitleW;
+%ELSE
+PROCEDURE GetConsoleTitle = GetConsoleTitleA;
+%END
+
+PROCEDURE SetConsoleTitleA(lpConsoleTitle : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE SetConsoleTitleW(lpConsoleTitle : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetConsoleTitle = SetConsoleTitleW;
+%ELSE
+PROCEDURE SetConsoleTitle = SetConsoleTitleA;
+%END
+
+PROCEDURE GetConsoleWindow() : HWND;
+
+PROCEDURE ReadConsoleA(hConsoleInput : HANDLE;
+                       VAR lpBuffer : ARRAY OF LOC;
+                       nNumberOfCharsToRead : DWORD;
+                       VAR lpNumberOfCharsRead : DWORD;
+                       lpReserved : LPVOID) : BOOL;
+
+PROCEDURE ReadConsoleW(hConsoleInput : HANDLE;
+                       VAR lpBuffer : ARRAY OF LOC;
+                       nNumberOfCharsToRead : DWORD;
+                       VAR lpNumberOfCharsRead : DWORD;
+                       lpReserved : LPVOID) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ReadConsole = ReadConsoleW;
+%ELSE
+PROCEDURE ReadConsole = ReadConsoleA;
+%END
+
+PROCEDURE WriteConsoleA(hConsoleOutput : HANDLE;
+                        lpBuffer : ARRAY OF LOC;
+                        nNumberOfCharsToWrite : DWORD;
+                        VAR lpNumberOfCharsWritten : DWORD;
+                        lpReserved : LPVOID) : BOOL;
+
+PROCEDURE WriteConsoleW(hConsoleOutput : HANDLE;
+                        lpBuffer : ARRAY OF LOC;
+                        nNumberOfCharsToWrite : DWORD;
+                        VAR lpNumberOfCharsWritten : DWORD;
+                        lpReserved : LPVOID) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE WriteConsole = WriteConsoleW;
+%ELSE
+PROCEDURE WriteConsole = WriteConsoleA;
+%END
+
+CONST
+    CONSOLE_TEXTMODE_BUFFER= 1;
+
+PROCEDURE CreateConsoleScreenBuffer(dwDesiredAccess : DWORD;
+                                    dwShareMode : DWORD;
+                                    lpSecurityAttributes : SECURITY_ATTRIBUTES;
+                                    dwFlags : DWORD;
+                                    lpScreenBufferData : PVOID) : HANDLE;
+
+PROCEDURE GetConsoleCP() : UINT;
+
+PROCEDURE SetConsoleCP(wCodePageID : UINT) : BOOL;
+
+PROCEDURE GetConsoleOutputCP() : UINT;
+
+PROCEDURE SetConsoleOutputCP(wCodePageID : UINT) : BOOL;
+
+(**************** Stony Brook Additional stuff **********************)
+
+VAR
+    NIL_SMALL_RECT      [MAKEADR(0)]    : SMALL_RECT;
+
+END WINCON.

@@ -1,0 +1,24 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE StringCache;
+(* this module will maintain a cache of the most recently used *)
+(* strings from a string table resource *)
+
+PROCEDURE InitStringCache(numStrings, maxStringSize : CARDINAL);
+(* numStrings = The maximum number of strings the cache can contain *)
+(* maxStringSize = the size of the largest string that may be cached *)
+(*                 strings larger than this size will be read but not *)
+(*                 cached *)
+
+PROCEDURE GetStringResource(idNum : CARDINAL; VAR str : ARRAY OF CHAR);
+(* str will contain an empty string if the resource does not exist *)
+(* the string will be truncated if the str parameter is not large enough *)
+(* to hold the whole string resource *)
+
+END StringCache.

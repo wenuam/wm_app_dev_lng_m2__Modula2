@@ -1,0 +1,28 @@
+DEFINITION MODULE SpecialReals;
+
+(* Special real values													   	 *)
+
+(* A. Mutylin                                                       March 2017 *)
+
+FROM SYSTEM IMPORT CAST;
+
+TYPE BITSET64 = PACKEDSET OF [0..63];
+
+CONST
+    Infinity      = CAST (LONGREAL, 07FF0000000000000H);
+    MinusInfinity = CAST (LONGREAL, 0FFF0000000000000H);
+    NaN           = CAST (LONGREAL, 07FFFFFFFFFFFFFFFH);
+	QNaN		  = NaN;
+	SNaN		  = CAST (LONGREAL, 07FF7FFFFFFFFFFFFH);
+    MinusZero     = CAST (LONGREAL, 08000000000000000H);
+
+PROCEDURE IsFinite           (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsNaN              (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsQNaN			 (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsSNaN			 (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsInfinity         (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsPositiveInfinity (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsNegativeInfinity (R : LONGREAL) : BOOLEAN;
+PROCEDURE IsMinusZero        (R : LONGREAL) : BOOLEAN;
+
+END SpecialReals.

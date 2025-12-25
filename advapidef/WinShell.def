@@ -1,0 +1,4310 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE WinShell;
+(*
+  This module provides an encapsulation of the underlying operating system
+  interface for handling windows and messages.
+  no operating system types, constants or procedures are exported from
+  this module. therefore any code that uses this module will not change
+  when ported to another system.
+
+  This module does not try to create a "very high level" interface.
+  It mostly maps itself directly to the underlying system. However, there
+  is some functionality not typically provided by typical system API calls.
+
+  This module does not attempt to map the entire underlying system.
+  Features are added to this module on an as needed basis. In other words,
+  why write the code, if it has no immediate use.
+
+  Implementations.
+      Windows
+      GTK+ 2.x
+      Macintosh Carbon OS X (using the p1 compiler)
+*)
+
+(* implementation limitations
+   Win32
+       ScaleDrawableArea requires GDI+ be installed to use interpolation modes
+           other than InterpLowQuality. If GDI+ is not available then InterpLowQuality
+           is always used.
+       LoadBitmap and LoadBitmapFromFile require GDI+ to load JPEG, TIFF, GIF and PNG
+           graphics formats. If GDI+ is not available then these formats cannot be
+           loaded.
+*)
+
+(* about resources.
+   See also, SetResourceFile API call in this module.
+
+   Resource name identifiers.
+       Resource names are not case sensitive.
+
+       Resource names can consist of two parts, a name and an id number.
+       Windows supports resources identified by name or number.
+       On GTK resources are identified by name.
+       On the Mac resources are identified by id number and have an optional name.
+
+       Name formats accepted.
+           Name
+           #number
+           Name#number
+
+           This module will break apart resource names into its respective components.
+
+           For portability across all platforms use the Name or Name#number format.
+           For portability across Win32 and GTK use the Name format.
+           For portability across Win32 and Mac you can use any format.
+
+           Since Windows supports named and numbered resources and a WinShell resource
+           identifier can have a name and number this module first searches for the
+           named resource and then searches for the numbered resource.
+
+           Classic Mac resources are primarily identified by number if you use
+           the Name#number format the number is used, so the number should be correct.
+           If you do not supply a number this module will find the resource by name
+           and then get the resource id number from the found resource. It is done
+           this way because many APIs like GetMenu, GetNewMBar and GetPicture do not
+           support named resources and only support resource id numbers.
+
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+   Windows - normal Windows resources are used.
+
+           An accelerator table resource needs to have the same name
+           as the menu resource it is associated with.
+
+           Additional "bitmap" resource types are supported in addition to the
+           Windows native bitmap format.
+           JPEG, PNG, GIF and TIFF formats are supported.
+           Gdi+ is used to load these formats.
+
+           When loading a bitmap from the resource file this module first looks
+           for a native bitmap resource of the given name, and if this is not found
+           then looks for JPEG, PNG, GIF and TIFF resources in that order.
+
+           JPEG resources are identified by the "JPEG" resource type.
+           PNG resources are identified by the "PNG" resource type.
+           GIF resources are identified by the "GIF" resource type.
+           TIFF resources are identified by the "TIFF" resource type.
+
+           LoadBitmapFromFile also supports these formats.
+
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+   Gtk - The concept of resources does not exist in the Unix toolkit
+         world, and Gtk is no exception.
+         We use a combination of various files to get the same effect.
+
+       Dialogs - Glade XML files. (.glade)
+           For further information consult DlgShell.
+
+       ---------------------------------------------------------------
+       Menu's and accelerators. Glade XML files.
+           Create a window in glade, mark the window as NOT visible.
+           The name of the window is the name of your menu resource.
+           Put your menubar into this window. The menu bar name must be named
+           "menubar". The accelerators you define in the menubar will be used.
+
+           For accelerators not tied to a menu item you create a menu in
+           your menubar named "hiddenaccel" and put your accelerators
+           on menu items within this menu. This menu will be hidden by
+           this module.
+
+           Popup menus are glade popup menu resources.
+
+       ---------------------------------------------------------------
+       String table - Proprietary format used by this module.
+           This file format is the one that the Win32 resource editor uses
+           to export/import string tables to stand alone files.
+
+           Format.
+           IdNumber = "...
+
+           IdNumber = the string id number
+           '=' the equal character.
+           '"' the double quote character.
+           The string is all data after the '"' character to the end of
+           the line.
+
+           Carrage return, line feed, tab, and backspace characters are
+               in "escape" notation. These characters are converted to binary
+               format when the string is loaded.
+           \r = Carriage return = CHR(13). ignored on Unix systems.
+           \n = line feed (new line) = CHR(10)
+           \t = tab = CHR(9)
+           \b = backspace = CHR(8)
+           \\ = \ backslash character.
+
+        ---------------------------------------------------------------
+        Bitmaps - Proprietary format used by this module.
+            This is a text file that describes the resource name
+            and the associated bitmap file to load. Therefore each
+            bitmap resource is an individual file. The bitmap file names
+            can be relative file names that are relative to the bitmap
+            resource file.
+
+            libgdk_pixbuf is used to load bitmaps, it must be installed!
+
+            Format
+            ResourceName = FileName
+            where ResoruceName and FileName must be enclosed in double quote
+            characters.
+            Only one resource description entry per line.
+
+            Example
+            "Splash" = "pixmaps/splash.png"
+
+            Assuming the resource file is in directory "/opt/MyCompany",
+            then the full path of the example bitmap file is
+            "/opt/MyCompany/pixmaps/splash.png"
+
+            Bitmap resource files can be any graphics file format supported
+            by the Gdk Pixbuf library.
+            This includes
+                BMP, JPEG, PNG, TIFF, XPM, GIF, ICO.
+
+            LoadBitmapFromFile can load any image format that GTK supports.
+
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+   ---------------------------------------------------------------
+    Macintosh - In flux. Only Classic for now. In the future Dialogs and menus
+                    will only support Interface Builder.
+                 Classic Mac resources.
+                     We suggest you use the Resorcerer program for creating and editing
+                     your Mac resources. www.mathemaesthetics.com
+                     Resources used internally by this module all have id numbers
+                     32000 or higher.
+                 Interface builder.
+                     Not yet supported.
+
+       ---------------------------------------------------------------
+       Menus - Mac standard + extended information generated by Resorcerer.
+           Create your menus with Resorcerer and enter the menu id number in the
+               "command Id" field. Resorcerer automatically generates a resource type
+               "Mcmd" which contains the menu item command id numbers. This module
+               loads and parses this resource and sets the menu item command id numbers.
+
+       ---------------------------------------------------------------
+       String Table - Proprietary format or standard Mac format.
+           Proprietary format.
+               See the GTK string table resource documentation for the table format.
+               This format does not have a 255 character limit.
+               The resource type is "strX" and the resource id number is 128.
+           Mac classic.
+               TEXT and STR# resources.
+               The STR# resource id must be 128.
+               STR# string lists have an individual string limit of 255 characters.
+               Therefore this module will try and load a TEXT resource of the given
+               string id number. if that fails then it will try to load the string
+               from the STR# resource.
+
+       ---------------------------------------------------------------
+       Bitmaps
+           Mac classic.
+               This can be a PICT or cicn resource.
+               the cicn (color icon) resource is handy for small bitmaps.
+               Additional "bitmap" resource types are supported in addition to the
+               native formats.
+
+               BMP, JPEG, PNG, GIF and TIFF formats are supported.
+               Quicktime is used to load these formats.
+
+               When loading a bitmap from the resource file this module first looks
+               for a native bitmap resource of the given name, and if this is not found
+               then looks for BMP(Window  bitmap), JPEG, PNG, TIFF and GIF
+               resources in that order.
+
+               BMP resources are identified by the "WRLE" (kBMPCodecType) resource type.
+               JPEG resources are identified by the "jpeg" (kJPEGCodecType) resource type.
+               PNG resources are identified by the "png " (kPNGCodecType) resource type.
+               GIF resources are identified by the "gif " (kGIFCodecType) resource type.
+               TIFF resources are identified by the "tiff" (kTIFFCodecType) resource type.
+
+           LoadBitmapFromFile can load any image format that Quicktime supports which
+               is considerable.
+*)
+
+(* about threads
+   Win32 - you may use the GUI features in a fully multi threaded manner.
+
+   Gtk - Only one thread, the main thread, may use the GUI features.
+
+   Mac - Currently only one thread, the main thread, may use the GUI features.
+
+   In all systems you can have any thread safely use the LoadString API.
+
+   In all systems you can have a background thread send or post a message
+   to a window. For send, the background thread will wait until the message is
+   received and processed by the UI thread before returning from the
+   send message call.
+*)
+
+<*/NOPACK*>
+
+FROM SYSTEM IMPORT
+    ADDRESS, CAST, CARD8, MACHINEWORD, ADRINT, ADRCARD;
+
+TYPE
+    Window;
+    Drawable;
+    DrawContext;
+    TreeClientNode;
+    MenuHandle;
+    BitmapHandle;
+    ImageListHandle;
+    FontHandle;
+    PrintDriverInfo;
+
+CONST
+    (* Stony Brook compilers implement an extension that allows opaque types to be
+       compatible with NIL outside of their native implementation module.
+       For compilers not supporting this feature you use these constants to assign
+       and compare variables of the respective opaque type with NIL.
+    *)
+    NIL_Window          = CAST(Window, NIL);
+    NIL_Drawable        = CAST(Drawable, NIL);
+    NIL_DrawContext     = CAST(DrawContext, NIL);
+    NIL_TreeClientNode  = CAST(TreeClientNode, NIL);
+    NIL_MenuHandle      = CAST(MenuHandle, NIL);
+    NIL_BitmapHandle    = CAST(BitmapHandle, NIL);
+    NIL_ImageListHandle = CAST(ImageListHandle, NIL);
+    NIL_FontHandle      = CAST(FontHandle, NIL);
+    NIL_PrintDriverInfo = CAST(PrintDriverInfo, NIL);
+
+TYPE
+    WindowTypes         = (ToplevelWindow, ChildWindow);
+    (*
+      ToplevelWindow - a normal Window.
+      ChildWindow - a window that is child of a TabClient or SplitterClient window.
+    *)
+
+    ClientTypes         = (DrawClient,
+                           ListClient, TreeClient, FormClient,
+                           TabClient, SplitterClient);
+    (*
+      !!! not yet implemented
+          GTK => the FormClient form editor is not implemented.
+                 The FormClient is functional.
+      !!!
+
+      DrawClient - a free form area in which you can draw anything you like.
+                   it is your responsibility to redraw the area on demand.
+                       see WSM_PAINT message.
+                       see SetBackgroundAutoErase
+
+      ListClient - displays a list of items.
+                   the list may have one or more columns.
+                   the list may have a header window describing said columns.
+
+      TreeClient - a typical hierarchical tree display that can be expanded
+                   and contracted.
+
+      FormClient - an area in which you can place various "controls" like typically
+                   used in dialog boxes. In fact you can use this client type in
+                   a toplevel window to create "dialog boxes". even modal ones.
+
+      TabClient - like notebook tabs.
+                  Each tab can contain any client window type.
+                  you can have single or multi-line tabs.
+                  you can have as many tabs as you want. in single line mode
+                  the user can scroll left/right through the tabs. in milti-line
+                  mode all tabs are always visible and the tab content rect gets
+                  smaller and smaller as more tab lines are created.
+
+                  Win32
+                      single a multi-line tabs are supported.
+                  GTK+
+                      only single line tabs are supported.
+                  Mac
+                     only single line tabs are supported.
+                     However, the Mac control cannot scroll tabs.
+                     Therefore, you can only have as many tabs as can
+                     be display in the window. this of course varies depending on the
+                     size of window at any given time.
+
+          TabClient Multiple Document Interface.
+              If a ToplevelWindow client type is TabClient then the individual
+              tab client children may have a unique menu and this module will
+              automatically switch the ToplevelWindow menubar to the menu of the
+              currently active tab client. if the tab client does not have a
+              menu, or if no tab clients are open, then the ToplevelWindow menu
+              becomes active.
+
+      SplitterClient - splits a region into two parts. Each part may contain any
+                       client window type. The region may be split vertically
+                       or horizontally.
+                       The relative proportions of each part are user sizable.
+    *)
+
+    TabPosition         = (TabTop, TabBottom, TabLeft, TabRight);
+
+    TextAlignment       = (AlignLeft, AlignCenter, AlignRight);
+
+<*IF MAC THEN*>
+    StringData          = POINTER TO ARRAY [0..(8*1024)-1] OF CHAR;
+<*ELSE*>
+    StringData          = POINTER TO ARRAY [0..0] OF CHAR;
+<*END*>
+
+    ColorValue          = CARDINAL;
+    (* in hex notation the color value components are. AABBGGRRh
+       RR = red. the low order byte.
+       GG = green
+       BB = blue
+       AA = alpha channel. currently not used.
+    *)
+
+    CommonColors =
+    (
+        (* SVG standard colors *)
+        AliceBlue,
+        AntiqueWhite,
+        Aqua,
+        Aquamarine,
+        Azure,
+        Beige,
+        Bisque,
+        Black,
+        BlanchedAlmond,
+        Blue,
+        BlueViolet,
+        Brown,
+        BurlyWood,
+        CadetBlue,
+        Chartreuse,
+        Chocolate,
+        Coral,
+        CornflowerBlue,
+        Cornsilk,
+        Crimson,
+        Cyan,
+        DarkBlue,
+        DarkCyan,
+        DarkGoldenrod,
+        DarkGray,
+        DarkGreen,
+        DarkKhaki,
+        DarkMagenta,
+        DarkOliveGreen,
+        DarkOrange,
+        DarkOrchid,
+        DarkRed,
+        DarkSalmon,
+        DarkSeaGreen,
+        DarkSlateBlue,
+        DarkSlateGray,
+        DarkTurquoise,
+        DarkViolet,
+        DeepPink,
+        DeepSkyBlue,
+        DimGray,
+        DodgerBlue,
+        Firebrick,
+        FloralWhite,
+        ForestGreen,
+        Fuchsia,
+        Gainsboro,
+        GhostWhite,
+        Gold,
+        Goldenrod,
+        Gray,
+        Green,
+        GreenYellow,
+        Honeydew,
+        HotPink,
+        IndianRed,
+        Indigo,
+        Ivory,
+        Khaki,
+        Lavender,
+        LavenderBlush,
+        LawnGreen,
+        LemonChiffon,
+        LightBlue,
+        LightCoral,
+        LightCyan,
+        LightGoldenrodYellow,
+        LightGray,
+        LightGreen,
+        LightPink,
+        LightSalmon,
+        LightSeaGreen,
+        LightSkyBlue,
+        LightSlateGray,
+        LightSteelBlue,
+        LightYellow,
+        Lime,
+        LimeGreen,
+        Linen,
+        Magenta,
+        Maroon,
+        MediumAquamarine,
+        MediumBlue,
+        MediumOrchid,
+        MediumPurple,
+        MediumSeaGreen,
+        MediumSlateBlue,
+        MediumSpringGreen,
+        MediumTurquoise,
+        MediumVioletRed,
+        MidnightBlue,
+        MintCream,
+        MistyRose,
+        Moccasin,
+        NavajoWhite,
+        Navy,
+        OldLace,
+        Olive,
+        OliveDrab,
+        Orange,
+        OrangeRed,
+        Orchid,
+        PaleGoldenrod,
+        PaleGreen,
+        PaleTurquoise,
+        PaleVioletRed,
+        PapayaWhip,
+        PeachPuff,
+        Peru,
+        Pink,
+        Plum,
+        PowderBlue,
+        Purple,
+        Red,
+        RosyBrown,
+        RoyalBlue,
+        SaddleBrown,
+        Salmon,
+        SandyBrown,
+        SeaGreen,
+        SeaShell,
+        Sienna,
+        Silver,
+        SkyBlue,
+        SlateBlue,
+        SlateGray,
+        Snow,
+        SpringGreen,
+        SteelBlue,
+        Tan,
+        Teal,
+        Thistle,
+        Tomato,
+        Turquoise,
+        Violet,
+        Wheat,
+        White,
+        WhiteSmoke,
+        Yellow,
+        YellowGreen,
+
+        (* other colors *)
+        TransparentColor
+    );
+
+    CommonColorsArray   = ARRAY CommonColors OF ColorValue;
+
+CONST
+    Colors = CommonColorsArray{
+        (*AliceBlue*) 0FFF8F0h,
+        (*AntiqueWhite*) 0D7EBFAh,
+        (*Aqua*) 0FFFF00h,
+        (*Aquamarine*) 0D4FF7Fh,
+        (*Azure*) 0FFFFF0h,
+        (*Beige*) 0DCF5F5h,
+        (*Bisque*) 0C4E4FFh,
+        (*Black*) 0000000h,
+        (*BlanchedAlmond*) 0CDEBFFh,
+        (*Blue*) 0FF0000h,
+        (*BlueViolet*) 0E22B8Ah,
+        (*Brown*) 02A2AA5h,
+        (*BurlyWood*) 087B8DEh,
+        (*CadetBlue*) 0A09E5Fh,
+        (*Chartreuse*) 000FF7Fh,
+        (*Chocolate*) 01E69D2h,
+        (*Coral*) 0507FFFh,
+        (*CornflowerBlue*) 0ED9564h,
+        (*Cornsilk*) 0DCF8FFh,
+        (*Crimson*) 03C14DCh,
+        (*Cyan*) 0FFFF00h,
+        (*DarkBlue*) 08B0000h,
+        (*DarkCyan*) 08B8B00h,
+        (*DarkGoldenrod*) 00B86B8h,
+        (*DarkGray*) 0A9A9A9h,
+        (*DarkGreen*) 0006400h,
+        (*DarkKhaki*) 06BB7BDh,
+        (*DarkMagenta*) 08B008Bh,
+        (*DarkOliveGreen*) 02F6B55h,
+        (*DarkOrange*) 0008CFFh,
+        (*DarkOrchid*) 0CC3299h,
+        (*DarkRed*) 000008Bh,
+        (*DarkSalmon*) 07A96E9h,
+        (*DarkSeaGreen*) 08BBC8Fh,
+        (*DarkSlateBlue*) 08B3D48h,
+        (*DarkSlateGray*) 04F4F2Fh,
+        (*DarkTurquoise*) 0D1CE00h,
+        (*DarkViolet*) 0D30094h,
+        (*DeepPink*) 09314FFh,
+        (*DeepSkyBlue*) 0FFBF00h,
+        (*DimGray*) 0696969h,
+        (*DodgerBlue*) 0FF901Eh,
+        (*Firebrick*) 02222B2h,
+        (*FloralWhite*) 0F0FAFFh,
+        (*ForestGreen*) 0228B22h,
+        (*Fuchsia*) 0FF00FFh,
+        (*Gainsboro*) 0DCDCDCh,
+        (*GhostWhite*) 0FFF8F8h,
+        (*Gold*) 000D7FFh,
+        (*Goldenrod*) 020A5DAh,
+        (*Gray*) 0808080h,
+        (*Green*) 0008000h,
+        (*GreenYellow*) 02FFFADh,
+        (*Honeydew*) 0F0FFF0h,
+        (*HotPink*) 0B469FFh,
+        (*IndianRed*) 05C5CCDh,
+        (*Indigo*) 082004Bh,
+        (*Ivory*) 0F0FFFFh,
+        (*Khaki*) 08CE6F0h,
+        (*Lavender*) 0FAE6E6h,
+        (*LavenderBlush*) 0F5F0FFh,
+        (*LawnGreen*) 000FC7Ch,
+        (*LemonChiffon*) 0CDFAFFh,
+        (*LightBlue*) 0E6D8ADh,
+        (*LightCoral*) 08080F0h,
+        (*LightCyan*) 0FFFFE0h,
+        (*LightGoldenrodYellow*) 0D2FAFAh,
+        (*LightGray*) 0D3D3D3h,
+        (*LightGreen*) 090EE90h,
+        (*LightPink*) 0C1B6FFh,
+        (*LightSalmon*) 07AA0FFh,
+        (*LightSeaGreen*) 0AAB220h,
+        (*LightSkyBlue*) 0FACE87h,
+        (*LightSlateGray*) 0998877h,
+        (*LightSteelBlue*) 0DEC4B0h,
+        (*LightYellow*) 0E0FFFFh,
+        (*Lime*) 000FF00h,
+        (*LimeGreen*) 032CD32h,
+        (*Linen*) 0E6F0FAh,
+        (*Magenta*) 0FF00FFh,
+        (*Maroon*) 0000080h,
+        (*MediumAquamarine*) 0AACD66h,
+        (*MediumBlue*) 0CD0000h,
+        (*MediumOrchid*) 0D355BAh,
+        (*MediumPurple*) 0DB7093h,
+        (*MediumSeaGreen*) 071B33Ch,
+        (*MediumSlateBlue*) 0EE687Bh,
+        (*MediumSpringGreen*) 09AFA00h,
+        (*MediumTurquoise*) 0CCD148h,
+        (*MediumVioletRed*) 08515C7h,
+        (*MidnightBlue*) 0701919h,
+        (*MintCream*) 0FAFFF5h,
+        (*MistyRose*) 0E1E4FFh,
+        (*Moccasin*) 0B5E4FFh,
+        (*NavajoWhite*) 0ADDEFFh,
+        (*Navy*) 0800000h,
+        (*OldLace*) 0E6F5FDh,
+        (*Olive*) 0008080h,
+        (*OliveDrab*) 0238E6Bh,
+        (*Orange*) 000A5FFh,
+        (*OrangeRed*) 00045FFh,
+        (*Orchid*) 0D670DAh,
+        (*PaleGoldenrod*) 0AAE8EEh,
+        (*PaleGreen*) 098FB98h,
+        (*PaleTurquoise*) 0EEEEAFh,
+        (*PaleVioletRed*) 09370DBh,
+        (*PapayaWhip*) 0D5EFFFh,
+        (*PeachPuff*) 0B9DAFFh,
+        (*Peru*) 03F85CDh,
+        (*Pink*) 0CBC0FFh,
+        (*Plum*) 0DDA0DDh,
+        (*PowderBlue*) 0E6E0B0h,
+        (*Purple*) 0800080h,
+        (*Red*) 00000FFh,
+        (*RosyBrown*) 08F8FBCh,
+        (*RoyalBlue*) 0E16941h,
+        (*SaddleBrown*) 013458Bh,
+        (*Salmon*) 07280FAh,
+        (*SandyBrown*) 060A4F4h,
+        (*SeaGreen*) 0578B2Eh,
+        (*SeaShell*) 0EEF5FFh,
+        (*Sienna*) 02D52A0h,
+        (*Silver*) 0C0C0C0h,
+        (*SkyBlue*) 0EBCE87h,
+        (*SlateBlue*) 0CD5A6Ah,
+        (*SlateGray*) 0908070h,
+        (*Snow*) 0FAFAFFh,
+        (*SpringGreen*) 07FFF00h,
+        (*SteelBlue*) 0B48246h,
+        (*Tan*) 08CB4D2h,
+        (*Teal*) 0808000h,
+        (*Thistle*) 0D8BFD8h,
+        (*Tomato*) 04763FFh,
+        (*Turquoise*) 0D0E040h,
+        (*Violet*) 0EE82EEh,
+        (*Wheat*) 0B3DEF5h,
+        (*White*) 0FFFFFFh,
+        (*WhiteSmoke*) 0F5F5F5h,
+        (*Yellow*) 000FFFFh,
+        (*YellowGreen*) 032CD9Ah,
+
+        (*TransparentColor*)0FFFFFFFFh(*transparent white*)
+     };
+
+    OpaqueOpacity       = 0;
+    TransparentOpacity  = 255;
+
+TYPE
+    RgbPixelFormat      = (Rgb8, Rgba8, Rgb16, Rgba16,
+                           Bgr8, Bgra8, Bgr16, Bgra16,
+                           Abgr8, Abgr16);
+
+    ColumnContentTypes  = (ColumnText, ColumnBitmap, ColumnBitmapText);
+
+    ClientColumnInfo =
+        RECORD
+			header          : StringData;(*can be NIL, which means no header text.
+										   if no column has a header then the list will not
+										   display a header.
+										 *)
+			width           : INTEGER;(* -1 = autosize, the units are screen pixels. *)
+			align           : TextAlignment;
+			content         : ColumnContentTypes;
+			sortable        : BOOLEAN;(* the list is sortable on this column.
+										 also, if ClientCreateData.headerSortButtons is
+										 TRUE then the user can click on the column header
+										 to select the column for sorting and/or change
+										 the order order between ascending and descending.
+									  *)
+        END;
+
+    SortDirection       = (SortAscending, SortDescending);
+
+    ListClientSortCompareProc = PROCEDURE((*item1:*) ADDRESS,
+                                          (*item2:*) ADDRESS,
+                                          (*column:*) CARDINAL,
+                                          (*data :*) ADDRESS) : INTEGER;
+    (* return < 0 if item1 < item2
+       return = 0 ite item1 = item2
+       return > 0 if item1 > item2
+       item1 and item2 are the (.userData) items associateed with the list rows
+           to be sorted. while sorting the list is not an a state that you can use
+           various list API calls.
+       column is the column being sorted.
+       data = arbitrary data (.sortCompareData)
+    *)
+    ClientCreateData =(* used with CreateWindow. *)
+        RECORD
+			CASE : ClientTypes OF
+			ListClient:
+				numColumns          : CARDINAL;
+				sortColumn          : INTEGER;(* if < 0, then no sort column. *)
+				singleSelect        : BOOLEAN;
+				headerSortButtons   : BOOLEAN;(* if TRUE then the header titles act like
+												 a button allowing the user select the
+												 sort column and toggle the sort mode between
+												 ascending and descending.
+											  *)
+				listReturnKeys      : BOOLEAN;(* if TRUE the window procedure will receive
+												 the WSM_KEY message. see the WSM_KEY
+												 message for futher information.
+											  *)
+				sortCompareProc     : ListClientSortCompareProc;
+									  (* the default compare procedure compares on the text
+										 in the sort column.
+									  *)
+				sortCompareData     : ADDRESS;
+				sortDirection       : SortDirection;
+				imageList           : ImageListHandle;
+				<*IF MAC THEN*>
+				columnInfo          : POINTER TO ARRAY [0..31] OF ClientColumnInfo;
+				<*ELSE*>
+				columnInfo          : POINTER TO ARRAY [0..0] OF ClientColumnInfo;
+				<*END*>
+			|
+			TreeClient:
+				treeLines           : BOOLEAN;(*lines connecting the tree nodes.
+												some operating systems may not support
+												treeLines = TRUE.
+											  *)
+				treeReturnKeys      : BOOLEAN;(* if TRUE the window procedure will receive
+												 the WSM_KEY message. see the WSM_KEY
+												 message for futher information.
+											  *)
+				CASE treeFolders    : BOOLEAN OF(*display image for open/closed state*)
+				TRUE:
+					folderClosedImage,
+					folderOpenImage     : ARRAY [0..31] OF CHAR;
+										  (* defaults, "", are an open and closed folder.
+											 Win32
+												 Bitmap or Icon resource.
+											 Mac
+												 'icns' resource.
+										  *)
+
+					folderMaskColor     : ColorValue;
+					   (*
+						 ignored if the default images are used.
+
+						 this is the color in the bitmap that is to be "transparent",
+						 having the same color as the background.
+						 The loaded bitmaps will be altered to make this so.
+						 if the transparent color does not exist in a bitmap then the bitmap
+						 is loaded unaltered without error.
+						 if the bitmap resource already has transparency information then
+						 this value is ignored. in this case use the value TransparentColor
+						 *)
+				|
+				FALSE:
+				END;
+			|
+			TabClient:
+				tabPos              : TabPosition;
+				multiLineTabs       : BOOLEAN;(* this attribute is optional behavior.
+												 if the underlying system cannot support
+												 multi-line tabs then this option is
+												 ignored.*)
+			|
+			SplitterClient:
+				splitHorizontal     : BOOLEAN;(*FALSE means split vertical*)
+				splitPos            : CARDINAL;(*percent or pixels*)
+				splitPosPercent     : BOOLEAN;
+			|
+			DrawClient:
+			|
+			FormClient:
+			END;
+        END;
+    ClientCreateDataPointer     = POINTER TO ClientCreateData;
+
+    ControlTypes = (CheckBox,
+                    RadioButton,
+                    PushButton,
+                    ToggleButton,
+                    SpinButton,
+                    ListBox,
+                    DropDownList,
+                    ComboBox,
+                    TextLabel,
+                    TextEdit,
+
+                    GroupBox,
+                    MultiPage);
+    (* these should be obvious.
+
+       the GroupBox and MultiPage controls are "container" controls. that is they
+       have "child" controls which are contained within their boundaries.
+
+       MultiPage is a tabbed multiple page control.
+       each page in a MultiPage control can contain other controls.
+    *)
+
+    WinShellMsg         = (
+                           WSM_CREATE,
+                           WSM_CLOSE,
+                           WSM_SIZE,
+                           WSM_GAINFOCUS,
+                           WSM_LOSEFOCUS,
+                           WSM_TIMER,
+                           WSM_USER,
+
+                           (* ToplevelWindow only *)
+                           WSM_POSITIONCHANGED,
+                           WSM_STATE,
+                           WSM_ACTIVATEAPP,
+                           WSM_DEACTIVATEAPP,
+                           WSM_TERMINATEAPP,
+
+                           (* ToplevelWindow + "Mdi" tab children *)
+                           WSM_MENU,
+                           WSM_MENUSELECT,
+                           WSM_MENUSTART,
+                           WSM_MENUEND,
+
+                           (* TreeClient and ListClient *)
+                           WSM_SELECTION_CHANGED,
+                           WSM_SELECTION_DOUBLECLICK,
+                           WSM_SELECTION_ENTERKEY,
+
+                           (* DrawClient
+                              TreeClient and ListClient
+                                for these clients this message is supplied so you can
+                                perform text matching and selection.
+                                you should let the OS handle normal keyboard operation
+                                except in the above stated case.
+                                your window procedure should return DEFAULT_HANDLE for
+                                this message unless you fully handle the key, otherwise
+                                the system keyboard handler will not be executed.
+                                If you handle the key then return USER_HANDLE.
+                           *)
+                           WSM_KEY,
+
+                           (* DrawClient *)
+                           WSM_MOUSE,
+                           WSM_PAINT,
+                           WSM_SCROLL,
+
+                           (* TabClient *)
+                           WSM_TAB_ACTIVE,
+
+                           (* SplitterClient *)
+                           WSM_SPLIT_CHANGED,
+
+                           (* TreeClient *)
+                           WSM_TREE_EXPAND,
+                           WSM_TREE_COLLAPSE,
+
+                           (* ListClient *)
+                           WSM_LIST_COLUMN_WIDTH_CHANGED,
+                           WSM_LIST_SORTED,
+
+                           (* FormClient. control notifications *)
+                           WSM_NOTIFY
+                          );
+
+(******************** Message Definitions ************************************
+    WSM_CREATE          this window has been created, not yet shown.
+                        you may use various API calls on the window at this point.
+
+    WSM_GAINFOCUS       this window has gained the input focus
+
+    WSM_LOSEFOCUS       this window has lost the input focus
+
+    WSM_CLOSE           this window hasbeen or may be closed
+        closeMode =  the close "mode"
+                CM_REQUEST = you are being asked if you will close the window
+                    RETURN OkayToClose
+                        you will then later get a TWM_CLOSE with a mode of
+                        CM_DICTATE
+                    RETURN NotOkayToClose
+                        at which point no further close action will take place
+                        and the window will remain open.
+                CM_DICTATE = you *ARE* closing
+                        the return value is ignored in this case
+
+    WSM_SIZE            the window *HAS* been resized
+        sizeType = The type of sizing operation
+        width = the new width
+        height = the new height
+
+    WSM_POSITIONCHANGED         the window has been moved on screen
+        windowPos       = The window position
+
+    WSM_STATE           the window state has changed
+        oldState        = the old window state
+        newState        = the new window state
+
+    WSM_STARTMENU       the user has opened a menu
+        you should use this to check/uncheck, activate/disable any menu items
+        as necessary here. You do not know which menu was opened so you
+        should just do all menus in the menu hierarchy of the window.
+
+    WSM_MENU            a menu item has been selected
+        menuId = the menu resource id number for the menu item
+
+    WSM_MENUSELECT      a menu is highlighted
+        menuId = the menu resource id number for the menu item
+                 Typically this is used if a program has a status line
+                 and you want to display simple single line help
+                 descriptions of each menu item.
+
+    WSM_ENDMENU         the user has exited the menu system
+        If you were using MENUSELECT to display quick help you can use this
+        to restore the status line to its proper state.
+
+    WSM_TIMER           the specified timer duration has elapsed
+        timerId = identifies which timer has elapsed
+
+    WSM_USER
+        userId = user defined value to identify the user message type
+        userData =  if not used should be NIL
+                    otherwise generally used to
+                    pass a pointer to some data
+
+    WSM_MOUSE           this window received a mouse event
+        m_pos = Window Coordinates of click
+        m_button = Which button the event is for
+        m_event = the type of event
+        m_state = the state of various other keys at the time of the mouse event
+        m_wheel_dir   = the mouse wheel movement direction.
+        m_wheel_count = the mouse wheel movement count.
+
+    WSM_KEY             this window received keyboard input
+        k_ch = character keystroke if not special
+        k_state = various extended keys when not a normal ASCII character
+        k_special = the various special keys. If NOTSPECIAL then
+                  ch contains the ANSI character
+        k_count = The key repeat count. Normally 1.
+
+    WSM_PAINT   a region of this window needs to be repainted.
+                the text caret, if any, is automatically hidden and
+                restored around this message.
+        paintRect = rectangle of region that needs to be painted.
+        paintDraw = a drawable available to use for painting.
+                    the default context will be selectd into the Drawable if
+                    a default context was setup. otherwise this Drawable does
+                    not have any DrawContext associated with it. you must
+                    setup a DrawContext for the drawable before you paint.
+        paintContext = the default draw context. can be NIL if you did not setup a
+                       default context.
+
+    WSM_SCROLL          the window has been scrolled
+        dir = indicates direction to scroll
+        class = the amount to scroll
+        absOffs = absolute scroll position within the scroll range
+
+    WSM_ACTIVATEAPP     the application is now the foreground application the
+                        user is using.
+    WSM_DEACTIVATEAPP   the application is no longer the foreground application the
+                        user is using.
+
+                        these two messages is simulated on GTK systems.
+
+                        if no window in the WinShell "world" has the focus for a
+                        certain timeout and then a window does gain focus,
+                        then this is assumed to be a situation where the user had
+                        moved to and used some other application and has just
+                        switched to "this" applicaton which WinShell controls.
+                        a ACTIVATEAPP message is sent in this circumstance.
+
+                        for DEACTIVATEAPP a message is sent when a window has lost
+                        focus and a timeout has occured and no window currently has
+                        focus.
+
+                        if this simuation is not accurate enough then you should
+                        avoid these messages in portable applications.
+
+    WSM_TERMINATEAPP    the user or system has requested the application be terminated
+                        Win32
+                            this message comes from the WM_QUERYENDSESSION message.
+                            If you return DEFAULT_HANDLE the application will be
+                            terminated, otherwise whatever action your message
+                            handler took is the net effect.
+                        GTK+
+                            there is no source for the message.
+                        Mac
+                            this message comes from the application Quit menu
+                            item which is on the application menu.
+                            If you return DEFAULT_HANDLE the application will be
+                            terminated, otherwise whatever action your message
+                            handler took is the net effect.
+
+    WSM_TABACTIVE     this Tab child window is the foreground Tab child window.
+
+    WSM_NOTIFY          messages related sent by controls of a FormClient.
+
+    WSM_SPLIT_CHANGED   the window split position has changed.
+
+    WSM_TREE_EXPAND     the specified tree node has been expanded.
+    WSM_TREE_COLLAPSE   the specified tree node has been collapsed
+
+    WSM_LIST_COLUMN_WIDTH_CHANGED       the user has changed the size of the specified
+                                        list column.
+
+    WSM_LIST_SORTED     the list has been sorted. this happens when
+                        a) new data is inserted into the list
+                        b) ListClientSetSortColumn is called
+                        c) when the user changes the sort column or sort order
+*****************************************************************************)
+
+    NotifyMessage       = (
+                           NM_Clicked,(*PushButton,CheckBox,RadioButton*)
+                           NM_DoubleClicked,(*ListBox*)
+                           NM_SelectionChanged,(*DropDownList,ListBox,ComboBox*)
+                           NM_ValueChanged,(*TextEdit,ComboBox,SpinButton*)
+                           NM_GainFocus,
+                           NM_LoseFocus,
+                           NM_DropButtonClick (*ComboBox*)
+                          );
+
+    ResponseType        = (
+                           USER_HANDLE, (* you handled the message *)
+                           DEFAULT_HANDLE, (* use default message processing *)
+                           OkayToClose,(* see WSM_CLOSE *)
+                           NotOkayToClose(* see WSM_CLOSE *)
+                          );
+
+    WinAttr             = (
+                           WA_VISIBLE,(* window is visible.
+                                         only applies to ToplevelWindow and
+                                         to children of a TabClient window.
+                                      *)
+
+                           WA_TITLE,(* has a caption title bar.
+                                       only applies to ToplevelWindow. *)
+                           WA_SYSMENU,(* has system menu in caption.
+                                         only applies to ToplevelWindow. *)
+                           WA_MINIMIZEBOX,(* has minimize button in caption.
+                                             only applies to ToplevelWindow.
+                                          *)
+                           WA_MAXIMIZEBOX,(* has maximize button in caption.
+                                             only applies to ToplevelWindow.
+                                          *)
+                           WA_RESIZABLE,(* can be sized by the user.
+                                           only applies to ToplevelWindow. *)
+                           WA_TOPMOST,(*window will maintain a topmost position.
+                                        only applies to ToplevelWindow.
+                                        Windows has native support for this.
+                                        On GTK systems this is simulated, therefore
+                                            be carefull using this. if two topmost
+                                            windows overlap they will fight each other
+                                            to stay on top and they will endlessly
+                                            raise themselve over the other.
+                                            best to stick with one topmost window.
+                                      *)
+                           WA_STATUSLINE,(* has a status line.
+                                            only applies to ToplevelWindow. *)
+
+                           WA_HSCROLL,(* has/can have horizontal scroll bar.
+                                         only applies to DrawClient. *)
+                           WA_VSCROLL,(* has/can have vertical scroll bar.
+                                         only applies to DrawClient.
+                                      *)
+                           WA_HSCROLLTRACK,(* receive scroll messages while
+                                              the user is dragging the scroll bar thumb.
+                                               only applies to DrawClient. *)
+                           WA_VSCROLLTRACK,(* receive scroll messages while
+                                              the user is dragging the scroll bar thumb.
+                                              only applies to DrawClient. *)
+
+                           WA_SPLIT_POS2(* if set, bottom/right splitter pane.
+                                           otherwise top/left.
+                                           ignored unless the window is a child of a
+                                           SplitterClient.
+                                         *)
+                          );
+    WinAttrSet          = SET OF WinAttr;
+
+    CloseModes          = (CM_REQUEST, CM_DICTATE);(* see WSM_CLOSE *)
+
+    ScrollDirection     = (DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT); (* obvious *)
+
+    ScrollClass         = (
+                           SCROLL_LINE,(* scroll by lines *)
+                           SCROLL_PAGE,(* scroll by pages *)
+                           SCROLL_ABSOLUTE,(* set to absolute scroll position within
+                                              the scroll range *)
+                           SCROLL_EXTREME(* position to the extreme edges of the
+                                            scroll range. ScrollDirection
+                                            determines which edge is scrolled to *)
+                          );
+
+    ScrollRange         = INTEGER;
+
+    WindowStateType     = (
+                           WindowStateNormal,(* normal window size. no minimize or maximize *)
+                           WindowStateMinimized,(* window is minimized *)
+                           WindowStateMaximized(* window is maximized *)
+                          );
+
+    SpecialKeys = (
+                   KEY_NOTSPECIAL,(* normal key/character *)
+                   KEY_PAGEUP, KEY_PAGEDOWN, KEY_HOME, KEY_END,
+                   KEY_RIGHTARROW, KEY_LEFTARROW, KEY_UPARROW, KEY_DOWNARROW,
+                   KEY_INSERT, KEY_DELETE,
+                   KEY_MENU,(*context menu key.
+                              not all keyboards have this.
+                              not all operating systems support such a thing*)
+                   KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6,
+                   KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12
+                  );
+
+    KeyStateType = (
+                    KS_SHIFT,
+                    KS_CONTROL,
+                    KS_ALT(*alt/option on the Mac*)
+                   );
+    KeyStateSet  = SET OF KeyStateType;
+
+    SystemColors = (
+                    SC_WINDOW_BACKGROUND,
+                    SC_HIGHLIGHT,
+                    SC_HIGHLIGHTTEXT,
+                    SC_GRAYTEXT,
+                    SC_BUTTON_FACE
+                   );
+
+CONST
+    (* some useful predefined window attributes *)
+
+    NormalWindow        = WinAttrSet{WA_VISIBLE,
+                                     WA_TITLE,
+                                     WA_RESIZABLE,
+                                     WA_SYSMENU,
+                                     WA_MINIMIZEBOX,
+                                     WA_MAXIMIZEBOX
+                                    };
+
+    NormalChildWindow   = WinAttrSet{WA_VISIBLE};
+
+    AddStatusLine       = WinAttrSet{WA_STATUSLINE};
+    AddSplitPos2        = WinAttrSet{WA_SPLIT_POS2};
+
+    (* only applicable when the client is a DrawClient *)
+    AddVScrollBar       = WinAttrSet{WA_VSCROLL};
+    AddHScrollBar       = WinAttrSet{WA_HSCROLL};
+    AddScrollBars       = AddVScrollBar + AddHScrollBar;
+    AddScrollTrack      = WinAttrSet{WA_HSCROLLTRACK, WA_VSCROLLTRACK};
+
+TYPE
+    MouseButton         = (LeftButton, MiddleButton, RightButton, NoButton);
+    MouseEventType      = (ButtonDown, ButtonUp,
+                           ButtonDouble,
+                           MouseMove, MouseWheel);
+                           (* ButtonDouble is a "software" mouse event.
+                              You always receive the hardware
+                              mouse Down and Up events.
+                              You always receive an Up for every Down.
+                              You will never receive an Up without a preceeding
+                              Down.
+                            *)
+
+    MouseStateType      = (
+                           MS_SHIFT,(* shift key was down *)
+                           MS_CONTROL,(* control key was down *)
+                           MS_ALT,(*alt/option key was down. not Windows*)
+                           MS_LEFTBUTTON,(* is pressed *)
+                           MS_RIGHTBUTTON,(* is pressed *)
+                           MS_MIDDLEBUTTON(* is pressed *)
+                          );
+    MouseStateSet       = SET OF MouseStateType;
+
+    COORDINATE  = INTEGER;
+
+    wsPOINT =
+        RECORD
+			x        : COORDINATE;
+			y        : COORDINATE;
+        END;
+
+    wsRECT =
+        RECORD
+			x1, y1   : COORDINATE;(*upper left*)
+			x2, y2   : COORDINATE;(*lower right*)
+        END;
+
+    ClipboardFormat     = (CLIPBOARD_ASCII, CLIPBOARD_UNICODE);
+
+    HelpCommand         = (
+                           HelpTopic,(* open help to a specific topic *)
+                           HelpContents(*Win32 only, open help in table of contents *)
+                          );
+
+    FontWeights         = (FwLight, FwNormal, FwDemiBold, FwBold, FwHeavy);
+
+    FontInfo            =
+        RECORD
+			height          : INTEGER;(* positive = tenths of a point.
+													100 = 10.0 points
+													105 = 10.5 points.
+										 negative = device pixels
+									  *)
+			italic          : BOOLEAN;
+			weight          : FontWeights;
+			familyName      : ARRAY [0..63] OF CHAR;(* font family name. *)
+        END;
+
+    TextMetrics         =
+        RECORD
+			ascent          : CARDINAL;(*maximum ascent*)
+			descent         : CARDINAL;(*maximum descent*)
+			height          : CARDINAL;(*the maximum height of the font. this is max ascent + max decent *)
+			aveCharWidth    : CARDINAL;(*average character width.
+										 with Unicode fonts/languages may not be width for fixed pitch due
+										 to double cell characters.
+									   *)
+			aveDigitWidth   : CARDINAL;(*average numeric digit width.
+										 use this for fixed pitch character cell widths. *)
+			externalLeading : CARDINAL;(*extra spacing not in font,
+										 but specified by the font designer *)
+        END;
+
+    TextDrawOrigin      = (
+                           OriginBaseLeft,
+                           OriginTopLeft,
+                           OriginBaseCenter,
+                           OriginTopCenter
+                          );
+                          (*
+                             BaseLeft = the x origin is the left side of the
+                                            first character.
+                                        the y origin is on the font
+                                            baseline.
+                             TopLeft = the x origin is the left side of the
+                                            first character.
+                                       the y origin is at the top of the
+                                       font. The is basically above the
+                                       baseline by the ascender amount of
+                                       the string.
+                             BaseCenter = the x origin is the middle of
+                                          the string in device pixels.
+                                        the y origin is on the font
+                                            baseline.
+                             TopCenter = the x origin is the middle of
+                                          the string in device pixels.
+                                       the y origin is at the top of the
+                                       font. The is basically above the
+                                       baseline by the ascender amount of
+                                       the string.
+                          *)
+
+    LineStyles       = (SolidLine, DashLine, DotLine, DashDotLine, DashDotDotLine);
+    JoinStyles       = (JoinBevel, JoinMiter, JoinRound);
+    EndCaps          = (
+                        EndCapFlat,
+                        EndCapSquare,(* the line entends beyond the line end
+                                        points by have the line width.*)
+                        EndCapRound(* the line will extend beyond the line
+                                      end points to draw the rounded end. *)
+                       );
+
+    DrawFunctions       = (
+                           DrawFuncCopy,(* result = source color *)
+                           DrawFuncInvert,(* result = inverse of dest color *)
+                           DrawFuncXor(* result = source color XOR dest color *)
+                          );
+
+    PixelInterpolation  = (
+                           InterpLowQuality,(*fast*)
+                           InterpMediumQuality,
+                           InterpHighQuality(*slow*)
+                          );
+
+    DrawContextValues   =
+        RECORD
+			foreground              : ColorValue;
+			background              : ColorValue;
+			font                    : FontHandle;
+			textExtraSpacing        : INTEGER;
+			textOrigin              : TextDrawOrigin;
+			lineWidth               : CARDINAL;
+			lineStyle               : LineStyles;
+			joinStyle               : JoinStyles;
+			endCap                  : EndCaps;
+			drawFunc                : DrawFunctions;
+        END;
+
+CONST
+    DrawContextDefaults =
+                DrawContextValues{0,(*foreground (black) *)
+                                  0FFFFFFh,(*background (white) *)
+                                  NIL_FontHandle,(*font*)
+                                  0,(*extra spacing*)
+                                  OriginTopLeft,
+                                  1,(*line width*)
+                                  SolidLine,
+                                  JoinBevel,
+                                  EndCapFlat,
+                                  DrawFuncCopy
+                                 };
+
+TYPE
+    DrawTextOptions     = (DT_CLIPPED, DT_OPAQUE);
+    DrawTextOptionSet   = SET OF DrawTextOptions;
+
+CONST
+    DrawTextOpaque      = DrawTextOptionSet{DT_OPAQUE};
+    DrawTextClipped     = DrawTextOptionSet{DT_CLIPPED};
+
+TYPE
+    CursorTypes         = (
+                           LeftArrowCursor,(* arrow pointing left, default *)
+                           RightArrowCursor,(* arrow pointing right *)
+                           WaitCursor,(* an hourglass or similar *)
+                           TextCursor,(* standard text cursor *)
+                           CrossHairCursor(*just like it sounds*)
+                          );
+
+    CaretTypes          = ((* caret shapes *)
+                           CtVerticalBar,(* thin vertical bar*)
+                           CtHorizontalBar,(* thin horizontal bar*)
+                           CtHalfBlock,
+                           CtFullBlock
+                          );
+
+    Beeps               = (NormalBeep, QuestionBeep, WarningBeep, ErrorBeep);
+                          (* some systems may not support different user defined
+                             sounds. in this case all of these "beeps" will generate
+                             the same sound, probably a simple beep.
+                          *)
+
+    DisplayModes        = (
+                           DisplayNormal, (* will activate window *)
+                                          (* make it visible *)
+                                          (* reverses minimized or maximized *)
+                           DisplayVisible,(* makes window visible *)
+                                          (* will not activate window *)
+                           DisplayHidden,(* hides window *)
+                                         (* active window changes *)
+                           DisplayMinimized,(* minimizes window *)
+                                            (* does not change active window *)
+                           DisplayMaximized(* will activate window *)
+                                           (* maximizes window *)
+                          );
+
+    WindowDisplayInfo =
+        RECORD
+			x       : COORDINATE;(* upper left corner *)
+			y       : COORDINATE;(* upper left corner *)
+			width   : CARDINAL;
+			height  : CARDINAL;
+			mode    : DisplayModes;
+        END;
+
+    ScreenMetrics =
+        RECORD
+			xSize,
+			ySize           : CARDINAL;(* width and height in pixels *)
+			colors          : CARDINAL;(* number of simultaneous colors supported *)
+			xDpi,
+			yDpi            : CARDINAL(* display resolution. dots per inch *)
+			(*workArea        : wsRECT;(* working area of screen.
+										subtracts the area taken up by the desktop
+										taskbar.
+									 *)*)
+        END;
+
+    WindowPositions     = (CenterOnScreen, CenterOnParent);
+
+    MessageRec          =
+    RECORD
+        CASE msg : WinShellMsg OF
+        WSM_GAINFOCUS, WSM_LOSEFOCUS,
+        WSM_MENUSTART, WSM_MENUEND,
+        WSM_ACTIVATEAPP, WSM_DEACTIVATEAPP, WSM_TERMINATEAPP,
+        WSM_TAB_ACTIVE,
+        WSM_SELECTION_CHANGED, WSM_SELECTION_DOUBLECLICK, WSM_SELECTION_ENTERKEY,
+        WSM_LIST_SORTED:
+            (* no data fields for these *)
+        |
+        WSM_CREATE:
+            createParam         : ADDRESS;
+        |
+        WSM_MOUSE:
+            m_pos               : wsPOINT;
+            m_wheel_count       : CARDINAL;
+            m_state             : MouseStateSet;
+            m_button            : MouseButton;
+            m_event             : MouseEventType;
+            m_wheel_dir         : ScrollDirection;
+        |
+        WSM_KEY:
+            k_ch                : CHAR;
+            k_special           : SpecialKeys;
+            k_count             : CARDINAL;
+            k_state             : KeyStateSet;
+        |
+        WSM_CLOSE:
+            closeMode           : CloseModes;
+        |
+        WSM_PAINT:
+            paintRect           : wsRECT;
+            paintDraw           : Drawable;
+            paintContext        : DrawContext;
+        |
+        WSM_SIZE:
+            width               : COORDINATE;
+            height              : COORDINATE;
+        |
+        WSM_STATE:
+            oldState,
+            newState            : WindowStateType;
+        |
+        WSM_POSITIONCHANGED:
+            windowPos           : wsPOINT;
+        |
+        WSM_SCROLL:
+            scrollDir           : ScrollDirection;
+            scrollClass         : ScrollClass;
+            scrollPos           : ScrollRange;
+        |
+        WSM_MENUSELECT,
+        WSM_MENU:
+            menuId              : CARDINAL;
+        |
+        WSM_TIMER:
+            timerId             : CARDINAL;
+        |
+        WSM_USER:
+            userId              : CARDINAL;
+            userData            : ADDRESS;
+        |
+        WSM_NOTIFY:
+            notify              : NotifyMessage;
+            ctrlId              : CARDINAL;
+                                  (* the control id number which generated the
+                                     notification. control notifications are
+                                     received by the FormClient window.
+                                  *)
+        |
+        WSM_TREE_EXPAND,
+        WSM_TREE_COLLAPSE:
+            treeNode            : TreeClientNode;
+        |
+        WSM_LIST_COLUMN_WIDTH_CHANGED:
+            listColumn          : CARDINAL;
+            listColumnWidth     : CARDINAL;
+        |
+        WSM_SPLIT_CHANGED:
+            splitPosPixels      : CARDINAL;
+            splitPosPercent     : CARDINAL;
+        END;
+    END;
+
+    (* Form Units
+       these coordinate units are based upon the font used in displaying the control(s).
+       in this way the relative position and sizes of the controls grow/shrink as the
+       size of the font changes.
+       X dimension. 4 form units = the average character width of the font.
+       Y dimension. 8 form units = the font height.
+
+       So a control that is of size (width=16, height=8) is approximatly four characters
+       wide and the height of the font.
+       Generally, you do not want a control exactly the vertical size of the font.
+       Many times a vertical height of 12 is good.
+       Since with proportional fonts we are using the average character width to size
+       the X dimension you should always pad the horizontal width by some percentage.
+       Therefore if you want your control to be big enough for 10 characters this would
+       mean a size of 40 plus some amount of padding, say 10-20%.
+    *)
+
+    ControlColumnInfo =
+        RECORD
+			header  : StringData;(*can be NIL, which means no header text *)
+			width   : INTEGER;(* -1 = autosize,
+								 for a FormClient controls the units are form units.
+								 otherwise the units are pixels.
+							  *)
+			align   : TextAlignment;
+        END;
+
+    ControlProperties =
+		RECORD
+			idNum           : CARDINAL;(* the numeric value to identify the control.*)
+
+			x, y            : COORDINATE;(* the coordinates of the control window.
+										  the corrdinates are relative to the
+										  origin of the FormClient window.
+										  if the control is contained within a MultiPage
+										  or GroupBox control then the coordinates are
+										  relative to the MultiPage/GroupBox control.
+
+										  the cooridinates are in form Units.
+									   *)
+			width,
+			height          : CARDINAL;(* the width and height of the control.
+										  these sizes are in form Units.
+
+										  for the ComboBox control the height includes the
+										  size of the popup list which is displayed. when the
+										  list is not displayed the control is displayed
+										  much smaller.
+
+										  GTK+
+											 the height is ignored for ComboBox
+											 and DropDownList controls.
+										  Mac
+											 the height is ignored for the DropDownList
+											 control.
+
+										  for portability you should give an appropriate
+										  height for the DropDownList and ComboBox controls.
+										  GTK+ and the Mac may ignore the extra height but
+										  windows will use the height to size the popup
+										  list.
+									   *)
+
+			tipTextPtr      : StringData;
+			tipTextId       : INTEGER;(* if tipTextPtr <> NIL then that string is used
+										 for the tool tip.
+										 if tipTextId >= 0 then that string string resource
+										 is used for the tooltip text.
+									  *)
+
+			visible         : BOOLEAN;
+			enabled         : BOOLEAN;
+
+			CASE controlType : ControlTypes OF
+			RadioButton:
+				rb_textPtr          : StringData;
+				rb_textId           : INTEGER;(* if textPtr <> NIL then that string is used
+												 for the button.
+												 if textId >= 0 then that string resource
+												 is used for the button.
+												 textPtr has priority over textId.
+											  *)
+				rb_group            : CARDINAL;(* this allows you to group radio buttons
+												  such that selecting one button will
+												  unselect all others in the group.
+												  0 = no group.
+											   *)
+			|
+			CheckBox:
+				chk_textPtr         : StringData;
+				chk_textId          : INTEGER;(* if textPtr <> NIL then that string is used
+												 for the button.
+												 if textId >= 0 then that string resource
+												 is used for the button.
+												 textPtr has priority over textId.
+											  *)
+			|
+			SpinButton:
+				sb_low              : INTEGER;
+				sb_high             : INTEGER;(* the valid numeric range of the control. *)
+				sb_editable         : BOOLEAN;(*TRUE then user can enter a value in the
+												edit field area.
+												FALSE then only the control buttons can
+												be use to alter the value.
+												*)
+			|
+			ToggleButton, PushButton:
+				b_textPtr           : StringData;
+				b_textId            : INTEGER;(* if textPtr <> NIL then that string is used
+												 for the button.
+												 if textId >= 0 then that string resource
+												 is used for the button.
+												 textPtr has priority over textId.
+											  *)
+				b_default           : BOOLEAN;(*only PushButton*)
+				(* the cancel button of a form is a PushButton control with an id
+				   value of 2.
+				*)
+			|
+			ListBox:
+				lb_numColumns       : CARDINAL;
+				<*IF MAC THEN*>
+				lb_columnInfo       : POINTER TO ARRAY [0..31] OF ControlColumnInfo;
+				<*ELSE*>
+				lb_columnInfo       : POINTER TO ARRAY [0..0] OF ControlColumnInfo;
+				<*END*>
+				(* can be NIL, in which case no column headers exist and all columns
+				   are autosized.
+				   otherwise lb_columnInfo *must* have entries for all columns.
+				*)
+				lb_multiSelect      : BOOLEAN;
+			|
+			ComboBox:
+				cb_editLimit        : CARDINAL;(* 0 = operating system default limit.
+													  otherwise the number of characters
+													  that the user is allowed to enter.
+											   *)
+			|
+			TextLabel:
+				tl_textPtr          : StringData;
+				tl_textId           : INTEGER;(* if textPtr <> NIL then that string is used
+												 for the button.
+												 if textId >= 0 then that string resource
+												 is used for the button.
+												 textPtr has priority over textId.
+											  *)
+				tl_align            : TextAlignment;
+			|
+			TextEdit:
+				te_align            : TextAlignment;
+				te_limit            : CARDINAL;(* 0 = operating system default limit.
+													  otherwise the number of characters
+													  that the user is allowed to enter.
+											   *)
+				te_password         : BOOLEAN;(*the text shown/entered will be obscured*)
+				te_multiLine        : BOOLEAN;
+				te_horizScroll      : BOOLEAN;(*if multi line, has horiz scroll bar*)
+				te_vertScroll       : BOOLEAN;(*if multi line, has vert scroll bar*)
+			|
+			GroupBox:
+				grp_textPtr         : StringData;
+				grp_textId          : INTEGER;(* if textPtr <> NIL then that string is used
+												 for the button.
+												 if textId >= 0 then that string resource
+												 is used for the button.
+												 textPtr has priority over textId.
+											  *)
+				grp_numControls     : CARDINAL;
+				grp_controls        : ADDRESS;(*ControlPropertyArrayPtr*)
+									  (* we have to be untyped here because we need a
+										 pointer to an array of the record we are
+										 currently declaring.
+										 an array of pointers to records would be an ugly
+										 solution.
+									  *)
+			|
+			MultiPage:
+				mp_numPages         : CARDINAL;
+				mp_pageInfo         : ADDRESS;(*ControlPageInfoArray*)
+									  (*we have to be untyped here because we have two
+										records that reference each other.
+										an array of pointers to records would be an ugly
+										solution.
+									  *)
+			ELSE
+			END;
+		END;
+
+    <*IF MAC THEN*>
+    ControlPropertyArrayPtr     = POINTER TO ARRAY [0..127] OF ControlProperties;
+    <*ELSE*>
+    ControlPropertyArrayPtr     = POINTER TO ARRAY [0..0] OF ControlProperties;
+    <*END*>
+
+    ControlPageInfo =
+        RECORD
+			label           : StringData;
+			numControls     : CARDINAL;
+			controls        : ControlPropertyArrayPtr;
+        END;
+
+    <*IF MAC THEN*>
+    ControlPageInfoArray        = POINTER TO ARRAY [0..31] OF ControlPageInfo;
+    <*ELSE*>
+    ControlPageInfoArray        = POINTER TO ARRAY [0..0] OF ControlPageInfo;
+    <*END*>
+
+TYPE
+    NewControlProc              = PROCEDURE(Window,
+                                            VAR INOUT ControlProperties);
+    ControlPropertiesProc       = PROCEDURE(Window,
+                                            VAR INOUT ControlProperties) : BOOLEAN;
+    ControlEndEditProc          = PROCEDURE(Window);
+
+CONST
+    CtrlMenuProperties  = 32000;(*call the properties procedure*)
+    CtrlMenuDelete      = 32001;(*delete the selected control*)
+    CtrlMenuFormTitle   = 32002;(*edit the form title,
+                                only ToplevelWindow forms support this.
+                                this is editied simular to a normal control.
+                                it is identitied as control with an
+                                id number of MAX(CARDINAL), and the control type
+                                is TextEdit.
+                                the tipTextPtr field is used for the text.
+                                no other fields are defined.
+                                *)
+
+    CtrlMenuAlignLeft   = 32010;(*align to left of primary control*)
+    CtrlMenuAlignCenter = 32011;(*align to center of primary control*)
+    CtrlMenuAlignRight  = 32012;(*align to right of primary control*)
+    CtrlMenuAlignTop    = 32013;(*align to top of primary control*)
+    CtrlMenuAlignMiddle = 32014;(*align to middle of primary control*)
+    CtrlMenuAlignBottom = 32015;(*align to bottom of primary control*)
+
+    CtrlMenuSizeWidth   = 32020;(*size controls to width of primary*)
+    CtrlMenuSizeHeight  = 32021;(*size controls to height of primary*)
+    CtrlMenuSizeBoth    = 32022;(*size controls to width and height of primary*)
+
+    CtrlMenuOrderMoveUp         = 32030;(*move control up one place in tab order*)
+    CtrlMenuOrderMoveDown       = 32031;(*move control down one place in tab order*)
+    CtrlMenuOrderMoveToTop      = 32032;(*move control to the top of the tab order*)
+    CtrlMenuOrderMoveToBottom   = 32033;(*move control to the bottom of the tab order*)
+
+    CtrlMenuGroup               = 32040;(*group radio buttons*)
+    CtrlMenuUngroup             = 32041;(*ungroup radio buttons*)
+
+    CtrlMenuMultiPageAdd        = 32050;
+    CtrlMenuMultiPageDelete     = 32051;
+    CtrlMenuMultiPageMoveLeft   = 32052;
+    CtrlMenuMultiPageMoveRight  = 32053;
+
+    CtrlMenuNewCheckBox         = 32060;(*creates a new control*)
+    CtrlMenuNewRadioButton      = 32061;
+    CtrlMenuNewPushButton       = 32062;
+    CtrlMenuNewToggleButton     = 32063;
+    CtrlMenuNewSpinButton       = 32064;
+    CtrlMenuNewListBox          = 32065;
+    CtrlMenuDropDownList        = 32066;
+    CtrlMenuNewComboBox         = 32067;
+    CtrlMenuNewTextLabel        = 32068;
+    CtrlMenuNewTextEdit         = 32069;
+    CtrlMenuNewGroupBox         = 32070;
+    CtrlMenuNewMultiPage        = 32071;
+
+    CtrlMenuExitFormEdit        = 32100;
+
+CONST
+    TOOLBAR_SEPARATOR           = MAX(CARDINAL);
+
+TYPE
+    StdToolbarBitmaps =
+		((* standard built-in bitmaps for toolbars *)
+			TB_BMP_CUT,
+			TB_BMP_COPY,
+			TB_BMP_PASTE,
+			TB_BMP_UNDO,
+			TB_BMP_REDO,
+			TB_BMP_DELETE,
+			TB_BMP_FILENEW,
+			TB_BMP_FILEOPEN,
+			TB_BMP_FILESAVE,
+			TB_BMP_PROPERTIES,
+			TB_BMP_HELP,
+			TB_BMP_FIND,
+			TB_BMP_REPLACE,
+			TB_BMP_PRINT
+		);
+
+    ToolbarButtonTypes  = (TbPushButton, TbToggleButton);
+
+    BitmapResName       = ARRAY [0..31] OF CHAR;
+
+    ToolbarButtonInfo =
+        RECORD
+			image           : ADDRESS;(* non user field, for internal WinShell use.
+										 should be initialized to NIL. *)
+			imageType       : CARDINAL;(* non user field, for internal WinShell use.
+										  initialize to zero. *)
+
+			actionId        : CARDINAL;(* menu id number *)
+			textId          : CARDINAL;(* button label string resource id number *)
+			helpId          : CARDINAL;(* tooltip string resource id number *)
+			type            : ToolbarButtonTypes;
+			CASE stdButton : BOOLEAN OF
+			FALSE:
+				bmpResName  : BitmapResName;(*bitmap resource name
+											   Win32.
+												   Bitmap resource.
+											   Mac
+												   'cicn' resource.
+											 *)
+			|
+			TRUE:
+				stdName     : StdToolbarBitmaps;
+			END;
+        END;
+
+    WindowProcedure     = PROCEDURE(Window, MessageRec) : ResponseType;
+
+    WindowNotification = (
+                          WindowMinimized,
+                          WindowMaximized,
+                          WindowSized,
+                          WindowMoved,
+                          WindowClosed
+                         );
+
+    WindowNotifyProcedure = PROCEDURE((*w : *)Window,
+                                      (*notify :*)WindowNotification,
+                                      (*data : *)MACHINEWORD);
+    (* this is the format of a window notification procedure.
+       w = the window in question
+       notify = the action that occured
+       data = user data.
+    *)
+
+    DispatchStartupProc = PROCEDURE((*param :*) ADDRESS);
+
+    IdleResults         = (ContinueIdle, SuspendIdle, TerminateIdle);
+    IdleProcType        = PROCEDURE((*userdata*)ADDRESS,
+                                    (*count*)CARDINAL) : IdleResults;
+                        (* count is the number of times the idle procedure.
+                           has been called in the current idle cycle.
+                           userdata is arbitrary user data
+                           *)
+
+    HostSystem  = (Windows, GTK, Macintosh);
+
+    ListClientInsertRec =
+        RECORD
+        insertPos       : INTEGER;(* -1 for append to list *)
+
+        userData        : ADDRESS;(*user data associated with the inserted row *)
+
+        numColumns      : CARDINAL;(* number of columns of data in the arrays *)
+        textPtr         : ARRAY [0..31] OF StringData;
+        textId          : ARRAY [0..31] OF INTEGER;
+        bmpId           : ARRAY [0..31] OF CARDINAL;
+        (* if you have more columns than supported by this record then you will
+           have to use API calls to set the text.
+
+           if textPtr <> NIL then that string is used.
+           if textId >= 0 then that string string resource is used for the text.
+           for a specific column textPtr can be NIL *and* textId = -1.
+           in this case then nothing is done with the column.
+
+           if the column content type allows a bitmap then you must setup the bmpId field.
+           if bmpId > 0 then that bitmap is used. The id number is the image index
+               in the image list associated with the ListClient.
+           if bmpId = 0 then no image is set for the item.
+        *)
+        END;
+
+    TreeClientInsertRec =
+        RECORD
+			parent          : TreeClientNode;(* NIL = the tree root is the parent,
+												otherwise the parent is the tree
+												node in which the new node will be
+												inserted.
+											 *)
+			sibling         : TreeClientNode;
+			insertBefore    : BOOLEAN;(* the sibling within the parent node in which
+										  the new node is inserted in relation to.
+
+										  (sibling = NIL) AND insertBefore
+											  then insert at the head of the parents list.
+										  (sibling = NIL) AND (NOT insertBefore)
+											  then insert at the tail of the parents list.
+										  (sibling <> NIL) AND insertBefore
+											  the new node is inserted before the specified
+											  node.
+										  (sibling <> NIL) AND (NOT insertBefore)
+											  the new node is inserted after the specified
+											  node.
+									   *)
+			userData        : ADDRESS;(*user data associated with the inserted node *)
+
+			textPtr         : StringData;
+			textId          : INTEGER;
+			(* if textPtr <> NIL then that string is used.
+			   if textId >= 0 then that string string resource is used for the text.
+			*)
+
+			folder          : BOOLEAN;(* the inserted item may have children.
+										 folder nodes will display the folder open and
+										 closed bitmaps.
+									  *)
+        END;
+
+VAR
+    MainWindow          : Window;
+    (* this value is initialied with the first TopLevel window created.
+       You may assign your own value to this.
+       This value is used by DlgShell.GetDialogParent().
+    *)
+
+    Host                : HostSystem;
+    HostMajorVersion    : CARDINAL;(* Win32s = 3
+                                      Windows95, Windows98 = 4
+                                      Windows ME = ? 4
+                                      WindowsCE = ?
+                                      WindowsNT = 3, 4
+                                      Windows2000/XP = 5
+
+                                      GTK = 2
+                                      Mac OS/X = 10
+                                      *)
+    HostMinorVersion    : CARDINAL;(* Win32s = 10 for 3.10
+                                      Windows95 = 0 for 4.0
+                                      Windows98 = 10 for 4.10
+                                      WindowsME = ?
+                                      WindowsCE = ?
+                                      WindowsNT = 50 for 3.50
+                                                  51 for 3.51
+                                                  00 for 4.00
+                                      Windows2000 = 00
+                                      WindowsXP = 01
+
+                                      GTK = 0,2,4,6,8
+                                      Max OS/X = 0, 1 or 2.
+                                      *)
+
+    HostMicroVersion    : CARDINAL;(* GTK = bugfix version *)
+
+	%IF Windows %THEN
+	WindowsNT           : BOOLEAN;
+	WasSystemDialogBox  : BOOLEAN;
+	%END
+
+    ScreenInfo          : ScreenMetrics;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE AllocWinShellMem(VAR OUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE ReallocWinShellMem(VAR INOUT addr : ADDRESS; amount : ADRCARD);
+PROCEDURE DeallocWinShellMem(VAR INOUT addr : ADDRESS; amount : ADRCARD);
+(* utility procedure which allocate memory from the heap this module uses.
+   can be useful in FormClient, edit mode callback procedures.
+*)
+
+PROCEDURE CreateStringData(str : ARRAY OF CHAR) : StringData;
+PROCEDURE DisposeStringData(strPtr : StringData);
+PROCEDURE DuplicateStringData(strPtr : StringData) : StringData;
+PROCEDURE StringDataLength(strPtr : StringData) : CARDINAL;
+PROCEDURE AssignStringData(strPtr : StringData; VAR OUT str : ARRAY OF CHAR);
+(* assign strPtr to str. strPtr is assumed to be null terminated *)
+
+PROCEDURE SetResourceFile(name : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE GetResourceFile(VAR OUT name : ARRAY OF CHAR);
+(* for Win32 name = "" means the resources are in the executable,
+  otherwise it is some DLL and a .dll extension is provided if not
+  supplied.
+
+  for Gtk it specifies the base path and name for various resource files.
+  the various resource files are identified by file extension.
+  .glade file contains menus, dialogs and accelerators
+  .str file contains a string table
+  .img file contains bitmaps
+*)
+
+PROCEDURE AddIdleProcedure(idle : IdleProcType; data : ADDRESS) : CARDINAL;
+(* add an idle procedure to the system.
+   for Windows, idle procedures are thread specific (unique per thread input queue).
+   the return value identifies the idle procedure for removal.
+   a return value of zero indicates failure.
+   the idle procedure will be called when no messages are pending for the
+   input thread.
+   the idle procedure will be repeatedly called while no messages are being
+   received and the idle procedure returns ContinueIdle.
+   if it returns SuspendIdle then it will not be called until the next idle
+   cycle. an idle cycle is the idle period between receiving messages.
+   if it returns TerminateIdle the idle handler is removed from the system.
+*)
+
+PROCEDURE RemoveIdleProcedure(id : ADRCARD);
+(* remove a previously installed idle procedure *)
+
+PROCEDURE DispatchMessages(startup : DispatchStartupProc; param : ADDRESS) : CARDINAL;
+PROCEDURE DispatchMessagesTemp() : CARDINAL;
+(* these procedures receive and dispatch message to your window(s).
+
+   any thread that has windows must have a message dispatch loop.
+   a dispatch loop just loops forever sending messages to the appropriate
+   window. A window is attached to a specific thread. this thread is the current thread
+   at the time of window creation.
+
+   message boxes and modal dialogs do not count as "windows" for this
+   definition since they create their own temporary message dispatch loop.
+
+   This procedure never returns until the message loop is terminated.
+   A message dispatch loop is terminated with a call to
+   TerminateDispatchMessages. The return value from this procedure is
+   the value passed to TerminateDispatchMessages.
+
+   you can create temporary dispatch loops, using DispatchMessagesTemp,
+   in a thread that is already executing DispatchMessages.
+   Remember that TerminateDispatchMessages only terminates the most recent call to
+   DispatchMessages/DispatchMessagesTemp. Typically you would use a temp dispatch
+   loop because you want to serialize execution in the application, but of course,
+   you still want messages to be received and processed. RunWindowModalLoop might be
+   more appropriate in many cases to serialize execution.
+
+   returns MAX(CARDINAL) is an error occurs.
+
+   you should to not create windows before DispatchMessages is called. Just put that
+   code into a procedure and pass the procedure to DispatchMessages.
+
+   startup.
+   this parameter exists to allow the message dispatch loop to have been entered
+   before you create an windows. on some underlying systems this might help or
+   be necessary. DispatchMessages calls the start procedure after the dispatch
+   loop has been initiated.
+      GTK. this startup procedure parameter exists because it helps on GTK. some
+           quirky things happen with window creation on GTK when the event loop
+           has not been initiated. this is probably due to the window model as defined
+           in this DEF is a bit different than GTK "normal" operation.
+*)
+
+PROCEDURE CheckMessages() : BOOLEAN;
+(* many times you perform tasks that will take a reasonable amount of time
+   so that the user interface will not become unresponsive you can call
+   this procedure to dispatch any messages that are already sitting
+   in the message queue. If no messages are available this procedure
+   returns.
+   If this function returns TRUE it means that the message loop has received
+   a "terminate" message and the dispatch loop will be terminated.
+*)
+
+PROCEDURE TerminateDispatchMessages(code : CARDINAL);
+(* this procedure terminates a previous call to DispatchMessages.
+   code = an arbitrary value that DispatchMessages will return as
+   its function result. You can use it as a result code
+*)
+
+PROCEDURE RunWindowModalLoop(w : Window) : CARDINAL;
+(*
+  w = a ToplevelWindow.
+
+  this procedure runs the window in a modal loop, like a modal dialog.
+  the procedure does not return until QuitWindowModalLoop is called.
+
+  this procedure lets you use a FormClient, or any window, like a modal dialog.
+
+  RETURNs MAX(CARDINAL) if an error occurs
+  otherwise returns the code passed to QuitWindowModalLoop
+*)
+
+PROCEDURE QuitWindowModalLoop(w : Window; code : CARDINAL);
+(* w = a window which is currently executing a modal loop via RunWindowModalLoop.
+       causes RunWindowModalLoop to return the value 'code'.
+*)
+
+PROCEDURE InitClientCreateData(clientType : ClientTypes; VAR OUT data : ClientCreateData);
+(* initializes the data record to the default settings.
+   you should use this API call since future setup options might be added to the
+   data record. any new fields will be initialized in such a manner so as to be
+   compatible with previous versions.
+
+  Defaults
+      TabClient.
+          tabPos = TabBottom
+          multiLineTabs = FALSE
+      SplitterClient
+          splitHorizontal = FALSE
+          splitPos = 50
+          splitPosPercent = TRUE
+      ListClient
+          numColumns = 1
+          singleSelect = TRUE
+          column alignment = AlignLeft
+          column width = -1 (autosize)
+          column content = ColumnText
+          headerSortButtons = FALSE
+          listReturnKeys = FALSE
+          sortColumn = -1
+          compareProc = procedure which compares the text in the column.
+          compareData = NIL
+      TreeClient
+          treeLines = FALSE
+          treeFolders = TRUE
+          treeReturnKeys = FALSE
+          folderClosedBitmap = a 16x16 closed folder bitmap.
+          folderOpenBitmap = a 16x16 open folder bitmap.
+          folderMaskColor = Colors[TransparentColor]
+*)
+
+PROCEDURE CreateWindow(parent : Window;
+                       name : ARRAY OF CHAR;
+                       menu : ARRAY OF CHAR;
+                       icon : ARRAY OF CHAR;
+                       windowType : WindowTypes;
+                       clientType : ClientTypes;
+                       wndProc : WindowProcedure;
+                       attribs : WinAttrSet;
+                       x, y : COORDINATE;
+                       width, height : COORDINATE;
+                       clientCreateData : ClientCreateDataPointer;
+                       createParam : ADDRESS) : Window;
+(* create a new window
+   parent = the parent window of this window. Can be NIL.
+            A ChildWindow must have a parent window.
+
+            Toplevel windows can have a parent and the exact meaning of this is
+            somewhat operating system dependent. We call a Toplevel window with
+            a parent an owned window.
+
+            For Win32 owned windows are always displayed above the parent window.
+            Owned windows are minimized when the parent is minimized.
+            Owned windows do not show on the taskbar.
+
+            For Gtk the parent is the window that is the leader
+            in a window manager "group" of windows. Just what this means
+            is dependent on the specific window manager in use.
+
+            For Mac the owned windows are a part of a window group. Window groups
+            are shown/hidden and collapsed/zoomed as a group. This is similar to
+            the behavior in Windows
+
+   name = the caption text of the window. if the window does not have a
+          caption then this parameter is ignored. On Tab child windows
+          the caption is the window selection tab.
+
+   menu = the menu for the window. Can be "", which means no menu.
+
+   icon = the icon associated with this window. Can be "".
+           For Win32 you should have both 16x16 and 32x32 icons in the icon set.
+           For Gtk this parameter is ignored.
+           For Mac this parameter is ignored, at this time.
+
+   windowType = the window type. child windows *must* have a parent window. the child
+           window parent must be a "container" window. splitter and tab clients are
+           containers. the child parent may itself be a child window.
+
+   clientType = the window client type.
+
+   wndProc = the window procedure
+
+   attribs = the window attributes for the window
+             for child windows whose parent is a SplitterClient window you specify
+             the splitter pane where the child is to be placed by using the
+             WA_SPLIT_POS2 attribute.
+
+   x, y = the initial screen coordinates for the window to be displayed
+          if a parameters is -1 then the operating system will choose
+          a default location. these coordinates are relative to the
+          origin to the screen.
+
+          ignored for child windows.
+
+   width, height = the initial size of the window when created.
+                   if a parameter is -1 the operating system will
+                   choose a default size.
+
+                   ignored for child windows.
+
+   clientCreateData = create data unique to a specific client type.
+                      some clients have no unique creation data.
+                      if NIL is passed then defaults are used.
+                      if you do not pass NIL you should call
+                      InitClientCreateData on your data record before setting/changing
+                      the options you wish changed.
+                      see InitClientCreateData comments.
+
+   createParam = an arbitrary value you can use to pass information
+                 to the window procedure of the window. this value is
+                 passed in the WSM_CREATE message.
+
+   For Tab child windows Ctrl+Tab (forward), Ctrl+Shift+Tab (backward) are accelerator
+   keys to cycle through the various Tab child windows.
+
+   returns the window handle if successfull, otherwise NIL
+*)
+
+(*MVN+*)
+PROCEDURE CreateNonmodalWindow(name : ARRAY OF CHAR;
+                       menu : ARRAY OF CHAR;
+                       icon : ARRAY OF CHAR;
+                       windowType : WindowTypes;
+                       clientType : ClientTypes;
+                       wndProc : WindowProcedure;
+                       attribs : WinAttrSet;
+                       x, y : COORDINATE;
+                       width, height : COORDINATE;
+                       createData : ClientCreateDataPointer;
+                       createParam : ADDRESS) : Window;
+(*
+  Parameters are same as for CreateWindow (parent is always a screen)
+*)
+
+PROCEDURE GetScreenSize(VAR x : COORDINATE; VAR y : COORDINATE);
+(*
+  Returns width and height of the primary screen in arguments x and y.
+*)
+
+PROCEDURE SetTopMost(w : Window; topmost : BOOLEAN);
+(*
+  Position the window in the Z-order as TOPMOST if topmost is TRUE,
+  or as TOP - otherwise.
+*)
+(*MVN-*)
+
+PROCEDURE SetSplitPosition(w : Window; pos : CARDINAL; percent : BOOLEAN);
+(*
+  w can be a SplitterClient or Toplevel window whose client is a SplitterClient.
+
+  set the splitter position as relative to the top/left edge of the
+  splitter client size.
+
+  if percent = TRUE the split value is interpreted as a percentage of the
+      splitter client width.
+  otherwise the value is in pixels
+*)
+
+PROCEDURE SetDefaultDrawContext(w : Window; context : DrawContext);
+(* for DrawClient windows. sets the draw context setup by default when
+   a WSM_PAINT messages is received and when NIL is passed to BeginPaint
+   for a context value *)
+
+PROCEDURE GetSplitPosition(w : Window; percent : BOOLEAN) : CARDINAL;
+(*
+  w can be a SplitterClient or Toplevel window whose client is a SplitterClient.
+  if percent = TRUE then
+      get the splitter position as a percentage relative to the top/left edge of the
+      splitter client size.
+  otherwise
+      get the splitter position in pixels relative to the top/left edge of the
+      splitter client size.
+*)
+
+PROCEDURE SplitWindow(w : Window; wndProc : WindowProcedure; splitY : BOOLEAN; VAR OUT newChild : Window);
+(*
+  w can be a toplevel window with any client type, or any child window.
+  if splitY = TRUE the the window will be split into a top and bottom halves.
+
+  on return
+  newChild is a child window with the same client type as w and has the window
+      procedure of w.
+  w has a clientType of SplitterClient.
+      wndProc is the new window procedure for this window.
+
+  w and newChild both have the same "window data"
+  newChild keeps the notify procedures,
+    w has notify procedures cleared.
+*)
+
+PROCEDURE UnsplitWindow(w : Window; keepChild : Window) : BOOLEAN;
+(*
+   w must have a client type of SplitterClient.
+   the client type of w becomes that of "keepChild". keepChild must currently be a
+   child of the splitter window.
+
+  w keeps its "window data"
+  w gets the notify procs of keepChild
+*)
+
+PROCEDURE SetTabPosition(w : Window; tabPos : TabPosition);
+(* set the position of the tabs in a TabClient window.
+   w must be an TabClient window, or a Toplevel whose client is a TabClient window.
+   the default tab position is TabBottom.
+
+   Win32
+       Windows seems to have issues with changing between some tab positions.
+       Changing between top and bottom works. Changing between left and right works.
+       Changing left/right to/from top/bottom does not work.
+   Mac
+       You cannot change the tab position after creation.
+*)
+
+PROCEDURE CycleActiveTabChild(w : Window; direction : INTEGER);
+(*
+  w can be an TabClient or Toplevel window whose client is a tabClient.
+  if direction > 0 then the next Tab child becomes the active window.
+  if direction < 0 then the previous Tab child becomes the active window.
+
+   Ctrl+Tab (forward), Ctrl+Shift+Tab (backward) are user accelerator
+   keys to cycle through the various Tab child windows.
+*)
+
+PROCEDURE ConvertTabChildToTopLevel(w : Window) : BOOLEAN;
+(* convert the TabChild window to a Toplevel window.
+   if the Toplevel window has a toolbar and/or statusline the new
+   toplevel window will create copies of these for itself.
+*)
+
+PROCEDURE AddWindowNotify(w : Window; proc : WindowNotifyProcedure; data : MACHINEWORD) : BOOLEAN;
+(* the passed procedure "proc" will be called when the window "w"
+   has one of the notify actions occur.
+   "data" is aribtrary data you can have passed to the close procedure.
+   you can have multiple notify procedures attached to a window.
+   returns TRUE if the notify procedure was added.
+*)
+
+PROCEDURE RemoveWindowNotify(w : Window; proc : WindowNotifyProcedure);
+(* reverses AddWindowNotify *)
+
+PROCEDURE CloseWindow(w : Window; mode : CloseModes) : BOOLEAN;
+(* close an existing window.
+   mode = CM_REQUEST you are requesting that the window close.
+          for example this can give a window a change to prompt for saving any
+          unsaved changes and possibly aborting the close.
+   mode = CM_DICTATE the window *WILL* be closed
+   returns TRUE if the window is closing
+*)
+
+PROCEDURE CloseAllChildren(parent : Window; mode : CloseModes) : BOOLEAN;
+(* the effect here is to call CloseWindow with the given close mode
+   for all child windows of the given window.
+   returns TRUE if all child windows were closed
+*)
+
+PROCEDURE DisplayTabChildNumber(w : Window; yes : BOOLEAN);
+(*
+  w must be an TabClient or a Toplevel window whose client is a TabClient window.
+  yes = TRUE means that the Tab child titles will be prefixed with a number 0-9.
+        This corresponds to the position of the child in the frame window.
+        This can be used in conjunction with the GetIthTabChild API call.
+        The 10th child and beyond will not have a number.
+*)
+
+PROCEDURE SetBackgroundAutoErase(w : Window; color : ColorValue);
+(* for DrawClient windows.
+   this will have the window automatically erase any region that
+   needs to be painted with a background color before any paint
+   message is sent.
+
+   by default the window does not erase its background. the reason for this is because
+   erasing a background and then painting  is a major cause of "flicker" in
+   applications.
+
+   if the color set is TransparentColor then the window will revert to not
+   erasing its background before paint messages are sent.
+*)
+
+PROCEDURE IsWindow(w : Window) : BOOLEAN;
+(* is the window handle passed in w a valid window handle
+   for example a window might have been closed and a copy of the window
+   handle an application had stored somewhere may no longer be valid
+   retuns TRUE if the window handle is valid
+*)
+
+PROCEDURE GetWindowType(w : Window) : WindowTypes;
+(* return the window type for the window *)
+
+PROCEDURE GetClientType(w : Window) : ClientTypes;
+(* return the client window type for the window *)
+
+PROCEDURE GetWindowParent(w : Window) : Window;
+(* return the parent window *)
+
+PROCEDURE GetIthTabChild(w : Window; num : CARDINAL) : Window;
+(* return the ith child in the list of child windows.
+   the first child is number 0.
+   child windows are ordered by the order of creation.
+   hidden child windows are not considered by this procedure.
+*)
+
+PROCEDURE GetActiveTabChild(w : Window) : Window;
+(*
+  w can be an TabClient or Toplevel window whose client is a tabClient.
+  the return value is the child window that is on top of all the
+  other Tab child windows.
+*)
+
+PROCEDURE SetActiveTabChild(w : Window);
+(*
+  w must be an Tab child window.
+  set w to be the active Tab child window. this is the child that
+  is on top of all the other Tab child windows.
+*)
+
+PROCEDURE SetTabChildPosition(w : Window; index : CARDINAL);
+(*
+  w must be an Tab child window.
+  set the position of the window in the child window selection tabs.
+  0 = the "first" tab.
+*)
+
+PROCEDURE GetTabChildPosition(w : Window) : INTEGER;
+(*
+  w must be an Tab child window.
+  get the position of the window in the child window selection tabs.
+  0 = the "first" tab.
+  -1 (< 0) = error, or the tab child is currently hidden.
+*)
+
+PROCEDURE CreateImageList(width, height : CARDINAL; initialCount, growth : CARDINAL) : ImageListHandle;
+(* create a new image list. the size of the individual images in the list is
+   contained in the width and height parameters.
+   The list is allocated enough space for initialCount number of images.
+   The growth parameter determines the number of additional images beyond
+   initialCount that the list may ultimately contain.
+
+   images in a image list are identified by index order. the index order is the order
+   that they are added to the list. index 0, signifies a blank image. in other words, no image.
+*)
+
+PROCEDURE DestroyImageList(im : ImageListHandle);
+(* dispose of an image list. the list should not be associated with any window. *)
+
+PROCEDURE ImageListLoadImage(im : ImageListHandle;
+                             resName : ARRAY OF CHAR;
+                             bmp : BitmapHandle;
+                             transparent : ColorValue) : INTEGER;
+(* add an image to an image list.
+   transparent is the color which should be considered transparent in the image.
+   use Colors[TransparentColor] if you do not want to specify any transparency.
+   if bmp <> NIL, then resName is ignored.
+   if bmp = NIL, then resName specifies the resource image to load.
+   if the resource image type has transparency information then transparent
+   is ignored.
+   returns -1 if an error occurs, otherwise the image index is returned.
+
+   Resource images...
+   Win32 and GTK+
+       an image can be any supported bitmap image type.
+       you can add multiple images from a single loaded image.
+       the number of images added is inferred from the width of the image loaded.
+       the returned index is the index of the first image added. the additional images
+       will have consecutive indexes after the value returned.
+   Mac
+       an image can be any supported bitmap image type.
+*)
+
+PROCEDURE SetDisplayMode(w : Window; mode : DisplayModes);
+(* set the display mode for the window identified by w *)
+
+PROCEDURE GetDisplayMode(w : Window) : DisplayModes;
+(* get the display mode for the window identified by w *)
+
+PROCEDURE SetWindowEnable(w : Window; enabled : BOOLEAN);
+(* enable/disable the window identified by w
+   if w = NIL, then all ToplevelWindows will be affected.
+
+   if enabled = TRUE then the window will be enabled, otherwise the window
+   will be disabled
+   A disabled window cannot receive any user interaction.
+
+   the window maintains an enable count, therefore you must mirror your
+   calls to enable and disable the window.
+   e.g. two successive calls to disabled, must be followed by two successive calls
+   to enabled before the window is actually enabled.
+*)
+
+PROCEDURE IsMinimized(w : Window) : BOOLEAN;
+(* retuns TRUE if the window identified by w is currently minimized *)
+
+PROCEDURE IsMaximized(w : Window) : BOOLEAN;
+(* retuns TRUE if the window identified by w is currently maximized *)
+
+PROCEDURE IsVisible(w : Window) : BOOLEAN;
+(* retuns TRUE if the window identified by w is currently visible and not minimized *)
+
+PROCEDURE ClientAreaIsClipped(w : Window) : BOOLEAN;
+(* returns TRUE if the client area of the window identified by w is
+   currently clipped by some other window.
+   By clipped we mean that the entire client area is not visible.
+*)
+
+PROCEDURE BringWindowToTop(w : Window);
+(* procedure does what it says; the currently focused window is not changed. *)
+
+PROCEDURE GetForegroundWindow() : Window;
+(* get the current window with input focus.
+   if the focused window is not a window managed by this module
+   the returned value will be NIL
+*)
+
+PROCEDURE SetForegroundWindow(w : Window);
+(* makes the window the foreground window
+   also makes the window have the keyboard input focus.
+
+   depending on the underlying system this function may FAIL if the thread
+   associated with the window is not the current foreground thread.
+*)
+
+PROCEDURE RepaintRect(w : Window; rect : wsRECT);
+(* force the rectangle in rect to be repainted in the window identified by w *)
+(* the repaint is queued, and not drawn immediately *)
+
+PROCEDURE RepaintWindow(w : Window);
+(* repaint the entire client window area.*)
+
+PROCEDURE UpdateWindow(w : Window);
+(* force any pending repaint messsages to be sent before this call returns
+   only applicable to DrawClient windows.
+*)
+
+PROCEDURE GetClientSize(w : Window; VAR OUT width, height : COORDINATE);
+(* get the size of the windows client area in screen coordinates *)
+
+PROCEDURE SetClientSize(w : Window; width, height : COORDINATE);
+(* set the size of the windows client area in screen coordinates
+   the actual size of the window will likely be larger due to a caption,
+   border, menus, scroll bars and other goodies
+*)
+
+PROCEDURE SetMinClientSize(w : Window; width, height : COORDINATE);
+(* limit the window to a certain minimum client area size
+   this does not effect the windows ability to be minimized.
+
+   this call only supported for ToplevelWindows.
+*)
+
+PROCEDURE SetMaxClientSize(w : Window; width, height : COORDINATE);
+(* limit the window to a certain maximum client area size
+   Such a window should probably not be capable of being maximized
+
+   this call only supported for ToplevelWindows.
+*)
+
+PROCEDURE SetWindowGrains(w : Window; width, height : COORDINATE);
+(* use this procedure to limit the possible window sizes to values
+   such that the client area will be an even multiple of width and height.
+
+   this setting has no effect on a maximized, or minimized window.
+
+   Gtk - not implemented
+   Window managers have a geometry hints option but when I used this the
+   Window manager(s)/X/Gtk freak out and strange things happen.
+   Manual implemenation also had other wierd side effects.
+
+   this call only supported for ToplevelWindows.
+*)
+
+PROCEDURE GetWindowSize(w : Window; VAR OUT width, height : COORDINATE);
+(* get the size of the window area in screen coordinates
+   this includes the client area and all the other goodies.
+
+   Gtk
+       On X the border and caption title are not a part of a user window.
+       they are the domain of the window manager.
+*)
+
+PROCEDURE SetWindowSize(w : Window; width, height : COORDINATE);
+(* set the size of the window area in screen coordinates
+   this includes the client area and all the other goodies.
+
+   Gtk
+       On X the border and caption title are not a part of a user window.
+       they are the domain of the window manager.
+*)
+
+PROCEDURE GetWindowPos(w : Window; VAR OUT x, y : COORDINATE);
+(* get the screen coordinates of the upper left corner of the window
+
+   Gtk
+       X and/or window managers have issues with this. The position retrieved
+       seems to be interpreted differently than a when setting a window position.
+*)
+
+PROCEDURE SetWindowPos(w : Window; x, y : COORDINATE);
+(* set the screen coordinates of the upper left corner of the window.
+   must be a top level window.
+
+   Gtk
+       X and/or window managers have issues with this. The position retrieved
+       seems to be interpreted differently than when setting a window position.
+*)
+
+PROCEDURE SetWindowPosition(w : Window; pos : WindowPositions);
+(*
+  w must be a top level window.
+  if w has no parent then CenterOnParent is the same as CenterOnScreen.
+*)
+
+PROCEDURE SetWindowPosClient(w, parent : Window; x, y : COORDINATE);
+(* as SetWindowPos, but the coordinates are relative the the client of the
+   window "parent".
+   w must be a top level window.
+*)
+
+PROCEDURE GetWindowDisplayInfo(w : Window; VAR OUT info : WindowDisplayInfo);
+(* get the size a position information for the window
+   this is useful for remembering the size and position of a window
+   across multiple execution sessions
+   if info.mode = SizeMinimized or SizeMaximized then the size and
+   position information is the size and position information for the window
+   when it is not minimized or maximized.
+
+   Gtk
+       X and/or window managers have issues with this. The position retrieved
+       seems to be interpreted differently than when setting a window position.
+       On X the border and caption title are not a part of a user window.
+       they are the domain of the window manager.
+*)
+
+PROCEDURE SetWindowDisplayInfo(w : Window; info : WindowDisplayInfo);
+(* set the size and position information for the window.
+
+   Gtk
+       X and/or window managers have issues with this. The position retrieved
+       seems to be interpreted differently than when setting a window position.
+       On X the border and caption title are not a part of a user window.
+       they are the domain of the window manager.
+*)
+
+PROCEDURE CascadeWindow(cascadeThis, onThis : Window);
+(* this positions the window 'cascadeThis' just below and to the right of the
+   caption of the window 'onThis'.
+   the window size is not altered
+*)
+
+PROCEDURE SetWindowTitle(w : Window; title : ARRAY OF CHAR);
+(* set the caption text for the window.
+   if the window does not have a caption then nothing happens.
+   title must be null terminated.
+*)
+
+PROCEDURE SetWindowData(w : Window; index : ADRCARD; data : MACHINEWORD) : BOOLEAN;
+PROCEDURE SetWindowDataNum(w : Window; index : CARDINAL; data : INTEGER) : BOOLEAN;
+(* this procedure will place the store the data in "data"
+   into the window storage array position specified by index.
+   index positions are from 0..31,
+   returns TRUE if successful
+*)
+
+PROCEDURE GetWindowData(w : Window; index : ADRCARD) : MACHINEWORD;
+PROCEDURE GetWindowDataNum(w : Window; index : CARDINAL) : INTEGER;
+(* returns the data from the window storage array location specified by index.
+   index positions are from 0..31.
+*)
+
+PROCEDURE SetWindowIsBusy(w : Window; busy : BOOLEAN);
+(* set the window to a "busy" state
+   for each call with busy = TRUE, you must have a corresponding call
+   with busy = FALSE to remove the busy state.
+   this call changes the mouse cursor of the window to "busy" cursor
+   generally an hourglass cursor.
+   when the window reverts back to not busy, whatever the mouse cursor
+   was before the window was busy is restored.
+   generally you use this call when your user interface thread is performing
+   a task that might take a while so you give the user some feedback
+   with this call
+*)
+
+PROCEDURE RedirectMessage(w : Window; msg : MessageRec);
+(* this call simply passes the message to the window specified.
+   the window should be of the same thread as the window that received
+   the message originally. Everything should work if not, but unforseen problems
+   may occur.
+*)
+
+PROCEDURE SendUserMessage(w : Window; userId : CARDINAL; userData : ADDRESS);
+PROCEDURE PostUserMessage(w : Window; userId : CARDINAL; userData : ADDRESS);
+(* send a user message to a window
+   the window receiving the message can be associated with any thread and
+   need not be associated with the current thread.
+   userId = arbitrary number
+   userData = arbitrary data
+   SendUserMessage waits for the message to be received and processed before returning.
+
+   PostUserMessage send the message and return immediately.
+   when using PostUserMessage you should not pass the address of local data
+   in the item userData since it is not known when the other window
+   will process the message and when the procedure that calls this API
+   procedure ends the local data is invalidated.
+   global variables, constants, and allocated memory can be safe to use
+   for the userData item. "can be" because you can use safe memory in an
+   unsafe manner.
+*)
+
+PROCEDURE IsUserMessageWaiting(w : Window) : BOOLEAN;
+(* returns TRUE if a user message is currently waiting in the message queue
+   of the current thread
+*)
+
+PROCEDURE ClientToScreen(w : Window; VAR INOUT x, y : COORDINATE);
+(* convert client coordinates of the given window to screen
+   relative coordinates
+*)
+
+PROCEDURE ScreenToClient(w : Window; VAR INOUT x, y : COORDINATE);
+(* convert screen coordinates to client relative coordinates for
+   the given window. The returned coordinates can be negative.
+*)
+
+PROCEDURE CreateStatusLine(w : Window; fmt : ARRAY OF INTEGER) : BOOLEAN;
+(* add a status line to a window that does not have a status line.
+   see SetStatusFormat for the meaning of the fmt parameter.
+   returns TRUE if successfull.
+   FALSE is returned if the window already has a status line, or
+   some other error occurred.
+*)
+
+PROCEDURE RemoveStatusLine(w : Window);
+(* if the window has a status line then remove the status line
+   from the window
+*)
+
+PROCEDURE SetStatusFormat(w : Window; fmt : ARRAY OF INTEGER);
+(* set the format of the status line
+   each element in the fmt array defines a status line field.
+   the numeric value in the field defines the number characters
+   in size the field should be. The average character width is used to
+   determine this size in screen coordinates.
+   The last field can contain the value -1 which means
+   the field will go all the way to the right side of the window.
+
+   As a convenience if a Tab child window is passed as the window
+   parameter, and the Window client is a TabClient,
+   the write will affect the Toplevel window.
+*)
+
+PROCEDURE WriteStatusField(w : Window; field : CARDINAL; text : ARRAY OF CHAR);
+(* write the text given in txt to the field identified by field
+   in the status line for the window w
+   if the window does not have a status line nothing happens
+   txt must be null terminated. if txt is too long for the defined size
+   of the field the text will be clipped.
+
+   As a convenience if a Tab child window is passed as the window
+   parameter, and the Window client is a TabClient,
+   the write will affect the Toplevel window.
+*)
+
+PROCEDURE LoadToolbarBitmaps(VAR INOUT buttons : ARRAY OF ToolbarButtonInfo; transparent : ColorValue) : BOOLEAN;
+(* load the bitmaps for the toolbar buttons from the resource file.
+   For standard bitmaps the stdButton = TRUE and stdName = the button.
+   otherwise, the bitmap resource names are taken from bmpResName field.
+   This call will not load a bitmap unless the image field is NIL,
+   and the bmpResName field is <> "".
+
+   transparent is the color in the bitmap that is to be "transparent", having the
+   same color as the button background.
+   The loaded bitmaps will be altered to make this so.
+   if the transparent color does not exist in a bitmap then the bitmap is loaded
+   unaltered without error.
+   if the bitmap resource already has transparency information then this parameter
+   is ignored. in this case use the value TransparentColor
+
+   returns TRUE if successful, which means ALL bitmaps were loaded.
+*)
+
+PROCEDURE UnloadToolbarBitmaps(VAR INOUT buttons : ARRAY OF ToolbarButtonInfo);
+(* unload the bitmaps for the toolbar buttons.
+   if a button does not have a bitmap currently loaded that button is
+   skipped.
+*)
+
+PROCEDURE CreateToolbar(w : Window;
+                        buttons : ARRAY OF ToolbarButtonInfo;
+                        hasText : BOOLEAN;
+                        hasHelp : BOOLEAN;
+                        canCustomize : BOOLEAN) : BOOLEAN;
+(* create a toolbar for the given window.
+   buttons = the buttons of the toolbar. this is ALL possible buttons.
+             button bitmaps should be 24x24.
+             this call does not use the bmpResId field of the button
+             info record.
+             the bitmap field must be initialized with the handle
+             of your bitmap, or the value of a standard bitmap.
+             Use SYSTEM.MAKEADR to create an address with the
+             standard bitmap ordinal. MAKEADR(ORD(TB_BMP_CUT))
+             You can use LoadToolbarBitmaps to load your bitmaps
+             or you can load them via other means.
+   hasText = TRUE the buttons will display text labels if available.
+             FALSE only the bitmaps will be displayed.
+   hasHelp = TRUE the buttons will display tooltip help popups if available
+             FALSE the buttons will not display tooltips
+   canCustomize = TRUE the toolbar will allow the user to customize the
+                  buttons displayed and the order they are displayed.
+                  You should fetch this information and save it so you can
+                  remember the user preferred toolbar settings.
+*)
+
+PROCEDURE DestroyToolbar(w : Window);
+(* destroy the toolbar for the window if it has one *)
+
+PROCEDURE SetToolbarButtons(w : Window; fmt : ARRAY OF CARDINAL);
+(* set which buttons from the list of available buttons will be
+   displayed. The HIGH bound of the passed array determines the
+   number of toolbar buttons.
+   the numeric value if each array element specifies the ordinal index
+   into the list of available buttons passed to CreateToolbar.
+   if the window does not have a toolbar nothing happens
+*)
+
+PROCEDURE GetToolbarButtons(w : Window; VAR OUT fmt : ARRAY OF CARDINAL) : CARDINAL;
+(* get the current buttons displayed and their layout.
+   the returned value is number of buttons returned into the parameter
+   fmt. you should  make sure fmt is big enough to hold all possible
+   buttons so you will not lose information. the maximum number of buttons
+   is known from the CreateToolbar procedure call.
+   the numeric value if each array element specifies the ordinal index
+   into the list of available buttons passed to CreateToolbar.
+   if the window does not have a toolbar nothing happens.
+
+   Win32
+       the system toolbar control supports toolbar customization by the user
+       with no interaction necessary on our part.
+       the user customizes a toolbar by double clicking on an empty area in the tool
+       bar. Windows displays a customization dialog the user interacts with.
+   GTK
+       no user customization is currently implemented.
+*)
+
+PROCEDURE IsToolbarButtonDown(w : Window; index : ADRCARD) : BOOLEAN;
+(* is the button identified by index currenly in the down position.
+   this call is only valid for TbToggle buttons
+   a button must be shown before it can be toggled.
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+   returns TRUE if the button is shown and checked in the toolbar
+*)
+
+PROCEDURE IsToolbarButtonEnabled(w : Window; index : ADRCARD) : BOOLEAN;
+(* is the button identified by index currently enabled
+   returns TRUE means the button is active an can be pressed
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+   returns TRUE if the button is enabled in the toolbar
+*)
+
+PROCEDURE IsToolbarButtonShown(w : Window; index : ADRCARD) : BOOLEAN;
+(* is the button identified by index currently shown
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+   returns TRUE if the button is shown in the toolbar
+*)
+
+PROCEDURE ToggleToolbarButton(w : Window; index : ADRCARD; down : BOOLEAN) : BOOLEAN;
+(* set the toggled state of the button identified by index
+   this call is only valid for TbToggle buttons
+   down = TRUE means the button should be in the down position.
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+   returns TRUE if successful
+*)
+
+PROCEDURE EnableToolbarButton(w : Window; index : ADRCARD; enable : BOOLEAN) : BOOLEAN;
+(* set the enabled state of the button identified by index
+   enable = TRUE means the button should be enabled
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+   returns TRUE if successful
+*)
+
+PROCEDURE ShowToolbarButton(w : Window; index : ADRCARD; show : BOOLEAN) : BOOLEAN;
+(* set the shown state of the button identified by index
+   show = TRUE means the button should be shown
+   index is the ordinal index into the button list array passed
+   to CreateToolbar
+*)
+
+PROCEDURE CaretOn(w : Window);
+(* only applicable for DrawClients
+   turn the display of a text caret ON in the window.
+   if the window is the input focus window then the caret will be
+   displayed otherwise the caret is not displayed.
+
+*)
+
+PROCEDURE CaretOff(w : Window);
+(* only applicable for DrawClients
+   turn the display of a text caret OFF in the window *)
+
+PROCEDURE HideCaret(w : Window);
+(* only applicable for DrawClients
+   this call is not normally necessary.
+   the caret must not be displayed when you paint to maintain a proper display.
+   BeginPaint, and PAINT messages automatically hide/show the caret.
+   this call is only necessary when using non transient window drawables,
+   since in these cases you may not be using BeginPaint.
+   HideCaret maintains a hide count therefore you must call ShowCaret
+   once for each call to HideCaret.
+*)
+
+PROCEDURE ShowCaret(w : Window);
+(* only applicable for DrawClients
+   see HideCaret
+*)
+
+PROCEDURE MoveCaretTo(w : Window; x, y : INTEGER);
+(*
+   move the text caret to a specific location
+   the coordinates are client area relative
+   the window need not have the caret turned on for this function
+   to operate. the coordinates will be remembered
+*)
+
+PROCEDURE GetCaretPos(w : Window; VAR OUT x, y : COORDINATE);
+(* fetch the current text caret position *)
+
+PROCEDURE SetCaretType(w : Window; ct : CaretTypes; width, height : CARDINAL);
+(* set the type and size of the caret for this window
+   ct = the shape of the caret.
+   width, height = the width and height in screen coordinates of the caret.
+   the window need not have the caret turned on for this function
+   to operate. the information will be remembered
+*)
+
+PROCEDURE SetScrollBarRange(w : Window;
+                            which : WinAttr;
+                            min : ScrollRange;
+                            max : ScrollRange;
+                            pageSize : ScrollRange);
+(* set the range information for the given scroll bar in the given window
+   which = which scroll bar
+   min = the lower limit of the scroll bar range
+   max = the upper limit of the scroll bar range
+         if min = max then the scroll bar is remove or disabled
+   pageSize = the size of a "page" in scroll bar range units.
+   for example in a text file
+    the range might be (min = 1) (max = 534) and (pageSize = 10)
+    in this case the lower limit is always line number 1.
+    the upper limit is the number of lines in the text file.
+    pageSize is the most likely the size of the window in lines or one or two
+        lines less than this.
+    scroll bar ranges are whatever you what them to be
+*)
+
+PROCEDURE SetScrollBarRanges(w : Window;
+                             minX : ScrollRange;
+                             maxX : ScrollRange;
+                             pageX : ScrollRange;
+                             minY : ScrollRange;
+                             maxY : ScrollRange;
+                             pageY : ScrollRange);
+(* like SetScrollBarRange except that you are setting the range for
+   both the horizontal, X, and vertical, Y, scroll bars.
+   See SetScrollBarRange
+*)
+
+PROCEDURE SetScrollBarPos(w : Window; which : WinAttr; pos : ScrollRange);
+(* set the position of the scroll bar thumb
+   which = which scroll bar
+   pos = the position. (pos >= minRange) AND (pos <= maxRange)
+*)
+
+PROCEDURE GetScrollBarPos(w : Window; which : WinAttr) : ScrollRange;
+(* get the position of the scroll bar thumb
+   which = which scroll bar
+*)
+
+PROCEDURE SetScrollDisableWhenNone(w : Window; yesH, yesV : BOOLEAN);
+(* this procedure controls whether a scroll bar disappears or becomes
+   disabled when the window is large enough to display the entire
+   "document" and thus a scroll bar is not necessary.
+   this sets the policy for both scroll bars, but each scroll bar
+   acts independently regarding its own state.
+   yes = TRUE means the scroll bar(s) will disable
+         FALSE means the scroll bar(s) will disappear
+   yesH = horizontal, yesV = vertical
+   default = FALSE
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE SetWindowIcon(w : Window; icon : ARRAY OF CHAR) : BOOLEAN;
+(*
+   set the icon associated with the window
+   the resource can have many icon formats and the most appropriate
+   icon will be chosen depending on how the icon is going to
+   be used by the system. generally 32x32 and a 16x16 16color icons should
+   be provided at a minimum in the icon resource.
+
+   Gtk
+       not currently implemented.
+*)
+
+PROCEDURE SetWindowCursor(w : Window; typ : CursorTypes);
+(* set the cursor type displayed when the mouse cursor is within the
+   confines of the windows client area.
+   the window must have a client type of DrawClient.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE SetWindowMenu(w : Window; menu : ARRAY OF CHAR) : BOOLEAN;
+(* set/change the menu for the given window.
+   menu = the menu resource. Can be "", which means no menu.
+*)
+
+PROCEDURE GetWindowMenu(w : Window) : MenuHandle;
+(* get the menu handle for menu currently associated with the window
+   the return value can be NIL if the window has no menu
+*)
+
+(* for the following "check" and "enable" functions
+   in an "MDI" situation where tab client children of the toplevel window have
+   unique windows you can apply this function to the main winddow and it will
+   act on the currently active menu for the toplevel window.
+*)
+
+PROCEDURE SetMenuItemEnable(w : Window; id : CARDINAL; enabled : BOOLEAN);
+(* set whether a menu item identified by id is enabled
+   enabled = TRUE the menu item is enabled
+             FALSE the menu item is disabled
+*)
+
+PROCEDURE GetMenuItemEnable(w : Window; id : CARDINAL) : BOOLEAN;
+(* get whether a menu item identified by id is enabled
+   returns = TRUE the menu item is enabled
+             FALSE the menu item is disabled
+*)
+
+PROCEDURE SetMenuItemCheck(w : Window; id : CARDINAL; checked : BOOLEAN);
+(* set whether a menu item identified by id has a check mark displayed
+   in the menu.
+   checked = TRUE => a check mark will be displayed
+             FALSE => no check mark will be displayed
+*)
+
+PROCEDURE GetMenuItemCheck(w : Window; id : CARDINAL) : BOOLEAN;
+(* get the checked state a menu item identified by id
+   returns = TRUE a check mark is displayed
+             FALSE no check mark is displayed
+*)
+
+PROCEDURE SetMenuItemRadioCheck(w : Window; first, last, set : CARDINAL);
+(* similar to check menu item, however this identifies a group of
+   menu items of which one is checked and the others are unchecked.
+
+   first..last is the range of menu items in the radio group.
+   set is the menu item in the group to be "checked".
+*)
+
+PROCEDURE GetMenuItemRadioCheck(w : Window; first, last : CARDINAL) : CARDINAL;
+(* get the checked menu item in a radio menu item group
+   returns 0 if some error occurs, or none are checked.
+*)
+
+PROCEDURE LoadMenu(w : Window; menu : ARRAY OF CHAR; popup : BOOLEAN) : MenuHandle;
+(* load a menu resource identified by menu.
+   the menu is associated with the identified window.
+   the return value will be NIL if the resource does not exist
+   or there was an error loading the resource.
+
+   popup = TRUE if the menu being loaded is a popup menu.
+           For Win32 the menu resource is loaded and the first menu
+           is returned.
+           For Gtk a popup menu resource is loaded.
+*)
+
+PROCEDURE DestroyMenu(VAR INOUT menuH : MenuHandle);
+(* destroy a previously loaded menu resource *)
+
+PROCEDURE GetSubMenu(menuH : MenuHandle; subMenuId : CARDINAL) : MenuHandle;
+(*
+   get the menu handle of a sub menu within a menu
+   can return NIL of the sub menu does not exist or there was an error.
+   the sub menu is identified by id number.
+
+   On Windows you must use an extended menu resource to apply an id number
+   to a popup menu.
+
+   On the Mac the subMenuId parameter is a menuId number, NOT a resource idNumber.
+   Generally the menuId and resource id are set to the same value. Note that menuId
+   number on the Mac have a limited number range.
+*)
+
+PROCEDURE DisposeSubMenu(menuH : MenuHandle);
+(* dispose of a previously fetched submenu of a memu resource *)
+
+PROCEDURE AppendMenuItemStr(w : Window;
+                            menuH : MenuHandle;
+                            str : ARRAY OF CHAR;
+                            id : CARDINAL) : BOOLEAN;
+(* append a new menu item to the menu identified by menuH
+   str = the text of the menu. must be null terminated
+   id = the id number used to identify the menu item.
+   you can "underscore" a character in the menu for keyboard activation
+   by preceeding the desired character with an underscore character ('_').
+   returns TRUE if successfull
+*)
+
+PROCEDURE AppendMenuItemSeparator(w : Window; menuH : MenuHandle) : BOOLEAN;
+(* append a new menu item to the menu identified by menuH
+   the menu item appended is a menu separator
+   this is usually a thin line drawn across the menu
+   returns TRUE if successfull
+*)
+
+PROCEDURE SetMenuItemStr(w : Window; id : CARDINAL; str : ARRAY OF CHAR) : BOOLEAN;
+(* change the text of an existing menu item.
+   id = the id number used to identify the menu item.
+   str = the text of the menu. must be null terminated
+   you can "underscore" a character in the menu for keyboard activation
+   by preceeding the desired character with an underscore character ('_').
+   returns TRUE if successfull
+*)
+
+PROCEDURE DeleteMenuItemPosition(menuH : MenuHandle; pos : CARDINAL) : BOOLEAN;
+(* remove a menu item from the menu identified by menuH
+   pos = the ordinal position of the menu item starting at zero for the
+         first item in the menu
+*)
+
+PROCEDURE PopupMenu(w : Window; menu : ARRAY OF CHAR; button : MouseButton; x, y : COORDINATE);
+(* display a popup menu at client coordinates x, y.
+   the menu is identified the parameter menu.
+   button = the button used to "open" the popup menu and thus when this
+            button is released the menu will close.
+
+   This call is modal, meaning the call does not return until the popup
+   menu is closed.
+
+   For Win32 the menu resource is loaded and the first menu is used.
+   For Gtk a popup menu resource is used.
+*)
+
+PROCEDURE PopupMenuHandle(w : Window; menu : MenuHandle; button : MouseButton; x, y : COORDINATE);
+(* like PopupMenu except that the menu is identified by a MenuHandle.
+   this allows you to modify the menu resource before displaying the menu
+   See PopupMenu
+
+   This call is modal, meaning the call does not return until the popup
+   menu is closed.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE LoadString(idNum : CARDINAL; VAR OUT str : ARRAY OF CHAR);
+(*
+  Load a string from the string resource.
+  the string is identified by idNum.
+  str = "" if not successfull.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE OpenClipboard(w : Window) : BOOLEAN;
+(* open the system clipboard and give ownership to the specified window.
+   returns TRUE if successful.
+   only a foreground window should make such a request, and then only
+   on behalf of a users request
+
+   Gtk
+       on X systems the "clipboard" can be many different things and some programs
+       may only support one type of "clipboard". X calls these "selections".
+       This module defines its own selection, and also tries to use other selections
+       to try and be compatible with as many programs as possible.
+*)
+
+PROCEDURE CloseClipboard(w : Window);
+(* close and release ownership of the clipboard. *)
+
+PROCEDURE EmptyClipboard(w : Window) : BOOLEAN;
+(* empty all contents of the clipboard
+   if the window does not own the clipboard the call will fail
+   returns TRUE if the operation is successfull
+*)
+
+PROCEDURE ClipboardFormatAvailable(fmt : ClipboardFormat) : BOOLEAN;
+(* returns TRUE if data of the given clipboard format is available
+   in the clipboard.
+   returns TRUE if the format is available, otherwise FALSE if the
+   clipboard is empty or some other data type is available.
+   all text formats are automatically converted to other text formats
+   on demand. Therefore if you put ASCII into the clipboard you can
+   retrieve Unicode from the clipboard.
+*)
+
+PROCEDURE AllocClipboardMemory(size : CARDINAL) : ADDRESS;
+(* allocate system memory suitable for placing in the clipboard.
+   size = the amount of memory in bytes
+   if NIL is returned the call failed, otherwise a valid address is returned which
+   you can use to write to the clipboard memory.
+*)
+
+PROCEDURE SetClipboard(fmt : ClipboardFormat) : BOOLEAN;
+(* place data into the clipboard
+   the format of the data is given in fmt parameter.
+   the memory placed in the clipboard is the memory previously allocated with
+   AllocClipboardMemory.
+
+   Win32 and Mac
+       the operating system will deallocate this memory for you since you
+       cannot know how long the data will exist in the clipboard.
+   Gtk
+       Data put into the clipboard is only available to other programs as long
+       as your process is running.
+
+   returns TRUE if successfull.
+*)
+
+PROCEDURE GetClipboard(fmt : ClipboardFormat) : ADDRESS;
+(* get clipboard data of the given format.
+   returns NIL if the format was not available or the clip board was empty.
+   otherwise a valid address is returned and the data is locked.
+   you MUST unlock the data when you are done reading the data.
+   all text formats are automatically converted to other text formats
+   on demand. Therefore if you put ASCII into the clipboard you can
+   retrieve Unicode from the clipboard.
+   text formats are returned null terminated.
+*)
+
+PROCEDURE UnlockClipboardMemory;
+(* the clipboard memory received by GetClipboard is unlocked by this call.
+   this memory must be unlocked after it is used.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE SetTimer(w : Window; timerId : CARDINAL; interval : CARDINAL);
+(* create/reset a timer associated with the specified window
+   timerId = a unique number to identify the timer.
+   interval = the amount of time in milliseconds between WSM_TIMER messages
+              this interval is only an approximate time
+   calling SetTimer with the same timerId as a previous call but with
+   a different interval has the effect of resetting the interval from
+   the previous value to the new value *)
+
+PROCEDURE KillTimer(w : Window; timerId : CARDINAL);
+(* dispose of a previously created timer
+   timerId = the identification number of an existing timer *)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE PointInRect(x, y : COORDINATE; rect : wsRECT) : BOOLEAN;
+
+PROCEDURE RectOverlap(r1, r2 : wsRECT) : BOOLEAN;
+
+PROCEDURE IntersectRect(r1, r2 : wsRECT; VAR OUT r3 : wsRECT) : BOOLEAN;
+
+PROCEDURE UnionRect(r1, r2 : wsRECT; VAR OUT r3 : wsRECT);
+
+PROCEDURE OffsetRect(x, y : COORDINATE; VAR INOUT rect : wsRECT);
+
+PROCEDURE RgbToColorValue(red, green, blue : CARD8) : ColorValue; MACRO;
+BEGIN
+    RETURN ORD(red) BOR
+           (ORD(green) SHL 8) BOR
+           (ORD(blue) SHL 16);
+END RgbToColorValue;
+
+PROCEDURE RgbaToColorValue(red, green, blue, alpha : CARD8) : ColorValue; MACRO;
+BEGIN
+    RETURN ORD(red) BOR
+           (ORD(green) SHL 8) BOR
+           (ORD(blue) SHL 16) BOR
+           (ORD(alpha) SHL 24);
+END RgbaToColorValue;
+
+PROCEDURE ColorValueToRgb(colorVal : ColorValue;
+                          VAR OUT red, green, blue : CARD8); MACRO;
+BEGIN
+    red := colorVal BAND 0FFh;
+    green := (colorVal SHR 8) BAND 0FFh;
+    blue := (colorVal SHR 16) BAND 0FFh;
+END ColorValueToRgb;
+
+PROCEDURE ColorValueToRgba(colorVal : ColorValue;
+                          VAR OUT red, green, blue, alpha : CARD8); MACRO;
+BEGIN
+    red := colorVal BAND 0FFh;
+    green := (colorVal SHR 8) BAND 0FFh;
+    blue := (colorVal SHR 16) BAND 0FFh;
+    alpha := (colorVal SHR 24);
+END ColorValueToRgba;
+
+PROCEDURE GetSystemColor(sysColor : SystemColors) : ColorValue;
+(* return a color value for the system color *)
+
+PROCEDURE LoadFont(font : FontInfo) : FontHandle;
+(* load the font as specified by the parameter font *)
+(* returns a valid font handle if successfull, otherwise NIL *)
+
+PROCEDURE DeleteFont(font : FontHandle);
+(* remove a previously loaded font *)
+
+PROCEDURE GetTextMetrics(font : FontHandle; VAR OUT metrics : TextMetrics);
+(* retrieve information about the font specified in the font parameter *)
+
+PROCEDURE LoadBitmap(name : ARRAY OF CHAR; shared : BOOLEAN) : BitmapHandle;
+(*
+  Load a bitmap from resource.
+
+  IF shared = TRUE, loaded bitmaps will be cached and on subsequent
+  loads the bitmap handle of the first load will be returned.
+
+  You should call DeleteBitmap when you are done using the bitmap.
+  If shared = TRUE then the bitmap will not be freed until
+  DeleteBitmap is called once for each active Load.
+*)
+
+PROCEDURE LoadBitmapFromFile(name : ARRAY OF CHAR) : BitmapHandle;
+(*
+  as LoadBitmap except the image is loaded from a stand alone file.
+
+  Win32.
+    if the file extension is ".bmp" then the normal GDI is used to load the file.
+    otherwise Gdi+ is used. any file type supported by GDI+ can be loaded.
+
+  GTK+
+    any file type supported by libgdk_pixbuf can be loaded.
+
+  Mac.
+    any file type supported by Quicktime can be loaded. basically everything.
+    the Mac does have a limit of < 4096 bytes for a single row in the image.
+    this limit is imposed by the system CopyBits API.
+*)
+
+PROCEDURE CreateBitmap(w : Window; width, height : CARDINAL) : BitmapHandle;
+(*
+  create a bitmap compatible with the window.
+  The bitmap can be used with any Drawable that it is compatible with,
+  meaning the color depth.
+*)
+
+PROCEDURE GetBitmapSize(bmp : BitmapHandle; VAR OUT width, height : CARDINAL);
+(*
+   return the width and height of the specified bitmap.
+   returns 0 if bmp is not a valid bitmap handle.
+*)
+
+PROCEDURE ExtractBitmap(bmp : BitmapHandle; x, y : COORDINATE; width, height : CARDINAL) : BitmapHandle;
+(*
+    this function creates a new bitmap from a portion of another
+    bitmap.
+    This can be useful with buttons for toolbars. Since these are
+    small bitmaps and there are usually many buttons, it can be
+    nice to edit all off the buttons in one larger bitmap.
+    This function can be used to extract the individual bitmaps
+    from the large bitmap button array.
+*)
+
+PROCEDURE DeleteBitmap(bmp : BitmapHandle);
+(* delete a previously loaded/created bitmap.
+  For shared bitmaps the bitmap will not be freed until
+  DeleteBitmap is called once for each active Load.
+*)
+
+PROCEDURE CreateDrawContext(w : Window; dcValues : DrawContextValues) : DrawContext;
+(* create a new DrawContext. the context will be compatigble with
+   the passed Window, w. You can use the context with other windows
+   as long as the windows use the same color depth.
+   Note that you can only draw on a DrawClient, so the window should be
+   a toplevel window with a DrawClient or a DrawClient ChildWindow.
+*)
+
+PROCEDURE DestroyDrawContext(VAR INOUT dc : DrawContext);
+(* dispose of a previously created DrawContext.
+   The context must not be currently selected into any Drawable.
+*)
+
+PROCEDURE SetDrawContextValues(dc : DrawContext; dcValues : DrawContextValues);
+(* set the values associated with the DrawContext. *)
+
+PROCEDURE GetDrawContextValues(dc : DrawContext; VAR OUT dcValues : DrawContextValues);
+(* get the values associated with the DrawContext. *)
+
+PROCEDURE SetForegroundColor(dc : DrawContext; color : ColorValue);
+(* set the foreground color used for painting *)
+
+PROCEDURE SetBackgroundColor(dc : DrawContext; color : ColorValue);
+(* set the background color used for painting *)
+
+PROCEDURE SetFont(dc : DrawContext; font : FontHandle);
+(* set the font as the font used for painting text *)
+
+PROCEDURE SetTextExtraSpacing(dc : DrawContext; extra : INTEGER);
+(* this alters the normal character spacing of the text written
+   a positive value adds space (pixels) between each character drawn
+   a negative value removes space.
+*)
+
+PROCEDURE SetTextDrawOrigin(dc : DrawContext; origin : TextDrawOrigin);
+(*
+  Sets the text origin of text drawing operations.
+  See the comments at the TextDrawOrigin type declaration.
+*)
+
+PROCEDURE SetLineWidth(dc : DrawContext; width : CARDINAL);
+(* set the line width *)
+
+PROCEDURE SetLineStyle(dc : DrawContext; style : LineStyles);
+(* set the line style *)
+
+PROCEDURE SetLineAttributes(dc : DrawContext;
+                            style : LineStyles;
+                            join : JoinStyles;
+                            endCap : EndCaps;
+                            width : CARDINAL);
+(* set all line attributes *)
+
+PROCEDURE SetDrawFunction(dc : DrawContext; func : DrawFunctions);
+(* the the draw function *)
+
+PROCEDURE BeginPaint(w : Window; dc : DrawContext) : Drawable;
+(* use this to obtain a Drawable for the specific window.
+   Note that you can only draw on a DrawClient, so the window should be
+   a toplevel window with a DrawClient or a DrawClient ChildWindow.
+
+   the DrawContext, dc, is selected into the returned Drawable.
+   when you are finished painting you must call EndPaint which releases
+   any system resources allocated by this call.
+
+   if dc = NIL, then the default context is used.
+
+   this call will automatically hide the text caret if active.
+
+   when you receive a PAINT message you can use the Drawable passed
+   in the paint message, therefore you do not need, and should not use, this call in that
+   circumstance.
+*)
+
+PROCEDURE EndPaint(w : Window);
+(* call this when you are done painting to a window.
+  this call is the book end to the BeginPaint call.
+  The Drawable returned by the BeginPaint call is invalid after this call.
+  Any DrawContext selected into the Drawable is automatically deselected.
+  This call will show the text caret if the window has an active caret.
+*)
+
+PROCEDURE CreateOffscreenDrawable(w : Window; width, height : CARDINAL; context : DrawContext) : Drawable;
+(* create a Drawable where all draw operations are drawing into
+   a offscreen bitmap.  The Drawable is compatible with the given window.
+
+   The size of the Drawable is width and height. If width or height are
+   zero then the Drawable size for that dimension is set to the current size
+   of the client area of the Window.
+*)
+
+PROCEDURE CreateBitmapDrawable(bmp : BitmapHandle; context : DrawContext) : Drawable;
+(* create a Drawable where all draw operations are drawing into the specified bitmap.
+   The size of this drawable is the size of the bitmap.
+
+   Use this to draw onto the bitmap itself, or to draw the bitmap onto other
+   drawables. A simple API exists for drawing a bitmap to a drawable without
+   creating a bitmap drawable.
+*)
+
+PROCEDURE CreateRgbDrawable(width, height : CARDINAL; context : DrawContext) : Drawable;
+(* creates an RGB buffer drawable. the RGB data is translated to/from native bitmap
+   format automatically.
+
+   width, height = the width and height in pixels of the drawable.
+
+   this Drawable exists primarily for interfacing external image editing libraries
+   with display Drawables.
+   Applications which render RGB images will also find use of this Drawable.
+   For normal drawing and displaying you might be better off with a bitmap.
+
+   the drawable internally maintains a system specific bitmap and RGB buffer.
+   when you copy RGB pixels into the drawable the bitmap is not necessarily updated
+   immediately. the bitmap is updated when the bitmap needs to be used.
+   likewise most "Draw..." APIs utilize the bitmap, and the RGB values are not updated
+   immediately. they are updated when the RGB data needs to be accessed.
+   you can forcibly serialize the bitmap and RGB buffer update by using
+   the call SyncRgbDrawable.
+*)
+
+PROCEDURE GetDrawableSize(draw : Drawable; VAR OUT width, height : CARDINAL);
+(* return the width and height of the drawable in pixels *)
+
+PROCEDURE DestroyDrawable(draw : Drawable);
+(*
+  Delete a previously created Drawable.
+  Do not use this call with a Drawable returned by BeginPaint or the Drawable
+  passed in the WSM_PAINT message.
+*)
+
+PROCEDURE SelectDrawContext(draw : Drawable; context : DrawContext);
+(* associate the DrawContext with the Drawable, draw.
+   the previously selected DrawContext is deselected.
+*)
+
+PROCEDURE PushDrawContext(draw : Drawable; context : DrawContext) : BOOLEAN;
+PROCEDURE PopDrawContext(draw : Drawable);
+(*
+  allows you to temporarily select a context into a drawable and restore the
+  previous context, whatever that was.
+  returns TRUE if successful.
+  a return of FALSE means the internal stack has overflowed.
+  the internal context stack holds four elements.
+*)
+
+PROCEDURE CopyPixelRowToRgbDrawable(draw : Drawable;
+                                    x, y : CARDINAL;
+                                    numPixels : CARDINAL;
+                                    pixels : ADDRESS;
+                                    pixelFormat : RgbPixelFormat) : BOOLEAN;
+(* transfer the RGB pixel data to the RgbDrawable.
+   you can transfer at most one row of pixels at a time.
+   x, y are zero based coordinates into the drawable.
+   numPixels is the number of pixels to be copied.
+   pixels is the address of the first pixel to be copied.
+
+   RETURNs TRUE if successful.
+*)
+
+PROCEDURE CopyPixelRectToRgbDrawable(draw : Drawable;
+                                     destX, destY : CARDINAL;
+                                     srcX, srcY : CARDINAL;
+                                     width, height : CARDINAL;
+                                     rowStride : CARDINAL;
+                                     pixels : ADDRESS;
+                                     pixelFormat : RgbPixelFormat) : BOOLEAN;
+(* as CopyPixelRowToRgbDrawable except you are copying a rectangle of pixels
+   out of a larger buffer.
+   rowStride = the address width of each row of pixels.
+   pixels = the address of the 0,0 pixel.
+   all coordinates are assumed to be zero based.
+   destX, destY are coordinates within the drawable.
+   srcX,srcY are coordinates in the source RGB buffer.
+   width,height is the width and height in pixels of the rectangle to copy.
+
+   pixel addresses are computed as
+   pixelAddress = (y * rowStride) + (x * SIZE(Pixel))
+   RETURNs TRUE if successful.
+*)
+
+PROCEDURE GetRgbDrawablePixelRow(draw : Drawable;
+                                 x, y : CARDINAL;
+                                 numPixels : CARDINAL;
+                                 pixels : ADDRESS;
+                                 pixelFormat : RgbPixelFormat) : CARDINAL;
+(* the reverse of CopyPixelsToRgbDrawable.
+   x, y are zero based coordinates into the drawable.
+   numPixels is the number of pixels to be fetched.
+   RETURNs the number of pixels copied. this might be less than the requested number
+   of pixels if the coordinates are out of range with the requested pixel count.
+   if the pixel format request an alpha channel then it will always be opaque.
+*)
+
+PROCEDURE SyncRgbDrawable(draw : Drawable);
+(*  see CreateRgbDrawable *)
+
+PROCEDURE GetTextWidth(draw : Drawable; text : ARRAY OF CHAR; length : CARDINAL) : CARDINAL;
+(* this calls returns the width of the text in pixels when drawn.
+   the number of characters measured is length.
+   if length = 0 the the number of characters measured is LENGTH(text)
+   the font currently selected for drawing is used for the measurement.
+   The SetTextExtraSpacing API procedure affects this call.
+*)
+
+PROCEDURE DrawText(draw : Drawable; x, y : COORDINATE; text : ARRAY OF CHAR; length : CARDINAL);
+(* draw text at the coordinates x, y
+ length = the number of characters drawn
+ if length = 0 then the number of characters draw is LENGTH(text)
+ the text is drawn in the foreground color.
+ the text is drawn transparently over the background.
+*)
+
+PROCEDURE DrawTextRect(draw : Drawable;
+                       x, y : COORDINATE;
+                       text : ARRAY OF CHAR;
+                       length : CARDINAL;
+                       rect : wsRECT;
+                       flags : DrawTextOptionSet);
+(* draw text at the coordinates x, y
+   length = the number of characters drawn
+   if length = 0 then the number of characters drawn is LENGTH(text).
+   the text is drawn in the foreground color.
+   the rectangle specifies the rectangle that is used for clipping and/or filling.
+   flags specifies options for drawing.
+*)
+
+PROCEDURE DrawPixel(draw : Drawable; x, y : COORDINATE; color : ColorValue);
+(* draw a pixel a tht given coordinates in the given color *)
+
+PROCEDURE DrawLine(draw : Drawable;
+                   x1, y1, x2, y2 : COORDINATE);
+(* draw a line from x1,y1 to x2,y2 in the current foreground color
+   and line attributes.
+*)
+
+PROCEDURE DrawLines(draw : Drawable; points : ARRAY OF wsPOINT);
+(* draw a series of connected lines starting at the first point
+   and ending at the last point.
+   the line is drawn in the current foreground color, and line attributes.
+*)
+
+PROCEDURE DrawRectangle(draw : Drawable; x, y : COORDINATE; width, height : CARDINAL; filled : BOOLEAN);
+(* draw the rectangle with the foreground color.
+   if filled = FALSE  then the rectangle outline is drawn with
+   the current line attributes.
+   example x=0,y=0,width=20,height=20
+   the coordinates of the drawn rectangle are
+   upper left (0, 0), and lower right (19, 19)
+*)
+
+PROCEDURE EraseRectangle(draw : Drawable; x, y : COORDINATE; width, height : CARDINAL);
+(* as DrawRectangle, except the rectangle is filled with the background color.*)
+
+PROCEDURE DrawPie(draw : Drawable;
+                  x, y : COORDINATE;
+                  radius : CARDINAL;
+                  startAngle, arcAngle : REAL;
+                  filled : BOOLEAN);
+(* draw a pie slice within in the foreground color.
+   x, y define the center of the circle the pie slice is a part of.
+   radius is the radius of the circle.
+   startAngle and arcAngle define the size of the pie slice.
+   a startAngle value of zero begins at the 3 o'clock position and increasing
+   values go in the counter clockwise direction.
+   the angle values are specified in degrees.
+   width is the number of degrees of the pie slice and must be <= 360.0.
+   if filled = FALSE then the pie outline is drawn with
+   the current line attributes.
+*)
+
+PROCEDURE DrawBitmap(destDraw : Drawable; destX, destY : COORDINATE; bmp : BitmapHandle);
+PROCEDURE DrawBitmapRect(destDraw : Drawable;
+                         destX, destY : COORDINATE;
+                         bmp : BitmapHandle;
+                         srcX, srcY : COORDINATE;
+                         width, height : CARDINAL);
+(* draw the bitmap onto the destination drawable. *)
+
+PROCEDURE CopyDrawableArea(destDraw : Drawable;
+                           destX, destY : COORDINATE;
+                           srcDraw : Drawable;
+                           srcX, srcY : COORDINATE;
+                           width, height : CARDINAL);
+(* this call copies a reqion from one drawable to another.
+   you may use the same drawable for both the source and destination.
+
+   For a window as the source, it should not be clipped,
+   otherwise you may be copying other windows.
+   See the ClientAreaIsClipped API call.
+   The UpdateWindow API call can be useful before issuing this call with Window
+   drawables as the source.
+*)
+
+PROCEDURE ScaleDrawableArea(destDraw : Drawable;
+                            destX, destY : COORDINATE;
+                            destWidth, destHeight : CARDINAL;
+                            srcDraw : Drawable;
+                            srcX, srcY : COORDINATE;
+                            srcWidth, srcHeight : CARDINAL;
+                            interp : PixelInterpolation);
+(* like CopyDrawableArea except the the destination rectangle can be a different
+   size than the soruce rectangle. the image is expanded if the destination rectangle
+   is larger than the source. the image is compressed is the destination rectangle
+   is smaller than the source.
+
+   Win32. InterpLowQuality uses the StretchBlt API.
+          Gdi+ is used for all other interpolation settings. if Gdi+ is not available
+          then you get InterpLowQuality scaling.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE DisplayHelp(w : Window;
+                      command : HelpCommand;
+                      helpFile : ARRAY OF CHAR;
+                      helpIndex : CARDINAL) : BOOLEAN;
+(* call the operating system help program
+   helpFile = the file specification of the help file to be opened
+   helpIndex = help topic number within the given help file
+   command = what you want the help program to do
+       HelpTopic        open help to a specific topic.
+       HelpContents     open help in table of contents
+                        (Win32 only. only 'hlp' and 'chm' help files support this.)
+                        helpIndex is ignored in this case
+
+
+   Win32.
+   All features are available.
+   On Windows you can use WinHelp (.hlp), HTML help (.chm) or any other file type
+       which is registered with the OS. For example HTML files (.htm, .html).
+
+   GTK+
+   command and helpIndex are ignored.
+   helpFile is assumed to be an HTML file and an HTML browser is executed for
+   the specified file.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE ListClientInsertItem(w : Window; item : ListClientInsertRec) : INTEGER;
+(* insert a new item into the list.
+   returns the index position of the inserted location.
+   returns -1 if the insert failed.
+*)
+
+PROCEDURE ListClientSetItem(w : Window;
+                            row, column : CARDINAL;
+                            text : ARRAY OF CHAR;
+                            image : CARDINAL);
+(* set the contents of a specific row and column.
+   the use of the text and image parameters depends on the column content type.
+   ColumnText
+       text must be null terminated.
+       image is ignored.
+   ColumnBitmap
+       text is ignored.
+   ColumnBitmapText
+       text must be null terminated.
+*)
+
+PROCEDURE ListClientGetItem(w : Window;
+                            row, column : CARDINAL;
+                            VAR OUT text : ARRAY OF CHAR;
+                            VAR OUT image : CARDINAL);
+(* get the contents of a specific row and column. see ListClientSetItem *)
+
+PROCEDURE ListClientGetItemData(w : Window; row : CARDINAL) : ADDRESS;
+(* fetch the user defined data for the specified row. *)
+
+PROCEDURE ListClientSetItemData(w : Window; row : CARDINAL; data : ADDRESS);
+(* set the user defined data for the specified row. *)
+
+PROCEDURE ListClientFindItemByData(w : Window; data : ADDRESS) : INTEGER;
+(* find an item in the list by comparing with the user data item
+   you previosly set.
+   If you insert/delete items the index position returned at the time of
+   insertion may be invalid.
+   If the list is sorted then the index position can change at any time so you cannot
+   rely on the index position returned at the time of insertion.
+
+   RETURNs -1 if the item is not found, otherwise the current index position of the item.
+*)
+
+PROCEDURE ListClientGetSelectionCount(w : Window) : CARDINAL;
+(* return the number of selected items in the list.
+   a single selection list will always return 0 or 1.
+*)
+
+PROCEDURE ListClientGetSelectedItems(w : Window; VAR OUT items : ARRAY OF CARDINAL) : CARDINAL;
+(* get the items selected in the list.
+   the return value is the number of items placed into the items array.
+   if more items are selected than positions avaialble in the items array then
+   some selected items are lost.
+*)
+
+PROCEDURE ListClientGetItemSelectedState(w : Window; row : CARDINAL) : BOOLEAN;
+(* get the selected state of the selected state. *)
+
+PROCEDURE ListClientSetSelectedItem(w : Window; sel : CARDINAL) : BOOLEAN;
+(* the specified row to the selected state. *)
+
+PROCEDURE ListClientRemoveItem(w : Window; item : CARDINAL);
+(* remove the specified item from the list *)
+
+PROCEDURE ListClientRemoveAllItems(w : Window);
+(* remove all items from the list *)
+
+PROCEDURE ListClientFreezeDisplay(w : Window; yes : BOOLEAN);
+(* yes = TRUE = causes the window to not redraw itself when an item is added/removed
+                from the list. this is useful when adding/removing a number of items.
+  yes = FALSE = causes the window to refresh its display at this call, and it will
+                continue to update its display as items are added/removed.
+*)
+
+PROCEDURE ListClientGetColumnWidth(w : Window; column : ADRCARD) : INTEGER;
+(* return the width of the specified column. returns -1 if and error occurs.
+   an error can be that the column number was invalid.
+   a column size of zero means the column is hidden.
+*)
+
+PROCEDURE ListClientSetColumnWidth(w : Window; column : ADRCARD; width : INTEGER);
+(* set the column width.
+   width = -1 = the column will be autosized to the contents of the column.
+   otherwise the width is in pixels.
+*)
+
+PROCEDURE ListClientSetSortColumn(w : Window; column : INTEGER; dir : SortDirection);
+(* sets the sort column and direction and resorts the list based on the new information.
+   a column < 0 indicates that sorting is no longer performed.
+*)
+
+PROCEDURE ListClientGetSortColumn(w : Window; VAR OUT column : INTEGER; VAR OUT dir : SortDirection);
+(* gets the current sort column and direction. *)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE TreeClientInsertNode(w : Window; item : TreeClientInsertRec) : TreeClientNode;
+(* insert a new item into the list.
+   returns the index position of the inserted location.
+   returns -1 if the insert failed.
+*)
+
+PROCEDURE TreeClientSetNodeText(w : Window; node : TreeClientNode; text : ARRAY OF CHAR);
+(* set the text of a specific node. text must be null terminated. *)
+
+PROCEDURE TreeClientGetNodeText(w : Window; node : TreeClientNode; VAR OUT text : ARRAY OF CHAR);
+(* get the text of a specific node. *)
+
+PROCEDURE TreeClientGetNodeData(w : Window; node : TreeClientNode) : ADDRESS;
+(* fetch the user defined data for the specified node. *)
+
+PROCEDURE TreeClientSetNodeData(w : Window; node : TreeClientNode; data : ADDRESS);
+(* set the user defined data for the specified node. *)
+
+PROCEDURE TreeClientGetSelectedNode(w : Window) : TreeClientNode;
+(* get the selected item selected in the tree.
+   NIL is returned if no node is currently selected.
+*)
+
+PROCEDURE TreeClientSetSelectedNode(w : Window; sel : TreeClientNode) : BOOLEAN;
+(* the the specified item to the selected state. *)
+
+PROCEDURE TreeClientExpandNode(w : Window; node : TreeClientNode; yes : BOOLEAN) : BOOLEAN;
+(* if yes = TRUE then expand the specified node if possible.
+   otherwise collapse the node.
+*)
+
+PROCEDURE TreeClientSortNode(w : Window; node : TreeClientNode; recurse : BOOLEAN);
+(* sorts the children of the specified node. if recurse = TRUE then all nodes which
+   are decendents of the specified node will be sorted.
+*)
+
+PROCEDURE TreeClientRemoveNode(w : Window; node : TreeClientNode);
+(* remove the specified node from the tree *)
+
+PROCEDURE TreeClientRemoveAllNodes(w : Window);
+(* remove all content from the tree *)
+
+PROCEDURE TreeClientFreezeDisplay(w : Window; yes : BOOLEAN);
+(* yes = TRUE = causes the window to not redraw itself when an item is added/removed
+                from the tree. this is useful when adding/removing a number of items.
+  yes = FALSE = causes the window to refresh its display at this call, and it will
+                continue to update its display as items are added/removed.
+*)
+
+PROCEDURE TreeClientRootNode(w : Window) : TreeClientNode;
+PROCEDURE TreeClientGetChildNode(w : Window; node : TreeClientNode) : TreeClientNode;
+PROCEDURE TreeClientGetParentNode(w : Window; node : TreeClientNode) : TreeClientNode;
+PROCEDURE TreeClientNextSiblingNode(w : Window; node : TreeClientNode) : TreeClientNode;
+PROCEDURE TreeClientPrevSiblingNode(w : Window; node : TreeClientNode) : TreeClientNode;
+PROCEDURE TreeClientNodeIsVisible(w : Window; node : TreeClientNode) : BOOLEAN;
+(* basically the proceduure names are self expanatory *)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+(* ---------------------------------------- *)
+(* for the following APIs accessing controls.
+   w = a ChildWindow of client type FormClient, or
+       a Toplevel window with a FormClient.
+
+   ctrlId = the id number identifying the control.
+
+   input string parameters MUST be null terminated.
+*)
+
+PROCEDURE SetFormEditMode(w : Window; mode : BOOLEAN);
+(*
+   set form edit mode (i. e., form is edited or just displayed).
+   mode = TRUE if in edit mode.
+*)
+
+PROCEDURE AddFormControls(w : Window; controls : ARRAY OF ControlProperties);
+(*
+   create a series of new controls in the FormClient window w.
+   controls = the various controls to be displayed in the FormClient.
+*)
+
+PROCEDURE FormToPixel(w : Window; VAR INOUT x, y : COORDINATE);
+PROCEDURE PixelToForm(w : Window; VAR INOUT x, y : COORDINATE);
+(* utility procedures to convert to/from form/pixel coordinates. *)
+
+PROCEDURE RemoveControl(w : Window; ctrlId : CARDINAL) : BOOLEAN;
+(* returns TRUE if successful *)
+
+PROCEDURE RemoveAllControls(w : Window);
+(* obvious *)
+
+PROCEDURE StartFormEditMode(w : Window;
+                            usePopupMenu : BOOLEAN;
+                            popupMenu : ARRAY OF CHAR;
+                            newControlProc : NewControlProc;
+                            propProc : ControlPropertiesProc;
+                            exitProc : ControlEndEditProc);
+(*
+  usePopupMenu = TRUE the form editor will enable use of the popup menu.
+                 the popup menu is activated via a right click.
+                 on the Mac you use an option click if you do not have a two button
+                 mouse.
+
+  menu = the popup menu used by the form editor if usePopupMenu = TRUE.
+         if menu = "" then a default menu is used which supports all functions.
+
+  propProc = a procedure which is called when the user double clicks on a
+               control. Here you can display a dialog which allows the user to modify
+               some or all of the attributes of the control.
+
+               the current control properties are passed in the ControlProperties
+               parameter.
+               to change the control properties simply change the fields in the
+               control.
+
+               For TopLevelWindow forms you can edit the form caption title.
+                   this is editied like a normal control.
+                   it is identitied as a TextLabel control with an
+                   id number of MAX(CARDINAL). therefore you cannot
+                   have a TextLabel with such an id number and
+                   support form editing of the form title.
+
+               if propProc returns TRUE then changes in the ControlProperties
+               parameter will take effect. otherwise any changes are ignored.
+
+    newControlProc = a procedure which is called when the user creates a new
+                control from the context menu.
+                some initial default values are set for the control.
+                with this procedure you are given the opportunity to set the
+                initial values of the control by changing the values in the
+                ControlProperties parameter.
+
+    for both propProc and newControlProc
+           you cannot change the control type field.
+
+           if you change any of the StringData fields you should call
+           DisposeStringData with the current value before assigning a new value
+           otherwise the old value will be leaked (memory leak).
+
+           memory fields in the ControlProperties data structure are deallocated
+           by this module, therefore your memory allocations should be comparible
+           with this module. this module exports APIs to manipulate the StringData
+           type and generaic memory allocation functions.
+
+    exitProc = called when the user wants to end editing.
+                you can use this to call EndFormEditMode and retrieve any changes
+                the user may have made by using GetControlProperties.
+
+    the internal form editor supports selection of single controls by clicking on them
+    with the left mouse button.
+    multiple controls can be selected by using a Shift+Click, or by dragging a rectangle
+    surrounding the controls to be selected.
+
+    a selected control is displayed with a surrounding hatch pattern and six
+    "drag handles" which are used to resize the control.
+
+    for multiple selections one control is the primary selection and the others
+    are secondary selections. the primary selection has white drag handles and the
+    others have black drag handles. you can change the primary selection within
+    a multiple selection by clicking the desired control.
+    you can clear a multiple selection by clicking on a blank area in the form. the
+    primary selection will remain selected.
+
+    with single selections you can size and/or move the control.
+    with multiple selections you can only move the controls. all selected controls
+    move together maintaining their positional relationship.
+
+    moving a control into a page of a MultiPage control binds that control to the
+        active page of the control. moving a control out of a page will unbind the
+        control from the page.
+
+    double clicking on a control opens the control properties dialog.
+
+    the Tab, Shift_Tab keys cycle through the controls. This cycle displays the tab
+    order of the controls.
+
+    pressing the delete key deletes the the selected control.
+
+    menuCommands
+        the form editor supports various editing actions which are selected via
+        a popup context menu. you control what actions are available by what you
+        place in the context menu. you must use the ids provided by this module
+        as the menu identifiers for the specific actions.
+*)
+
+PROCEDURE ExecuteFormEditorMenuCommand(w : Window; menuId : CARDINAL);
+(* this API lets you put form editor menu actions on your application menubar.
+   the menu id command numbers for each action supported are listed in the DEF file.
+   this API does nothing unless the ForClient is currently in edit mode.
+*)
+
+PROCEDURE EnableFormEditorMenuItems(w : Window);
+(* you use this procedure to enable/disable menu items on your menubar. the popup
+   automatically handles this.
+
+   the menu items are assumed to be on the menu for the Toplevel Window of "w".
+*)
+
+PROCEDURE EndFormEditMode(w : Window) : BOOLEAN;
+(* the name says it all
+   returns TRUE is any changes were made to the form.
+*)
+
+PROCEDURE GetControlCount(w : Window; includeContainerChildren : BOOLEAN) : CARDINAL;
+(* w must be a toplevel window with a FormClient as its client, or a child window.
+   returns the number of controls in the form.
+   if includeContainerChildren = FALSE, then the value returned does not include
+       controls contained within container controls (MultiPage, GroupBox).
+       this can be useful to allocate an array big enough to use with the
+       GetControlInfo API.
+   otherwise the value returned includes all controls in the form.
+*)
+
+PROCEDURE GetControlInfo(w : Window; VAR OUT controls : ARRAY OF ControlProperties);
+PROCEDURE DisposeControlInfo(VAR INOUT controls : ARRAY OF ControlProperties);
+(*
+  return control information on controls in the FormCient window.
+  useful when using the form edit mode.
+
+  any StringData pointers have been allocated and should be deallocated when no
+  longer needed.
+  this also holds true for the ListBox lb_ColumnInfo field.
+  DisposeControlInfo is a handle call to do this for you.
+*)
+
+PROCEDURE ControlSetEditLimit(w : Window; ctrlId : CARDINAL; limit : CARDINAL);
+(*
+  for use with TextEdit and ComboBox controls.
+  set the maximum number of characters a user is allowed to enter into
+  the control.
+  a value of zero defines an operating system defined default limit.
+*)
+
+PROCEDURE ControlSetEditable(w : Window; ctrlId : CARDINAL; yes : BOOLEAN);
+(*
+  for use with TextEdit and SpinButton controls.
+  yes = the control is user editable
+*)
+
+PROCEDURE ControlSetTipText(w : Window; ctrlId : CARDINAL; text : ARRAY OF CHAR);
+PROCEDURE ControlGetTipText(w : Window; ctrlId : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+(* get or set the tooltip text of the control. *)
+
+PROCEDURE ControlSetText(w : Window; ctrlId : CARDINAL; text : ARRAY OF CHAR);
+PROCEDURE ControlGetText(w : Window; ctrlId : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+PROCEDURE ControlGetSelectedText(w : Window; ctrlId : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+(*
+    for use with the following controls.
+        PushButton, ToggleButton, CheckBox, RadioButton:
+        DropDownList: = GetText = text of selected item for GetText.
+                        SetText = change the selection by matching the given text
+                                  to the list.
+        ComboBox:
+        TextEdit:
+        TextLabel:
+        ListBox: = GetText = text of selected item for GetText.
+                   SetText = change the selection by matching the given text
+                             to the list.
+
+*)
+
+PROCEDURE ControlGetTextLength(w : Window; ctrlId : CARDINAL) : INTEGER;
+(* -1 (< 0), means the text length is indeterminate. *)
+
+PROCEDURE ControlSetNumericValue(w : Window; ctrlId : CARDINAL; num : INTEGER);
+PROCEDURE ControlGetNumericValue(w : Window; ctrlId : CARDINAL; VAR OUT num : INTEGER) : BOOLEAN;
+(*
+  primarily for use on SpiButton controls but you can use the "set" API on
+  edit controls and text labels.
+
+  GetNumericValue may return FALSE if the control text is not a valid number.
+*)
+
+PROCEDURE ControlSetSelectedItem(w : Window; ctrlId : CARDINAL; sel : CARDINAL) : BOOLEAN;
+PROCEDURE ControlGetSelectedItem(w : Window; ctrlId : CARDINAL) : INTEGER;
+PROCEDURE ControlSetSelectedItemState(w : Window; ctrlId : CARDINAL; row : CARDINAL; selected : BOOLEAN) : BOOLEAN;
+PROCEDURE ControlGetSelectedItemState(w : Window; ctrlId : CARDINAL; row : CARDINAL) : BOOLEAN;
+(* for use with ListBox, DropDownList, ComboBox and MultiPage controls.
+   -1 (< 0), = no selection. otherwise selection is zero based.
+*)
+
+PROCEDURE ControlGetSelectedItemCount(w : Window; ctrlId : CARDINAL) : CARDINAL;
+(* for use with a MultiSelect ListBox.
+   get the number of selected items in the list.
+*)
+
+PROCEDURE ControlGetSelectedItems(w : Window; ctrlId : CARDINAL; VAR OUT items : ARRAY OF CARDINAL) : CARDINAL;
+(* for use with a MultiSelect ListBox.
+   return an array of the selected iteem indexes.
+   the return value is the number of items stored in the array.
+*)
+
+PROCEDURE ControlSetButtonState(w : Window; ctrlId : CARDINAL; checked : BOOLEAN);
+PROCEDURE ControlGetButtonState(w : Window; ctrlId : CARDINAL) : BOOLEAN;
+(* for CheckBox, TRUE = checked.
+   for ToggleButton, TRUE = pressed/down
+   for PushButton, for Set, TRUE = simulate a mouse click. FALSE is ignored.
+                   for Get, this always results in FALSE.
+   for RadioButton, for Set, checked = TRUE, is just like using SetRadioGroup.
+                             check = FALSE is ignored.
+                    for Get, returns the button state. TRUE = checked.
+*)
+
+PROCEDURE ControlSetDefaultButton(w : Window; ctrlId : CARDINAL);
+(* only for PushButton controls. sets the default push button. *)
+
+PROCEDURE ControlSetRadioGroup(w : Window; group : CARDINAL; ctrlId : CARDINAL);
+(* ctrlId = the radio button in the group which should be checked.
+   if the button identified by ctrlId is not in the group, "group" then
+   no action is taken.
+*)
+
+PROCEDURE ControlGetRadioGroup(w : Window; group : CARDINAL) : CARDINAL;
+(* returns the id number of the checked radio button of the specified group *)
+
+PROCEDURE ControlAppendItem(w : Window; ctrlId : CARDINAL; text : ARRAY OF CHAR) : INTEGER;
+(* for use with ListBox, DropDownList and ComboBox controls.
+   adds a new item to the end of the list of items.
+   if the ListBox has multiple columns, then this call places the text
+   in the first column.
+   the return value is the index position of the added item.
+   index positions are zero based.
+*)
+
+PROCEDURE ControlAppendItemColumns(w : Window; ctrlId : CARDINAL; strs : ARRAY OF StringData) : INTEGER;
+(* for use with multi column ListBox controls.
+   adds a new item to the end of the list of items.
+   the return value is the index position of the added item.
+   index positions are zero based.
+*)
+
+PROCEDURE ControlInsertItem(w : Window; ctrlId : CARDINAL; position : CARDINAL; text : ARRAY OF CHAR) : INTEGER;
+(* for use with ListBox, DropDownList and ComboBox controls.
+   inserts an item into the specified position.
+   if the ListBox has multiple columns, then this call places the text
+   in the first column.
+   the return value is the index position of the added item.
+   index positions are zero based.
+*)
+
+PROCEDURE ControlInsertItemColumns(w : Window; ctrlId : CARDINAL; position : CARDINAL; strs : ARRAY OF StringData) : INTEGER;
+(* for use with multi column ListBox controls.
+   inserts a new item into the specified position.
+   the return value is the index position of the added item.
+   index positions are zero based.
+*)
+
+PROCEDURE ControlSetItemText(w : Window; ctrlId : CARDINAL; item, column : CARDINAL; text : ARRAY OF CHAR);
+PROCEDURE ControlGetItemText(w : Window; ctrlId : CARDINAL; item, column : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+(* for use with ListBox, ColumnListBox, DropDownList and ComboBox.
+   sets/gets the text of a specific column.
+   item = the "row" index position. zero based.
+   column = the column to place the text. zero based. ignored if not applicable.
+*)
+
+PROCEDURE ControlSetListHeader(w : Window; ctrlId : CARDINAL; column : INTEGER; text : ARRAY OF CHAR);
+PROCEDURE ControlGetListHeader(w : Window; ctrlId : CARDINAL; column : INTEGER; VAR OUT text : ARRAY OF CHAR);
+(* for use with ListBox.
+   sets/gets the text of a specific column header.
+   column = the column to place the text. zero based.
+*)
+
+PROCEDURE ControlGetItemCount(w : Window; ctrlId : CARDINAL) : CARDINAL;
+(* returns the number of items in a ListBox, DropDownList or ComboBox *)
+
+PROCEDURE ControlRemoveItem(w : Window; ctrlId : CARDINAL; item : CARDINAL);
+(* for use with ListBox, DropDownList and ComboBox controls.
+   item = the position index of the item to remove.
+   index positions are zero based.
+*)
+
+PROCEDURE ControlGetItemData(w : Window; ctrlId : CARDINAL; item : CARDINAL) : ADDRESS;
+(* applicable to ListBox controls.
+   fetch the user defined data for the specified row.
+*)
+
+PROCEDURE ControlSetItemData(w : Window; ctrlId : CARDINAL; item : CARDINAL; data : ADDRESS);
+(* applicable to ListBox controls.
+   set the user defined data for the specified row.
+*)
+
+PROCEDURE ControlFindItemByData(w : Window; ctrlId : CARDINAL; data : ADDRESS) : INTEGER;
+(* applicable to ListBox controls.
+   find an item in the list by comparing with the user data item
+   you previosly set.
+   If you insert/delete items the index position returned at the time of
+   insertion may be invalid.
+   If the list is sorted then the index position can change at any time so you cannot
+   rely on the index position returned at the time of insertion.
+
+   RETURNs -1 if the item is not found, otherwise the current index position of the item.
+*)
+
+PROCEDURE ControlRemoveAllItems(w : Window; ctrlId : CARDINAL);
+(* for use with ListBox, DropDownList and ComboBox controls *)
+
+PROCEDURE ControlSetColumnWidth(w : Window; ctrlId : CARDINAL; column : ADRINT; width : INTEGER);
+(* for use with multi column ListBox controls.
+   if width < 0 then the column width will be set optimally for the existing text
+   in the list column and header.
+   the width is in form Units.
+   if column < 0 then all columns of the control are given the specified width.
+*)
+
+PROCEDURE ControlAppendText(w : Window; ctrlId : CARDINAL; text : ARRAY OF CHAR);
+(* for use with multi line TextEdit controls.
+   appends the given text at the end of the text in the control.
+*)
+
+PROCEDURE ControlAppendLine(w : Window; ctrlId : CARDINAL; text : ARRAY OF CHAR);
+(* for use with multi line TextEdit controls.
+   appends the given text and a end of line at the end of the text in the control.
+*)
+
+PROCEDURE ControlGetLineCount(w : Window; ctrlId : CARDINAL) : CARDINAL;
+(* for use with multi line TextEdit controls.
+   returns the number of lines of text in the control.
+*)
+
+PROCEDURE ControlGetLineLength(w : Window; ctrlId : CARDINAL; lineNum : CARDINAL) : CARDINAL;
+(* for use with multi line TextEdit controls.
+   returns the length if characters of the specified line in the control.
+   the first line of text is line number 1.
+*)
+
+PROCEDURE ControlGetLineText(w : Window; ctrlId : CARDINAL; lineNum : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+(* for use with multi line TextEdit controls.
+   gets the text of the specified line in the control.
+   the first line of text is line number 1.
+*)
+
+PROCEDURE ControlSetLineText(w : Window; ctrlId : CARDINAL; lineNum : CARDINAL; text : ARRAY OF CHAR);
+(* for use with multi line TextEdit controls.
+   sets the text of the specified line in the control.
+   the first line of text is line number 1.
+*)
+
+PROCEDURE ControlRemoveLine(w : Window; ctrlId : CARDINAL; lineNum : CARDINAL);
+(* for use with multi line TextEdit controls.
+   removes the line of text from the control.
+   the first line of text is line number 1.
+*)
+
+PROCEDURE ControlPositionCaret(w : Window; ctrlId : CARDINAL; lineNum, column : CARDINAL);
+(* for use with multi line TextEdit controls.
+   positions the text caret and ensures that the text caret is visible within the control
+   window. this is useful when you are adding/removing text from the control.
+   lineNum = MAX(CARDINAL) will always position to the last line.
+*)
+
+PROCEDURE ControlRedraw(w : Window; ctrlId : CARDINAL; yes : BOOLEAN);
+(* yes = TRUE the control will redraw itself when its contents change.
+   you use this call when making numerous changes to a control to improve
+   performance by disabling redraws until you are done changing the control.
+
+   only applicable to ListBox and ComboBox controls.
+*)
+
+PROCEDURE ControlEnable(w : Window; ctrlId : CARDINAL; yes : BOOLEAN);
+(* yes = TRUE the control is enabled, otherwise disabled *)
+
+PROCEDURE ControlShow(w : Window; ctrlId : CARDINAL; yes : BOOLEAN);
+(* yes = TRUE the control is visible, otherwise hidden *)
+
+PROCEDURE ControlSetFocus(w : Window; ctrlId : CARDINAL);
+(* set the input focus to the specified control *)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+PROCEDURE Beep(beep : Beeps);
+(* make a sound on the computer.
+   beep = various sound signatures.
+          typically the specific sound that is made is controlled by the user,
+          if the underlying system supports such things.
+          if not then all beeps will sound the same...just a simple beep.
+*)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+(* functions that export native operating system handles/values.
+   these functions are not part of the WinShell API.
+   they are here to allow "special" actions to be performed when necessary
+   and to allow someone to encapsulate additional functionality in a
+   different module.
+*)
+
+PROCEDURE GetWindowHandle(w : Window) : ADDRESS;
+(* get the operating system handle for specified toplevel window.
+   Win32 - a window handle. HWND
+   GTK - a Widget handle. specifically pGtkWindow.
+   Mac - a window handle. WindowRef.
+*)
+
+PROCEDURE GetClientHandle(w : Window) : ADDRESS;
+(* get the operating system handle for the client "window"
+   of the specified window.
+   Win32 - a window handle. HWND
+        ListClient => ListView
+        TreeClient => TreeView
+        TabClient => Tab Control
+   GTK - a Widget handle.
+        DrawClient => pGtkDrawingArea
+        ListClient => pGtkCList
+        TreeClient => pGtkCTree
+        FormClient => pGtkFixed
+        TabClient => pGtkNotebook
+        SplitterClient => pGtkHPaned or pGtkVPaned
+   Mac - a control handle. ControlRef.
+        DrawClient => User Pane
+        ListClient => DataBrowser
+        TreeClient => DataBrowser
+        FormClient => User Pane
+        TabClient => Tab Control
+        SplitterClient => User Pane
+*)
+
+PROCEDURE GetDrawableHandle(draw : Drawable) : ADDRESS;
+(* for Win32 - return the HDC handle.
+   for GTK - return the GDK drawable handle.
+   for Mac - return the port handle.
+*)
+
+PROCEDURE CreateExternalWindowHandle(wnd : ADDRESS) : Window;
+(* this API has one use. to be able to have a window external to this module
+   be the parent window of a WinShell window.
+   the handle is automatically disposed by this module.
+
+   wnd should be an operating system toplevel window handle.
+*)
+
+PROCEDURE IsWindowThreadCurrent(w : Window) : BOOLEAN;
+(* retuns TRUE if the current thread is a thread the argument window
+   was created, otherwise - FALSE.
+*)
+
+%IF Windows %THEN
+PROCEDURE SetModelessDialog(wnd : ADDRESS; add : BOOLEAN) : BOOLEAN;
+(* This procedure is here to support DlgShell in Win32
+   wnd = the operating system window handle of the modeless dialog
+   add = TRUE then you are adding a new dialog to the message loop
+         FALSE then you are remove a dialog from the message loop
+   returns TRUE if successful
+*)
+%ELSIF UNIX %THEN
+PROCEDURE FocusedWindowEvent(w : Window; yes : BOOLEAN);
+(* here for DlgShell and BasicDialogs to support WinShell with focus
+   notifications. WinShell uses this to simulate the WSM_ACTIVATEAPP
+   message.
+   yes = Focus in event
+   no = Focus out event
+
+   w = NIL, means than WinShell.MainWindow will be the window used, otherwise
+   the toplevel window of "w" will be the window that receives the message.
+*)
+%END
+
+END WinShell.

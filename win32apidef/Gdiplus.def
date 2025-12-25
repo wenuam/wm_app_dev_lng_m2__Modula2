@@ -1,0 +1,2222 @@
+DEFINITION MODULE Gdiplus;
+
+FROM WIN32 IMPORT
+    DWORD, UINT, WINT, BOOL, UINT32, ULONG_PTR, CLSID, GUID, LPCWSTR, LPBYTE,
+    LPVOID, UINT_PTR, ULONG, WORD, DWORDLONG, COLORREF;
+
+FROM WINGDI IMPORT
+    RGB, GetRValue, GetGValue, GetBValue;
+IMPORT WINGDI;
+
+FROM OOle2 IMPORT
+    PROPID;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH/ENUMSIZE:BIG*>
+<*/ALIGN:8/NOPACK*>
+
+(*//--------------------------------------------------------------------------
+// Default bezier flattening tolerance in device pixels.
+//--------------------------------------------------------------------------*)
+
+CONST
+    FlatnessDefault = 1.0 / 4.0;
+
+(*--------------------------------------------------------------------------
+// Graphics and Container State cookies
+//--------------------------------------------------------------------------*)
+
+TYPE
+    GraphicsState       = UINT;
+    GraphicsContainer   = UINT;
+
+(*--------------------------------------------------------------------------
+// Fill mode constants
+//--------------------------------------------------------------------------*)
+
+    FillMode =
+    (
+    FillModeAlternate,        (* 0*)
+    FillModeWinding           (* 1*)
+    );
+    GpFillMode          = FillMode;
+
+(*--------------------------------------------------------------------------
+// Quality mode constants
+//--------------------------------------------------------------------------*)
+
+    QualityMode =
+    (
+        QualityModeInvalid   = -1,
+        QualityModeDefault   = 0,
+        QualityModeLow       = 1, (* Best performance*)
+        QualityModeHigh      = 2  (* Best rendering quality*)
+    );
+
+(*--------------------------------------------------------------------------
+// Alpha Compositing mode constants
+//--------------------------------------------------------------------------*)
+
+    CompositingMode =
+    (
+        CompositingModeSourceOver,    (* 0*)
+        CompositingModeSourceCopy     (* 1*)
+    );
+
+(*--------------------------------------------------------------------------
+// Alpha Compositing quality constants
+//--------------------------------------------------------------------------*)
+
+    CompositingQuality =
+    (
+        CompositingQualityInvalid          = QualityModeInvalid,
+        CompositingQualityDefault          = QualityModeDefault,
+        CompositingQualityHighSpeed        = QualityModeLow,
+        CompositingQualityHighQuality      = QualityModeHigh,
+        CompositingQualityGammaCorrected,
+        CompositingQualityAssumeLinear
+    );
+
+(*--------------------------------------------------------------------------
+// Unit constants
+//--------------------------------------------------------------------------*)
+
+    Unit =
+    (
+        UnitWorld,      (* 0 -- World coordinate (non-physical unit)*)
+        UnitDisplay,    (* 1 -- Variable -- for PageTransform only*)
+        UnitPixel,      (* 2 -- Each unit is one device pixel.*)
+        UnitPoint,      (* 3 -- Each unit is a printer's point, or 1/72 inch.*)
+        UnitInch,       (* 4 -- Each unit is 1 inch.*)
+        UnitDocument,   (* 5 -- Each unit is 1/300 inch.*)
+        UnitMillimeter  (* 6 -- Each unit is 1 millimeter.*)
+    );
+    GpUnit = Unit;
+
+(*--------------------------------------------------------------------------
+// MetafileFrameUnit
+//
+// The frameRect for creating a metafile can be specified in any of these
+// units.  There is an extra frame unit value (MetafileFrameUnitGdi) so
+// that units can be supplied in the same units that GDI expects for
+// frame rects -- these units are in .01 (1/100ths) millimeter units
+// as defined by GDI.
+//--------------------------------------------------------------------------*)
+
+    MetafileFrameUnit =
+    (
+        MetafileFrameUnitPixel      = UnitPixel,
+        MetafileFrameUnitPoint      = UnitPoint,
+        MetafileFrameUnitInch       = UnitInch,
+        MetafileFrameUnitDocument   = UnitDocument,
+        MetafileFrameUnitMillimeter = UnitMillimeter,
+        MetafileFrameUnitGdi                        (* GDI compatible .01 MM units*)
+    );
+
+(*--------------------------------------------------------------------------
+// Coordinate space identifiers
+//--------------------------------------------------------------------------*)
+
+    CoordinateSpace =
+    (
+        CoordinateSpaceWorld,     (* 0*)
+        CoordinateSpacePage,      (* 1*)
+        CoordinateSpaceDevice     (* 2*)
+    );
+    GpCoordinateSpace   = CoordinateSpace;
+
+(*--------------------------------------------------------------------------
+// Various wrap modes for brushes
+//--------------------------------------------------------------------------*)
+
+    WrapMode =
+    (
+        WrapModeTile,        (* 0*)
+        WrapModeTileFlipX,   (* 1*)
+        WrapModeTileFlipY,   (* 2*)
+        WrapModeTileFlipXY,  (* 3*)
+        WrapModeClamp        (* 4*)
+    );
+    GpWrapMode          = WrapMode;
+
+(*--------------------------------------------------------------------------
+// Various hatch styles
+//--------------------------------------------------------------------------*)
+
+    HatchStyle =
+    (
+        HatchStyleHorizontal,                   (* 0*)
+        HatchStyleVertical,                     (* 1*)
+        HatchStyleForwardDiagonal,              (* 2*)
+        HatchStyleBackwardDiagonal,             (* 3*)
+        HatchStyleCross,                        (* 4*)
+        HatchStyleDiagonalCross,                (* 5*)
+        HatchStyle05Percent,                    (* 6*)
+        HatchStyle10Percent,                    (* 7*)
+        HatchStyle20Percent,                    (* 8*)
+        HatchStyle25Percent,                    (* 9*)
+        HatchStyle30Percent,                    (* 10*)
+        HatchStyle40Percent,                    (* 11*)
+        HatchStyle50Percent,                    (* 12*)
+        HatchStyle60Percent,                    (* 13*)
+        HatchStyle70Percent,                    (* 14*)
+        HatchStyle75Percent,                    (* 15*)
+        HatchStyle80Percent,                    (* 16*)
+        HatchStyle90Percent,                    (* 17*)
+        HatchStyleLightDownwardDiagonal,        (* 18*)
+        HatchStyleLightUpwardDiagonal,          (* 19*)
+        HatchStyleDarkDownwardDiagonal,         (* 20*)
+        HatchStyleDarkUpwardDiagonal,           (* 21*)
+        HatchStyleWideDownwardDiagonal,         (* 22*)
+        HatchStyleWideUpwardDiagonal,           (* 23*)
+        HatchStyleLightVertical,                (* 24*)
+        HatchStyleLightHorizontal,              (* 25*)
+        HatchStyleNarrowVertical,               (* 26*)
+        HatchStyleNarrowHorizontal,             (* 27*)
+        HatchStyleDarkVertical,                 (* 28*)
+        HatchStyleDarkHorizontal,               (* 29*)
+        HatchStyleDashedDownwardDiagonal,       (* 30*)
+        HatchStyleDashedUpwardDiagonal,         (* 31*)
+        HatchStyleDashedHorizontal,             (* 32*)
+        HatchStyleDashedVertical,               (* 33*)
+        HatchStyleSmallConfetti,                (* 34*)
+        HatchStyleLargeConfetti,                (* 35*)
+        HatchStyleZigZag,                       (* 36*)
+        HatchStyleWave,                         (* 37*)
+        HatchStyleDiagonalBrick,                (* 38*)
+        HatchStyleHorizontalBrick,              (* 39*)
+        HatchStyleWeave,                        (* 40*)
+        HatchStylePlaid,                        (* 41*)
+        HatchStyleDivot,                        (* 42*)
+        HatchStyleDottedGrid,                   (* 43*)
+        HatchStyleDottedDiamond,                (* 44*)
+        HatchStyleShingle,                      (* 45*)
+        HatchStyleTrellis,                      (* 46*)
+        HatchStyleSphere,                       (* 47*)
+        HatchStyleSmallGrid,                    (* 48*)
+        HatchStyleSmallCheckerBoard,            (* 49*)
+        HatchStyleLargeCheckerBoard,            (* 50*)
+        HatchStyleOutlinedDiamond,              (* 51*)
+        HatchStyleSolidDiamond,                 (* 52*)
+
+        HatchStyleTotal,
+        HatchStyleLargeGrid = HatchStyleCross,  (* 4*)
+
+        HatchStyleMin       = HatchStyleHorizontal,
+        HatchStyleMax       = ORD(HatchStyleTotal) - 1
+    );
+    GpHatchStyle        = HatchStyle;
+
+(*--------------------------------------------------------------------------
+// Dash style constants
+//--------------------------------------------------------------------------*)
+
+    DashStyle =
+    (
+        DashStyleSolid,          (* 0*)
+        DashStyleDash,           (* 1*)
+        DashStyleDot,            (* 2*)
+        DashStyleDashDot,        (* 3*)
+        DashStyleDashDotDot,     (* 4*)
+        DashStyleCustom          (* 5*)
+    );
+    GpDashStyle         = DashStyle;
+
+(*--------------------------------------------------------------------------
+// Dash cap constants
+//--------------------------------------------------------------------------*)
+
+    DashCap =
+    (
+        DashCapFlat             = 0,
+        DashCapRound            = 2,
+        DashCapTriangle         = 3
+    );
+    GpDashCap           = DashCap;
+
+(*--------------------------------------------------------------------------
+// Line cap constants (only the lowest 8 bits are used).
+//--------------------------------------------------------------------------*)
+
+    LineCap =
+    (
+        LineCapFlat             = 0,
+        LineCapSquare           = 1,
+        LineCapRound            = 2,
+        LineCapTriangle         = 3,
+
+        LineCapNoAnchor         = 010h, (* corresponds to flat cap*)
+        LineCapSquareAnchor     = 011h, (* corresponds to square cap*)
+        LineCapRoundAnchor      = 012h, (* corresponds to round cap*)
+        LineCapDiamondAnchor    = 013h, (* corresponds to triangle cap*)
+        LineCapArrowAnchor      = 014h, (* no correspondence*)
+
+        LineCapCustom           = 0ffh, (* custom cap*)
+
+        LineCapAnchorMask       = 0f0h  (* mask to check for anchor or not.*)
+    );
+    GpLineCap           = LineCap;
+
+(*--------------------------------------------------------------------------
+// Custom Line cap type constants
+//--------------------------------------------------------------------------*)
+
+    CustomLineCapType =
+    (
+        CustomLineCapTypeDefault         = 0,
+        CustomLineCapTypeAdjustableArrow = 1
+    );
+
+(*--------------------------------------------------------------------------
+// Line join constants
+//--------------------------------------------------------------------------*)
+
+    LineJoin =
+    (
+        LineJoinMiter        = 0,
+        LineJoinBevel        = 1,
+        LineJoinRound        = 2,
+        LineJoinMiterClipped = 3
+    );
+    GpLineJoin          = LineJoin;
+
+(*--------------------------------------------------------------------------
+// Path point types (only the lowest 8 bits are used.)
+//  The lowest 3 bits are interpreted as point type
+//  The higher 5 bits are reserved for flags.
+//--------------------------------------------------------------------------*)
+
+CONST
+    PathPointTypeStart           = 0;    (* move*)
+    PathPointTypeLine            = 1;    (* line*)
+    PathPointTypeBezier          = 3;    (* default Bezier (= cubic Bezier)*)
+    PathPointTypePathTypeMask    = 007h; (* type mask (lowest 3 bits).*)
+    PathPointTypeDashMode        = 010h; (* currently in dash mode.*)
+    PathPointTypePathMarker      = 020h; (* a marker for the path.*)
+    PathPointTypeCloseSubpath    = 080h; (* closed flag*)
+
+    (* Path types used for advanced path.*)
+
+    PathPointTypeBezier3    = 3;         (* cubic Bezier*)
+
+
+(*--------------------------------------------------------------------------
+// WarpMode constants
+//--------------------------------------------------------------------------*)
+
+TYPE
+    WarpMode =
+    (
+        WarpModePerspective,    (* 0*)
+        WarpModeBilinear        (* 1*)
+    );
+
+(*--------------------------------------------------------------------------
+// LineGradient Mode
+//--------------------------------------------------------------------------*)
+
+    LinearGradientMode =
+    (
+        LinearGradientModeHorizontal,         (* 0*)
+        LinearGradientModeVertical,           (* 1*)
+        LinearGradientModeForwardDiagonal,    (* 2*)
+        LinearGradientModeBackwardDiagonal    (* 3*)
+    );
+
+(*--------------------------------------------------------------------------
+// Region Comine Modes
+//--------------------------------------------------------------------------*)
+
+    CombineMode =
+    (
+        CombineModeReplace,     (* 0*)
+        CombineModeIntersect,   (* 1*)
+        CombineModeUnion,       (* 2*)
+        CombineModeXor,         (* 3*)
+        CombineModeExclude,     (* 4*)
+        CombineModeComplement   (* 5 (Exclude From)*)
+    );
+
+(*--------------------------------------------------------------------------
+ // Image types
+//--------------------------------------------------------------------------*)
+
+    ImageType =
+    (
+        ImageTypeUnknown,   (* 0*)
+        ImageTypeBitmap,    (* 1*)
+        ImageTypeMetafile   (* 2*)
+    );
+
+(*--------------------------------------------------------------------------
+// Interpolation modes
+//--------------------------------------------------------------------------*)
+
+    InterpolationMode =
+    (
+        InterpolationModeInvalid          = QualityModeInvalid,
+        InterpolationModeDefault          = QualityModeDefault,
+        InterpolationModeLowQuality       = QualityModeLow,
+        InterpolationModeHighQuality      = QualityModeHigh,
+        InterpolationModeBilinear,
+        InterpolationModeBicubic,
+        InterpolationModeNearestNeighbor,
+        InterpolationModeHighQualityBilinear,
+        InterpolationModeHighQualityBicubic
+    );
+
+(*--------------------------------------------------------------------------
+// Pen types
+//--------------------------------------------------------------------------*)
+
+    PenAlignment =
+    (
+        PenAlignmentCenter       = 0,
+        PenAlignmentInset        = 1
+    );
+    GpPenAlignment      = PenAlignment;
+
+(*--------------------------------------------------------------------------
+// Brush types
+//--------------------------------------------------------------------------*)
+
+    BrushType =
+    (
+       BrushTypeSolidColor       = 0,
+       BrushTypeHatchFill        = 1,
+       BrushTypeTextureFill      = 2,
+       BrushTypePathGradient     = 3,
+       BrushTypeLinearGradient   = 4
+    );
+    GpBrushType         = BrushType;
+
+(*--------------------------------------------------------------------------
+// Pen's Fill types
+//--------------------------------------------------------------------------*)
+
+    PenType =
+    (
+       PenTypeSolidColor       = BrushTypeSolidColor,
+       PenTypeHatchFill        = BrushTypeHatchFill,
+       PenTypeTextureFill      = BrushTypeTextureFill,
+       PenTypePathGradient     = BrushTypePathGradient,
+       PenTypeLinearGradient   = BrushTypeLinearGradient,
+       PenTypeUnknown          = -1
+    );
+    GpPenType           = PenType;
+
+(*--------------------------------------------------------------------------
+// Matrix Order
+//--------------------------------------------------------------------------*)
+
+    MatrixOrder =
+    (
+        MatrixOrderPrepend    = 0,
+        MatrixOrderAppend     = 1
+    );
+    GpMatrixOrder       = MatrixOrder;
+
+(*--------------------------------------------------------------------------
+// Generic font families
+//--------------------------------------------------------------------------*)
+
+    GenericFontFamily =
+    (
+        GenericFontFamilySerif,
+        GenericFontFamilySansSerif,
+        GenericFontFamilyMonospace
+
+    );
+
+(*--------------------------------------------------------------------------
+// FontStyle: face types and common styles
+//--------------------------------------------------------------------------*)
+
+    FontStyle =
+    (
+        FontStyleRegular    = 0,
+        FontStyleBold       = 1,
+        FontStyleItalic     = 2,
+        FontStyleBoldItalic = 3,
+        FontStyleUnderline  = 4,
+        FontStyleStrikeout  = 8
+    );
+
+(*---------------------------------------------------------------------------
+// Smoothing Mode
+//---------------------------------------------------------------------------*)
+
+    SmoothingMode =
+    (
+        SmoothingModeInvalid     = QualityModeInvalid,
+        SmoothingModeDefault     = QualityModeDefault,
+        SmoothingModeHighSpeed   = QualityModeLow,
+        SmoothingModeHighQuality = QualityModeHigh,
+        SmoothingModeNone,
+        SmoothingModeAntiAlias
+    );
+
+(*---------------------------------------------------------------------------
+// Pixel Format Mode
+//---------------------------------------------------------------------------*)
+
+    PixelOffsetMode =
+    (
+        PixelOffsetModeInvalid     = QualityModeInvalid,
+        PixelOffsetModeDefault     = QualityModeDefault,
+        PixelOffsetModeHighSpeed   = QualityModeLow,
+        PixelOffsetModeHighQuality = QualityModeHigh,
+        PixelOffsetModeNone,    (* No pixel offset*)
+        PixelOffsetModeHalf     (* Offset by -0.5, -0.5 for fast anti-alias perf*)
+    );
+
+(*---------------------------------------------------------------------------
+// Text Rendering Hint
+//---------------------------------------------------------------------------*)
+
+    TextRenderingHint =
+    (
+        TextRenderingHintSystemDefault = 0,            (* Glyph with system default rendering hint*)
+        TextRenderingHintSingleBitPerPixelGridFit,     (* Glyph bitmap with hinting*)
+        TextRenderingHintSingleBitPerPixel,            (* Glyph bitmap without hinting*)
+        TextRenderingHintAntiAliasGridFit,             (* Glyph anti-alias bitmap with hinting*)
+        TextRenderingHintAntiAlias,                    (* Glyph anti-alias bitmap without hinting*)
+        TextRenderingHintClearTypeGridFit              (* Glyph CT bitmap with hinting*)
+    );
+
+(*---------------------------------------------------------------------------
+// Metafile Types
+//---------------------------------------------------------------------------*)
+
+    MetafileType =
+    (
+        MetafileTypeInvalid,            (* Invalid metafile*)
+        MetafileTypeWmf,                (* Standard WMF*)
+        MetafileTypeWmfPlaceable,       (* Placeable WMF*)
+        MetafileTypeEmf,                (* EMF (not EMF+)*)
+        MetafileTypeEmfPlusOnly,        (* EMF+ without dual, down-level records*)
+        MetafileTypeEmfPlusDual         (* EMF+ with dual, down-level records*)
+    );
+
+(*---------------------------------------------------------------------------
+// Specifies the type of EMF to record
+//---------------------------------------------------------------------------*)
+
+    EmfType =
+    (
+        EmfTypeEmfOnly     = MetafileTypeEmf,          (* no EMF+, only EMF*)
+        EmfTypeEmfPlusOnly = MetafileTypeEmfPlusOnly,  (* no EMF, only EMF+*)
+        EmfTypeEmfPlusDual = MetafileTypeEmfPlusDual   (* both EMF+ and EMF*)
+    );
+
+(*---------------------------------------------------------------------------
+// EMF+ Persistent object types
+//---------------------------------------------------------------------------*)
+
+    ObjectType =
+    (
+        ObjectTypeInvalid,
+        ObjectTypeBrush,
+        ObjectTypePen,
+        ObjectTypePath,
+        ObjectTypeRegion,
+        ObjectTypeImage,
+        ObjectTypeFont,
+        ObjectTypeStringFormat,
+        ObjectTypeImageAttributes,
+        ObjectTypeCustomLineCap,
+
+        ObjectTypeMax = ObjectTypeCustomLineCap,
+        ObjectTypeMin = ObjectTypeBrush
+    );
+
+PROCEDURE ObjectTypeIsValid(type : ObjectType) : BOOLEAN; MACRO;
+BEGIN
+    RETURN ((type >= ObjectTypeMin) AND (type <= ObjectTypeMax));
+END ObjectTypeIsValid;
+
+(*---------------------------------------------------------------------------
+// EMF+ Records
+//---------------------------------------------------------------------------*)
+
+(* We have to change the WMF record numbers so that they don't conflict with*)
+(* the EMF and EMF+ record numbers.*)
+
+
+CONST
+    GDIP_EMFPLUS_RECORD_BASE        = 000004000h;
+    GDIP_WMF_RECORD_BASE            = 000010000h;
+
+(*#define GDIP_EMFPLUS_RECORD_TO_WMF(n)   ((n) & (~GDIP_WMF_RECORD_BASE))*)
+(*#define GDIP_IS_WMF_RECORDTYPE(n)       (((n) & GDIP_WMF_RECORD_BASE) != 0)*)
+
+TYPE
+    EmfPlusRecordType =
+    (
+       (* Since we have to enumerate GDI records right along with GDI+ records,*)
+       (* We list all the GDI records here so that they can be part of the*)
+       (* same enumeration type which is used in the enumeration callback.*)
+
+        WmfRecordTypeSetBkColor              = WINGDI.META_SETBKCOLOR BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetBkMode               = WINGDI.META_SETBKMODE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetMapMode              = WINGDI.META_SETMAPMODE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetROP2                 = WINGDI.META_SETROP2 BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetRelAbs               = WINGDI.META_SETRELABS BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetPolyFillMode         = WINGDI.META_SETPOLYFILLMODE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetStretchBltMode       = WINGDI.META_SETSTRETCHBLTMODE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetTextCharExtra        = WINGDI.META_SETTEXTCHAREXTRA BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetTextColor            = WINGDI.META_SETTEXTCOLOR BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetTextJustification    = WINGDI.META_SETTEXTJUSTIFICATION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetWindowOrg            = WINGDI.META_SETWINDOWORG BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetWindowExt            = WINGDI.META_SETWINDOWEXT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetViewportOrg          = WINGDI.META_SETVIEWPORTORG BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetViewportExt          = WINGDI.META_SETVIEWPORTEXT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeOffsetWindowOrg         = WINGDI.META_OFFSETWINDOWORG BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeScaleWindowExt          = WINGDI.META_SCALEWINDOWEXT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeOffsetViewportOrg       = WINGDI.META_OFFSETVIEWPORTORG BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeScaleViewportExt        = WINGDI.META_SCALEVIEWPORTEXT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeLineTo                  = WINGDI.META_LINETO BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeMoveTo                  = WINGDI.META_MOVETO BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeExcludeClipRect         = WINGDI.META_EXCLUDECLIPRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeIntersectClipRect       = WINGDI.META_INTERSECTCLIPRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeArc                     = WINGDI.META_ARC BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeEllipse                 = WINGDI.META_ELLIPSE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeFloodFill               = WINGDI.META_FLOODFILL BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePie                     = WINGDI.META_PIE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeRectangle               = WINGDI.META_RECTANGLE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeRoundRect               = WINGDI.META_ROUNDRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePatBlt                  = WINGDI.META_PATBLT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSaveDC                  = WINGDI.META_SAVEDC BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetPixel                = WINGDI.META_SETPIXEL BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeOffsetClipRgn           = WINGDI.META_OFFSETCLIPRGN BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeTextOut                 = WINGDI.META_TEXTOUT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeBitBlt                  = WINGDI.META_BITBLT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeStretchBlt              = WINGDI.META_STRETCHBLT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePolygon                 = WINGDI.META_POLYGON BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePolyline                = WINGDI.META_POLYLINE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeEscape                  = WINGDI.META_ESCAPE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeRestoreDC               = WINGDI.META_RESTOREDC BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeFillRegion              = WINGDI.META_FILLREGION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeFrameRegion             = WINGDI.META_FRAMEREGION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeInvertRegion            = WINGDI.META_INVERTREGION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePaintRegion             = WINGDI.META_PAINTREGION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSelectClipRegion        = WINGDI.META_SELECTCLIPREGION BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSelectObject            = WINGDI.META_SELECTOBJECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetTextAlign            = WINGDI.META_SETTEXTALIGN BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeDrawText                = 0062Fh BOR GDIP_WMF_RECORD_BASE,  (* META_DRAWTEXT*)
+        WmfRecordTypeChord                   = WINGDI.META_CHORD BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetMapperFlags          = WINGDI.META_SETMAPPERFLAGS BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeExtTextOut              = WINGDI.META_EXTTEXTOUT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetDIBToDev             = WINGDI.META_SETDIBTODEV BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSelectPalette           = WINGDI.META_SELECTPALETTE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeRealizePalette          = WINGDI.META_REALIZEPALETTE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeAnimatePalette          = WINGDI.META_ANIMATEPALETTE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetPalEntries           = WINGDI.META_SETPALENTRIES BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypePolyPolygon             = WINGDI.META_POLYPOLYGON BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeResizePalette           = WINGDI.META_RESIZEPALETTE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeDIBBitBlt               = WINGDI.META_DIBBITBLT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeDIBStretchBlt           = WINGDI.META_DIBSTRETCHBLT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeDIBCreatePatternBrush   = WINGDI.META_DIBCREATEPATTERNBRUSH BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeStretchDIB              = WINGDI.META_STRETCHDIB BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeExtFloodFill            = WINGDI.META_EXTFLOODFILL BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeSetLayout               = 00149h BOR GDIP_WMF_RECORD_BASE,  (* META_SETLAYOUT*)
+        WmfRecordTypeResetDC                 = 0014Ch BOR GDIP_WMF_RECORD_BASE,  (* META_RESETDC*)
+        WmfRecordTypeStartDoc                = 0014Dh BOR GDIP_WMF_RECORD_BASE,  (* META_STARTDOC*)
+        WmfRecordTypeStartPage               = 0004Fh BOR GDIP_WMF_RECORD_BASE,  (* META_STARTPAGE*)
+        WmfRecordTypeEndPage                 = 00050h BOR GDIP_WMF_RECORD_BASE,  (* META_ENDPAGE*)
+        WmfRecordTypeAbortDoc                = 00052h BOR GDIP_WMF_RECORD_BASE,  (* META_ABORTDOC*)
+        WmfRecordTypeEndDoc                  = 0005Eh BOR GDIP_WMF_RECORD_BASE,  (* META_ENDDOC*)
+        WmfRecordTypeDeleteObject            = WINGDI.META_DELETEOBJECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreatePalette           = WINGDI.META_CREATEPALETTE BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreateBrush             = 000F8h BOR GDIP_WMF_RECORD_BASE,  (* META_CREATEBRUSH*)
+        WmfRecordTypeCreatePatternBrush      = WINGDI.META_CREATEPATTERNBRUSH BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreatePenIndirect       = WINGDI.META_CREATEPENINDIRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreateFontIndirect      = WINGDI.META_CREATEFONTINDIRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreateBrushIndirect     = WINGDI.META_CREATEBRUSHINDIRECT BOR GDIP_WMF_RECORD_BASE,
+        WmfRecordTypeCreateBitmapIndirect    = 002FDh BOR GDIP_WMF_RECORD_BASE,  (* META_CREATEBITMAPINDIRECT*)
+        WmfRecordTypeCreateBitmap            = 006FEh BOR GDIP_WMF_RECORD_BASE,  (* META_CREATEBITMAP*)
+        WmfRecordTypeCreateRegion            = WINGDI.META_CREATEREGION BOR GDIP_WMF_RECORD_BASE,
+
+        EmfRecordTypeHeader                  = WINGDI.EMR_HEADER,
+        EmfRecordTypePolyBezier              = WINGDI.EMR_POLYBEZIER,
+        EmfRecordTypePolygon                 = WINGDI.EMR_POLYGON,
+        EmfRecordTypePolyline                = WINGDI.EMR_POLYLINE,
+        EmfRecordTypePolyBezierTo            = WINGDI.EMR_POLYBEZIERTO,
+        EmfRecordTypePolyLineTo              = WINGDI.EMR_POLYLINETO,
+        EmfRecordTypePolyPolyline            = WINGDI.EMR_POLYPOLYLINE,
+        EmfRecordTypePolyPolygon             = WINGDI.EMR_POLYPOLYGON,
+        EmfRecordTypeSetWindowExtEx          = WINGDI.EMR_SETWINDOWEXTEX,
+        EmfRecordTypeSetWindowOrgEx          = WINGDI.EMR_SETWINDOWORGEX,
+        EmfRecordTypeSetViewportExtEx        = WINGDI.EMR_SETVIEWPORTEXTEX,
+        EmfRecordTypeSetViewportOrgEx        = WINGDI.EMR_SETVIEWPORTORGEX,
+        EmfRecordTypeSetBrushOrgEx           = WINGDI.EMR_SETBRUSHORGEX,
+        EmfRecordTypeEOF                     = WINGDI.EMR_EOF,
+        EmfRecordTypeSetPixelV               = WINGDI.EMR_SETPIXELV,
+        EmfRecordTypeSetMapperFlags          = WINGDI.EMR_SETMAPPERFLAGS,
+        EmfRecordTypeSetMapMode              = WINGDI.EMR_SETMAPMODE,
+        EmfRecordTypeSetBkMode               = WINGDI.EMR_SETBKMODE,
+        EmfRecordTypeSetPolyFillMode         = WINGDI.EMR_SETPOLYFILLMODE,
+        EmfRecordTypeSetROP2                 = WINGDI.EMR_SETROP2,
+        EmfRecordTypeSetStretchBltMode       = WINGDI.EMR_SETSTRETCHBLTMODE,
+        EmfRecordTypeSetTextAlign            = WINGDI.EMR_SETTEXTALIGN,
+        EmfRecordTypeSetColorAdjustment      = WINGDI.EMR_SETCOLORADJUSTMENT,
+        EmfRecordTypeSetTextColor            = WINGDI.EMR_SETTEXTCOLOR,
+        EmfRecordTypeSetBkColor              = WINGDI.EMR_SETBKCOLOR,
+        EmfRecordTypeOffsetClipRgn           = WINGDI.EMR_OFFSETCLIPRGN,
+        EmfRecordTypeMoveToEx                = WINGDI.EMR_MOVETOEX,
+        EmfRecordTypeSetMetaRgn              = WINGDI.EMR_SETMETARGN,
+        EmfRecordTypeExcludeClipRect         = WINGDI.EMR_EXCLUDECLIPRECT,
+        EmfRecordTypeIntersectClipRect       = WINGDI.EMR_INTERSECTCLIPRECT,
+        EmfRecordTypeScaleViewportExtEx      = WINGDI.EMR_SCALEVIEWPORTEXTEX,
+        EmfRecordTypeScaleWindowExtEx        = WINGDI.EMR_SCALEWINDOWEXTEX,
+        EmfRecordTypeSaveDC                  = WINGDI.EMR_SAVEDC,
+        EmfRecordTypeRestoreDC               = WINGDI.EMR_RESTOREDC,
+        EmfRecordTypeSetWorldTransform       = WINGDI.EMR_SETWORLDTRANSFORM,
+        EmfRecordTypeModifyWorldTransform    = WINGDI.EMR_MODIFYWORLDTRANSFORM,
+        EmfRecordTypeSelectObject            = WINGDI.EMR_SELECTOBJECT,
+        EmfRecordTypeCreatePen               = WINGDI.EMR_CREATEPEN,
+        EmfRecordTypeCreateBrushIndirect     = WINGDI.EMR_CREATEBRUSHINDIRECT,
+        EmfRecordTypeDeleteObject            = WINGDI.EMR_DELETEOBJECT,
+        EmfRecordTypeAngleArc                = WINGDI.EMR_ANGLEARC,
+        EmfRecordTypeEllipse                 = WINGDI.EMR_ELLIPSE,
+        EmfRecordTypeRectangle               = WINGDI.EMR_RECTANGLE,
+        EmfRecordTypeRoundRect               = WINGDI.EMR_ROUNDRECT,
+        EmfRecordTypeArc                     = WINGDI.EMR_ARC,
+        EmfRecordTypeChord                   = WINGDI.EMR_CHORD,
+        EmfRecordTypePie                     = WINGDI.EMR_PIE,
+        EmfRecordTypeSelectPalette           = WINGDI.EMR_SELECTPALETTE,
+        EmfRecordTypeCreatePalette           = WINGDI.EMR_CREATEPALETTE,
+        EmfRecordTypeSetPaletteEntries       = WINGDI.EMR_SETPALETTEENTRIES,
+        EmfRecordTypeResizePalette           = WINGDI.EMR_RESIZEPALETTE,
+        EmfRecordTypeRealizePalette          = WINGDI.EMR_REALIZEPALETTE,
+        EmfRecordTypeExtFloodFill            = WINGDI.EMR_EXTFLOODFILL,
+        EmfRecordTypeLineTo                  = WINGDI.EMR_LINETO,
+        EmfRecordTypeArcTo                   = WINGDI.EMR_ARCTO,
+        EmfRecordTypePolyDraw                = WINGDI.EMR_POLYDRAW,
+        EmfRecordTypeSetArcDirection         = WINGDI.EMR_SETARCDIRECTION,
+        EmfRecordTypeSetMiterLimit           = WINGDI.EMR_SETMITERLIMIT,
+        EmfRecordTypeBeginPath               = WINGDI.EMR_BEGINPATH,
+        EmfRecordTypeEndPath                 = WINGDI.EMR_ENDPATH,
+        EmfRecordTypeCloseFigure             = WINGDI.EMR_CLOSEFIGURE,
+        EmfRecordTypeFillPath                = WINGDI.EMR_FILLPATH,
+        EmfRecordTypeStrokeAndFillPath       = WINGDI.EMR_STROKEANDFILLPATH,
+        EmfRecordTypeStrokePath              = WINGDI.EMR_STROKEPATH,
+        EmfRecordTypeFlattenPath             = WINGDI.EMR_FLATTENPATH,
+        EmfRecordTypeWidenPath               = WINGDI.EMR_WIDENPATH,
+        EmfRecordTypeSelectClipPath          = WINGDI.EMR_SELECTCLIPPATH,
+        EmfRecordTypeAbortPath               = WINGDI.EMR_ABORTPATH,
+        EmfRecordTypeReserved_069            = 69,  (* Not Used*)
+        EmfRecordTypeGdiComment              = WINGDI.EMR_GDICOMMENT,
+        EmfRecordTypeFillRgn                 = WINGDI.EMR_FILLRGN,
+        EmfRecordTypeFrameRgn                = WINGDI.EMR_FRAMERGN,
+        EmfRecordTypeInvertRgn               = WINGDI.EMR_INVERTRGN,
+        EmfRecordTypePaintRgn                = WINGDI.EMR_PAINTRGN,
+        EmfRecordTypeExtSelectClipRgn        = WINGDI.EMR_EXTSELECTCLIPRGN,
+        EmfRecordTypeBitBlt                  = WINGDI.EMR_BITBLT,
+        EmfRecordTypeStretchBlt              = WINGDI.EMR_STRETCHBLT,
+        EmfRecordTypeMaskBlt                 = WINGDI.EMR_MASKBLT,
+        EmfRecordTypePlgBlt                  = WINGDI.EMR_PLGBLT,
+        EmfRecordTypeSetDIBitsToDevice       = WINGDI.EMR_SETDIBITSTODEVICE,
+        EmfRecordTypeStretchDIBits           = WINGDI.EMR_STRETCHDIBITS,
+        EmfRecordTypeExtCreateFontIndirect   = WINGDI.EMR_EXTCREATEFONTINDIRECTW,
+        EmfRecordTypeExtTextOutA             = WINGDI.EMR_EXTTEXTOUTA,
+        EmfRecordTypeExtTextOutW             = WINGDI.EMR_EXTTEXTOUTW,
+        EmfRecordTypePolyBezier16            = WINGDI.EMR_POLYBEZIER16,
+        EmfRecordTypePolygon16               = WINGDI.EMR_POLYGON16,
+        EmfRecordTypePolyline16              = WINGDI.EMR_POLYLINE16,
+        EmfRecordTypePolyBezierTo16          = WINGDI.EMR_POLYBEZIERTO16,
+        EmfRecordTypePolylineTo16            = WINGDI.EMR_POLYLINETO16,
+        EmfRecordTypePolyPolyline16          = WINGDI.EMR_POLYPOLYLINE16,
+        EmfRecordTypePolyPolygon16           = WINGDI.EMR_POLYPOLYGON16,
+        EmfRecordTypePolyDraw16              = WINGDI.EMR_POLYDRAW16,
+        EmfRecordTypeCreateMonoBrush         = WINGDI.EMR_CREATEMONOBRUSH,
+        EmfRecordTypeCreateDIBPatternBrushPt = WINGDI.EMR_CREATEDIBPATTERNBRUSHPT,
+        EmfRecordTypeExtCreatePen            = WINGDI.EMR_EXTCREATEPEN,
+        EmfRecordTypePolyTextOutA            = WINGDI.EMR_POLYTEXTOUTA,
+        EmfRecordTypePolyTextOutW            = WINGDI.EMR_POLYTEXTOUTW,
+        EmfRecordTypeSetICMMode              = 98,  (* EMR_SETICMMODE,*)
+        EmfRecordTypeCreateColorSpace        = 99,  (* EMR_CREATECOLORSPACE,*)
+        EmfRecordTypeSetColorSpace           = 100, (* EMR_SETCOLORSPACE,*)
+        EmfRecordTypeDeleteColorSpace        = 101, (* EMR_DELETECOLORSPACE,*)
+        EmfRecordTypeGLSRecord               = 102, (* EMR_GLSRECORD,*)
+        EmfRecordTypeGLSBoundedRecord        = 103, (* EMR_GLSBOUNDEDRECORD,*)
+        EmfRecordTypePixelFormat             = 104, (* EMR_PIXELFORMAT,*)
+        EmfRecordTypeDrawEscape              = 105, (* EMR_RESERVED_105,*)
+        EmfRecordTypeExtEscape               = 106, (* EMR_RESERVED_106,*)
+        EmfRecordTypeStartDoc                = 107, (* EMR_RESERVED_107,*)
+        EmfRecordTypeSmallTextOut            = 108, (* EMR_RESERVED_108,*)
+        EmfRecordTypeForceUFIMapping         = 109, (* EMR_RESERVED_109,*)
+        EmfRecordTypeNamedEscape             = 110, (* EMR_RESERVED_110,*)
+        EmfRecordTypeColorCorrectPalette     = 111, (* EMR_COLORCORRECTPALETTE,*)
+        EmfRecordTypeSetICMProfileA          = 112, (* EMR_SETICMPROFILEA,*)
+        EmfRecordTypeSetICMProfileW          = 113, (* EMR_SETICMPROFILEW,*)
+        EmfRecordTypeAlphaBlend              = 114, (* EMR_ALPHABLEND,*)
+        EmfRecordTypeSetLayout               = 115, (* EMR_SETLAYOUT,*)
+        EmfRecordTypeTransparentBlt          = 116, (* EMR_TRANSPARENTBLT,*)
+        EmfRecordTypeReserved_117            = 117, (* Not Used*)
+        EmfRecordTypeGradientFill            = 118, (* EMR_GRADIENTFILL,*)
+        EmfRecordTypeSetLinkedUFIs           = 119, (* EMR_RESERVED_119,*)
+        EmfRecordTypeSetTextJustification    = 120, (* EMR_RESERVED_120,*)
+        EmfRecordTypeColorMatchToTargetW     = 121, (* EMR_COLORMATCHTOTARGETW,*)
+        EmfRecordTypeCreateColorSpaceW       = 122, (* EMR_CREATECOLORSPACEW,*)
+        EmfRecordTypeMax                     = 122,
+        EmfRecordTypeMin                     = 1,
+
+        (* That is the END of the GDI EMF records.*)
+
+        (* Now we start the list of EMF+ records.  We leave quite*)
+        (* a bit of room here for the addition of any new GDI*)
+        (* records that may be added later.*)
+
+        EmfPlusRecordTypeInvalid = GDIP_EMFPLUS_RECORD_BASE,
+        EmfPlusRecordTypeHeader,
+        EmfPlusRecordTypeEndOfFile,
+
+        EmfPlusRecordTypeComment,
+
+        EmfPlusRecordTypeGetDC,
+
+        EmfPlusRecordTypeMultiFormatStart,
+        EmfPlusRecordTypeMultiFormatSection,
+        EmfPlusRecordTypeMultiFormatEnd,
+
+        (* For all persistent objects*)
+
+        EmfPlusRecordTypeObject,
+
+        (* Drawing Records*)
+
+        EmfPlusRecordTypeClear,
+        EmfPlusRecordTypeFillRects,
+        EmfPlusRecordTypeDrawRects,
+        EmfPlusRecordTypeFillPolygon,
+        EmfPlusRecordTypeDrawLines,
+        EmfPlusRecordTypeFillEllipse,
+        EmfPlusRecordTypeDrawEllipse,
+        EmfPlusRecordTypeFillPie,
+        EmfPlusRecordTypeDrawPie,
+        EmfPlusRecordTypeDrawArc,
+        EmfPlusRecordTypeFillRegion,
+        EmfPlusRecordTypeFillPath,
+        EmfPlusRecordTypeDrawPath,
+        EmfPlusRecordTypeFillClosedCurve,
+        EmfPlusRecordTypeDrawClosedCurve,
+        EmfPlusRecordTypeDrawCurve,
+        EmfPlusRecordTypeDrawBeziers,
+        EmfPlusRecordTypeDrawImage,
+        EmfPlusRecordTypeDrawImagePoints,
+        EmfPlusRecordTypeDrawString,
+
+        (* Graphics State Records*)
+
+        EmfPlusRecordTypeSetRenderingOrigin,
+        EmfPlusRecordTypeSetAntiAliasMode,
+        EmfPlusRecordTypeSetTextRenderingHint,
+        EmfPlusRecordTypeSetTextContrast,
+        EmfPlusRecordTypeSetInterpolationMode,
+        EmfPlusRecordTypeSetPixelOffsetMode,
+        EmfPlusRecordTypeSetCompositingMode,
+        EmfPlusRecordTypeSetCompositingQuality,
+        EmfPlusRecordTypeSave,
+        EmfPlusRecordTypeRestore,
+        EmfPlusRecordTypeBeginContainer,
+        EmfPlusRecordTypeBeginContainerNoParams,
+        EmfPlusRecordTypeEndContainer,
+        EmfPlusRecordTypeSetWorldTransform,
+        EmfPlusRecordTypeResetWorldTransform,
+        EmfPlusRecordTypeMultiplyWorldTransform,
+        EmfPlusRecordTypeTranslateWorldTransform,
+        EmfPlusRecordTypeScaleWorldTransform,
+        EmfPlusRecordTypeRotateWorldTransform,
+        EmfPlusRecordTypeSetPageTransform,
+        EmfPlusRecordTypeResetClip,
+        EmfPlusRecordTypeSetClipRect,
+        EmfPlusRecordTypeSetClipPath,
+        EmfPlusRecordTypeSetClipRegion,
+        EmfPlusRecordTypeOffsetClip,
+
+        EmfPlusRecordTypeDrawDriverString,
+
+        EmfPlusRecordTotal,
+
+        EmfPlusRecordTypeMax = ORD(EmfPlusRecordTotal)-1,
+        EmfPlusRecordTypeMin = ORD(EmfPlusRecordTypeHeader)
+    );
+
+(*---------------------------------------------------------------------------
+// StringFormatFlags
+//---------------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------
+// String format flags
+//
+//  DirectionRightToLeft          - For horizontal text, the reading order is
+//                                  right to left. This value is called
+//                                  the base embedding level by the Unicode
+//                                  bidirectional engine.
+//                                  For vertical text, columns are read from
+//                                  right to left.
+//                                  By default, horizontal or vertical text is
+//                                  read from left to right.
+//
+//  DirectionVertical             - Individual lines of text are vertical. In
+//                                  each line, characters progress from top to
+//                                  bottom.
+//                                  By default, lines of text are horizontal,
+//                                  each new line below the previous line.
+//
+//  NoFitBlackBox                 - Allows parts of glyphs to overhang the
+//                                  bounding rectangle.
+//                                  By default glyphs are first aligned
+//                                  inside the margines, then any glyphs which
+//                                  still overhang the bounding box are
+//                                  repositioned to avoid any overhang.
+//                                  For example when an italic
+//                                  lower case letter f in a font such as
+//                                  Garamond is aligned at the far left of a
+//                                  rectangle, the lower part of the f will
+//                                  reach slightly further left than the left
+//                                  edge of the rectangle. Setting this flag
+//                                  will ensure the character aligns visually
+//                                  with the lines above and below, but may
+//                                  cause some pixels outside the formatting
+//                                  rectangle to be clipped or painted.
+//
+//  DisplayFormatControl          - Causes control characters such as the
+//                                  left-to-right mark to be shown in the
+//                                  output with a representative glyph.
+//
+//  NoFontFallback                - Disables fallback to alternate fonts for
+//                                  characters not supported in the requested
+//                                  font. Any missing characters will be
+//                                  be displayed with the fonts missing glyph,
+//                                  usually an open square.
+//
+//  NoWrap                        - Disables wrapping of text between lines
+//                                  when formatting within a rectangle.
+//                                  NoWrap is implied when a point is passed
+//                                  instead of a rectangle, or when the
+//                                  specified rectangle has a zero line length.
+//
+//  NoClip                        - By default text is clipped to the
+//                                  formatting rectangle. Setting NoClip
+//                                  allows overhanging pixels to affect the
+//                                  device outside the formatting rectangle.
+//                                  Pixels at the end of the line may be
+//                                  affected if the glyphs overhang their
+//                                  cells, and either the NoFitBlackBox flag
+//                                  has been set, or the glyph extends to far
+//                                  to be fitted.
+//                                  Pixels above/before the first line or
+//                                  below/after the last line may be affected
+//                                  if the glyphs extend beyond their cell
+//                                  ascent / descent. This can occur rarely
+//                                  with unusual diacritic mark combinations.
+
+//---------------------------------------------------------------------------*)
+
+CONST
+    StringFormatFlagsDirectionRightToLeft        = 000000001h;
+    StringFormatFlagsDirectionVertical           = 000000002h;
+    StringFormatFlagsNoFitBlackBox               = 000000004h;
+    StringFormatFlagsDisplayFormatControl        = 000000020h;
+    StringFormatFlagsNoFontFallback              = 000000400h;
+    StringFormatFlagsMeasureTrailingSpaces       = 000000800h;
+    StringFormatFlagsNoWrap                      = 000001000h;
+    StringFormatFlagsLineLimit                   = 000002000h;
+
+    StringFormatFlagsNoClip                      = 000004000h;
+
+(*---------------------------------------------------------------------------
+// StringTrimming
+//---------------------------------------------------------------------------*)
+
+TYPE
+    StringTrimming =
+    (
+    StringTrimmingNone              = 0,
+    StringTrimmingCharacter         = 1,
+    StringTrimmingWord              = 2,
+    StringTrimmingEllipsisCharacter = 3,
+    StringTrimmingEllipsisWord      = 4,
+    StringTrimmingEllipsisPath      = 5
+    );
+
+(*---------------------------------------------------------------------------
+// National language digit substitution
+//---------------------------------------------------------------------------*)
+
+    StringDigitSubstitute =
+    (
+        StringDigitSubstituteUser        = 0,  (* As NLS setting*)
+        StringDigitSubstituteNone        = 1,
+        StringDigitSubstituteNational    = 2,
+        StringDigitSubstituteTraditional = 3
+    );
+
+(*---------------------------------------------------------------------------
+// Hotkey prefix interpretation
+//---------------------------------------------------------------------------*)
+
+    HotkeyPrefix =
+    (
+        HotkeyPrefixNone        = 0,
+        HotkeyPrefixShow        = 1,
+        HotkeyPrefixHide        = 2
+    );
+
+(*---------------------------------------------------------------------------
+// String alignment flags
+//---------------------------------------------------------------------------*)
+
+    StringAlignment =
+    (
+        (* Left edge for left-to-right text,*)
+        (* right for right-to-left text,*)
+        (* and top for vertical*)
+        StringAlignmentNear   = 0,
+        StringAlignmentCenter = 1,
+        StringAlignmentFar    = 2
+    );
+
+(*---------------------------------------------------------------------------
+// DriverStringOptions
+//---------------------------------------------------------------------------*)
+
+    DriverStringOptions =
+    (
+        DriverStringOptionsCmapLookup             = 1,
+        DriverStringOptionsVertical               = 2,
+        DriverStringOptionsRealizedAdvance        = 4,
+        DriverStringOptionsLimitSubpixel          = 8
+    );
+
+(*---------------------------------------------------------------------------
+// Flush Intention flags
+//---------------------------------------------------------------------------*)
+
+    FlushIntention =
+    (
+        FlushIntentionFlush = 0,        (* Flush all batched rendering operations*)
+        FlushIntentionSync = 1          (* Flush all batched rendering operations*)
+                                        (* and wait for them to complete*)
+    );
+    GpFlushIntention    = FlushIntention;
+
+(*---------------------------------------------------------------------------
+// Image encoder parameter related types
+//---------------------------------------------------------------------------*)
+
+    EncoderParameterValueType =
+    (
+        EncoderParameterValueTypeByte           = 1,    (* 8-bit unsigned int*)
+        EncoderParameterValueTypeASCII          = 2,    (* 8-bit byte containing one 7-bit ASCII*)
+                                                        (* code. NULL terminated.*)
+        EncoderParameterValueTypeShort          = 3,    (* 16-bit unsigned int*)
+        EncoderParameterValueTypeLong           = 4,    (* 32-bit unsigned int*)
+        EncoderParameterValueTypeRational       = 5,    (* Two Longs. The first Long is the*)
+                                                        (* numerator, the second Long expresses the*)
+                                                        (* denomintor.*)
+        EncoderParameterValueTypeLongRange      = 6,    (* Two longs which specify a range of*)
+                                                        (* integer values. The first Long specifies*)
+                                                        (* the lower end and the second one*)
+                                                        (* specifies the higher end. All values*)
+                                                        (* are inclusive at both ends*)
+        EncoderParameterValueTypeUndefined      = 7,    (* 8-bit byte that can take any value*)
+                                                        (* depending on field definition*)
+        EncoderParameterValueTypeRationalRange  = 8     (* Two Rationals. The first Rational*)
+                                                        (* specifies the lower end and the second*)
+                                                        (* specifies the higher end. All values*)
+                                                        (* are inclusive at both ends*)
+    );
+
+(*---------------------------------------------------------------------------
+// Image encoder value types
+//---------------------------------------------------------------------------*)
+
+    EncoderValue =
+    (
+        EncoderValueColorTypeCMYK,
+        EncoderValueColorTypeYCCK,
+        EncoderValueCompressionLZW,
+        EncoderValueCompressionCCITT3,
+        EncoderValueCompressionCCITT4,
+        EncoderValueCompressionRle,
+        EncoderValueCompressionNone,
+        EncoderValueScanMethodInterlaced,
+        EncoderValueScanMethodNonInterlaced,
+        EncoderValueVersionGif87,
+        EncoderValueVersionGif89,
+        EncoderValueRenderProgressive,
+        EncoderValueRenderNonProgressive,
+        EncoderValueTransformRotate90,
+        EncoderValueTransformRotate180,
+        EncoderValueTransformRotate270,
+        EncoderValueTransformFlipHorizontal,
+        EncoderValueTransformFlipVertical,
+        EncoderValueMultiFrame,
+        EncoderValueLastFrame,
+        EncoderValueFlush,
+        EncoderValueFrameDimensionTime,
+        EncoderValueFrameDimensionResolution,
+        EncoderValueFrameDimensionPage
+    );
+
+(*---------------------------------------------------------------------------
+// Conversion of Emf To WMF Bits flags
+//---------------------------------------------------------------------------*)
+
+CONST
+    EmfToWmfBitsFlagsDefault          = 000000000h;
+    EmfToWmfBitsFlagsEmbedEmf         = 000000001h;
+    EmfToWmfBitsFlagsIncludePlaceable = 000000002h;
+    EmfToWmfBitsFlagsNoXORClip        = 00000000h;
+
+(* gdiplustypes.h *)
+
+TYPE
+    Status =
+    (
+        Ok = 0,
+        GenericError = 1,
+        InvalidParameter = 2,
+        OutOfMemory = 3,
+        ObjectBusy = 4,
+        InsufficientBuffer = 5,
+        NotImplemented = 6,
+        Win32Error = 7,
+        WrongState = 8,
+        Aborted = 9,
+        FileNotFound = 10,
+        ValueOverflow = 11,
+        AccessDenied = 12,
+        UnknownImageFormat = 13,
+        FontFamilyNotFound = 14,
+        FontStyleNotFound = 15,
+        NotTrueTypeFont = 16,
+        UnsupportedGdiplusVersion = 17,
+        GdiplusNotInitialized = 18,
+        PropertyNotFound = 19,
+        PropertyNotSupported = 20
+    );
+    GpStatus            = Status;
+
+    ImageAbort                  = PROCEDURE(LPVOID) : BOOL [EXPORT];
+    DrawImageAbort              = ImageAbort;
+    GetThumbnailImageAbort      = ImageAbort;
+
+(* Callback for EnumerateMetafile methods.  The parameters are:
+
+//      recordType      WMF, EMF, or EMF+ record type
+//      flags           (always 0 for WMF/EMF records)
+//      dataSize        size of the record data (in bytes), or 0 if no data
+//      data            pointer to the record data, or NULL if no data
+//      callbackData    pointer to callbackData, if any
+
+// This method can then call Metafile::PlayRecord to play the
+// record that was just enumerated.  If this method  returns
+// FALSE, the enumeration process is aborted.  Otherwise, it continues.*)
+
+    EnumerateMetafileProc = PROCEDURE(EmfPlusRecordType,UINT,UINT,LPBYTE,LPVOID) : BOOL;
+
+(*--------------------------------------------------------------------------
+// Represents a dimension in a 2D coordinate system (floating-point coordinates)
+//--------------------------------------------------------------------------*)
+
+    SizeF =
+		RECORD
+			Width       : REAL;
+			Height      : REAL;
+		END;
+    GpSizeF             = SizeF;
+
+(*--------------------------------------------------------------------------
+// Represents a dimension in a 2D coordinate system (integer coordinates)
+//--------------------------------------------------------------------------*)
+
+    Size =
+		RECORD
+			Width       : WINT;
+			Height      : WINT;
+		END;
+    GpSize              = Size;
+
+(*--------------------------------------------------------------------------
+// Represents a location in a 2D coordinate system (floating-point coordinates)
+//--------------------------------------------------------------------------*)
+
+    PointF =
+		RECORD
+			X           : REAL;
+			Y           : REAL;
+		END;
+    GpPointF            = PointF;
+
+(*--------------------------------------------------------------------------
+// Represents a location in a 2D coordinate system (integer coordinates)
+//--------------------------------------------------------------------------*)
+
+    Point =
+		RECORD
+			X           : WINT;
+			Y           : WINT;
+		END;
+    GpPoint             = Point;
+
+(*--------------------------------------------------------------------------
+// Represents a rectangle in a 2D coordinate system (floating-point coordinates)
+//--------------------------------------------------------------------------*)
+
+    RectF =
+		RECORD
+			X           : REAL;
+			Y           : REAL;
+			Width       : REAL;
+			Height      : REAL;
+		END;
+    GpRectF             = RectF;
+
+(*--------------------------------------------------------------------------
+// Represents a rectangle in a 2D coordinate system (integer coordinates)
+//--------------------------------------------------------------------------*)
+
+    Rect =
+		RECORD
+			X           : WINT;
+			Y           : WINT;
+			Width       : WINT;
+			Height      : WINT;
+		END;
+    GpRect              = Rect;
+
+    PathData =
+		RECORD
+			Count       : WINT;
+			Points      : POINTER TO ARRAY [0..0] OF PointF;
+			Types       : POINTER TO ARRAY [0..0] OF CARDINAL8;
+		END;
+    GpPathData          = PathData;
+
+    CharacterRange =
+		RECORD
+			First       : WINT;
+			Length      : WINT;
+		END;
+
+
+(**************************************************************************\
+*
+* Copyright (c) 1998-2001, Microsoft Corp.  All Rights Reserved.
+*
+* Module Name:
+*
+*   Gdiplus Pixel Formats
+*
+* Abstract:
+*
+*   GDI+ Pixel Formats
+*
+\**************************************************************************)
+
+TYPE
+    ARGB        = DWORD;
+    ARGB64      = DWORDLONG;
+
+CONST
+    ALPHA_SHIFT = 24;
+    RED_SHIFT   = 16;
+    GREEN_SHIFT = 8;
+    BLUE_SHIFT  = 0;
+
+    ALPHA_MASK  = VAL(ARGB, 0ffh) SHL ALPHA_SHIFT;
+
+(* In-memory pixel data formats:*)
+(* bits 0-7 = format index*)
+(* bits 8-15 = pixel size (in bits)*)
+(* bits 16-23 = flags*)
+(* bits 24-31 = reserved*)
+TYPE
+    PixelFormat = WINT;
+
+CONST
+    PixelFormatIndexed      = 000010000h; (* Indexes into a palette*)
+    PixelFormatGDI          = 000020000h; (* Is a GDI-supported format*)
+    PixelFormatAlpha        = 000040000h; (* Has an alpha component*)
+    PixelFormatPAlpha       = 000080000h; (* Pre-multiplied alpha*)
+    PixelFormatExtended     = 000100000h; (* Extended color 16 bits/channel*)
+    PixelFormatCanonical    = 000200000h;
+
+    PixelFormatUndefined       = 0;
+    PixelFormatDontCare        = 0;
+
+    PixelFormat1bppIndexed     = (1 BOR ( 1 SHL 8) BOR PixelFormatIndexed BOR PixelFormatGDI);
+    PixelFormat4bppIndexed     = (2 BOR ( 4 SHL 8) BOR PixelFormatIndexed BOR PixelFormatGDI);
+    PixelFormat8bppIndexed     = (3 BOR ( 8 SHL 8) BOR PixelFormatIndexed BOR PixelFormatGDI);
+    PixelFormat16bppGrayScale  = (4 BOR (16 SHL 8) BOR PixelFormatExtended);
+    PixelFormat16bppRGB555     = (5 BOR (16 SHL 8) BOR PixelFormatGDI);
+    PixelFormat16bppRGB565     = (6 BOR (16 SHL 8) BOR PixelFormatGDI);
+    PixelFormat16bppARGB1555   = (7 BOR (16 SHL 8) BOR PixelFormatAlpha BOR PixelFormatGDI);
+    PixelFormat24bppRGB        = (8 BOR (24 SHL 8) BOR PixelFormatGDI);
+    PixelFormat32bppRGB        = (9 BOR (32 SHL 8) BOR PixelFormatGDI);
+    PixelFormat32bppARGB       = (10 BOR (32 SHL 8) BOR PixelFormatAlpha BOR PixelFormatGDI BOR PixelFormatCanonical);
+    PixelFormat32bppPARGB      = (11 BOR (32 SHL 8) BOR PixelFormatAlpha BOR PixelFormatPAlpha BOR PixelFormatGDI);
+    PixelFormat48bppRGB        = (12 BOR (48 SHL 8) BOR PixelFormatExtended);
+    PixelFormat64bppARGB       = (13 BOR (64 SHL 8) BOR PixelFormatAlpha  BOR PixelFormatCanonical BOR PixelFormatExtended);
+    PixelFormat64bppPARGB      = (14 BOR (64 SHL 8) BOR PixelFormatAlpha  BOR PixelFormatPAlpha BOR PixelFormatExtended);
+    PixelFormatMax             = 15;
+
+PROCEDURE GetPixelFormatSize(pixfmt : PixelFormat) : UINT; MACRO;
+BEGIN
+    RETURN (pixfmt SHR 8) BAND 0ffh;
+END GetPixelFormatSize;
+
+PROCEDURE IsIndexedPixelFormat(pixfmt : PixelFormat) : BOOL; MACRO;
+BEGIN
+    RETURN (pixfmt BAND PixelFormatIndexed) <> 0;
+END IsIndexedPixelFormat;
+
+PROCEDURE IsAlphaPixelFormat(pixfmt : PixelFormat) : BOOL; MACRO;
+BEGIN
+   RETURN (pixfmt BAND PixelFormatAlpha) <> 0;
+END IsAlphaPixelFormat;
+
+PROCEDURE IsExtendedPixelFormat(pixfmt : PixelFormat) : BOOL; MACRO;
+BEGIN
+   RETURN (pixfmt BAND PixelFormatExtended) <> 0;
+END IsExtendedPixelFormat;
+
+(*//--------------------------------------------------------------------------
+// Determine if the Pixel Format is Canonical format:
+//   PixelFormat32bppARGB
+//   PixelFormat32bppPARGB
+//   PixelFormat64bppARGB
+//   PixelFormat64bppPARGB
+//--------------------------------------------------------------------------*)
+
+PROCEDURE IsCanonicalPixelFormat(pixfmt : PixelFormat) : BOOL; MACRO;
+BEGIN
+   RETURN (pixfmt BAND PixelFormatCanonical) <> 0;
+END IsCanonicalPixelFormat;
+
+TYPE
+    PaletteFlags =
+    (
+        PaletteFlagsHasAlpha    = 00001h,
+        PaletteFlagsGrayScale   = 00002h,
+        PaletteFlagsHalftone    = 00004h
+    );
+
+    ColorPalette =
+    RECORD
+        Flags   : UINT;             (* Palette flags*)
+        Count    : UINT;             (* Number of color entries*)
+        Entries : ARRAY [0..0] OF ARGB;        (* Palette color entries*)
+    END;
+
+(**************************************************************************\
+*
+* Copyright (c) 1998-2001, Microsoft Corp.  All Rights Reserved.
+*
+* Module Name:
+*
+*   GdiplusColor.h
+*
+* Abstract:
+*
+*   GDI+ Color Object
+*
+\**************************************************************************)
+
+(*//----------------------------------------------------------------------------
+// Color mode
+//----------------------------------------------------------------------------*)
+
+TYPE
+    ColorMode =
+    (
+        ColorModeARGB32 = 0,
+        ColorModeARGB64 = 1
+    );
+
+(*//----------------------------------------------------------------------------
+// Color Channel flags
+//----------------------------------------------------------------------------*)
+
+    ColorChannelFlags =
+    (
+        ColorChannelFlagsC = 0,
+        ColorChannelFlagsM,
+        ColorChannelFlagsY,
+        ColorChannelFlagsK,
+        ColorChannelFlagsLast
+    );
+
+(*//----------------------------------------------------------------------------
+// Color
+//----------------------------------------------------------------------------*)
+
+    Color =
+    RECORD
+        Argb        : ARGB;
+    END;
+
+PROCEDURE MakeARGB(r, g, b, a : CARDINAL8) : ARGB; MACRO;
+BEGIN
+    RETURN ((VAL(ARGB, b) SHL  BLUE_SHIFT) BOR
+            (VAL(ARGB, g) SHL GREEN_SHIFT) BOR
+            (VAL(ARGB, r) SHL   RED_SHIFT) BOR
+            (VAL(ARGB, a) SHL ALPHA_SHIFT));
+END MakeARGB;
+
+PROCEDURE GetRed(argb : ARGB) : CARDINAL8; MACRO;
+BEGIN
+    RETURN (argb SHR RED_SHIFT) BAND 0FFh;
+END GetRed;
+
+PROCEDURE GetGreen(argb : ARGB) : CARDINAL8; MACRO;
+BEGIN
+    RETURN (argb SHR GREEN_SHIFT) BAND 0FFh;
+END GetGreen;
+
+PROCEDURE GetBlue(argb : ARGB) : CARDINAL8; MACRO;
+BEGIN
+    RETURN (argb SHR BLUE_SHIFT) BAND 0FFh;
+END GetBlue;
+
+PROCEDURE GetAlpha(argb : ARGB) : CARDINAL8; MACRO;
+BEGIN
+    RETURN (argb SHR ALPHA_SHIFT) BAND 0FFh;
+END GetAlpha;
+
+PROCEDURE ToCOLORREF(argb : ARGB) : COLORREF; MACRO;
+BEGIN
+    RETURN RGB(GetRed(argb), GetGreen(argb), GetBlue(argb));
+END ToCOLORREF;
+
+PROCEDURE FromCOLORREF(color : COLORREF) : ARGB; MACRO;
+BEGIN
+    RETURN MakeARGB(GetRValue(color), GetGValue(color), GetBValue(color), 0);
+END FromCOLORREF;
+
+CONST
+(* Common color constants, ARGB format*)
+    AliceBlue            = 0FFF0F8FFh;
+    AntiqueWhite         = 0FFFAEBD7h;
+    Aqua                 = 0FF00FFFFh;
+    Aquamarine           = 0FF7FFFD4h;
+    Azure                = 0FFF0FFFFh;
+    Beige                = 0FFF5F5DCh;
+    Bisque               = 0FFFFE4C4h;
+    Black                = 0FF000000h;
+    BlanchedAlmond       = 0FFFFEBCDh;
+    Blue                 = 0FF0000FFh;
+    BlueViolet           = 0FF8A2BE2h;
+    Brown                = 0FFA52A2Ah;
+    BurlyWood            = 0FFDEB887h;
+    CadetBlue            = 0FF5F9EA0h;
+    Chartreuse           = 0FF7FFF00h;
+    Chocolate            = 0FFD2691Eh;
+    Coral                = 0FFFF7F50h;
+    CornflowerBlue       = 0FF6495EDh;
+    Cornsilk             = 0FFFFF8DCh;
+    Crimson              = 0FFDC143Ch;
+    Cyan                 = 0FF00FFFFh;
+    DarkBlue             = 0FF00008Bh;
+    DarkCyan             = 0FF008B8Bh;
+    DarkGoldenrod        = 0FFB8860Bh;
+    DarkGray             = 0FFA9A9A9h;
+    DarkGreen            = 0FF006400h;
+    DarkKhaki            = 0FFBDB76Bh;
+    DarkMagenta          = 0FF8B008Bh;
+    DarkOliveGreen       = 0FF556B2Fh;
+    DarkOrange           = 0FFFF8C00h;
+    DarkOrchid           = 0FF9932CCh;
+    DarkRed              = 0FF8B0000h;
+    DarkSalmon           = 0FFE9967Ah;
+    DarkSeaGreen         = 0FF8FBC8Bh;
+    DarkSlateBlue        = 0FF483D8Bh;
+    DarkSlateGray        = 0FF2F4F4Fh;
+    DarkTurquoise        = 0FF00CED1h;
+    DarkViolet           = 0FF9400D3h;
+    DeepPink             = 0FFFF1493h;
+    DeepSkyBlue          = 0FF00BFFFh;
+    DimGray              = 0FF696969h;
+    DodgerBlue           = 0FF1E90FFh;
+    Firebrick            = 0FFB22222h;
+    FloralWhite          = 0FFFFFAF0h;
+    ForestGreen          = 0FF228B22h;
+    Fuchsia              = 0FFFF00FFh;
+    Gainsboro            = 0FFDCDCDCh;
+    GhostWhite           = 0FFF8F8FFh;
+    Gold                 = 0FFFFD700h;
+    Goldenrod            = 0FFDAA520h;
+    Gray                 = 0FF808080h;
+    Green                = 0FF008000h;
+    GreenYellow          = 0FFADFF2Fh;
+    Honeydew             = 0FFF0FFF0h;
+    HotPink              = 0FFFF69B4h;
+    IndianRed            = 0FFCD5C5Ch;
+    Indigo               = 0FF4B0082h;
+    Ivory                = 0FFFFFFF0h;
+    Khaki                = 0FFF0E68Ch;
+    Lavender             = 0FFE6E6FAh;
+    LavenderBlush        = 0FFFFF0F5h;
+    LawnGreen            = 0FF7CFC00h;
+    LemonChiffon         = 0FFFFFACDh;
+    LightBlue            = 0FFADD8E6h;
+    LightCoral           = 0FFF08080h;
+    LightCyan            = 0FFE0FFFFh;
+    LightGoldenrodYellow = 0FFFAFAD2h;
+    LightGray            = 0FFD3D3D3h;
+    LightGreen           = 0FF90EE90h;
+    LightPink            = 0FFFFB6C1h;
+    LightSalmon          = 0FFFFA07Ah;
+    LightSeaGreen        = 0FF20B2AAh;
+    LightSkyBlue         = 0FF87CEFAh;
+    LightSlateGray       = 0FF778899h;
+    LightSteelBlue       = 0FFB0C4DEh;
+    LightYellow          = 0FFFFFFE0h;
+    Lime                 = 0FF00FF00h;
+    LimeGreen            = 0FF32CD32h;
+    Linen                = 0FFFAF0E6h;
+    Magenta              = 0FFFF00FFh;
+    Maroon               = 0FF800000h;
+    MediumAquamarine     = 0FF66CDAAh;
+    MediumBlue           = 0FF0000CDh;
+    MediumOrchid         = 0FFBA55D3h;
+    MediumPurple         = 0FF9370DBh;
+    MediumSeaGreen       = 0FF3CB371h;
+    MediumSlateBlue      = 0FF7B68EEh;
+    MediumSpringGreen    = 0FF00FA9Ah;
+    MediumTurquoise      = 0FF48D1CCh;
+    MediumVioletRed      = 0FFC71585h;
+    MidnightBlue         = 0FF191970h;
+    MintCream            = 0FFF5FFFAh;
+    MistyRose            = 0FFFFE4E1h;
+    Moccasin             = 0FFFFE4B5h;
+    NavajoWhite          = 0FFFFDEADh;
+    Navy                 = 0FF000080h;
+    OldLace              = 0FFFDF5E6h;
+    Olive                = 0FF808000h;
+    OliveDrab            = 0FF6B8E23h;
+    Orange               = 0FFFFA500h;
+    OrangeRed            = 0FFFF4500h;
+    Orchid               = 0FFDA70D6h;
+    PaleGoldenrod        = 0FFEEE8AAh;
+    PaleGreen            = 0FF98FB98h;
+    PaleTurquoise        = 0FFAFEEEEh;
+    PaleVioletRed        = 0FFDB7093h;
+    PapayaWhip           = 0FFFFEFD5h;
+    PeachPuff            = 0FFFFDAB9h;
+    Peru                 = 0FFCD853Fh;
+    Pink                 = 0FFFFC0CBh;
+    Plum                 = 0FFDDA0DDh;
+    PowderBlue           = 0FFB0E0E6h;
+    Purple               = 0FF800080h;
+    Red                  = 0FFFF0000h;
+    RosyBrown            = 0FFBC8F8Fh;
+    RoyalBlue            = 0FF4169E1h;
+    SaddleBrown          = 0FF8B4513h;
+    Salmon               = 0FFFA8072h;
+    SandyBrown           = 0FFF4A460h;
+    SeaGreen             = 0FF2E8B57h;
+    SeaShell             = 0FFFFF5EEh;
+    Sienna               = 0FFA0522Dh;
+    Silver               = 0FFC0C0C0h;
+    SkyBlue              = 0FF87CEEBh;
+    SlateBlue            = 0FF6A5ACDh;
+    SlateGray            = 0FF708090h;
+    Snow                 = 0FFFFFAFAh;
+    SpringGreen          = 0FF00FF7Fh;
+    SteelBlue            = 0FF4682B4h;
+    Tan                  = 0FFD2B48Ch;
+    Teal                 = 0FF008080h;
+    Thistle              = 0FFD8BFD8h;
+    Tomato               = 0FFFF6347h;
+    Transparent          = 000FFFFFFh;
+    Turquoise            = 0FF40E0D0h;
+    Violet               = 0FFEE82EEh;
+    Wheat                = 0FFF5DEB3h;
+    White                = 0FFFFFFFFh;
+    WhiteSmoke           = 0FFF5F5F5h;
+    Yellow               = 0FFFFFF00h;
+    YellowGreen          = 0FF9ACD32h;
+
+(**************************************************************************\
+*
+* Copyright (c) 1998-2001, Microsoft Corp.  All Rights Reserved.
+*
+* Module Name:
+*
+*   GdiplusColorMatrix.h
+*
+* Abstract:
+*
+*  GDI+ Color Matrix object, used with Graphics.DrawImage
+*
+\**************************************************************************)
+
+(*//----------------------------------------------------------------------------
+// Color matrix
+//----------------------------------------------------------------------------*)
+
+TYPE
+    ColorMatrix =
+    RECORD
+        m       : ARRAY [0..4],[0..4] OF REAL;(*??? C two dimensional array*)
+    END;
+
+(*//----------------------------------------------------------------------------
+// Color Matrix flags
+//----------------------------------------------------------------------------*)
+
+    ColorMatrixFlags =
+    (
+        ColorMatrixFlagsDefault   = 0,
+        ColorMatrixFlagsSkipGrays = 1,
+        ColorMatrixFlagsAltGray   = 2
+    );
+
+(*//----------------------------------------------------------------------------
+// Color Adjust Type
+//----------------------------------------------------------------------------*)
+
+    ColorAdjustType =
+    (
+        ColorAdjustTypeDefault,
+        ColorAdjustTypeBitmap,
+        ColorAdjustTypeBrush,
+        ColorAdjustTypePen,
+        ColorAdjustTypeText,
+        ColorAdjustTypeCount,
+        ColorAdjustTypeAny      (* Reserved*)
+    );
+
+(*//----------------------------------------------------------------------------
+// Color Map
+//----------------------------------------------------------------------------*)
+
+    ColorMap =
+    RECORD
+        oldColor        : Color;
+        newColor        : Color;
+    END;
+
+(**************************************************************************\
+*
+* Copyright (c) 1999-2000  Microsoft Corporation
+*
+* Module Name:
+*
+*   GdiplusImaging.h
+*
+* Abstract:
+*
+*   GDI+ Imaging GUIDs
+*
+\**************************************************************************)
+
+CONST
+
+(*//---------------------------------------------------------------------------
+// Image file format identifiers
+//---------------------------------------------------------------------------*)
+
+	ImageFormatUndefined	= GUID {0b96b3ca9H, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatMemoryBMP	= GUID {0b96b3caaH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatBMP			= GUID {0b96b3cabH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatEMF			= GUID {0b96b3cacH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatWMF			= GUID {0b96b3cadH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatJPEG			= GUID {0b96b3caeH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatPNG			= GUID {0b96b3cafH, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatGIF			= GUID {0b96b3cb0H, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatTIFF			= GUID {0b96b3cb1H, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatEXIF			= GUID {0b96b3cb2H, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+	ImageFormatIcon			= GUID {0b96b3cb5H, 00728H, 011d3H, {09dH,07bH,000H,000H,0f8H,01eH,0f3H,02eH}};
+
+(*//---------------------------------------------------------------------------
+// Predefined multi-frame dimension IDs
+//---------------------------------------------------------------------------*)
+
+	FrameDimensionTime		= GUID {06aedbd6dH, 03fb5H, 0418aH, {083H,0a6H,07fH,045H,022H,09dH,0c8H,072H}};
+	FrameDimensionResolution= GUID {084236f7bH, 03bd3H, 0428fH, {08dH,0abH,04eH,0a1H,043H,09cH,0a3H,015H}};
+	FrameDimensionPage		= GUID {07462dc86H, 06180H, 04c7eH, {08eH,03fH,0eeH,073H,033H,0a7H,0a4H,083H}};
+
+(*//---------------------------------------------------------------------------
+// Property sets
+//---------------------------------------------------------------------------*)
+
+	FormatIDImageInformation= GUID {0e5836cbeH, 05eefH, 04f1dH, {0acH,0deH,0aeH,04cH,043H,0b6H,008H,0ceH}};
+	FormatIDJpegAppHeaders	= GUID {01c4afdcdH, 06177H, 043cfH, {0abH,0c7H,05fH,051H,0afH,039H,0eeH,085H}};
+
+(*//---------------------------------------------------------------------------
+// Encoder parameter sets
+//---------------------------------------------------------------------------*)
+
+	EncoderCompression		= GUID {0e09d739dH, 0ccd4H, 044eeH, {08eH,0baH,03fH,0bfH,08bH,0e4H,0fcH,058H}};
+	EncoderColorDepth		= GUID {066087055H, 0ad66H, 04c7cH, {09aH,018H,038H,0a2H,031H,00bH,083H,037H}};
+	EncoderScanMethod		= GUID {03a4e2661H, 03109H, 04e56H, {085H,036H,042H,0c1H,056H,0e7H,0dcH,0faH}};
+	EncoderVersion			= GUID {024d18c76H, 0814aH, 041a4H, {0bfH,053H,01cH,021H,09cH,0ccH,0f7H,097H}};
+	EncoderRenderMethod		= GUID {06d42c53aH, 0229aH, 04825H, {08bH,0b7H,05cH,099H,0e2H,0b9H,0a8H,0b8H}};
+	EncoderQuality			= GUID {01d5be4b5H, 0fa4aH, 0452dH, {09cH,0ddH,05dH,0b3H,051H,005H,0e7H,0ebH}};
+	EncoderTransformation	= GUID {08d0eb2d1H, 0a58eH, 04ea8H, {0aaH,014H,010H,080H,074H,0b7H,0b6H,0f9H}};
+	EncoderLuminanceTable	= GUID {0edb33bceH, 00266H, 04a77H, {0b9H,004H,027H,021H,060H,099H,0e7H,017H}};
+	EncoderChrominanceTable	= GUID {0f2e455dcH, 009b3H, 04316H, {082H,060H,067H,06aH,0daH,032H,048H,01cH}};
+	EncoderSaveFlag			= GUID {0292266fcH, 0ac40H, 047bfH, {08cH,0fcH,0a8H,05bH,089H,0a6H,055H,0deH}};
+	EncoderColorSpace		= GUID {0ae7a62a0H, 0ee2cH, 049d8H, {09dH,007H,01bH,0a8H,0a9H,027H,059H,06eH}};
+	EncoderImageItems		= GUID {063875e13H, 01f1dH, 045abH, {091H,095H,0a2H,09bH,060H,066H,0a6H,050H}};
+	EncoderSaveAsCMYK		= GUID {0a219bbc9H, 00a9dH, 04005H, {0a3H,0eeH,03aH,042H,01bH,08bH,0b0H,06cH}};
+	CodecIImageBytes		= GUID {0025d1823H, 06c7dH, 0447bH, {0bbH,0dbH,0a3H,0cbH,0c3H,0dfH,0a2H,0fcH}};
+
+(*MIDL_INTERFACE("025D1823-6C7D-447B-BBDB-A3CBC3DFA2FC")
+IImageBytes : public IUnknown
+{
+public:
+    // Return total number of bytes in the IStream
+
+    STDMETHOD(CountBytes)(
+        OUT UINT *pcb
+        ) = 0;
+
+    // Locks "cb" bytes, starting from "ulOffset" in the stream, and returns the
+    // pointer to the beginning of the locked memory chunk in "ppvBytes"
+
+    STDMETHOD(LockBytes)(
+        IN UINT cb,
+        IN ULONG ulOffset,
+        OUT const VOID ** ppvBytes
+        ) = 0;
+
+    // Unlocks "cb" bytes, pointed by "pvBytes", starting from "ulOffset" in the
+    // stream
+
+    STDMETHOD(UnlockBytes)(
+        IN const VOID *pvBytes,
+        IN UINT cb,
+        IN ULONG ulOffset
+        ) = 0;
+};*)
+
+(*//--------------------------------------------------------------------------
+// ImageCodecInfo structure
+//--------------------------------------------------------------------------*)
+
+TYPE
+    ImageCodecInfo =
+    RECORD
+    Clsid       : CLSID;
+    FormatID    : GUID;
+    CodecName   : LPCWSTR;
+    DllName     : LPCWSTR;
+    FormatDescription   : LPCWSTR;
+    FilenameExtension   : LPCWSTR;
+    MimeType            : LPCWSTR;
+    Flags               : DWORD;
+    Version             : DWORD;
+    SigCount            : DWORD;
+    SigSize             : DWORD;
+    SigPattern          : LPBYTE;
+    SigMask             : LPBYTE;
+    END;
+
+(*//--------------------------------------------------------------------------
+// Information flags about image codecs
+//--------------------------------------------------------------------------*)
+
+    ImageCodecFlags =
+    (
+        ImageCodecFlagsEncoder            = 000000001h,
+        ImageCodecFlagsDecoder            = 000000002h,
+        ImageCodecFlagsSupportBitmap      = 000000004h,
+        ImageCodecFlagsSupportVector      = 000000008h,
+        ImageCodecFlagsSeekableEncode     = 000000010h,
+        ImageCodecFlagsBlockingDecode     = 000000020h,
+
+        ImageCodecFlagsBuiltin            = 000010000h,
+        ImageCodecFlagsSystem             = 000020000h,
+        ImageCodecFlagsUser               = 000040000h
+    );
+
+(*//---------------------------------------------------------------------------
+// Access modes used when calling Image::LockBits
+//---------------------------------------------------------------------------*)
+
+    ImageLockMode =
+    (
+        ImageLockModeRead        = 00001h,
+        ImageLockModeWrite       = 00002h,
+        ImageLockModeUserInputBuf= 00004h
+    );
+
+(*//---------------------------------------------------------------------------
+// Information about image pixel data
+//---------------------------------------------------------------------------*)
+
+    BitmapData =
+    RECORD
+        Width           : UINT;
+        Height          : UINT;
+        Stride          : WINT;
+        PixelFormat     : PixelFormat;
+        Scan0           : LPVOID;
+        Reserved        : UINT_PTR;
+    END;
+
+(*//---------------------------------------------------------------------------
+// Image flags
+//---------------------------------------------------------------------------*)
+
+    ImageFlags =
+    (
+        ImageFlagsNone                = 0,
+
+        (* Low-word: shared with SINKFLAG_x*)
+
+        ImageFlagsScalable            = 00001h,
+        ImageFlagsHasAlpha            = 00002h,
+        ImageFlagsHasTranslucent      = 00004h,
+        ImageFlagsPartiallyScalable   = 00008h,
+
+        (* Low-word: color space definition*)
+
+        ImageFlagsColorSpaceRGB       = 00010h,
+        ImageFlagsColorSpaceCMYK      = 00020h,
+        ImageFlagsColorSpaceGRAY      = 00040h,
+        ImageFlagsColorSpaceYCBCR     = 00080h,
+        ImageFlagsColorSpaceYCCK      = 00100h,
+
+        (* Low-word: image size info*)
+
+        ImageFlagsHasRealDPI          = 01000h,
+        ImageFlagsHasRealPixelSize    = 02000h,
+
+        (* High-word*)
+
+        ImageFlagsReadOnly            = 000010000h,
+        ImageFlagsCaching             = 000020000h
+    );
+
+    RotateFlipType =
+    (
+        RotateNoneFlipNone = 0,
+        Rotate90FlipNone   = 1,
+        Rotate180FlipNone  = 2,
+        Rotate270FlipNone  = 3,
+
+        RotateNoneFlipX    = 4,
+        Rotate90FlipX      = 5,
+        Rotate180FlipX     = 6,
+        Rotate270FlipX     = 7,
+
+        RotateNoneFlipY    = Rotate180FlipX,
+        Rotate90FlipY      = Rotate270FlipX,
+        Rotate180FlipY     = RotateNoneFlipX,
+        Rotate270FlipY     = Rotate90FlipX,
+
+        RotateNoneFlipXY   = Rotate180FlipNone,
+        Rotate90FlipXY     = Rotate270FlipNone,
+        Rotate180FlipXY    = RotateNoneFlipNone,
+        Rotate270FlipXY    = Rotate90FlipNone
+    );
+
+(*//---------------------------------------------------------------------------
+// Encoder Parameter structure
+//---------------------------------------------------------------------------*)
+    EncoderParameter =
+    RECORD
+        Guid    : GUID;           (* GUID of the parameter*)
+        NumberOfValues  : ULONG;  (* Number of the parameter values*)
+        Type            : ULONG;  (* Value type, like ValueTypeLONG  etc.*)
+        Value           : LPVOID; (* A pointer to the parameter values*)
+    END;
+
+(*//---------------------------------------------------------------------------
+// Encoder Parameters structure
+//---------------------------------------------------------------------------*)
+    EncoderParameters =
+    RECORD
+        Count   : UINT;                      (* Number of parameters in this structure*)
+        Parameter       : ARRAY [0..0] OF EncoderParameter;   (* Parameter values*)
+    END;
+
+(*//---------------------------------------------------------------------------
+// Property Item
+//---------------------------------------------------------------------------*)
+    PropertyItem =
+    RECORD
+        id      : PROPID;           (* ID of this property*)
+        length  : ULONG;            (* Length of the property value, in bytes*)
+        type    : WORD;             (* Type of the value, as one of TAG_TYPE_XXX*)
+                                    (* defined above*)
+        value   : LPVOID;           (* property value*)
+    END;
+
+CONST
+(*//---------------------------------------------------------------------------
+// Image property types
+//---------------------------------------------------------------------------*)
+    PropertyTagTypeByte        = 1;
+    PropertyTagTypeASCII       = 2;
+    PropertyTagTypeShort       = 3;
+    PropertyTagTypeLong        = 4;
+    PropertyTagTypeRational    = 5;
+    PropertyTagTypeUndefined   = 7;
+    PropertyTagTypeSLONG       = 9;
+    PropertyTagTypeSRational   = 10;
+
+(*//---------------------------------------------------------------------------
+// Image property ID tags
+//---------------------------------------------------------------------------*)
+
+    PropertyTagExifIFD             = 08769h;
+    PropertyTagGpsIFD              = 08825h;
+
+    PropertyTagNewSubfileType      = 000FEh;
+    PropertyTagSubfileType         = 000FFh;
+    PropertyTagImageWidth          = 00100h;
+    PropertyTagImageHeight         = 00101h;
+    PropertyTagBitsPerSample       = 00102h;
+    PropertyTagCompression         = 00103h;
+    PropertyTagPhotometricInterp   = 00106h;
+    PropertyTagThreshHolding       = 00107h;
+    PropertyTagCellWidth           = 00108h;
+    PropertyTagCellHeight          = 00109h;
+    PropertyTagFillOrder           = 0010Ah;
+    PropertyTagDocumentName        = 0010Dh;
+    PropertyTagImageDescription    = 0010Eh;
+    PropertyTagEquipMake           = 0010Fh;
+    PropertyTagEquipModel          = 00110h;
+    PropertyTagStripOffsets        = 00111h;
+    PropertyTagOrientation         = 00112h;
+    PropertyTagSamplesPerPixel     = 00115h;
+    PropertyTagRowsPerStrip        = 00116h;
+    PropertyTagStripBytesCount     = 00117h;
+    PropertyTagMinSampleValue      = 00118h;
+    PropertyTagMaxSampleValue      = 00119h;
+    PropertyTagXResolution         = 0011Ah;   (* Image resolution in width direction*)
+    PropertyTagYResolution         = 0011Bh;   (* Image resolution in height direction*)
+    PropertyTagPlanarConfig        = 0011Ch;   (* Image data arrangement*)
+    PropertyTagPageName            = 0011Dh;
+    PropertyTagXPosition           = 0011Eh;
+    PropertyTagYPosition           = 0011Fh;
+    PropertyTagFreeOffset          = 00120h;
+    PropertyTagFreeByteCounts      = 00121h;
+    PropertyTagGrayResponseUnit    = 00122h;
+    PropertyTagGrayResponseCurve   = 00123h;
+    PropertyTagT4Option            = 00124h;
+    PropertyTagT6Option            = 00125h;
+    PropertyTagResolutionUnit      = 00128h;   (* Unit of X and Y resolution*)
+    PropertyTagPageNumber          = 00129h;
+    PropertyTagTransferFuncition   = 0012Dh;
+    PropertyTagSoftwareUsed        = 00131h;
+    PropertyTagDateTime            = 00132h;
+    PropertyTagArtist              = 0013Bh;
+    PropertyTagHostComputer        = 0013Ch;
+    PropertyTagPredictor           = 0013Dh;
+    PropertyTagWhitePoint          = 0013Eh;
+    PropertyTagPrimaryChromaticitie= 0013Fh;
+    PropertyTagColorMap            = 00140h;
+    PropertyTagHalftoneHints       = 00141h;
+    PropertyTagTileWidth           = 00142h;
+    PropertyTagTileLength          = 00143h;
+    PropertyTagTileOffset          = 00144h;
+    PropertyTagTileByteCounts      = 00145h;
+    PropertyTagInkSet              = 0014Ch;
+    PropertyTagInkNames            = 0014Dh;
+    PropertyTagNumberOfInks        = 0014Eh;
+    PropertyTagDotRange            = 00150h;
+    PropertyTagTargetPrinter       = 00151h;
+    PropertyTagExtraSamples        = 00152h;
+    PropertyTagSampleFormat        = 00153h;
+    PropertyTagSMinSampleValue     = 00154h;
+    PropertyTagSMaxSampleValue     = 00155h;
+    PropertyTagTransferRange       = 00156h;
+
+    PropertyTagJPEGProc            = 00200h;
+    PropertyTagJPEGInterFormat     = 00201h;
+    PropertyTagJPEGInterLength     = 00202h;
+    PropertyTagJPEGRestartInterval = 00203h;
+    PropertyTagJPEGLosslessPredictors  = 00205h;
+    PropertyTagJPEGPointTransforms     = 00206h;
+    PropertyTagJPEGQTables         = 00207h;
+    PropertyTagJPEGDCTables        = 00208h;
+    PropertyTagJPEGACTables        = 00209h;
+
+    PropertyTagYCbCrCoefficients   = 00211h;
+    PropertyTagYCbCrSubsampling    = 00212h;
+    PropertyTagYCbCrPositioning    = 00213h;
+    PropertyTagREFBlackWhite       = 00214h;
+
+    PropertyTagICCProfile          = 08773h;   (* This TAG is defined by ICC*)
+                                                (* for embedded ICC in TIFF*)
+    PropertyTagGamma               = 00301h;
+    PropertyTagICCProfileDescriptor = 00302h;
+    PropertyTagSRGBRenderingIntent = 00303h;
+
+    PropertyTagImageTitle          = 00320h;
+    PropertyTagCopyright           = 08298h;
+
+(* Extra TAGs (Like Adobe Image Information tags etc.)*)
+
+    PropertyTagResolutionXUnit           = 05001h;
+    PropertyTagResolutionYUnit           = 05002h;
+    PropertyTagResolutionXLengthUnit     = 05003h;
+    PropertyTagResolutionYLengthUnit     = 05004h;
+    PropertyTagPrintFlags                = 05005h;
+    PropertyTagPrintFlagsVersion         = 05006h;
+    PropertyTagPrintFlagsCrop            = 05007h;
+    PropertyTagPrintFlagsBleedWidth      = 05008h;
+    PropertyTagPrintFlagsBleedWidthScale = 05009h;
+    PropertyTagHalftoneLPI               = 0500Ah;
+    PropertyTagHalftoneLPIUnit           = 0500Bh;
+    PropertyTagHalftoneDegree            = 0500Ch;
+    PropertyTagHalftoneShape             = 0500Dh;
+    PropertyTagHalftoneMisc              = 0500Eh;
+    PropertyTagHalftoneScreen            = 0500Fh;
+    PropertyTagJPEGQuality               = 05010h;
+    PropertyTagGridSize                  = 05011h;
+    PropertyTagThumbnailFormat           = 05012h;  (* 1 = JPEG, 0 = RAW RGB*)
+    PropertyTagThumbnailWidth            = 05013h;
+    PropertyTagThumbnailHeight           = 05014h;
+    PropertyTagThumbnailColorDepth       = 05015h;
+    PropertyTagThumbnailPlanes           = 05016h;
+    PropertyTagThumbnailRawBytes         = 05017h;
+    PropertyTagThumbnailSize             = 05018h;
+    PropertyTagThumbnailCompressedSize   = 05019h;
+    PropertyTagColorTransferFunction     = 0501Ah;
+    PropertyTagThumbnailData             = 0501Bh;(* RAW thumbnail bits in*)
+                                                   (* JPEG format or RGB format*)
+                                                   (* depends on*)
+                                                   (* PropertyTagThumbnailFormat*)
+
+(* Thumbnail related TAGs*)
+
+    PropertyTagThumbnailImageWidth       = 05020h;  (* Thumbnail width*)
+    PropertyTagThumbnailImageHeight      = 05021h;  (* Thumbnail height*)
+    PropertyTagThumbnailBitsPerSample    = 05022h;  (* Number of bits per*)
+                                                     (* component*)
+    PropertyTagThumbnailCompression      = 05023h;  (* Compression Scheme*)
+    PropertyTagThumbnailPhotometricInterp = 05024h; (* Pixel composition*)
+    PropertyTagThumbnailImageDescription = 05025h; (*/ Image Tile*)
+    PropertyTagThumbnailEquipMake        = 05026h;  (* Manufacturer of Image*)
+                                                     (* Input equipment*)
+    PropertyTagThumbnailEquipModel       = 05027h;  (* Model of Image input*)
+                                                    (*/ equipment*)
+    PropertyTagThumbnailStripOffsets     = 05028h;  (* Image data location*)
+    PropertyTagThumbnailOrientation      = 05029h;  (* Orientation of image*)
+    PropertyTagThumbnailSamplesPerPixel  = 0502Ah;  (* Number of components*)
+    PropertyTagThumbnailRowsPerStrip     = 0502Bh;  (* Number of rows per strip*)
+    PropertyTagThumbnailStripBytesCount  = 0502Ch;  (* Bytes per compressed*)
+                                                     (* strip*)
+    PropertyTagThumbnailResolutionX      = 0502Dh;  (* Resolution in width*)
+                                                    (*/ direction*)
+    PropertyTagThumbnailResolutionY      = 0502Eh;  (* Resolution in height*)
+                                                    (*/ direction*)
+    PropertyTagThumbnailPlanarConfig     = 0502Fh;  (* Image data arrangement*)
+    PropertyTagThumbnailResolutionUnit   = 05030h;  (* Unit of X and Y*)
+                                                     (* Resolution*)
+    PropertyTagThumbnailTransferFunction = 05031h;  (* Transfer function*)
+    PropertyTagThumbnailSoftwareUsed     = 05032h;  (* Software used*)
+    PropertyTagThumbnailDateTime         = 05033h;  (* File change date and*)
+                                                     (* time*)
+    PropertyTagThumbnailArtist           = 05034h;  (* Person who created the*)
+                                                     (* image*)
+    PropertyTagThumbnailWhitePoint       = 05035h;  (* White point chromaticity*)
+    PropertyTagThumbnailPrimaryChromaticities = 05036h;
+                                                     (* Chromaticities of*)
+                                                     (* primaries*)
+    PropertyTagThumbnailYCbCrCoefficients = 05037h; (* Color space transforma-*)
+                                                     (* tion coefficients*)
+    PropertyTagThumbnailYCbCrSubsampling = 05038h;  (* Subsampling ratio of Y*)
+                                                     (* to C*)
+    PropertyTagThumbnailYCbCrPositioning = 05039h;  (* Y and C position*)
+    PropertyTagThumbnailRefBlackWhite    = 0503Ah;  (* Pair of black and white*)
+                                                     (* reference values*)
+    PropertyTagThumbnailCopyRight        = 0503Bh;  (* CopyRight holder*)
+
+    PropertyTagLuminanceTable            = 05090h;
+    PropertyTagChrominanceTable          = 05091h;
+
+    PropertyTagFrameDelay                = 05100h;
+    PropertyTagLoopCount                 = 05101h;
+
+    PropertyTagPixelUnit         = 05110h;  (* Unit specifier for pixel/unit*)
+    PropertyTagPixelPerUnitX     = 05111h;  (* Pixels per unit in X*)
+    PropertyTagPixelPerUnitY     = 05112h;  (* Pixels per unit in Y*)
+    PropertyTagPaletteHistogram  = 05113h;  (* Palette histogram*)
+
+(* EXIF specific tag*)
+
+    PropertyTagExifExposureTime  = 0829Ah;
+    PropertyTagExifFNumber       = 0829Dh;
+
+    PropertyTagExifExposureProg  = 08822h;
+    PropertyTagExifSpectralSense = 08824h;
+    PropertyTagExifISOSpeed      = 08827h;
+    PropertyTagExifOECF          = 08828h;
+
+    PropertyTagExifVer            = 09000h;
+    PropertyTagExifDTOrig         = 09003h; (* Date & time of original*)
+    PropertyTagExifDTDigitized    = 09004h; (* Date & time of digital data generation*)
+
+    PropertyTagExifCompConfig     = 09101h;
+    PropertyTagExifCompBPP        = 09102h;
+
+    PropertyTagExifShutterSpeed   = 09201h;
+    PropertyTagExifAperture       = 09202h;
+    PropertyTagExifBrightness     = 09203h;
+    PropertyTagExifExposureBias   = 09204h;
+    PropertyTagExifMaxAperture    = 09205h;
+    PropertyTagExifSubjectDist    = 09206h;
+    PropertyTagExifMeteringMode   = 09207h;
+    PropertyTagExifLightSource    = 09208h;
+    PropertyTagExifFlash          = 09209h;
+    PropertyTagExifFocalLength    = 0920Ah;
+    PropertyTagExifMakerNote      = 0927Ch;
+    PropertyTagExifUserComment    = 09286h;
+    PropertyTagExifDTSubsec       = 09290h;  (* Date & Time subseconds*)
+    PropertyTagExifDTOrigSS       = 09291h;  (* Date & Time original subseconds*)
+    PropertyTagExifDTDigSS        = 09292h;  (* Date & TIme digitized subseconds*)
+
+    PropertyTagExifFPXVer         = 0A000h;
+    PropertyTagExifColorSpace     = 0A001h;
+    PropertyTagExifPixXDim        = 0A002h;
+    PropertyTagExifPixYDim        = 0A003h;
+    PropertyTagExifRelatedWav     = 0A004h;  (* related sound file*)
+    PropertyTagExifInterop        = 0A005h;
+    PropertyTagExifFlashEnergy    = 0A20Bh;
+    PropertyTagExifSpatialFR      = 0A20Ch;  (* Spatial Frequency Response*)
+    PropertyTagExifFocalXRes      = 0A20Eh;  (* Focal Plane X Resolution*)
+    PropertyTagExifFocalYRes      = 0A20Fh;  (* Focal Plane Y Resolution*)
+    PropertyTagExifFocalResUnit   = 0A210h;  (* Focal Plane Resolution Unit*)
+    PropertyTagExifSubjectLoc     = 0A214h;
+    PropertyTagExifExposureIndex  = 0A215h;
+    PropertyTagExifSensingMethod  = 0A217h;
+    PropertyTagExifFileSource     = 0A300h;
+    PropertyTagExifSceneType      = 0A301h;
+    PropertyTagExifCfaPattern     = 0A302h;
+
+    PropertyTagGpsVer             = 00000h;
+    PropertyTagGpsLatitudeRef     = 00001h;
+    PropertyTagGpsLatitude        = 00002h;
+    PropertyTagGpsLongitudeRef    = 00003h;
+    PropertyTagGpsLongitude       = 00004h;
+    PropertyTagGpsAltitudeRef     = 00005h;
+    PropertyTagGpsAltitude        = 00006h;
+    PropertyTagGpsGpsTime         = 00007h;
+    PropertyTagGpsGpsSatellites   = 00008h;
+    PropertyTagGpsGpsStatus       = 00009h;
+    PropertyTagGpsGpsMeasureMode  = 000Ah;
+    PropertyTagGpsGpsDop          = 0000Bh;  (* Measurement precision*)
+    PropertyTagGpsSpeedRef        = 0000Ch;
+    PropertyTagGpsSpeed           = 0000Dh;
+    PropertyTagGpsTrackRef        = 0000Eh;
+    PropertyTagGpsTrack           = 0000Fh;
+    PropertyTagGpsImgDirRef       = 00010h;
+    PropertyTagGpsImgDir          = 00011h;
+    PropertyTagGpsMapDatum        = 00012h;
+    PropertyTagGpsDestLatRef      = 00013h;
+    PropertyTagGpsDestLat         = 00014h;
+    PropertyTagGpsDestLongRef     = 00015h;
+    PropertyTagGpsDestLong        = 00016h;
+    PropertyTagGpsDestBearRef     = 00017h;
+    PropertyTagGpsDestBear        = 00018h;
+    PropertyTagGpsDestDistRef     = 00019h;
+    PropertyTagGpsDestDist        = 0001Ah;
+
+(**************************************************************************\
+*
+* Copyright (c) 1998-2001, Microsoft Corp.  All Rights Reserved.
+*
+* Module Name:
+*
+*   GdiplusGpStubs.h
+*
+* Abstract:
+*
+*   Private GDI+ header file.
+*
+\**************************************************************************)
+(*---------------------------------------------------------------------------
+// Private GDI+ classes for internal type checking
+//---------------------------------------------------------------------------*)
+(* for Modula-2 we made these all magic cookie pointers, not classes *)
+TYPE
+    GpGraphics = POINTER TO RECORD END;
+
+    GpBrush = POINTER TO RECORD END;
+    GpTexture = GpBrush;
+    GpSolidFill = GpBrush;
+    GpLineGradient = GpBrush;
+    GpPathGradient = GpBrush;
+    GpHatch = GpBrush;
+
+    GpPen               = POINTER TO RECORD END;
+    GpCustomLineCap     = POINTER TO RECORD END;
+    GpAdjustableArrowCap = GpCustomLineCap;
+
+    GpImage     = POINTER TO RECORD END;
+    GpBitmap    = GpImage;
+    GpMetafile  = GpImage;
+
+    GpImageAttributes = POINTER TO RECORD END;
+
+    GpPath = POINTER TO RECORD END;
+    GpRegion = POINTER TO RECORD END;
+    GpPathIterator = POINTER TO RECORD END;
+
+    GpMatrix            = POINTER TO RECORD END;
+
+    GpFontFamily = POINTER TO RECORD END;
+    GpFont = POINTER TO RECORD END;
+    GpStringFormat = POINTER TO RECORD END;
+    GpFontCollection = POINTER TO RECORD END;
+    GpInstalledFontCollection = GpFontCollection;
+    GpPrivateFontCollection = GpFontCollection;
+
+    GpCachedBitmap = POINTER TO RECORD END;
+
+(**************************************************************************
+*
+* Copyright (c) 2000-2001 Microsoft Corporation
+*
+* Module Name:
+*
+*   Gdiplus initialization
+*
+* Abstract:
+*
+*   GDI+ Startup and Shutdown APIs
+*
+**************************************************************************)
+TYPE
+    DebugEventLevel = (DebugEventLevelFatal, DebugEventLevelWarning);
+
+    DebugEventProc = PROCEDURE(DebugEventLevel, VAR ARRAY OF CHAR);
+
+    GdiplusStartupInput =
+		RECORD
+			GdiplusVersion              : UINT32;        (* Must be 1 *)
+			DebugEventCallback          : DebugEventProc;(* Ignored on free builds *)
+			SuppressBackgroundThread    : BOOL;          (* FALSE unless you're prepared to call
+															the hook/unhook functions properly *)
+			SuppressExternalCodecs      : BOOL;          (* FALSE unless you want GDI+ only to
+															use its internal image codecs *)
+		END;
+
+    NotificationHookProc = PROCEDURE(VAR OUT ULONG_PTR) : CARDINAL;
+    NotificationUnhookProc = PROCEDURE(ULONG_PTR);
+
+    GdiplusStartupOutput =
+		RECORD
+			NotificationHook    : NotificationHookProc;
+			NotificationUnhook  : NotificationUnhookProc;
+		END;
+
+PROCEDURE GdiplusStartup(VAR OUT key : ULONG_PTR;
+                         startIn : GdiplusStartupInput;
+                         VAR OUT startOut : GdiplusStartupOutput) : GpStatus;
+
+PROCEDURE GdiplusShutdown(key : ULONG_PTR);
+
+END Gdiplus.

@@ -1,0 +1,797 @@
+(*
+ * Copyright (C) Microsoft Corp. All rights reserved.
+ *)
+(* Conversion from Microsoft Windows SDK C sources to Modula-2 source *)
+(* Copyright (c) 2013, ADW Software. All rights reserved. *)
+
+UNSAFEGUARDED DEFINITION MODULE ShObjIdl;
+
+FROM WIN32 IMPORT
+    REFGUID, REFIID, PVOID, HRESULT, DWORD, UINT, HWND, LPCSTR, HANDLE, LPCWSTR, POINT, HMENU, UINT_PTR,
+    ULONG, WINT, PUINT, PWCHAR, IID, GUID, BOOL, CLSID, LPWSTR;
+
+FROM OOle2 IMPORT
+    IUnknown, IBindCtx;
+
+<*/Foreign*>
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH/ENUMSIZE:BIG/NOPACK*>
+
+TYPE
+
+	SFGAOF = ULONG;
+
+	FDE_OVERWRITE_RESPONSE =
+	(
+		FDEOR_DEFAULT   = 0,
+		FDEOR_ACCEPT    = 1,
+		FDEOR_REFUSE    = 2
+	) BIG;
+
+	FDE_SHAREVIOLATION_RESPONSE =
+	(
+		FDESVR_DEFAULT  = 0,
+		FDESVR_ACCEPT   = 1,
+		FDESVR_REFUSE   = 2
+	);
+
+	FDAP =
+	(
+		FDAP_BOTTOM = 0,
+		FDAP_TOP    = 1
+	) BIG;
+
+	CMINVOKECOMMANDINFO =
+		RECORD
+			cbSize : DWORD;
+			fMask : DWORD;
+			hwnd : HWND;
+			lpVerb : LPCSTR;
+			lpParameters : LPCSTR;
+			lpDirectory : LPCSTR;
+			nShow : WINT;
+			dwHotKey : DWORD;
+			hIcon : HANDLE;
+		END;
+
+	LPCMINVOKECOMMANDINFO = POINTER TO CMINVOKECOMMANDINFO;
+	PCCMINVOKECOMMANDINFO = (*constant*) LPCMINVOKECOMMANDINFO;
+
+	CMINVOKECOMMANDINFOEX =
+		RECORD
+			cbSize : DWORD;
+			fMask : DWORD;
+			hwnd : HWND;
+			lpVerb : LPCSTR;
+			lpParameters : LPCSTR;
+			lpDirectory : LPCSTR;
+			nShow : WINT;
+			dwHotKey : DWORD;
+			hIcon : HANDLE;
+			lpTitle : LPCSTR;
+			lpVerbW : LPCWSTR;
+			lpParametersW : LPCWSTR;
+			lpDirectoryW : LPCWSTR;
+			lpTitleW : LPCWSTR;
+			ptInvoke : POINT;
+		END;
+
+	LPCMINVOKECOMMANDINFOEX = POINTER TO CMINVOKECOMMANDINFOEX;
+	PCCMINVOKECOMMANDINFOEX = (*constant*) LPCMINVOKECOMMANDINFOEX;
+
+	(* from wtypes.h *)
+
+	PROPERTYKEY =
+		RECORD
+			fmtid : GUID;
+			pid   : DWORD;
+		END;
+
+	(* from propsys.h *)
+
+	REFPROPERTYKEY = POINTER TO PROPERTYKEY;
+
+	GETPROPERTYSTOREFLAGS =
+	(
+		GPS_DEFAULT                 = 0,
+		GPS_HANDLERPROPERTIESONLY   = 01h,
+		GPS_READWRITE               = 02h,
+		GPS_TEMPORARY               = 04h,
+		GPS_FASTPROPERTIESONLY      = 08h,
+		GPS_OPENSLOWITEM            = 010h,
+		GPS_DELAYCREATION           = 020h,
+		GPS_BESTEFFORT              = 040h,
+		GPS_NO_OPLOCK               = 080h,
+		GPS_PREFERQUERYPROPERTIES   = 0100h,
+		GPS_EXTRINSICPROPERTIES     = 0200h,
+		GPS_EXTRINSICPROPERTIESONLY = 0400h,
+		GPS_MASK_VALID              = 07FFh
+	) BIG;
+
+(* see PropIdl.h *)
+TYPE PROPVARIANT;
+TYPE REFPROPVARIANT;
+
+CONST
+    CLSID_PropertyStore = CLSID{0e4796550h, 0df61h, 0448bh, {091h,093h,013h,0fch,013h,041h,0b1h,063h}};
+    IID_IPropertyStore = IID{0886D8EEBh, 08CF2h, 04446h, {08Dh,002h,0CDh,0BAh,01Dh,0BDh,0CFh,099h}};
+
+ABSTRACT CLASS IPropertyStore;
+INHERIT IUnknown;
+REVEAL GetCount, GetAt, GetValue, SetValue, Commit;
+
+ABSTRACT PROCEDURE GetCount(VAR cProps : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE GetAt(iProp : DWORD; VAR pkey : PROPERTYKEY) : HRESULT;
+
+ABSTRACT PROCEDURE GetValue(key : REFPROPERTYKEY; VAR pv : PROPVARIANT) : HRESULT;
+
+ABSTRACT PROCEDURE SetValue(key : REFPROPERTYKEY; propvar : REFPROPVARIANT) : HRESULT;
+
+ABSTRACT PROCEDURE Commit() : HRESULT;
+
+END IPropertyStore;
+
+
+CONST
+    IID_IPropertyDescriptionList = IID{01f9fc1d0h, 0c39bh, 04b26h, {081h,07fh,001h,019h,067h,0d3h,044h,00eh}};
+
+ABSTRACT CLASS IPropertyDescriptionList;
+INHERIT IUnknown;
+REVEAL GetCount, GetAt;
+
+ABSTRACT PROCEDURE GetCount(VAR pcElem : UINT) : HRESULT;
+
+ABSTRACT PROCEDURE GetAt(iElem : UINT; riid : REFIID; VAR ppv : PVOID) : HRESULT;
+
+END IPropertyDescriptionList;
+
+
+(* from shtypes.h *)
+
+TYPE
+
+KNOWNFOLDERID = GUID;
+REFKNOWNFOLDERID = KNOWNFOLDERID; (* const KNOWNFOLDERID & *)
+
+COMDLG_FILTERSPEC = RECORD
+    pszName : LPCWSTR;
+    pszSpec : LPCWSTR;
+END;
+
+(* from oleidl.h *)
+
+CONST
+
+MK_ALT          = 020h;
+DROPEFFECT_NONE = 0;
+DROPEFFECT_COPY = 1;
+DROPEFFECT_MOVE = 2;
+DROPEFFECT_LINK = 4;
+DROPEFFECT_SCROLL = 080000000h;
+
+(* default inset-width of the hot zone, in pixels
+   typical use: GetProfileInt("windows","DragScrollInset",DD_DEFSCROLLINSET) *)
+DD_DEFSCROLLINSET       = 11;
+
+(* default delay before scrolling, in milliseconds
+   typical use: GetProfileInt("windows","DragScrollDelay",DD_DEFSCROLLDELAY) *)
+DD_DEFSCROLLDELAY       = 50;
+
+(* default scroll interval, in milliseconds
+   typical use: GetProfileInt("windows","DragScrollInterval", DD_DEFSCROLLINTERVAL) *)
+DD_DEFSCROLLINTERVAL    = 50;
+
+(* default delay before dragging should start, in milliseconds
+   typical use: GetProfileInt("windows", "DragDelay", DD_DEFDRAGDELAY) *)
+DD_DEFDRAGDELAY = 200;
+
+(* default minimum distance (radius) before dragging should start, in pixels
+   typical use: GetProfileInt("windows", "DragMinDist", DD_DEFDRAGMINDIST) *)
+DD_DEFDRAGMINDIST       = 2;
+
+
+
+CONST
+    IID_IContextMenu = IID{0000214E4h, 0, 0, {0C0h,0,0,0,0,0,0,046h}};
+
+ABSTRACT CLASS IContextMenu;
+INHERIT IUnknown;
+REVEAL QueryContextMenu, InvokeCommand, GetCommandString;
+
+ABSTRACT PROCEDURE QueryContextMenu(hmenu : HMENU; indexMenu : UINT;
+                                    idCmdFirst : UINT; idCmdLast : UINT; uFlags : UINT) : HRESULT;
+
+ABSTRACT PROCEDURE InvokeCommand(pici : CMINVOKECOMMANDINFO) : HRESULT;
+
+ABSTRACT PROCEDURE GetCommandString(idCmd : UINT_PTR; uType : UINT;
+                                    pReserved : PUINT; VAR pszName : ARRAY OF UCHAR; cchMax : UINT) : HRESULT;
+END IContextMenu;
+
+(* interface IEnumShellItems *)
+
+ABSTRACT CLASS IShellItem; FORWARD;
+
+CONST
+    IID_IEnumShellItems = IID{070629033h, 0E363h, 04A28h, {0A5h,067h,00Dh,0B7h,080h,006h,0E6h,0D7h}};
+
+ABSTRACT CLASS IEnumShellItems;
+INHERIT IUnknown;
+REVEAL Next, Skip, Reset, Clone;
+
+ABSTRACT PROCEDURE Next(celt : ULONG; VAR rgelt : IShellItem; VAR pceltFetched : ULONG) : HRESULT;
+
+ABSTRACT PROCEDURE Skip(celt : ULONG) : HRESULT;
+
+ABSTRACT PROCEDURE Reset() : HRESULT;
+
+ABSTRACT PROCEDURE Clone(VAR ppenum : IEnumShellItems) : HRESULT;
+
+END IEnumShellItems;
+
+
+(* interface IShellItem *)
+
+TYPE
+
+    SIGDN =
+    (
+        SIGDN_NORMALDISPLAY               = 0,
+        SIGDN_PARENTRELATIVEPARSING       = 080018001h,
+        SIGDN_DESKTOPABSOLUTEPARSING      = 080028000h,
+        SIGDN_PARENTRELATIVEEDITING       = 080031001h,
+        SIGDN_DESKTOPABSOLUTEEDITING      = 08004c000h,
+        SIGDN_FILESYSPATH                 = 080058000h,
+        SIGDN_URL                         = 080068000h,
+        SIGDN_PARENTRELATIVEFORADDRESSBAR = 08007c001h,
+        SIGDN_PARENTRELATIVE              = 080080001h,
+        SIGDN_PARENTRELATIVEFORUI         = 080094001h
+    ) BIG;
+
+    SICHINTF =
+    (
+        SICHINT_DISPLAY                       = 0,
+        SICHINT_ALLFIELDS                     = 080000000h,
+        SICHINT_CANONICAL                     = 010000000h,
+        SICHINT_TEST_FILESYSPATH_IF_NOT_EQUAL = 020000000h
+    ) BIG;
+
+CONST
+    CLSID_ShellItem = CLSID{09ac9fbe1h, 0e0a2h, 04ad6h, {0b4h,0eeh,0e2h,012h,001h,03eh,0a9h,017h}};
+    IID_IShellItem = IID{043826d1Eh, 0E718h, 042EEh, {0BCh,055h,0A1h,0E2h,061h,0C3h,07Bh,0FEh}};
+
+ABSTRACT CLASS IShellItem;
+INHERIT IUnknown;
+REVEAL BindToHandler, GetParent, GetDisplayName, GetAttributes, Compare;
+
+ABSTRACT PROCEDURE BindToHandler(pbc : IBindCtx; bhid : REFGUID; riid : REFIID; ppv : PVOID) : HRESULT;
+
+ABSTRACT PROCEDURE GetParent(VAR ppsi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE GetDisplayName(sigdnName : SIGDN; VAR ppszName : LPWSTR) : HRESULT;
+
+ABSTRACT PROCEDURE GetAttributes(sfgaoMask : SFGAOF; VAR psfgaoAttribs : SFGAOF) : HRESULT;
+
+ABSTRACT PROCEDURE Compare(psi : IShellItem; hint : SICHINTF; VAR piOrder : WINT) : HRESULT;
+END IShellItem;
+
+PROCEDURE SHCreateItemInKnownFolder(kfid : REFKNOWNFOLDERID; dwKFFlags : DWORD;
+                       pszItem : ARRAY OF UCHAR; riid : REFIID; VAR ppv : PVOID) : HRESULT;
+
+(* IShellItemArray *)
+TYPE
+
+SIATTRIBFLAGS =
+(
+    SIATTRIBFLAGS_AND       = 01h,
+    SIATTRIBFLAGS_OR        = 02h,
+    SIATTRIBFLAGS_APPCOMPAT = 03h,
+    SIATTRIBFLAGS_MASK      = 03h,
+    SIATTRIBFLAGS_ALLITEMS  = 04000h
+) BIG;
+
+
+CONST
+    IID_IShellItemArray = IID{0B63EA76Dh, 01F85h, 0456Fh, {0A1h,09Ch,048h,015h,09Eh,0FAh,085h,08Bh}};
+
+ABSTRACT CLASS IShellItemArray;
+INHERIT IUnknown;
+REVEAL BindToHandler, GetPropertyStore, GetPropertyDescriptionList, GetAttributes,
+        GetCount, GetItemAt, EnumItems;
+
+ABSTRACT PROCEDURE BindToHandler(pbc : IBindCtx; bhid : REFGUID; riid : REFIID; ppv : PVOID) : HRESULT;
+
+ABSTRACT PROCEDURE GetPropertyStore(GetPropertyStore : GETPROPERTYSTOREFLAGS;
+                                    riid : REFIID; ppv : PVOID) : HRESULT;
+
+ABSTRACT PROCEDURE GetPropertyDescriptionList(keyType : REFPROPERTYKEY;
+                                    riid : REFIID; ppv : PVOID) : HRESULT;
+
+ABSTRACT PROCEDURE GetAttributes(AttribFlags : SIATTRIBFLAGS; sfgaoMask : SFGAOF;
+                                 psfgaoAttribs : SFGAOF) : HRESULT;
+
+ABSTRACT PROCEDURE GetCount(VAR pdwNumItems : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE GetItemAt(dwIndex : DWORD; VAR ppsi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE EnumItems(VAR ppenumShellItems : IEnumShellItems) : HRESULT;
+END IShellItemArray;
+
+
+ABSTRACT CLASS IFileDialog; FORWARD;
+
+CONST
+    IID_IFileDialogEvents = IID{0B63EA76Dh, 01F85h, 0456Fh, {0A1h,09Ch,048h,015h,09Eh,0FAh,085h,08Bh}};
+
+ABSTRACT CLASS IFileDialogEvents;
+INHERIT IUnknown;
+REVEAL OnFileOk, OnFolderChanging, OnFolderChange, OnSelectionChange, OnShareViolation, OnTypeChange,
+        OnOverwrite;
+
+ABSTRACT PROCEDURE OnFileOk(pfd : IFileDialog) : HRESULT;
+
+ABSTRACT PROCEDURE OnFolderChanging(pfd : IFileDialog; psiFolder : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE OnFolderChange(pfd : IFileDialog) : HRESULT;
+
+ABSTRACT PROCEDURE OnSelectionChange(pfd : IFileDialog) : HRESULT;
+
+ABSTRACT PROCEDURE OnShareViolation(pfd : IFileDialog; psi : IShellItem;
+                                    VAR pResponse : FDE_SHAREVIOLATION_RESPONSE) : HRESULT;
+
+ABSTRACT PROCEDURE OnTypeChange(pfd : IFileDialog) : HRESULT;
+
+ABSTRACT PROCEDURE OnOverwrite(pfd : IFileDialog; psi : IShellItem;
+                                    VAR pResponse : FDE_OVERWRITE_RESPONSE) : HRESULT;
+END IFileDialogEvents;
+
+
+(* interface IModalWindow *)
+
+TYPE
+
+_SHGDNF =
+(
+    SHGDN_NORMAL    = 0,
+    SHGDN_INFOLDER  = 01h,
+    SHGDN_FOREDITING    = 01000h,
+    SHGDN_FORADDRESSBAR = 04000h,
+    SHGDN_FORPARSING    = 08000h
+) BIG;
+SHGDNF = DWORD;
+
+_SHCONTF =
+(
+    SHCONTF_CHECKING_FOR_CHILDREN   = 010h,
+    SHCONTF_FOLDERS = 020h,
+    SHCONTF_NONFOLDERS  = 040h,
+    SHCONTF_INCLUDEHIDDEN   = 080h,
+    SHCONTF_INIT_ON_FIRST_NEXT  = 0100h,
+    SHCONTF_NETPRINTERSRCH  = 0200h,
+    SHCONTF_SHAREABLE   = 0400h,
+    SHCONTF_STORAGE = 0800h,
+    SHCONTF_NAVIGATION_ENUM = 01000h,
+    SHCONTF_FASTITEMS   = 02000h,
+    SHCONTF_FLATLIST    = 04000h,
+    SHCONTF_ENABLE_ASYNC    = 08000h,
+    SHCONTF_INCLUDESUPERHIDDEN  = 010000h
+) BIG;
+SHCONTF = DWORD;
+
+CONST
+
+SHCIDS_ALLFIELDS        = 080000000h;
+SHCIDS_CANONICALONLY    = 010000000h;
+SHCIDS_BITMASK          = 0FFFF0000h;
+SHCIDS_COLUMNMASK       = 00000FFFFh;
+SFGAO_CANCOPY           = DROPEFFECT_COPY; (* Objects can be copied    (0x1) *)
+SFGAO_CANMOVE           = DROPEFFECT_MOVE; (* Objects can be moved     (0x2) *)
+SFGAO_CANLINK           = DROPEFFECT_LINK; (* Objects can be linked    (0x4) *)
+SFGAO_STORAGE           = 000000008h;     (* supports BindToObject(IID_IStorage) *)
+SFGAO_CANRENAME         = 000000010h;     (* Objects can be renamed *)
+SFGAO_CANDELETE         = 000000020h;     (* Objects can be deleted *)
+SFGAO_HASPROPSHEET      = 000000040h;     (* Objects have property sheets *)
+SFGAO_DROPTARGET        = 000000100h;     (* Objects are drop target *)
+SFGAO_CAPABILITYMASK    = 000000177h;
+SFGAO_SYSTEM            = 000001000h;     (* System object *)
+SFGAO_ENCRYPTED         = 000002000h;     (* Object is encrypted (use alt color) *)
+SFGAO_ISSLOW            = 000004000h;     (* 'Slow' object *)
+SFGAO_GHOSTED           = 000008000h;     (* Ghosted icon *)
+SFGAO_LINK              = 000010000h;     (* Shortcut (link) *)
+SFGAO_SHARE             = 000020000h;     (* Shared *)
+SFGAO_READONLY          = 000040000h;     (* Read-only *)
+SFGAO_HIDDEN            = 000080000h;     (* Hidden object *)
+SFGAO_DISPLAYATTRMASK   = 0000FC000h;
+SFGAO_FILESYSANCESTOR   = 010000000h;     (* May contain children with SFGAO_FILESYSTEM *)
+SFGAO_FOLDER            = 020000000h;     (* Support BindToObject(IID_IShellFolder) *)
+SFGAO_FILESYSTEM        = 040000000h;     (* Is a win32 file system object (file/folder/root) *)
+SFGAO_HASSUBFOLDER      = 080000000h;     (* May contain children with SFGAO_FOLDER (may be slow) *)
+SFGAO_CONTENTSMASK      = 080000000h;
+SFGAO_VALIDATE          = 001000000h;     (* Invalidate cached information (may be slow) *)
+SFGAO_REMOVABLE         = 002000000h;     (* Is this removeable media? *)
+SFGAO_COMPRESSED        = 004000000h;     (* Object is compressed (use alt color) *)
+SFGAO_BROWSABLE         = 008000000h;     (* Supports IShellFolder, but only implements CreateViewObject() (non-folder view) *)
+SFGAO_NONENUMERATED     = 000100000h;     (* Is a non-enumerated object (should be hidden) *)
+SFGAO_NEWCONTENT        = 000200000h;     (* Should show bold in explorer tree *)
+SFGAO_CANMONIKER        = 000400000h;     (* Obsolete *)
+SFGAO_HASSTORAGE        = 000400000h;     (* Obsolete *)
+SFGAO_STREAM            = 000400000h;     (* Supports BindToObject(IID_IStream) *)
+SFGAO_STORAGEANCESTOR   = 000800000h;     (* May contain children with SFGAO_STORAGE or SFGAO_STREAM *)
+SFGAO_STORAGECAPMASK    = 070C50008h;     (* For determining storage capabilities, ie for open/save semantics *)
+SFGAO_PKEYSFGAOMASK     = 081044000h;     (* Attributes that are masked out for PKEY_SFGAOFlags because they are considered to cause slow calculations or lack context (SFGAO_VALIDATE | SFGAO_ISSLOW | SFGAO_HASSUBFOLDER and others) *)
+
+TYPE
+
+(*SFGAOF = ULONG;*)
+
+SYNC_TRANSFER_STATUS =
+(
+    STS_NONE    = 0,
+    STS_NEEDSUPLOAD = 01h,
+    STS_NEEDSDOWNLOAD   = 02h,
+    STS_TRANSFERRING    = 04h,
+    STS_PAUSED  = 08h,
+    STS_HASERROR    = 010h,
+    STS_FETCHING_METADATA   = 020h
+) BIG;
+
+PLACEHOLDER_STATES =
+(
+    PS_NONE = 0,
+    PS_MARKED_FOR_OFFLINE_AVAILABILITY  = 01h,
+    PS_FULL_PRIMARY_STREAM_AVAILABLE    = 02h,
+    PS_CREATE_FILE_ACCESSIBLE   = 04h,
+    PS_ALL  = 07h
+) BIG;
+
+SYNC_ENGINE_STATE_FLAGS =
+(
+    SESF_NONE   = 0,
+    SESF_SERVICE_QUOTA_NEARING_LIMIT    = 01h,
+    SESF_SERVICE_QUOTA_EXCEEDED_LIMIT   = 02h,
+    SESF_AUTHENTICATION_ERROR   = 04h,
+    SESF_PAUSED_DUE_TO_METERED_NETWORK  = 08h,
+    SESF_PAUSED_DUE_TO_DISK_SPACE_FULL  = 010h,
+    SESF_PAUSED_DUE_TO_CLIENT_POLICY    = 020h,
+    SESF_PAUSED_DUE_TO_SERVICE_POLICY   = 040h,
+    SESF_SERVICE_UNAVAILABLE    = 080h,
+    SESF_ALL_FLAGS  = 0FFh
+) BIG;
+
+CONST
+
+CONFLICT_RESOLUTION_CLSID_KEY = "ConflictResolutionCLSID"U;
+
+TYPE
+
+MERGE_UPDATE_STATUS =
+(
+    MUS_COMPLETE    = 0,
+    MUS_USERINPUTNEEDED = 1,
+    MUS_FAILED  = 2
+) BIG;
+
+
+CONST
+    IID_IModalWindow = IID{0B4DB1657h, 070D7h, 0485Eh, {08Eh,03Eh,06Fh,0CBh,05Ah,05Ch,018h,002h}};
+
+ABSTRACT CLASS IModalWindow;
+INHERIT IUnknown;
+REVEAL Show;
+
+ABSTRACT PROCEDURE Show(hwndOwner : HWND) : HRESULT;
+
+END IModalWindow;
+
+
+CONST
+    IID_IShellItemFilter = IID{02659B475h, 0EEB8h, 048B7h, {08Fh,007h,0B3h,078h,081h,00Fh,048h,0CFh}};
+
+ABSTRACT CLASS IShellItemFilter;
+INHERIT IUnknown;
+REVEAL IncludeItem, GetEnumFlagsForItem;
+
+ABSTRACT PROCEDURE IncludeItem(psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE GetEnumFlagsForItem(psi : IShellItem; VAR pgrfFlags : SHCONTF) : HRESULT;
+
+END IShellItemFilter;
+
+
+(* interface IFileDialog *)
+
+TYPE
+
+_FILEOPENDIALOGOPTIONS =
+(
+    FOS_OVERWRITEPROMPT = 02h,
+    FOS_STRICTFILETYPES = 04h,
+    FOS_NOCHANGEDIR = 08h,
+    FOS_PICKFOLDERS = 020h,
+    FOS_FORCEFILESYSTEM = 040h,
+    FOS_ALLNONSTORAGEITEMS  = 080h,
+    FOS_NOVALIDATE  = 0100h,
+    FOS_ALLOWMULTISELECT    = 0200h,
+    FOS_PATHMUSTEXIST   = 0800h,
+    FOS_FILEMUSTEXIST   = 01000h,
+    FOS_CREATEPROMPT    = 02000h,
+    FOS_SHAREAWARE  = 04000h,
+    FOS_NOREADONLYRETURN    = 08000h,
+    FOS_NOTESTFILECREATE    = 010000h,
+    FOS_HIDEMRUPLACES   = 020000h,
+    FOS_HIDEPINNEDPLACES    = 040000h,
+    FOS_NODEREFERENCELINKS  = 0100000h,
+    FOS_DONTADDTORECENT = 02000000h,
+    FOS_FORCESHOWHIDDEN = 010000000h,
+    FOS_DEFAULTNOMINIMODE   = 020000000h,
+    FOS_FORCEPREVIEWPANEON  = 040000000h,
+    FOS_SUPPORTSTREAMABLEITEMS  = 080000000h
+) BIG;
+
+FILEOPENDIALOGOPTIONS = DWORD;
+
+
+CONST
+    IID_IFileDialog = IID{042F85136h, 0DB7Eh, 0439Ch, {085h,0F1h,0E4h,007h,05Dh,013h,05Fh,0C8h}};
+
+ABSTRACT CLASS IFileDialog;
+INHERIT IModalWindow;
+REVEAL SetFileTypes, SetFileTypeIndex, GetFileTypeIndex, Advise, Unadvise, SetOptions,
+        GetOptions, SetDefaultFolder, SetFolder, GetFolder, GetCurrentSelection, SetFileName,
+        GetFileName, SetTitle, SetOkButtonLabel, SetFileNameLabel, GetResult, AddPlace,
+        SetDefaultExtension, Close, SetClientGuid, ClearClientData, SetFilter;
+
+ABSTRACT PROCEDURE SetFileTypes(cFileTypes : UINT; rgFilterSpec : COMDLG_FILTERSPEC) : HRESULT;
+
+ABSTRACT PROCEDURE SetFileTypeIndex(iFileType : UINT) : HRESULT;
+
+ABSTRACT PROCEDURE GetFileTypeIndex(VAR iFileType : UINT) : HRESULT;
+
+ABSTRACT PROCEDURE Advise(pfde : IFileDialogEvents; VAR pdwCookie : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE Unadvise(fos : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE SetOptions(fos : FILEOPENDIALOGOPTIONS) : HRESULT;
+
+ABSTRACT PROCEDURE GetOptions(VAR pfos : FILEOPENDIALOGOPTIONS) : HRESULT;
+
+ABSTRACT PROCEDURE SetDefaultFolder(psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE SetFolder(psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE GetFolder(VAR psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE GetCurrentSelection(VAR psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE SetFileName(pszName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE GetFileName(VAR pszName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetTitle(pszTitle : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetOkButtonLabel(pszText : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetFileNameLabel(pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE GetResult(VAR ppsi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE AddPlace(psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE SetDefaultExtension(pszDefaultExtension : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE Close(hr : HRESULT) : HRESULT;
+
+ABSTRACT PROCEDURE SetClientGuid(guid : REFGUID) : HRESULT;
+
+ABSTRACT PROCEDURE ClearClientData() : HRESULT;
+
+ABSTRACT PROCEDURE SetFilter(pFilter : IShellItemFilter) : HRESULT;
+
+END IFileDialog;
+
+
+CONST
+    IID_IFileOperationProgressSink = IID{004b0f1a7h, 09490h, 044bch, {096h,0e1h,042h,096h,0a3h,012h,052h,0e2h}};
+
+ABSTRACT CLASS IFileOperationProgressSink;
+INHERIT IUnknown;
+REVEAL StartOperations, FinishOperations, PreRenameItem, PostRenameItem, PreMoveItem, PostMoveItem,
+       PreCopyItem, PostCopyItem, PreDeleteItem, PostDeleteItem, PreNewItem, PostNewItem, UpdateProgress,
+       ResetTimer, PauseTimer, ResumeTimer;
+
+ABSTRACT PROCEDURE StartOperations() : HRESULT;
+
+ABSTRACT PROCEDURE FinishOperations(hrResult : HRESULT) : HRESULT;
+
+ABSTRACT PROCEDURE PreRenameItem(dwFlags : DWORD; psiItem : IShellItem; pszNewName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE PostRenameItem(dwFlags : DWORD; psiItem : IShellItem; pszNewName : ARRAY OF UCHAR;
+                                  hrRename : HRESULT; psiNewlyCreated : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE PreMoveItem(dwFlags : DWORD; psiItem : IShellItem; psiDestinationFolder : IShellItem;
+                               pszNewName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE PostMoveItem(dwFlags : DWORD; psiItem : IShellItem; psiDestinationFolder : IShellItem;
+                               pszNewName : ARRAY OF UCHAR; hrMove : HRESULT; psiNewlyCreated : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE PreCopyItem(dwFlags : DWORD; psiItem : IShellItem; psiDestinationFolder : IShellItem;
+                               pszNewName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE PostCopyItem(dwFlags : DWORD; psiItem : IShellItem; psiDestinationFolder : IShellItem;
+                               pszNewName : ARRAY OF UCHAR; hrCopy : HRESULT; psiNewlyCreated : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE PreDeleteItem(dwFlags : DWORD; psiItem : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE PostDeleteItem(dwFlags : DWORD; psiItem : IShellItem;
+                                  hrDelete : HRESULT; psiNewlyCreated : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE PreNewItem(dwFlags : DWORD; psiDestinationFolder : IShellItem; pszNewName : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE PostNewItem(dwFlags : DWORD; psiDestinationFolder : IShellItem; pszNewName : ARRAY OF UCHAR;
+                               pszTemplateName : ARRAY OF UCHAR; dwFileAttributes : DWORD; hrNew : HRESULT; psiNewItem : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE UpdateProgress(iWorkTotal : UINT; iWorkSoFar : UINT) : HRESULT;
+
+ABSTRACT PROCEDURE ResetTimer() : HRESULT;
+
+ABSTRACT PROCEDURE PauseTimer() : HRESULT;
+
+ABSTRACT PROCEDURE ResumeTimer() : HRESULT;
+
+END IFileOperationProgressSink;
+
+
+CONST
+    CLSID_FileSaveDialog = CLSID{0C0B4E2F3h, 0BA21h, 04773h, {08Dh,0BAh,033h,05Eh,0C9h,046h,0EBh,08Bh}};
+    IID_IFileSaveDialog = IID{084BCCD23h, 05FDEh, 04CDBh, {0AEh,0A4h,0AFh,064h,0B8h,03Dh,078h,0ABh}};
+
+ABSTRACT CLASS IFileSaveDialog;
+INHERIT IFileDialog;
+REVEAL SetSaveAsItem, SetProperties, SetCollectedProperties, GetProperties, ApplyProperties;
+
+ABSTRACT PROCEDURE SetSaveAsItem(psi : IShellItem) : HRESULT;
+
+ABSTRACT PROCEDURE SetProperties(pStore : IPropertyStore) : HRESULT;
+
+ABSTRACT PROCEDURE SetCollectedProperties(pList : IPropertyDescriptionList; fAppendDefault : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE GetProperties(VAR ppStore : IPropertyStore) : HRESULT;
+
+ABSTRACT PROCEDURE ApplyProperties(psi : IShellItem; pStore : IPropertyStore;
+                                   hwnd : HWND; pSink : IFileOperationProgressSink) : HRESULT;
+
+END IFileSaveDialog;
+
+
+CONST
+    CLSID_FileOpenDialog = CLSID{0DC1C5A9Ch, 0E88Ah, 04ddeh, {0A5h,0A1h,060h,0F8h,02Ah,020h,0AEh,0F7h}};
+    IID_IFileOpenDialog = IID{0D57C7288h, 0D4ADh, 04768h, {0BEh,002h,09Dh,096h,095h,032h,0D9h,060h}};
+
+ABSTRACT CLASS IFileOpenDialog;
+INHERIT IFileDialog;
+REVEAL GetResults, GetSelectedItems;
+
+ABSTRACT PROCEDURE GetResults(VAR ppenum : IShellItemArray) : HRESULT;
+
+ABSTRACT PROCEDURE GetSelectedItems(VAR ppsai : IShellItemArray) : HRESULT;
+
+END IFileOpenDialog;
+
+
+TYPE
+
+CDCONTROLSTATEF =
+(
+    CDCS_INACTIVE   = 0,
+    CDCS_ENABLED    = 01h,
+    CDCS_VISIBLE    = 02h,
+    CDCS_ENABLEDVISIBLE = 03h
+);
+
+CONST
+    IID_IFileDialogCustomize = IID{0E6FDD21Ah, 0163Fh, 04975h, {09Ch,08Ch,0A6h,09Fh,01Bh,0A3h,070h,034h}};
+
+ABSTRACT CLASS IFileDialogCustomize;
+INHERIT IUnknown;
+REVEAL EnableOpenDropDown, AddMenu, AddPushButton, AddComboBox, AddRadioButtonList, AddCheckButton,
+       AddEditBox, AddSeparator, AddText, SetControlLabel, GetControlState, SetControlState,
+       GetEditBoxText, SetEditBoxText, GetCheckButtonState, SetCheckButtonState, AddControlItem,
+       RemoveControlItem, RemoveAllControlItems, GetControlItemState, SetControlItemState,
+       GetSelectedControlItem, SetSelectedControlItem, StartVisualGroup, EndVisualGroup, MakeProminent,
+       SetControlItemText;
+
+ABSTRACT PROCEDURE EnableOpenDropDown(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE AddMenu(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE AddPushButton(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE AddComboBox(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE AddRadioButtonList(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE AddCheckButton(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR; bChecked : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE AddEditBox(dwIDCtl : DWORD; pszText : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE AddSeparator(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE AddText(dwIDCtl : DWORD; pszText : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetControlLabel(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE GetControlState(dwIDCtl : DWORD; VAR pdwState : CDCONTROLSTATEF) : HRESULT;
+
+ABSTRACT PROCEDURE SetControlState(dwIDCtl : DWORD; dwState : CDCONTROLSTATEF) : HRESULT;
+
+ABSTRACT PROCEDURE GetEditBoxText(dwIDCtl : DWORD; VAR ppszText : PWCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetEditBoxText(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE GetCheckButtonState(dwIDCtl : DWORD; VAR pbChecked : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE SetCheckButtonState(dwIDCtl : DWORD; bChecked : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE AddControlItem(dwIDCtl : DWORD; dwIDItem : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE RemoveControlItem(dwIDCtl : DWORD; dwIDItem : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE RemoveAllControlItems(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE GetControlItemState(dwIDCtl : DWORD; dwIDItem : DWORD;
+                                       VAR pdwState : CDCONTROLSTATEF) : HRESULT;
+
+ABSTRACT PROCEDURE SetControlItemState(dwIDCtl : DWORD; dwIDItem : DWORD;
+                                       dwState : CDCONTROLSTATEF) : HRESULT;
+
+ABSTRACT PROCEDURE GetSelectedControlItem(dwIDCtl : DWORD; VAR pdwIDItem : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE SetSelectedControlItem(dwIDCtl : DWORD; dwIDItem : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE StartVisualGroup(dwIDCtl : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE EndVisualGroup() : HRESULT;
+
+ABSTRACT PROCEDURE MakeProminent(dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE SetControlItemText(dwIDCtl : DWORD; dwIDItem : DWORD; pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+END IFileDialogCustomize;
+
+
+CONST
+    IID_IFileDialogControlEvents = IID{036116642h, 0D713h, 04B97h, {09Bh,083h,074h,084h,0A9h,0D0h,004h,033h}};
+
+ABSTRACT CLASS IFileDialogControlEvents;
+INHERIT IUnknown;
+REVEAL OnItemSelected, OnButtonClicked, OnCheckButtonToggled, OnControlActivating;
+
+ABSTRACT PROCEDURE OnItemSelected(pfdc : IFileDialogCustomize;
+                                  dwIDCtl : DWORD; dwIDItem : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE OnButtonClicked(pfdc : IFileDialogCustomize;
+                                  dwIDCtl : DWORD) : HRESULT;
+
+ABSTRACT PROCEDURE OnCheckButtonToggled(pfdc : IFileDialogCustomize;
+                                  dwIDCtl : DWORD; bChecked : BOOL) : HRESULT;
+
+ABSTRACT PROCEDURE OnControlActivating(pfdc : IFileDialogCustomize;
+                                  dwIDCtl : DWORD) : HRESULT;
+
+END IFileDialogControlEvents;
+
+
+CONST
+    IID_IFileDialog2 = IID{061744FC7h, 085B5h, 04791h, {0A9h,0B0h,027h,022h,076h,030h,09Bh,013h}};
+
+ABSTRACT CLASS IFileDialog2;
+INHERIT IFileDialog;
+REVEAL SetCancelButtonLabel, SetNavigationRoot;
+
+ABSTRACT PROCEDURE SetCancelButtonLabel(pszLabel : ARRAY OF UCHAR) : HRESULT;
+
+ABSTRACT PROCEDURE SetNavigationRoot(psi : IShellItem) : HRESULT;
+
+END IFileDialog2;
+
+END ShObjIdl.

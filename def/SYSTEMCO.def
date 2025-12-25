@@ -1,0 +1,72 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMCO;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+CONST
+    MaxCoroutines       = 32;
+
+TYPE
+    COROUTINE = POINTER TO ADDRESS;
+    INTERRUPTSOURCE = CARDINAL8;
+
+VAR
+    NextCo      ["COROUTINES_NextCo"] : COROUTINE;
+    CurrentCo   ["COROUTINES_CurrentCo"] : COROUTINE;
+    CurProt     ["COROUTINES_CurProt"] : PROTECTION;
+
+    CoData      ["COROUTINES_CoData"] : ARRAY [0..MaxCoroutines-1] OF ADDRESS;
+
+PROCEDURE NEWCOROUTINE ["COROUTINES_NEWCOROUTINE"]
+                    (p : PROC;
+                     WS   : ADDRESS;
+                     WS_SIZE : CARDINAL;
+                     VAR CR : COROUTINE;
+                     initProt : PROTECTION
+                    );
+
+PROCEDURE TRANSFER ["COROUTINES_TRANSFER"]
+            (VAR OLDP : COROUTINE; NEWP : COROUTINE);
+
+PROCEDURE IOTRANSFER ["COROUTINES_IOTRANSFER"]
+            (VAR from : COROUTINE; to : COROUTINE);
+
+PROCEDURE ATTACH ["COROUTINES_ATTACH"] (source : INTERRUPTSOURCE);
+
+PROCEDURE DETACH ["COROUTINES_DETACH"] (source : INTERRUPTSOURCE);
+
+PROCEDURE IsATTACHED ["COROUTINES_IsATTACHED"]
+                        (source : INTERRUPTSOURCE) : BOOLEAN;
+
+PROCEDURE HANDLER ["COROUTINES_HANDLER"]
+                    (source : INTERRUPTSOURCE) : COROUTINE;
+
+PROCEDURE LISTEN ["COROUTINES_LISTEN"] (p : PROTECTION);
+
+PROCEDURE CURRENT ["COROUTINES_CURRENT"] () : COROUTINE;
+
+PROCEDURE PROT ["COROUTINES_PROT"] () : PROTECTION;
+
+PROCEDURE COROUTINEDONE ["COROUTINES_COROUTINEDONE"] (cr : COROUTINE);
+
+PROCEDURE SETPROT ["COROUTINES_SETPROT"] (p : PROTECTION) : PROTECTION
+                            %IF IA32 %OR AMD64 %THEN
+                            [PASS(AX), ALTERS(AX)];
+                            %ELSE
+                            ;
+                            %END
+
+PROCEDURE RESETPROT ["COROUTINES_RESETPROT"] (p : PROTECTION);
+
+PROCEDURE InitSystemCo ["COROUTINES_INIT"] ();
+
+END SYSTEMCO.

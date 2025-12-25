@@ -1,0 +1,228 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINVER;
+
+FROM WIN32 IMPORT
+    DWORD, UINT, LPVOID, BOOL;
+
+FROM WINUSER IMPORT
+    RT_VERSION;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    VS_FILE_INFO         = RT_VERSION;
+    VS_VERSION_INFO      = 1;
+    VS_USER_DEFINED      = 100;
+    VS_FFI_SIGNATURE     = 0FEEF04BDh;
+    VS_FFI_STRUCVERSION  = 000010000h;
+    VS_FFI_FILEFLAGSMASK = 00000003Fh;
+    VS_FF_DEBUG          = 000000001h;
+    VS_FF_PRERELEASE     = 000000002h;
+    VS_FF_PATCHED        = 000000004h;
+    VS_FF_PRIVATEBUILD   = 000000008h;
+    VS_FF_INFOINFERRED   = 000000010h;
+    VS_FF_SPECIALBUILD   = 000000020h;
+    VOS_UNKNOWN          = 000000000h;
+    VOS_DOS              = 000010000h;
+    VOS_OS216            = 000020000h;
+    VOS_OS232            = 000030000h;
+    VOS_NT               = 000040000h;
+
+    VOS__BASE            = 00000000h;
+    VOS__WINDOWS16       = 00000001h;
+    VOS__PM16            = 00000002h;
+    VOS__PM32            = 00000003h;
+    VOS__WINDOWS32       = 00000004h;
+
+    VOS_BASE            = 000000000h;
+    VOS_WINDOWS16       = 000000001h;
+    VOS_PM16            = 000000002h;
+    VOS_PM32            = 000000003h;
+    VOS_WINDOWS32       = 000000004h;
+    VOS_DOS_WINDOWS16    = 000010001h;
+    VOS_DOS_WINDOWS32    = 000010004h;
+    VOS_OS216_PM16       = 000020002h;
+    VOS_OS232_PM32       = 000030003h;
+    VOS_NT_WINDOWS32     = 000040004h;
+    VFT_UNKNOWN          = 000000000h;
+    VFT_APP              = 000000001h;
+    VFT_DLL              = 000000002h;
+    VFT_DRV              = 000000003h;
+    VFT_FONT             = 000000004h;
+    VFT_VXD              = 000000005h;
+    VFT_STATIC_LIB       = 000000007h;
+    VFT2_UNKNOWN         = 000000000h;
+    VFT2_DRV_PRINTER     = 000000001h;
+    VFT2_DRV_KEYBOARD    = 000000002h;
+    VFT2_DRV_LANGUAGE    = 000000003h;
+    VFT2_DRV_DISPLAY     = 000000004h;
+    VFT2_DRV_MOUSE       = 000000005h;
+    VFT2_DRV_NETWORK     = 000000006h;
+    VFT2_DRV_SYSTEM      = 000000007h;
+    VFT2_DRV_INSTALLABLE = 000000008h;
+    VFT2_DRV_SOUND       = 000000009h;
+    VFT2_DRV_COMM        = 00000000Ah;
+    VFT2_DRV_INPUTMETHOD = 00000000Bh;
+
+    VFT2_FONT_RASTER     = 000000001h;
+    VFT2_FONT_VECTOR     = 000000002h;
+    VFT2_FONT_TRUETYPE   = 000000003h;
+    VFFF_ISSHAREDFILE    = 00001h;
+    VFF_CURNEDEST        = 00001h;
+    VFF_FILEINUSE        = 00002h;
+    VFF_BUFFTOOSMALL     = 00004h;
+    VIFF_FORCEINSTALL    = 00001h;
+    VIFF_DONTDELETEOLD   = 00002h;
+    VIF_TEMPFILE         = 000000001h;
+    VIF_MISMATCH         = 000000002h;
+    VIF_SRCOLD           = 000000004h;
+    VIF_DIFFLANG         = 000000008h;
+    VIF_DIFFCODEPG       = 000000010h;
+    VIF_DIFFTYPE         = 000000020h;
+    VIF_WRITEPROT        = 000000040h;
+    VIF_FILEINUSE        = 000000080h;
+    VIF_OUTOFSPACE       = 000000100h;
+    VIF_ACCESSVIOLATION  = 000000200h;
+    VIF_SHARINGVIOLATION = 000000400h;
+    VIF_CANNOTCREATE     = 000000800h;
+    VIF_CANNOTDELETE     = 000001000h;
+    VIF_CANNOTRENAME     = 000002000h;
+    VIF_CANNOTDELETECUR  = 000004000h;
+    VIF_OUTOFMEMORY      = 000008000h;
+    VIF_CANNOTREADSRC    = 000010000h;
+    VIF_CANNOTREADDST    = 000020000h;
+    VIF_BUFFTOOSMALL     = 000040000h;
+
+TYPE
+    VS_FIXEDFILEINFO = RECORD
+          dwSignature    : DWORD;
+          dwStrucVersion : DWORD;
+          dwFileVersionMS: DWORD;
+          dwFileVersionLS: DWORD;
+          dwProductVersionMS: DWORD;
+          dwProductVersionLS: DWORD;
+          dwFileFlagsMask: DWORD;
+          dwFileFlags    : DWORD;
+          dwFileOS       : DWORD;
+          dwFileType     : DWORD;
+          dwFileSubtype  : DWORD;
+          dwFileDateMS   : DWORD;
+          dwFileDateLS   : DWORD;
+    END;
+
+
+PROCEDURE VerFindFileA(uFlags : DWORD;
+                       szFileName : ARRAY OF ACHAR;
+                       szWinDir : ARRAY OF ACHAR;
+                       VAR szAppDir : ARRAY OF ACHAR;
+                       VAR szCurDir : ARRAY OF ACHAR;
+                       VAR lpuCurDirLen : UINT;
+                       VAR szDestDir : ARRAY OF ACHAR;
+                       VAR lpuDestDirLen : UINT) : DWORD;
+
+PROCEDURE VerFindFileW(uFlags : DWORD;
+                       szFileName : ARRAY OF UCHAR;
+                       szWinDir : ARRAY OF UCHAR;
+                       VAR szAppDir : ARRAY OF UCHAR;
+                       VAR szCurDir : ARRAY OF UCHAR;
+                       VAR lpuCurDirLen : UINT;
+                       VAR szDestDir : ARRAY OF UCHAR;
+                       VAR lpuDestDirLen : UINT) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE VerFindFile = VerFindFileW;
+%ELSE
+PROCEDURE VerFindFile = VerFindFileA;
+%END
+
+PROCEDURE VerInstallFileA(uFlags : DWORD;
+                          szSrcFileName : ARRAY OF ACHAR;
+                          szDestFileName : ARRAY OF ACHAR;
+                          szSrcDir : ARRAY OF ACHAR;
+                          szDestDir : ARRAY OF ACHAR;
+                          szCurDir : ARRAY OF ACHAR;
+                          VAR szTmpFile : ARRAY OF ACHAR;
+                          VAR lpuTmpFileLen : UINT) : DWORD;
+
+PROCEDURE VerInstallFileW(uFlags : DWORD;
+                          szSrcFileName : ARRAY OF UCHAR;
+                          szDestFileName : ARRAY OF UCHAR;
+                          szSrcDir : ARRAY OF UCHAR;
+                          szDestDir : ARRAY OF UCHAR;
+                          szCurDir : ARRAY OF UCHAR;
+                          VAR szTmpFile : ARRAY OF UCHAR;
+                          VAR lpuTmpFileLen : UINT) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE VerInstallFile = VerInstallFileW;
+%ELSE
+PROCEDURE VerInstallFile = VerInstallFileA;
+%END
+
+
+PROCEDURE GetFileVersionInfoSizeA(lptstrFilename : ARRAY OF ACHAR;
+                                  VAR lpdwHandle : DWORD) : DWORD;
+
+PROCEDURE GetFileVersionInfoSizeW(lptstrFilename : ARRAY OF UCHAR;
+                                  VAR lpdwHandle : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE GetFileVersionInfoSize = GetFileVersionInfoSizeW;
+%ELSE
+PROCEDURE GetFileVersionInfoSize = GetFileVersionInfoSizeA;
+%END
+
+PROCEDURE GetFileVersionInfoA(lptstrFilename : ARRAY OF ACHAR;
+                              dwHandle : DWORD;
+                              dwLen : DWORD;
+                              lpData : LPVOID) : BOOL;
+
+PROCEDURE GetFileVersionInfoW(lptstrFilename : ARRAY OF UCHAR;
+                              dwHandle : DWORD;
+                              dwLen : DWORD;
+                              lpData : LPVOID) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetFileVersionInfo = GetFileVersionInfoW;
+%ELSE
+PROCEDURE GetFileVersionInfo = GetFileVersionInfoA;
+%END
+
+PROCEDURE VerLanguageNameA(wLang : DWORD;
+                           VAR szLang : ARRAY OF ACHAR;
+                           nSize : DWORD) : DWORD;
+
+PROCEDURE VerLanguageNameW(wLang : DWORD;
+                           VAR szLang : ARRAY OF UCHAR;
+                           nSize : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE VerLanguageName = VerLanguageNameW;
+%ELSE
+PROCEDURE VerLanguageName = VerLanguageNameA;
+%END
+
+PROCEDURE VerQueryValueA(pBlock : LPVOID;
+                         lpSubBlock : ARRAY OF ACHAR;
+                         VAR lplpBuffer : LPVOID;
+                         VAR puLen : UINT) : BOOL;
+
+PROCEDURE VerQueryValueW(pBlock : LPVOID;
+                         lpSubBlock : ARRAY OF UCHAR;
+                         VAR lplpBuffer : LPVOID;
+                         VAR puLen : UINT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE VerQueryValue = VerQueryValueW;
+%ELSE
+PROCEDURE VerQueryValue = VerQueryValueA;
+%END
+
+END WINVER.

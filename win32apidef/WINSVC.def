@@ -1,0 +1,591 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINSVC;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    LPSTR, DWORD, LPWSTR, PSECURITY_DESCRIPTOR,
+    HANDLE, BOOL, LPVOID, STANDARD_RIGHTS_REQUIRED, SECURITY_INFORMATION;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    SERVICES_ACTIVE_DATABASEA = "ServicesActive";
+    SERVICES_FAILED_DATABASEA = "ServicesFailed";
+    SERVICES_ACTIVE_DATABASEW = "ServicesActive";
+    SERVICES_FAILED_DATABASEW = "ServicesFailed";
+    SC_GROUP_IDENTIFIERA  = "+";
+    SC_GROUP_IDENTIFIERW  = "+";
+
+%IF UNICODE %THEN
+    SERVICES_ACTIVE_DATABASE       = SERVICES_ACTIVE_DATABASEW;
+    SERVICES_FAILED_DATABASE       = SERVICES_FAILED_DATABASEW;
+    SC_GROUP_IDENTIFIER            = SC_GROUP_IDENTIFIERW;
+%ELSE
+    SERVICES_ACTIVE_DATABASE       = SERVICES_ACTIVE_DATABASEA;
+    SERVICES_FAILED_DATABASE       = SERVICES_FAILED_DATABASEA;
+    SC_GROUP_IDENTIFIER            = SC_GROUP_IDENTIFIERA;
+%END
+
+    SERVICE_NO_CHANGE     = 0ffffffffh;
+    SERVICE_ACTIVE        = 000000001h;
+    SERVICE_INACTIVE      = 000000002h;
+    SERVICE_STATE_ALL     = SERVICE_ACTIVE BOR SERVICE_INACTIVE;
+
+    SERVICE_CONTROL_STOP                = 000000001h;
+    SERVICE_CONTROL_PAUSE               = 000000002h;
+    SERVICE_CONTROL_CONTINUE            = 000000003h;
+    SERVICE_CONTROL_INTERROGATE         = 000000004h;
+    SERVICE_CONTROL_SHUTDOWN            = 000000005h;
+    SERVICE_CONTROL_PARAMCHANGE    =00000006h;
+    SERVICE_CONTROL_NETBINDADD     =00000007h;
+    SERVICE_CONTROL_NETBINDREMOVE  =00000008h;
+    SERVICE_CONTROL_NETBINDENABLE  =00000009h;
+    SERVICE_CONTROL_NETBINDDISABLE =0000000Ah;
+
+    SERVICE_STOPPED                     = 000000001h;
+    SERVICE_START_PENDING               = 000000002h;
+    SERVICE_STOP_PENDING                = 000000003h;
+    SERVICE_RUNNING                     = 000000004h;
+    SERVICE_CONTINUE_PENDING            = 000000005h;
+    SERVICE_PAUSE_PENDING               = 000000006h;
+    SERVICE_PAUSED                      = 000000007h;
+
+    SERVICE_ACCEPT_STOP                 = 000000001h;
+    SERVICE_ACCEPT_PAUSE_CONTINUE       = 000000002h;
+    SERVICE_ACCEPT_SHUTDOWN             = 000000004h;
+    SERVICE_ACCEPT_PARAMCHANGE     =00000008h;
+    SERVICE_ACCEPT_NETBINDCHANGE   =00000010h;
+
+    SC_MANAGER_CONNECT                  = 00001h;
+    SC_MANAGER_CREATE_SERVICE           = 00002h;
+    SC_MANAGER_ENUMERATE_SERVICE        = 00004h;
+    SC_MANAGER_LOCK                     = 00008h;
+    SC_MANAGER_QUERY_LOCK_STATUS        = 00010h;
+    SC_MANAGER_MODIFY_BOOT_CONFIG       = 00020h;
+    SC_MANAGER_ALL_ACCESS               = (STANDARD_RIGHTS_REQUIRED      BOR
+                                        SC_MANAGER_CONNECT            BOR
+                                        SC_MANAGER_CREATE_SERVICE     BOR
+                                        SC_MANAGER_ENUMERATE_SERVICE  BOR
+                                        SC_MANAGER_LOCK               BOR
+                                        SC_MANAGER_QUERY_LOCK_STATUS  BOR
+                                        SC_MANAGER_MODIFY_BOOT_CONFIG);
+    SERVICE_QUERY_CONFIG                = 00001h;
+    SERVICE_CHANGE_CONFIG               = 00002h;
+    SERVICE_QUERY_STATUS                = 00004h;
+    SERVICE_ENUMERATE_DEPENDENTS        = 00008h;
+    SERVICE_START                       = 00010h;
+    SERVICE_STOP                        = 00020h;
+    SERVICE_PAUSE_CONTINUE              = 00040h;
+    SERVICE_INTERROGATE                 = 00080h;
+    SERVICE_USER_DEFINED_CONTROL        = 00100h;
+    SERVICE_ALL_ACCESS                  = (STANDARD_RIGHTS_REQUIRED  BOR
+                                        SERVICE_QUERY_CONFIG         BOR
+                                        SERVICE_CHANGE_CONFIG        BOR
+                                        SERVICE_QUERY_STATUS         BOR
+                                        SERVICE_ENUMERATE_DEPENDENTS BOR
+                                        SERVICE_START                BOR
+                                        SERVICE_STOP                 BOR
+                                        SERVICE_PAUSE_CONTINUE       BOR
+                                        SERVICE_INTERROGATE          BOR
+                                        SERVICE_USER_DEFINED_CONTROL);
+
+(*
+ Info levels for ChangeServiceConfig2 and QueryServiceConfig2
+*)
+    SERVICE_CONFIG_DESCRIPTION     =1;
+    SERVICE_CONFIG_FAILURE_ACTIONS =2;
+
+TYPE
+(* Service description string *)
+
+    SERVICE_DESCRIPTIONA = RECORD
+    lpDescription       : LPSTR;
+    END;
+    LPSERVICE_DESCRIPTIONA = POINTER TO SERVICE_DESCRIPTIONA;
+
+    SERVICE_DESCRIPTIONW = RECORD
+    lpDescription       : LPWSTR;
+    END;
+    LPSERVICE_DESCRIPTIONW = POINTER TO SERVICE_DESCRIPTIONW;
+
+%IF UNICODE %THEN
+    SERVICE_DESCRIPTION = SERVICE_DESCRIPTIONW;
+    LPSERVICE_DESCRIPTION = LPSERVICE_DESCRIPTIONW;
+%ELSE
+    SERVICE_DESCRIPTION = SERVICE_DESCRIPTIONA;
+    LPSERVICE_DESCRIPTION = LPSERVICE_DESCRIPTIONA;
+%END
+
+(* Actions to take on service failure *)
+    SC_ACTION_TYPE = (
+        SC_ACTION_NONE,
+        SC_ACTION_RESTART,
+        SC_ACTION_REBOOT,
+        SC_ACTION_RUN_COMMAND
+        ) BIG;
+
+    SC_ACTION = RECORD
+    Type        : SC_ACTION_TYPE;
+    Delay       : DWORD;
+    END;
+    LPSC_ACTION = POINTER TO SC_ACTION;
+
+    SERVICE_FAILURE_ACTIONSW  = RECORD
+    dwResetPeriod       : DWORD;
+    lpRebootMsg         : LPWSTR;
+    lpCommand           : LPWSTR;
+    cActions            : DWORD;
+    lpsaActions         : LPSC_ACTION;
+    END;
+    LPSERVICE_FAILURE_ACTIONSW = POINTER TO SERVICE_FAILURE_ACTIONSW;
+
+    SERVICE_FAILURE_ACTIONSA  = RECORD
+    dwResetPeriod       : DWORD;
+    lpRebootMsg         : LPSTR;
+    lpCommand           : LPSTR;
+    cActions            : DWORD;
+    lpsaActions         : LPSC_ACTION;
+    END;
+    LPSERVICE_FAILURE_ACTIONSA = POINTER TO SERVICE_FAILURE_ACTIONSA;
+
+%IF UNICODE %THEN
+    SERVICE_FAILURE_ACTIONS = SERVICE_FAILURE_ACTIONSW;
+    LPSERVICE_FAILURE_ACTIONS = LPSERVICE_FAILURE_ACTIONSW;
+%ELSE
+    SERVICE_FAILURE_ACTIONS = SERVICE_FAILURE_ACTIONSA;
+    LPSERVICE_FAILURE_ACTIONS = LPSERVICE_FAILURE_ACTIONSA;
+%END
+
+    SC_HANDLE            = HANDLE;
+    LPSC_HANDLE          = POINTER TO SC_HANDLE;
+    SERVICE_STATUS_HANDLE= DWORD;
+
+    SERVICE_STATUS = RECORD
+          dwServiceType  : DWORD;
+          dwCurrentState : DWORD;
+          dwControlsAccepted: DWORD;
+          dwWin32ExitCode: DWORD;
+          dwServiceSpecificExitCode: DWORD;
+          dwCheckPoint   : DWORD;
+          dwWaitHint     : DWORD;
+    END;
+    LPSERVICE_STATUS     = POINTER TO SERVICE_STATUS;
+
+    ENUM_SERVICE_STATUSA = RECORD
+          lpServiceName  : LPSTR;
+          lpDisplayName  : LPSTR;
+          ServiceStatus  : SERVICE_STATUS;
+    END;
+    LPENUM_SERVICE_STATUSA= POINTER TO ENUM_SERVICE_STATUSA;
+
+    ENUM_SERVICE_STATUSW = RECORD
+          lpServiceName  : LPWSTR;
+          lpDisplayName  : LPWSTR;
+          ServiceStatus  : SERVICE_STATUS;
+    END;
+    LPENUM_SERVICE_STATUSW= POINTER TO ENUM_SERVICE_STATUSW;
+
+%IF UNICODE %THEN
+    ENUM_SERVICE_STATUS  = ENUM_SERVICE_STATUSW;
+    LPENUM_SERVICE_STATUS= LPENUM_SERVICE_STATUSW;
+%ELSE
+    ENUM_SERVICE_STATUS  = ENUM_SERVICE_STATUSA;
+    LPENUM_SERVICE_STATUS= LPENUM_SERVICE_STATUSA;
+%END
+
+    SC_LOCK              = LPVOID;
+
+    QUERY_SERVICE_LOCK_STATUSA = RECORD
+          fIsLocked      : DWORD;
+          lpLockOwner    : LPSTR;
+          dwLockDuration : DWORD;
+    END;
+    LPQUERY_SERVICE_LOCK_STATUSA= POINTER TO QUERY_SERVICE_LOCK_STATUSA;
+
+    QUERY_SERVICE_LOCK_STATUSW = RECORD
+          fIsLocked      : DWORD;
+          lpLockOwner    : LPWSTR;
+          dwLockDuration : DWORD;
+    END;
+    LPQUERY_SERVICE_LOCK_STATUSW= POINTER TO QUERY_SERVICE_LOCK_STATUSW;
+
+%IF UNICODE %THEN
+    QUERY_SERVICE_LOCK_STATUS= QUERY_SERVICE_LOCK_STATUSW;
+    LPQUERY_SERVICE_LOCK_STATUS= LPQUERY_SERVICE_LOCK_STATUSW;
+%ELSE
+    QUERY_SERVICE_LOCK_STATUS= QUERY_SERVICE_LOCK_STATUSA;
+    LPQUERY_SERVICE_LOCK_STATUS= LPQUERY_SERVICE_LOCK_STATUSA;
+%END
+
+    QUERY_SERVICE_CONFIGA = RECORD
+          dwServiceType  : DWORD;
+          dwStartType    : DWORD;
+          dwErrorControl : DWORD;
+          lpBinaryPathName: LPSTR;
+          lpLoadOrderGroup: LPSTR;
+          dwTagId        : DWORD;
+          lpDependencies : LPSTR;
+          lpServiceStartName: LPSTR;
+          lpDisplayName  : LPSTR;
+    END;
+    LPQUERY_SERVICE_CONFIGA= POINTER TO QUERY_SERVICE_CONFIGA;
+
+    QUERY_SERVICE_CONFIGW = RECORD
+          dwServiceType  : DWORD;
+          dwStartType    : DWORD;
+          dwErrorControl : DWORD;
+          lpBinaryPathName: LPWSTR;
+          lpLoadOrderGroup: LPWSTR;
+          dwTagId        : DWORD;
+          lpDependencies : LPWSTR;
+          lpServiceStartName: LPWSTR;
+          lpDisplayName  : LPWSTR;
+    END;
+    LPQUERY_SERVICE_CONFIGW= POINTER TO QUERY_SERVICE_CONFIGW;
+
+%IF UNICODE %THEN
+    QUERY_SERVICE_CONFIG = QUERY_SERVICE_CONFIGW;
+    LPQUERY_SERVICE_CONFIG= LPQUERY_SERVICE_CONFIGW;
+%ELSE
+    QUERY_SERVICE_CONFIG = QUERY_SERVICE_CONFIGA;
+    LPQUERY_SERVICE_CONFIG= LPQUERY_SERVICE_CONFIGA;
+%END
+
+    LPSERVICE_MAIN_FUNCTIONW= PROCEDURE (DWORD, VAR LPWSTR) [EXPORT];
+    LPSERVICE_MAIN_FUNCTIONA= PROCEDURE (DWORD, VAR LPSTR) [EXPORT];
+%IF UNICODE %THEN
+    LPSERVICE_MAIN_FUNCTION=  LPSERVICE_MAIN_FUNCTIONW;
+%ELSE
+    LPSERVICE_MAIN_FUNCTION=  LPSERVICE_MAIN_FUNCTIONA;
+%END
+
+    SERVICE_TABLE_ENTRYA = RECORD
+          lpServiceName  : LPSTR;
+          lpServiceProc  : LPSERVICE_MAIN_FUNCTIONA;
+    END;
+    LPSERVICE_TABLE_ENTRYA= POINTER TO SERVICE_TABLE_ENTRYA;
+
+    SERVICE_TABLE_ENTRYW = RECORD
+          lpServiceName  : LPWSTR;
+          lpServiceProc  : LPSERVICE_MAIN_FUNCTIONW;
+    END;
+    LPSERVICE_TABLE_ENTRYW= POINTER TO SERVICE_TABLE_ENTRYW;
+
+%IF UNICODE %THEN
+    SERVICE_TABLE_ENTRY  = SERVICE_TABLE_ENTRYW;
+    LPSERVICE_TABLE_ENTRY= LPSERVICE_TABLE_ENTRYW;
+%ELSE
+    SERVICE_TABLE_ENTRY  = SERVICE_TABLE_ENTRYA;
+    LPSERVICE_TABLE_ENTRY= LPSERVICE_TABLE_ENTRYA;
+%END
+
+    LPHANDLER_FUNCTION   = PROCEDURE (DWORD) [EXPORT];
+
+PROCEDURE ChangeServiceConfigA(hService : SC_HANDLE;
+                               dwServiceType : DWORD;
+                               dwStartType : DWORD;
+                               dwErrorControl : DWORD;
+                               lpBinaryPathName : ARRAY OF ACHAR;
+                               lpLoadOrderGroup : ARRAY OF ACHAR;
+                               VAR lpdwTagId : DWORD;
+                               lpDependencies : ARRAY OF ACHAR;
+                               lpServiceStartName : ARRAY OF ACHAR;
+                               lpPassword : ARRAY OF ACHAR;
+                               lpDisplayName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE ChangeServiceConfigW(hService : SC_HANDLE;
+                               dwServiceType : DWORD;
+                               dwStartType : DWORD;
+                               dwErrorControl : DWORD;
+                               lpBinaryPathName : ARRAY OF UCHAR;
+                               lpLoadOrderGroup : ARRAY OF UCHAR;
+                               VAR lpdwTagId : DWORD;
+                               lpDependencies : ARRAY OF UCHAR;
+                               lpServiceStartName : ARRAY OF UCHAR;
+                               lpPassword : ARRAY OF UCHAR;
+                               lpDisplayName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ChangeServiceConfig = ChangeServiceConfigW;
+%ELSE
+PROCEDURE ChangeServiceConfig = ChangeServiceConfigA;
+%END
+
+PROCEDURE ChangeServiceConfig2A(hService : SC_HANDLE;
+                                dwInfoLevel : DWORD;
+                                lpInfo : LPVOID) : BOOL;
+
+PROCEDURE ChangeServiceConfig2W(hService : SC_HANDLE;
+                                dwInfoLevel : DWORD;
+                                lpInfo : LPVOID) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ChangeServiceConfig2 = ChangeServiceConfig2W;
+%ELSE
+PROCEDURE ChangeServiceConfig2 = ChangeServiceConfig2A;
+%END
+
+PROCEDURE CloseServiceHandle(hSCObject : SC_HANDLE) : BOOL;
+
+PROCEDURE ControlService(hService : SC_HANDLE;
+                         dwControl : DWORD;
+                         lpServiceStatus : LPSERVICE_STATUS) : BOOL;
+
+PROCEDURE CreateServiceA(hSCManager : SC_HANDLE;
+                         lpServiceName : ARRAY OF ACHAR;
+                         lpDisplayName : ARRAY OF ACHAR;
+                         dwDesiredAccess : DWORD;
+                         dwServiceType : DWORD;
+                         dwStartType : DWORD;
+                         dwErrorControl : DWORD;
+                         lpBinaryPathName : ARRAY OF ACHAR;
+                         lpLoadOrderGroup : ARRAY OF ACHAR;
+                         VAR lpdwTagId : DWORD;
+                         lpDependencies : ARRAY OF ACHAR;
+                         lpServiceStartName : ARRAY OF ACHAR;
+                         lpPassword : ARRAY OF ACHAR) : SC_HANDLE;
+
+PROCEDURE CreateServiceW(hSCManager : SC_HANDLE;
+                         lpServiceName : ARRAY OF UCHAR;
+                         lpDisplayName : ARRAY OF UCHAR;
+                         dwDesiredAccess : DWORD;
+                         dwServiceType : DWORD;
+                         dwStartType : DWORD;
+                         dwErrorControl : DWORD;
+                         lpBinaryPathName : ARRAY OF UCHAR;
+                         lpLoadOrderGroup : ARRAY OF UCHAR;
+                         VAR lpdwTagId : DWORD;
+                         lpDependencies : ARRAY OF UCHAR;
+                         lpServiceStartName : ARRAY OF UCHAR;
+                         lpPassword : ARRAY OF UCHAR) : SC_HANDLE;
+
+%IF UNICODE %THEN
+PROCEDURE CreateService = CreateServiceW;
+%ELSE
+PROCEDURE CreateService = CreateServiceA;
+%END
+
+PROCEDURE DeleteService(hService : SC_HANDLE) : BOOL;
+
+PROCEDURE EnumDependentServicesA(hService : SC_HANDLE;
+                                 dwServiceState : DWORD;
+                                 lpServices : LPENUM_SERVICE_STATUSA;
+                                 cbBufSize : DWORD;
+                                 VAR pcbBytesNeeded : DWORD;
+                                 VAR lpServicesReturned : DWORD) : BOOL;
+
+PROCEDURE EnumDependentServicesW(hService : SC_HANDLE;
+                                 dwServiceState : DWORD;
+                                 lpServices : LPENUM_SERVICE_STATUSW;
+                                 cbBufSize : DWORD;
+                                 VAR pcbBytesNeeded : DWORD;
+                                 VAR lpServicesReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumDependentServices = EnumDependentServicesW;
+%ELSE
+PROCEDURE EnumDependentServices = EnumDependentServicesA;
+%END
+
+PROCEDURE EnumServicesStatusA(hSCManager : SC_HANDLE;
+                              dwServiceType : DWORD;
+                              dwServiceState : DWORD;
+                              lpServices : LPENUM_SERVICE_STATUSA;
+                              cbBufSize : DWORD;
+                              VAR pcbBytesNeeded : DWORD;
+                              VAR lpServicesReturned : DWORD;
+                              VAR lpResumeHandle : DWORD) : BOOL;
+
+PROCEDURE EnumServicesStatusW(hSCManager : SC_HANDLE;
+                              dwServiceType : DWORD;
+                              dwServiceState : DWORD;
+                              lpServices : LPENUM_SERVICE_STATUSW;
+                              cbBufSize : DWORD;
+                              VAR pcbBytesNeeded : DWORD;
+                              VAR lpServicesReturned : DWORD;
+                              VAR lpResumeHandle : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumServicesStatus = EnumServicesStatusW;
+%ELSE
+PROCEDURE EnumServicesStatus = EnumServicesStatusA;
+%END
+
+PROCEDURE GetServiceKeyNameA(hSCManager : SC_HANDLE;
+                             lpDisplayName : ARRAY OF ACHAR;
+                             VAR lpServiceName : ARRAY OF ACHAR;
+                             VAR lpcchBuffer : DWORD) : BOOL;
+
+PROCEDURE GetServiceKeyNameW(hSCManager : SC_HANDLE;
+                             lpDisplayName : ARRAY OF UCHAR;
+                             VAR lpServiceName : ARRAY OF UCHAR;
+                             VAR lpcchBuffer : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetServiceKeyName = GetServiceKeyNameW;
+%ELSE
+PROCEDURE GetServiceKeyName = GetServiceKeyNameA;
+%END
+
+PROCEDURE GetServiceDisplayNameA(hSCManager : SC_HANDLE;
+                                 lpServiceName : ARRAY OF ACHAR;
+                                 VAR lpDisplayName : ARRAY OF ACHAR;
+                                 VAR lpcchBuffer : DWORD) : BOOL;
+
+PROCEDURE GetServiceDisplayNameW(hSCManager : SC_HANDLE;
+                                 lpServiceName : ARRAY OF UCHAR;
+                                 VAR lpDisplayName : ARRAY OF UCHAR;
+                                 VAR lpcchBuffer : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetServiceDisplayName = GetServiceDisplayNameW;
+%ELSE
+PROCEDURE GetServiceDisplayName = GetServiceDisplayNameA;
+%END
+
+PROCEDURE LockServiceDatabase(hSCManager : SC_HANDLE) : SC_LOCK;
+
+PROCEDURE NotifyBootConfigStatus(BootAcceptable : BOOL) : BOOL;
+
+PROCEDURE OpenSCManagerA(lpMachineName : ARRAY OF ACHAR;
+                         lpDatabaseName : ARRAY OF ACHAR;
+                         dwDesiredAccess : DWORD) : SC_HANDLE;
+
+PROCEDURE OpenSCManagerW(lpMachineName : ARRAY OF UCHAR;
+                         lpDatabaseName : ARRAY OF UCHAR;
+                         dwDesiredAccess : DWORD) : SC_HANDLE;
+
+%IF UNICODE %THEN
+PROCEDURE OpenSCManager = OpenSCManagerW;
+%ELSE
+PROCEDURE OpenSCManager = OpenSCManagerA;
+%END
+
+PROCEDURE OpenServiceA(hSCManager : SC_HANDLE;
+                       lpServiceName : ARRAY OF ACHAR;
+                       dwDesiredAccess : DWORD) : SC_HANDLE;
+
+PROCEDURE OpenServiceW(hSCManager : SC_HANDLE;
+                       lpServiceName : ARRAY OF UCHAR;
+                       dwDesiredAccess : DWORD) : SC_HANDLE;
+
+%IF UNICODE %THEN
+PROCEDURE OpenService = OpenServiceW;
+%ELSE
+PROCEDURE OpenService = OpenServiceA;
+%END
+
+PROCEDURE QueryServiceConfigA(hService : SC_HANDLE;
+                              lpServiceConfig : LPQUERY_SERVICE_CONFIGA;
+                              cbBufSize : DWORD;
+                              VAR pcbBytesNeeded : DWORD) : BOOL;
+
+PROCEDURE QueryServiceConfigW(hService : SC_HANDLE;
+                              lpServiceConfig : LPQUERY_SERVICE_CONFIGW;
+                              cbBufSize : DWORD;
+                              VAR pcbBytesNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE QueryServiceConfig = QueryServiceConfigW;
+%ELSE
+PROCEDURE QueryServiceConfig = QueryServiceConfigA;
+%END
+
+PROCEDURE QueryServiceConfig2A(hService : SC_HANDLE;
+                               dwInfoLevel : DWORD;
+                               VAR lpBuffer : ARRAY OF LOC;
+                               cbBufSize : DWORD;
+                               VAR pcbBytesNeeded : DWORD) : DWORD;
+
+PROCEDURE QueryServiceConfig2W(hService : SC_HANDLE;
+                               dwInfoLevel : DWORD;
+                               VAR lpBuffer : ARRAY OF LOC;
+                               cbBufSize : DWORD;
+                               VAR pcbBytesNeeded : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE QueryServiceConfig2 = QueryServiceConfig2W;
+%ELSE
+PROCEDURE QueryServiceConfig2 = QueryServiceConfig2A;
+%END
+
+PROCEDURE QueryServiceLockStatusA(hSCManager : SC_HANDLE;
+                                  lpLockStatus : LPQUERY_SERVICE_LOCK_STATUSA;
+                                  cbBufSize : DWORD;
+                                  VAR pcbBytesNeeded : DWORD) : BOOL;
+
+PROCEDURE QueryServiceLockStatusW(hSCManager : SC_HANDLE;
+                                  lpLockStatus : LPQUERY_SERVICE_LOCK_STATUSW;
+                                  cbBufSize : DWORD;
+                                  VAR pcbBytesNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE QueryServiceLockStatus = QueryServiceLockStatusW;
+%ELSE
+PROCEDURE QueryServiceLockStatus = QueryServiceLockStatusA;
+%END
+
+PROCEDURE QueryServiceObjectSecurity(hService : SC_HANDLE;
+                                     dwSecurityInformation : SECURITY_INFORMATION;
+                                     lpSecurityDescriptor : PSECURITY_DESCRIPTOR;
+                                     cbBufSize : DWORD;
+                                     VAR pcbBytesNeeded : DWORD) : BOOL;
+
+PROCEDURE QueryServiceStatus(hService : SC_HANDLE;
+                             lpServiceStatus : LPSERVICE_STATUS) : BOOL;
+
+PROCEDURE RegisterServiceCtrlHandlerA(lpServiceName : ARRAY OF ACHAR;
+                                      lpHandlerProc : LPHANDLER_FUNCTION) : SERVICE_STATUS_HANDLE;
+
+PROCEDURE RegisterServiceCtrlHandlerW(lpServiceName : ARRAY OF UCHAR;
+                                      lpHandlerProc : LPHANDLER_FUNCTION) : SERVICE_STATUS_HANDLE;
+
+%IF UNICODE %THEN
+PROCEDURE RegisterServiceCtrlHandler = RegisterServiceCtrlHandlerW;
+%ELSE
+PROCEDURE RegisterServiceCtrlHandler = RegisterServiceCtrlHandlerA;
+%END
+
+PROCEDURE SetServiceObjectSecurity(hService : SC_HANDLE;
+                                   dwSecurityInformation : SECURITY_INFORMATION;
+                                   lpSecurityDescriptor : PSECURITY_DESCRIPTOR) : BOOL;
+
+PROCEDURE SetServiceStatus(hServiceStatus : SERVICE_STATUS_HANDLE;
+                           lpServiceStatus : LPSERVICE_STATUS) : BOOL;
+
+PROCEDURE StartServiceCtrlDispatcherA(lpServiceStartTable : LPSERVICE_TABLE_ENTRYA) : BOOL;
+
+PROCEDURE StartServiceCtrlDispatcherW(lpServiceStartTable : LPSERVICE_TABLE_ENTRYW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE StartServiceCtrlDispatcher = StartServiceCtrlDispatcherW;
+%ELSE
+PROCEDURE StartServiceCtrlDispatcher = StartServiceCtrlDispatcherA;
+%END
+
+PROCEDURE StartServiceA(hService : SC_HANDLE;
+                        dwNumServiceArgs : DWORD;
+                        VAR lpServiceArgVectors : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE StartServiceW(hService : SC_HANDLE;
+                        dwNumServiceArgs : DWORD;
+                        VAR lpServiceArgVectors : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE StartService = StartServiceW;
+%ELSE
+PROCEDURE StartService = StartServiceA;
+%END
+
+PROCEDURE UnlockServiceDatabase(ScLock : SC_LOCK) : BOOL;
+
+END WINSVC.

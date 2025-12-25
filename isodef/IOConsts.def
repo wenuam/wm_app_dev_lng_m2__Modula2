@@ -1,0 +1,29 @@
+DEFINITION MODULE IOConsts;
+
+
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+=========================================== *)
+
+
+
+(* Types and constants for input/output modules *)
+
+TYPE
+    (* This type is used to classify the result of an input operation *)
+    ReadResults =
+    (
+     notKnown,          (* no data read result is set *)
+     allRight,          (* data is as expected or as required *)
+     outOfRange,        (* data cannot be represented *)
+     wrongFormat,       (* data not in expected format *)
+     endOfLine,         (* end of line seen before expected data *)
+     endOfInput         (* end of input seen before expected data *)
+    );
+
+END IOConsts.

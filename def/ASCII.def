@@ -1,0 +1,23 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE ASCII;
+
+CONST
+    nul = CHR(0);     soh = CHR(1);    stx = CHR(2);    etx = CHR(3);
+    eot = CHR(4);     enq = CHR(5);    ack = CHR(6);    bel = CHR(7);
+    bs  = CHR(8);     ht  = CHR(9);    lf  = CHR(10);   vt  = CHR(11);
+    ff  = CHR(12);    cr  = CHR(13);   so  = CHR(14);   si  = CHR(15);
+    dle = CHR(16);    dc1 = CHR(17);   dc2 = CHR(18);   dc3 = CHR(19);
+    dc4 = CHR(20);    nak = CHR(21);   syn = CHR(22);   etb = CHR(23);
+    can = CHR(24);    em  = CHR(25);   sub = CHR(26);   esc = CHR(27);
+    fs  = CHR(28);    gs  = CHR(29);   rs  = CHR(30);   us  = CHR(31);
+    space = CHR(32);  del = CHR(127);
+
+END ASCII.

@@ -1,0 +1,43 @@
+(*
+Name:     ActiveXControl
+Creation: 25-02-2000
+LastEdit: 24-03-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+UNSAFEGUARDED DEFINITION MODULE ActiveXControl;
+
+IMPORT WIN32;
+IMPORT Ole2;
+IMPORT OleC;
+IMPORT DispInterface;
+
+CLASS C;
+  INHERIT DispInterface.C;
+  REVEAL DeactivateInPlaceObject,
+         READONLY iViewObject2,
+         READONLY iOleObject,
+         READONLY iOleControl,
+         iOleInPlaceObject,
+         bControlInfo,
+         controlInfo,
+         cLockInPlace,
+         bPendingDeactivate;
+
+  OVERRIDE PROCEDURE Init(clsid: WIN32.GUID);
+  PROCEDURE DeactivateInPlaceObject(bFull: BOOLEAN);
+
+  VAR iViewObject2:       Ole2.IViewObject2;
+      iOleObject:         Ole2.IOleObject;
+      iOleInPlaceObject:  Ole2.IOleInPlaceObject;
+      iOleControl:        OleC.IOleControl;
+      bControlInfo:       BOOLEAN;
+      controlInfo:        OleC.CONTROLINFO;
+      cLockInPlace:       CARDINAL;
+      bPendingDeactivate: BOOLEAN;
+END C;
+
+
+END ActiveXControl.

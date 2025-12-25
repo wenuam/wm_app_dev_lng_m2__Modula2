@@ -1,0 +1,551 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINREG;
+
+FROM SYSTEM IMPORT
+    CAST, LOC;
+
+FROM WIN32 IMPORT
+    ACCESS_MASK, LONG, DWORD, SECURITY_ATTRIBUTES, FILETIME,
+    SECURITY_INFORMATION, BOOL, HANDLE, PSECURITY_DESCRIPTOR, WINT, LPVOID,
+    LPSTR, LPWSTR, DWORD_PTR;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+TYPE
+    REGSAM               = ACCESS_MASK;
+    HKEY                 = POINTER TO RECORD END;
+    PHKEY                = POINTER TO HKEY;
+CONST
+    WIN31_CLASS          = 0;
+    HKEY_CLASSES_ROOT    = CAST(HKEY, 80000000H);
+    HKEY_CURRENT_USER    = CAST(HKEY, 80000001H);
+    HKEY_LOCAL_MACHINE   = CAST(HKEY, 80000002H);
+    HKEY_USERS           = CAST(HKEY, 80000003H);
+    HKEY_PERFORMANCE_DATA= CAST(HKEY, 80000004H);
+
+    HKEY_CURRENT_CONFIG  = CAST(HKEY, 80000005H);
+    HKEY_DYN_DATA        = CAST(HKEY, 80000006H);
+
+    PROVIDER_KEEPS_VALUE_LENGTH = 1;
+
+    REG_NONE             = 0;
+    REG_SZ               = 1;
+    REG_EXPAND_SZ        = 2;
+    REG_BINARY           = 3;
+    REG_DWORD            = 4;
+    REG_DWORD_LITTLE_ENDIAN= 4;
+    REG_DWORD_BIG_ENDIAN = 5;
+    REG_LINK             = 6;
+    REG_MULTI_SZ         = 7;
+    REG_RESOURCE_LIST    = 8;
+    REG_FULL_RESOURCE_DESCRIPTOR  = 9;
+    REG_RESOURCE_REQUIREMENTS_LIST   = 10;
+
+TYPE
+    VAL_CONTEXT = RECORD
+        valuelen        : WINT;
+        value_context   : LPVOID;
+        val_buff_ptr    : LPVOID;
+    END;
+    PVALCONTEXT = POINTER TO VAL_CONTEXT;
+
+    PVALUEA = RECORD
+        pv_valuename    : LPSTR;
+        pv_valuelen     : WINT;
+        pv_value_context: LPVOID;
+        pv_type         : DWORD;
+    END;
+    PPVALUEA = POINTER TO PVALUEA;
+
+    PVALUEW = RECORD
+        pv_valuename    : LPWSTR;
+        pv_valuelen     : WINT;
+        pv_value_context: LPVOID;
+        pv_type         : DWORD;
+    END;
+    PPVALUEW = POINTER TO PVALUEW;
+
+%IF UNICODE %THEN
+    PVALUE = PVALUEW;
+    PPVALUE = PPVALUEW;
+%ELSE
+    PVALUE = PVALUEA;
+    PPVALUE = PPVALUEA;
+%END
+
+    QUERYHANDLER = PROCEDURE
+                      (LPVOID,
+                       VAL_CONTEXT,
+                       DWORD,
+                       LPVOID,
+                       VAR DWORD,
+                       DWORD) : DWORD [msCDECL];
+
+    PQUERYHANDLER = POINTER TO QUERYHANDLER;
+
+    REG_PROVIDER = RECORD
+        pi_R0_1val      : PQUERYHANDLER;
+        pi_R0_allvals   : PQUERYHANDLER;
+        pi_R3_1val      : PQUERYHANDLER;
+        pi_R3_allvals   : PQUERYHANDLER;
+        pi_flags        : DWORD;
+        pi_key_context  : LPVOID;
+    END;
+    PPROVIDER = POINTER TO REG_PROVIDER;
+
+    VALENTA = RECORD
+        ve_valuename    : LPSTR;
+        ve_valuelen     : DWORD;
+        ve_valueptr     : DWORD_PTR;
+        ve_type         : DWORD;
+    END;
+    PVALENTA    =  POINTER TO VALENTA;
+
+    VALENTW = RECORD
+        ve_valuename    : LPWSTR;
+        ve_valuelen     : DWORD;
+        ve_valueptr     : DWORD_PTR;
+        ve_type         : DWORD;
+    END;
+    PVALENTW    =  POINTER TO VALENTW;
+
+%IF UNICODE %THEN
+    VALENT = VALENTW;
+    PVALENT =  PVALENTW;
+%ELSE
+    VALENT = VALENTA;
+    PVALENT =  PVALENTA;
+%END
+
+PROCEDURE RegCloseKey(hKey : HKEY) : LONG;
+
+PROCEDURE RegOverridePredefKey(hKey : HKEY; hNewHKey : HKEY) : LONG;
+
+PROCEDURE RegConnectRegistryA(lpMachineName : ARRAY OF ACHAR;
+                              hKey : HKEY;
+                              VAR phkResult : HKEY) : LONG;
+
+PROCEDURE RegConnectRegistryW(lpMachineName : ARRAY OF UCHAR;
+                              hKey : HKEY;
+                              VAR phkResult : HKEY) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegConnectRegistry = RegConnectRegistryW;
+%ELSE
+PROCEDURE RegConnectRegistry = RegConnectRegistryA;
+%END
+
+PROCEDURE RegCreateKeyA(hKey : HKEY;
+                        lpSubKey : ARRAY OF ACHAR;
+                        VAR phkResult : HKEY) : LONG;
+
+PROCEDURE RegCreateKeyW(hKey : HKEY;
+                        lpSubKey : ARRAY OF UCHAR;
+                        VAR phkResult : HKEY) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegCreateKey = RegCreateKeyW;
+%ELSE
+PROCEDURE RegCreateKey = RegCreateKeyA;
+%END
+
+PROCEDURE RegCreateKeyExA(hKey : HKEY;
+                          lpSubKey : ARRAY OF ACHAR;
+                          Reserved : DWORD;
+                          lpClass : ARRAY OF ACHAR;
+                          dwOptions : DWORD;
+                          samDesired : REGSAM;
+                          lpSecurityAttributes : SECURITY_ATTRIBUTES;
+                          VAR phkResult : HKEY;
+                          VAR lpdwDisposition : DWORD) : LONG;
+
+PROCEDURE RegCreateKeyExW(hKey : HKEY;
+                          lpSubKey : ARRAY OF UCHAR;
+                          Reserved : DWORD;
+                          lpClass : ARRAY OF UCHAR;
+                          dwOptions : DWORD;
+                          samDesired : REGSAM;
+                          lpSecurityAttributes : SECURITY_ATTRIBUTES;
+                          VAR phkResult : HKEY;
+                          VAR lpdwDisposition : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegCreateKeyEx = RegCreateKeyExW;
+%ELSE
+PROCEDURE RegCreateKeyEx = RegCreateKeyExA;
+%END
+
+PROCEDURE RegDeleteKeyA(hKey : HKEY;
+                        lpSubKey : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE RegDeleteKeyW(hKey : HKEY;
+                        lpSubKey : ARRAY OF UCHAR) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegDeleteKey = RegDeleteKeyW;
+%ELSE
+PROCEDURE RegDeleteKey = RegDeleteKeyA;
+%END
+
+PROCEDURE RegDeleteValueA(hKey : HKEY;
+                          lpValueName : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE RegDeleteValueW(hKey : HKEY;
+                          lpValueName : ARRAY OF UCHAR) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegDeleteValue = RegDeleteValueW;
+%ELSE
+PROCEDURE RegDeleteValue = RegDeleteValueA;
+%END
+
+PROCEDURE RegEnumKeyA(hKey : HKEY;
+                      dwIndex : DWORD;
+                      VAR lpName : ARRAY OF ACHAR;
+                      cbName : DWORD) : LONG;
+
+PROCEDURE RegEnumKeyW(hKey : HKEY;
+                      dwIndex : DWORD;
+                      VAR lpName : ARRAY OF UCHAR;
+                      cbName : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegEnumKey = RegEnumKeyW;
+%ELSE
+PROCEDURE RegEnumKey = RegEnumKeyA;
+%END
+
+PROCEDURE RegEnumKeyExA(hKey : HKEY;
+                        dwIndex : DWORD;
+                        VAR lpName : ARRAY OF ACHAR;
+                        VAR lpcbName : DWORD;
+                        VAR lpReserved : DWORD;
+                        VAR lpClass : ARRAY OF ACHAR;
+                        VAR lpcbClass : DWORD;
+                        VAR lpftLastWriteTime : FILETIME) : LONG;
+
+PROCEDURE RegEnumKeyExW(hKey : HKEY;
+                        dwIndex : DWORD;
+                        VAR lpName : ARRAY OF UCHAR;
+                        VAR lpcbName : DWORD;
+                        VAR lpReserved : DWORD;
+                        VAR lpClass : ARRAY OF UCHAR;
+                        VAR lpcbClass : DWORD;
+                        VAR lpftLastWriteTime : FILETIME) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegEnumKeyEx = RegEnumKeyExW;
+%ELSE
+PROCEDURE RegEnumKeyEx = RegEnumKeyExA;
+%END
+
+PROCEDURE RegEnumValueA(hKey : HKEY;
+                        dwIndex : DWORD;
+                        VAR lpValueName : ARRAY OF ACHAR;
+                        VAR lpcbValueName : DWORD;
+                        VAR lpReserved : DWORD;
+                        VAR lpType : DWORD;
+                        VAR lpData : ARRAY OF LOC;
+                        VAR lpcbData : DWORD) : LONG;
+
+PROCEDURE RegEnumValueW(hKey : HKEY;
+                        dwIndex : DWORD;
+                        VAR lpValueName : ARRAY OF UCHAR;
+                        VAR lpcbValueName : DWORD;
+                        VAR lpReserved : DWORD;
+                        VAR lpType : DWORD;
+                        VAR lpData : ARRAY OF LOC;
+                        VAR lpcbData : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegEnumValue = RegEnumValueW;
+%ELSE
+PROCEDURE RegEnumValue = RegEnumValueA;
+%END
+
+PROCEDURE RegFlushKey(hKey : HKEY) : LONG;
+
+PROCEDURE RegGetKeySecurity(hKey : HKEY;
+                            SecurityInformation : SECURITY_INFORMATION;
+                            pSecurityDescriptor : PSECURITY_DESCRIPTOR;
+                            VAR lpcbSecurityDescriptor : DWORD) : LONG;
+
+PROCEDURE RegLoadKeyA(hKey : HKEY;
+                      lpSubKey : ARRAY OF ACHAR;
+                      lpFile : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE RegLoadKeyW(hKey : HKEY;
+                      lpSubKey : ARRAY OF UCHAR;
+                      lpFile : ARRAY OF UCHAR) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegLoadKey = RegLoadKeyW;
+%ELSE
+PROCEDURE RegLoadKey = RegLoadKeyA;
+%END
+
+PROCEDURE RegNotifyChangeKeyValue(hKey : HKEY;
+                                  bWatchSubtree : BOOL;
+                                  dwNotifyFilter : DWORD;
+                                  hEvent : HANDLE;
+                                  fAsynchronus : BOOL) : LONG;
+
+PROCEDURE RegOpenKeyA(hKey : HKEY;
+                      lpSubKey : ARRAY OF ACHAR;
+                      VAR phkResult : HKEY) : LONG;
+
+PROCEDURE RegOpenKeyW(hKey : HKEY;
+                      lpSubKey : ARRAY OF UCHAR;
+                      VAR phkResult : HKEY) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegOpenKey = RegOpenKeyW;
+%ELSE
+PROCEDURE RegOpenKey = RegOpenKeyA;
+%END
+
+PROCEDURE RegOpenKeyExA(hKey : HKEY;
+                        lpSubKey : ARRAY OF ACHAR;
+                        ulOptions : DWORD;
+                        samDesired : REGSAM;
+                        VAR phkResult : HKEY) : LONG;
+
+PROCEDURE RegOpenKeyExW(hKey : HKEY;
+                        lpSubKey : ARRAY OF UCHAR;
+                        ulOptions : DWORD;
+                        samDesired : REGSAM;
+                        VAR phkResult : HKEY) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegOpenKeyEx = RegOpenKeyExW;
+%ELSE
+PROCEDURE RegOpenKeyEx = RegOpenKeyExA;
+%END
+
+PROCEDURE RegQueryInfoKeyA(hKey : HKEY;
+                           VAR lpClass : ARRAY OF ACHAR;
+                           VAR lpcbClass : DWORD;
+                           VAR lpReserved : DWORD;
+                           VAR lpcSubKeys : DWORD;
+                           VAR lpcbMaxSubKeyLen : DWORD;
+                           VAR lpcbMaxClassLen : DWORD;
+                           VAR lpcValues : DWORD;
+                           VAR lpcbMaxValueNameLen : DWORD;
+                           VAR lpcbMaxValueLen : DWORD;
+                           VAR lpcbSecurityDescriptor : DWORD;
+                           VAR lpftLastWriteTime : FILETIME) : LONG;
+
+PROCEDURE RegQueryInfoKeyW(hKey : HKEY;
+                           VAR lpClass : ARRAY OF UCHAR;
+                           VAR lpcbClass : DWORD;
+                           VAR lpReserved : DWORD;
+                           VAR lpcSubKeys : DWORD;
+                           VAR lpcbMaxSubKeyLen : DWORD;
+                           VAR lpcbMaxClassLen : DWORD;
+                           VAR lpcValues : DWORD;
+                           VAR lpcbMaxValueNameLen : DWORD;
+                           VAR lpcbMaxValueLen : DWORD;
+                           VAR lpcbSecurityDescriptor : DWORD;
+                           VAR lpftLastWriteTime : FILETIME) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegQueryInfoKey = RegQueryInfoKeyW;
+%ELSE
+PROCEDURE RegQueryInfoKey = RegQueryInfoKeyA;
+%END
+
+PROCEDURE RegQueryValueA(hKey : HKEY;
+                         lpSubKey : ARRAY OF ACHAR;
+                         VAR lpValue : ARRAY OF ACHAR;
+                         VAR lpcbValue : LONG) : LONG;
+
+PROCEDURE RegQueryValueW(hKey : HKEY;
+                         lpSubKey : ARRAY OF UCHAR;
+                         VAR lpValue : ARRAY OF UCHAR;
+                         VAR lpcbValue : LONG) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegQueryValue = RegQueryValueW;
+%ELSE
+PROCEDURE RegQueryValue = RegQueryValueA;
+%END
+
+
+PROCEDURE RegQueryMultipleValuesA (
+                            hKey : HKEY;
+                            val_list : PVALENTA;
+                            num_vals : DWORD;
+                            VAR lpValueBuf : ARRAY OF ACHAR;
+                            VAR ldwTotsize : DWORD
+                            ) : LONG;
+
+PROCEDURE RegQueryMultipleValuesW (
+                            hKey : HKEY;
+                            val_list : PVALENTA;
+                            num_vals : DWORD;
+                            VAR lpValueBuf : ARRAY OF UCHAR;
+                            VAR ldwTotsize : DWORD
+                            ) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegQueryMultipleValues = RegQueryMultipleValuesW;
+%ELSE
+PROCEDURE RegQueryMultipleValues = RegQueryMultipleValuesA;
+%END
+
+
+
+PROCEDURE RegQueryValueExA(hKey : HKEY;
+                           lpValueName : ARRAY OF ACHAR;
+                           VAR lpReserved : DWORD;
+                           VAR lpType : DWORD;
+                           VAR lpData : ARRAY OF LOC;
+                           VAR lpcbData : DWORD) : LONG;
+
+PROCEDURE RegQueryValueExW(hKey : HKEY;
+                           lpValueName : ARRAY OF UCHAR;
+                           VAR lpReserved : DWORD;
+                           VAR lpType : DWORD;
+                           VAR lpData : ARRAY OF LOC;
+                           VAR lpcbData : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegQueryValueEx = RegQueryValueExW;
+%ELSE
+PROCEDURE RegQueryValueEx = RegQueryValueExA;
+%END
+
+PROCEDURE RegReplaceKeyA(hKey : HKEY;
+                         lpSubKey : ARRAY OF ACHAR;
+                         lpNewFile : ARRAY OF ACHAR;
+                         lpOldFile : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE RegReplaceKeyW(hKey : HKEY;
+                         lpSubKey : ARRAY OF UCHAR;
+                         lpNewFile : ARRAY OF UCHAR;
+                         lpOldFile : ARRAY OF UCHAR) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegReplaceKey = RegReplaceKeyW;
+%ELSE
+PROCEDURE RegReplaceKey = RegReplaceKeyA;
+%END
+
+PROCEDURE RegRestoreKeyA(hKey : HKEY;
+                         lpFile : ARRAY OF ACHAR;
+                         dwFlags : DWORD) : LONG;
+
+PROCEDURE RegRestoreKeyW(hKey : HKEY;
+                         lpFile : ARRAY OF UCHAR;
+                         dwFlags : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegRestoreKey = RegRestoreKeyW;
+%ELSE
+PROCEDURE RegRestoreKey = RegRestoreKeyA;
+%END
+
+PROCEDURE RegSaveKeyA(hKey : HKEY;
+                      lpFile : ARRAY OF ACHAR;
+                      lpSecurityAttributes : SECURITY_ATTRIBUTES) : LONG;
+
+PROCEDURE RegSaveKeyW(hKey : HKEY;
+                      lpFile : ARRAY OF UCHAR;
+                      lpSecurityAttributes : SECURITY_ATTRIBUTES) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegSaveKey = RegSaveKeyW;
+%ELSE
+PROCEDURE RegSaveKey = RegSaveKeyA;
+%END
+
+PROCEDURE RegSetKeySecurity(hKey : HKEY;
+                            SecurityInformation : SECURITY_INFORMATION;
+                            pSecurityDescriptor : PSECURITY_DESCRIPTOR) : LONG;
+
+PROCEDURE RegSetValueA(hKey : HKEY;
+                       lpSubKey : ARRAY OF ACHAR;
+                       dwType : DWORD;
+                       lpData : ARRAY OF ACHAR;
+                       cbData : DWORD) : LONG;
+
+PROCEDURE RegSetValueW(hKey : HKEY;
+                       lpSubKey : ARRAY OF UCHAR;
+                       dwType : DWORD;
+                       lpData : ARRAY OF UCHAR;
+                       cbData : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegSetValue = RegSetValueW;
+%ELSE
+PROCEDURE RegSetValue = RegSetValueA;
+%END
+
+PROCEDURE RegSetValueExA(hKey : HKEY;
+                         lpValueName : ARRAY OF ACHAR;
+                         Reserved : DWORD;
+                         dwType : DWORD;
+                         lpData : ARRAY OF LOC;
+                         cbData : DWORD) : LONG;
+
+PROCEDURE RegSetValueExW(hKey : HKEY;
+                         lpValueName : ARRAY OF UCHAR;
+                         Reserved : DWORD;
+                         dwType : DWORD;
+                         lpData : ARRAY OF LOC;
+                         cbData : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegSetValueEx = RegSetValueExW;
+%ELSE
+PROCEDURE RegSetValueEx = RegSetValueExA;
+%END
+
+PROCEDURE RegUnLoadKeyA(hKey : HKEY;
+                        lpSubKey : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE RegUnLoadKeyW(hKey : HKEY;
+                        lpSubKey : ARRAY OF UCHAR) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE RegUnLoadKey = RegUnLoadKeyW;
+%ELSE
+PROCEDURE RegUnLoadKey = RegUnLoadKeyA;
+%END
+
+PROCEDURE InitiateSystemShutdownA(lpMachineName : ARRAY OF ACHAR;
+                                  lpMessage : ARRAY OF ACHAR;
+                                  dwTimeout : DWORD;
+                                  bForceAppsClosed : BOOL;
+                                  bRebootAfterShutdown : BOOL) : BOOL;
+
+PROCEDURE InitiateSystemShutdownW(lpMachineName : ARRAY OF UCHAR;
+                                  lpMessage : ARRAY OF UCHAR;
+                                  dwTimeout : DWORD;
+                                  bForceAppsClosed : BOOL;
+                                  bRebootAfterShutdown : BOOL) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE InitiateSystemShutdown = InitiateSystemShutdownW;
+%ELSE
+PROCEDURE InitiateSystemShutdown = InitiateSystemShutdownA;
+%END
+
+PROCEDURE AbortSystemShutdownA(lpMachineName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE AbortSystemShutdownW(lpMachineName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AbortSystemShutdown = AbortSystemShutdownW;
+%ELSE
+PROCEDURE AbortSystemShutdown = AbortSystemShutdownA;
+%END
+
+END WINREG.

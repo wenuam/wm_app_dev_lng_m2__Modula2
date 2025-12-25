@@ -1,0 +1,55 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                       Copyright (C) 2009                                *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE ISOfiler;
+(* This is not an ISO defined module *)
+(* It is a ADW Software helper module used by the implementations *)
+(* of the ISO I/O modules *)
+
+(* provides the functions that the ISO file modules need, common code. *)
+(* StreamFile, SeqFile and RndFile use this for their core functions. *)
+
+FROM IOLink IMPORT
+    DeviceTablePtr;
+
+FROM IOChan IMPORT
+    ChanId;
+
+FROM ChanConsts IMPORT
+    OpenResults, FlagSet;
+
+TYPE
+    FileTypes   = (FileStdIn, FileStdOut, FileStdError, FileNormal);
+
+PROCEDURE Open(p : DeviceTablePtr;
+               name : ARRAY OF CHAR;
+               readWrite : BOOLEAN) : OpenResults;
+
+PROCEDURE Create(p : DeviceTablePtr; name : ARRAY OF CHAR) : OpenResults;
+
+PROCEDURE FakeOpen(p : DeviceTablePtr; typ : FileTypes);
+
+PROCEDURE Close(p : DeviceTablePtr);
+
+PROCEDURE Truncate(p : DeviceTablePtr);
+
+PROCEDURE SetPos(p : DeviceTablePtr; pos : CARDINAL32);
+
+PROCEDURE GetPos(p : DeviceTablePtr) : CARDINAL32;
+
+PROCEDURE EndPos(p : DeviceTablePtr) : CARDINAL32;
+
+PROCEDURE AssignProcs(p : DeviceTablePtr;
+                      buffer : BOOLEAN;
+                      reset : BOOLEAN;
+                      flags : FlagSet);
+
+PROCEDURE SetDeviceBuffer(cid : ChanId; amount : CARDINAL);
+
+END ISOfiler.

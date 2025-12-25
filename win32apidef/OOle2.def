@@ -1,0 +1,3844 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+UNSAFEGUARDED DEFINITION MODULE OOle2;
+
+FROM SYSTEM IMPORT
+    CAST, ADDRESS, MAKEADR, LOC;  (* EH: changed *)
+
+FROM WINUSER IMPORT
+    MSG;
+
+FROM WIN32 IMPORT
+    ULARGE_INTEGER, LARGE_INTEGER, BYTE, DWORD, WINT, LONG, ULONG, SHORT,
+    USHORT, UINT, LPSTR, LPWSTR, BOOL, LPVOID, WORD, FILETIME, PVOID,
+    HINSTANCE, HBITMAP, HMETAFILE, HENHMETAFILE, HGLOBAL, HTASK,
+    SCODE, PCHAR, LONGLONG, PSHORT, PLONG, PLONGLONG, LCID, WFLOAT, LPFLOAT, HWND,
+    RECT, SIZEL, POINTL, HACCEL, HMENU, WSIZE, HDC,
+    RECTL, PINT, PUINT, PUSHORT, PULONG, PULONGLONG, WPARAM, HANDLE, HICON, LPCWSTR,
+    RemHGLOBAL, LPRemHGLOBAL, HRESULT,
+    GUID, IID, LPIID, CLSID;
+
+FROM WINGDI IMPORT
+    LOGPALETTE, LPLOGPALETTE;
+
+FROM RPCCore IMPORT
+    RPC_IF_HANDLE, size_t;
+
+FROM WINERROR IMPORT
+    VIEW_E_DRAW, DV_E_FORMATETC;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/Foreign*>
+<*/NOHIGH*>
+<*/ALIGN:8*>
+<*/NOPACK*>
+TYPE OLECHAR=   UCHAR;
+     LPOLESTR=  LPWSTR;
+     LPCOLESTR= LPCWSTR;
+
+CONST
+    rmm                     = 23;
+    rup                     = 639;
+
+VAR
+	%IF IA32 %THEN
+		IID_IUnknown ["_IID_IUnknown" EXTERNAL] : IID;
+		IID_IDispatch ["_IID_IDispatch" EXTERNAL] : IID;
+		IID_IClassFactory ["_IID_IClassFactory" EXTERNAL] : IID;
+		IID_ICreateTypeLib ["_IID_ICreateTypeLib" EXTERNAL] : IID;
+		IID_ICreateTypeInfo ["_IID_ICreateTypeInfo" EXTERNAL] : IID;
+		IID_ITypeLib ["_IID_ITypeLib" EXTERNAL] : IID;
+		IID_ITypeInfo ["_IID_ITypeInfo" EXTERNAL] : IID;
+		IID_ITypeComp ["_IID_ITypeComp" EXTERNAL] : IID;
+		IID_IRpcStubBuffer ["_IID_IRpcStubBuffer" EXTERNAL] : IID;
+		IID_IRpcChannelBuffer ["_IID_IRpcChannelBuffer" EXTERNAL] : IID;
+		IID_IRpcProxyBuffer ["_IID_IRpcProxyBuffer" EXTERNAL] : IID;
+		IID_IStorage ["_IID_IStorage" EXTERNAL] : IID;
+		IID_IStream ["_IID_IStream" EXTERNAL] : IID;
+		IID_IBindCtx ["_IID_IBindCtx" EXTERNAL] : IID;
+		IID_IRunningObjectTable ["_IID_IRunningObjectTable" EXTERNAL] : IID;
+		IID_IMoniker ["_IID_IMoniker" EXTERNAL] : IID;
+		IID_IPersist ["_IID_IPersist" EXTERNAL] : IID;
+		IID_IPersistFile ["_IID_IPersistFile" EXTERNAL]    : IID;
+		IID_IPersistPropertyBag ["_IID_IPersistPropertyBag" EXTERNAL] : IID;
+		IID_IPersistStream ["_IID_IPersistStream" EXTERNAL] : IID;
+		IID_IPersistStreamInit ["_IID_IPersistStreamInit" EXTERNAL] : IID; (* EH: added *)
+		IID_IPersistStorage ["_IID_IPersistStorage" EXTERNAL]  : IID;
+		IID_ILockBytes ["_IID_ILockBytes" EXTERNAL] : IID;
+		IID_IDataObject ["_IID_IDataObject" EXTERNAL] : IID;
+		IID_IAdviseSink ["_IID_IAdviseSink" EXTERNAL] : IID;
+		IID_IAdviseSink2 ["_IID_IAdviseSink2" EXTERNAL] : IID;
+		IID_IEnumSTATSTG ["_IID_IEnumSTATSTG" EXTERNAL] : IID;
+		IID_IEnumString ["_IID_IEnumString" EXTERNAL] : IID;
+		IID_IEnumMoniker ["_IID_IEnumMoniker" EXTERNAL] : IID;
+		IID_IEnumUnknown ["_IID_IEnumUnknown" EXTERNAL] : IID;
+		IID_IEnumFORMATETC ["_IID_IEnumFORMATETC" EXTERNAL] : IID;
+		IID_IEnumSTATDATA ["_IID_IEnumSTATDATA" EXTERNAL] : IID;
+		IID_IEnumVARIANT ["_IID_IEnumVARIANT" EXTERNAL] : IID;
+		IID_IEnumOLEVERB ["_IID_IEnumOLEVERB" EXTERNAL] : IID;
+		IID_IRootStorage ["_IID_IRootStorage" EXTERNAL] : IID;
+		IID_IMarshal ["_IID_IMarshal" EXTERNAL] : IID;
+		IID_IStdMarshalInfo ["_IID_IStdMarshalInfo" EXTERNAL] : IID;
+		IID_IMalloc ["_IID_IMalloc" EXTERNAL] : IID;
+		IID_IMallocSpy ["_IID_IMallocSpy" EXTERNAL] : IID;
+		IID_IExternalConnection ["_IID_IExternalConnection" EXTERNAL] : IID;
+		IID_IRunnableObject ["_IID_IRunnableObject" EXTERNAL] : IID;
+		IID_IDataAdviseHolder ["_IID_IDataAdviseHolder" EXTERNAL] : IID;
+		IID_IMessageFilter ["_IID_IMessageFilter" EXTERNAL] : IID;
+		IID_IPSFactoryBuffer ["_IID_IPSFactoryBuffer" EXTERNAL] : IID;
+		IID_ICreateErrorInfo ["_IID_ICreateErrorInfo" EXTERNAL] : IID;
+		IID_IErrorInfo ["_IID_IErrorInfo" EXTERNAL] : IID;
+		IID_ISupportErrorInfo ["_IID_ISupportErrorInfo" EXTERNAL] : IID;
+		IID_IParseDisplayName ["_IID_IParseDisplayName" EXTERNAL] : IID;
+		IID_IOleAdviseHolder ["_IID_IOleAdviseHolder" EXTERNAL] : IID;
+		IID_IOleCache ["_IID_IOleCache" EXTERNAL] : IID;
+		IID_IOleCache2 ["_IID_IOleCache2" EXTERNAL] : IID;
+		IID_IOleCacheControl ["_IID_IOleCacheControl" EXTERNAL] : IID;
+		IID_IOleContainer ["_IID_IOleContainer" EXTERNAL] : IID;
+		IID_IOleClientSite ["_IID_IOleClientSite" EXTERNAL] : IID;
+		IID_IOleObject ["_IID_IOleObject" EXTERNAL] : IID;
+		IID_IOleWindow ["_IID_IOleWindow" EXTERNAL] : IID;
+		IID_IOleLink ["_IID_IOleLink" EXTERNAL] : IID;
+		IID_IOleItemContainer ["_IID_IOleItemContainer" EXTERNAL] : IID;
+		IID_IOleInPlaceUIWindow ["_IID_IOleInPlaceUIWindow" EXTERNAL] : IID;
+		IID_IOleInPlaceActiveObject ["_IID_IOleInPlaceActiveObject" EXTERNAL] : IID;
+		IID_IOleInPlaceFrame ["_IID_IOleInPlaceFrame" EXTERNAL] : IID;
+		IID_IOleInPlaceObject ["_IID_IOleInPlaceObject" EXTERNAL] : IID;
+		IID_IOleInPlaceSite ["_IID_IOleInPlaceSite" EXTERNAL] : IID;
+		IID_IViewObject ["_IID_IViewObject" EXTERNAL] : IID;
+		IID_IViewObject2 ["_IID_IViewObject2" EXTERNAL] : IID;
+		IID_IDropSource ["_IID_IDropSource" EXTERNAL] : IID;
+		IID_IDropTarget ["_IID_IDropTarget" EXTERNAL] : IID;
+	%ELSE
+		IID_IUnknown ["IID_IUnknown" EXTERNAL] : IID;
+		IID_IDispatch ["IID_IDispatch" EXTERNAL] : IID;
+		IID_IClassFactory ["IID_IClassFactory" EXTERNAL] : IID;
+		IID_ICreateTypeLib ["IID_ICreateTypeLib" EXTERNAL] : IID;
+		IID_ICreateTypeInfo ["IID_ICreateTypeInfo" EXTERNAL] : IID;
+		IID_ITypeLib ["IID_ITypeLib" EXTERNAL] : IID;
+		IID_ITypeInfo ["IID_ITypeInfo" EXTERNAL] : IID;
+		IID_ITypeComp ["IID_ITypeComp" EXTERNAL] : IID;
+		IID_IRpcStubBuffer ["IID_IRpcStubBuffer" EXTERNAL] : IID;
+		IID_IRpcChannelBuffer ["IID_IRpcChannelBuffer" EXTERNAL] : IID;
+		IID_IRpcProxyBuffer ["IID_IRpcProxyBuffer" EXTERNAL] : IID;
+		IID_IStorage ["IID_IStorage" EXTERNAL] : IID;
+		IID_IStream ["IID_IStream" EXTERNAL] : IID;
+		IID_IBindCtx ["IID_IBindCtx" EXTERNAL] : IID;
+		IID_IRunningObjectTable ["IID_IRunningObjectTable" EXTERNAL] : IID;
+		IID_IMoniker ["IID_IMoniker" EXTERNAL] : IID;
+		IID_IPersist ["IID_IPersist" EXTERNAL] : IID;
+		IID_IPersistFile ["IID_IPersistFile" EXTERNAL]    : IID;
+		IID_IPersistPropertyBag ["IID_IPersistPropertyBag" EXTERNAL] : IID;
+		IID_IPersistStream ["IID_IPersistStream" EXTERNAL] : IID;
+		IID_IPersistStreamInit ["IID_IPersistStreamInit" EXTERNAL] : IID; (* EH: added *)
+		IID_IPersistStorage ["IID_IPersistStorage" EXTERNAL]  : IID;
+		IID_ILockBytes ["IID_ILockBytes" EXTERNAL] : IID;
+		IID_IDataObject ["IID_IDataObject" EXTERNAL] : IID;
+		IID_IAdviseSink ["IID_IAdviseSink" EXTERNAL] : IID;
+		IID_IAdviseSink2 ["IID_IAdviseSink2" EXTERNAL] : IID;
+		IID_IEnumSTATSTG ["IID_IEnumSTATSTG" EXTERNAL] : IID;
+		IID_IEnumString ["IID_IEnumString" EXTERNAL] : IID;
+		IID_IEnumMoniker ["IID_IEnumMoniker" EXTERNAL] : IID;
+		IID_IEnumUnknown ["IID_IEnumUnknown" EXTERNAL] : IID;
+		IID_IEnumFORMATETC ["IID_IEnumFORMATETC" EXTERNAL] : IID;
+		IID_IEnumSTATDATA ["IID_IEnumSTATDATA" EXTERNAL] : IID;
+		IID_IEnumVARIANT ["IID_IEnumVARIANT" EXTERNAL] : IID;
+		IID_IEnumOLEVERB ["IID_IEnumOLEVERB" EXTERNAL] : IID;
+		IID_IRootStorage ["IID_IRootStorage" EXTERNAL] : IID;
+		IID_IMarshal ["IID_IMarshal" EXTERNAL] : IID;
+		IID_IStdMarshalInfo ["IID_IStdMarshalInfo" EXTERNAL] : IID;
+		IID_IMalloc ["IID_IMalloc" EXTERNAL] : IID;
+		IID_IMallocSpy ["IID_IMallocSpy" EXTERNAL] : IID;
+		IID_IExternalConnection ["IID_IExternalConnection" EXTERNAL] : IID;
+		IID_IRunnableObject ["IID_IRunnableObject" EXTERNAL] : IID;
+		IID_IDataAdviseHolder ["IID_IDataAdviseHolder" EXTERNAL] : IID;
+		IID_IMessageFilter ["IID_IMessageFilter" EXTERNAL] : IID;
+		IID_IPSFactoryBuffer ["IID_IPSFactoryBuffer" EXTERNAL] : IID;
+		IID_ICreateErrorInfo ["IID_ICreateErrorInfo" EXTERNAL] : IID;
+		IID_IErrorInfo ["IID_IErrorInfo" EXTERNAL] : IID;
+		IID_ISupportErrorInfo ["IID_ISupportErrorInfo" EXTERNAL] : IID;
+		IID_IParseDisplayName ["IID_IParseDisplayName" EXTERNAL] : IID;
+		IID_IOleAdviseHolder ["IID_IOleAdviseHolder" EXTERNAL] : IID;
+		IID_IOleCache ["IID_IOleCache" EXTERNAL] : IID;
+		IID_IOleCache2 ["IID_IOleCache2" EXTERNAL] : IID;
+		IID_IOleCacheControl ["IID_IOleCacheControl" EXTERNAL] : IID;
+		IID_IOleContainer ["IID_IOleContainer" EXTERNAL] : IID;
+		IID_IOleClientSite ["IID_IOleClientSite" EXTERNAL] : IID;
+		IID_IOleObject ["IID_IOleObject" EXTERNAL] : IID;
+		IID_IOleWindow ["IID_IOleWindow" EXTERNAL] : IID;
+		IID_IOleLink ["IID_IOleLink" EXTERNAL] : IID;
+		IID_IOleItemContainer ["IID_IOleItemContainer" EXTERNAL] : IID;
+		IID_IOleInPlaceUIWindow ["IID_IOleInPlaceUIWindow" EXTERNAL] : IID;
+		IID_IOleInPlaceActiveObject ["IID_IOleInPlaceActiveObject" EXTERNAL] : IID;
+		IID_IOleInPlaceFrame ["IID_IOleInPlaceFrame" EXTERNAL] : IID;
+		IID_IOleInPlaceObject ["IID_IOleInPlaceObject" EXTERNAL] : IID;
+		IID_IOleInPlaceSite ["IID_IOleInPlaceSite" EXTERNAL] : IID;
+		IID_IViewObject ["IID_IViewObject" EXTERNAL] : IID;
+		IID_IViewObject2 ["IID_IViewObject2" EXTERNAL] : IID;
+		IID_IDropSource ["IID_IDropSource" EXTERNAL] : IID;
+		IID_IDropTarget ["IID_IDropTarget" EXTERNAL] : IID;
+	%END
+
+ABSTRACT CLASS IUnknown;
+	REVEAL QueryInterface, AddRef, Release;
+	ABSTRACT PROCEDURE QueryInterface (iid : IID; VAR interface : IUnknown): HRESULT;
+	ABSTRACT PROCEDURE AddRef () : ULONG;
+	ABSTRACT PROCEDURE Release () : ULONG;
+END IUnknown;
+
+TYPE
+	PPUnknown = POINTER TO IUnknown;
+
+    BSTR=   POINTER TO ARRAY [0..1073741820] OF OLECHAR;
+    LPBSTR= POINTER TO BSTR;
+
+     BLOB=   RECORD
+               cbSize:    ULONG;
+               pBlobData: ADDRESS;
+             END;
+     LPBLOB= POINTER TO BLOB;
+
+     BSTRBLOB=   RECORD
+               cbSize:    ULONG;
+               pData: POINTER TO ARRAY [0..1073741820] OF BYTE;
+             END;
+     LPBSTRBLOB= POINTER TO BSTRBLOB;
+
+     CLIPDATA= RECORD
+                 cbSize:    ULONG;
+                 ulClipFmt: LONG;
+                 pClipData: ADDRESS;
+               END;
+
+     SAFEARRAYBOUND=   RECORD
+                         cElements: ULONG;
+                         lLbound:   LONG;
+                       END;
+     LPSAFEARRAYBOUND= POINTER TO SAFEARRAYBOUND;
+
+     SAFEARRAY= RECORD
+                  cDims:      USHORT;
+                  fFeatures:  USHORT;
+                  cbElements: ULONG;
+                  cLocks:     ULONG;
+                  pvData:     ADDRESS;
+                  rgsabound:  ARRAY [0..0] OF SAFEARRAYBOUND;
+                END;
+     LPSAFEARRAY= POINTER TO SAFEARRAY;
+
+CONST
+    FADF_AUTO            = 1;
+    FADF_STATIC          = 2;
+    FADF_EMBEDDED        = 4;
+    FADF_FIXEDSIZE       = 10h;
+    FADF_BSTR            = 100h;
+    FADF_UNKNOWN         = 200h;
+    FADF_DISPATCH        = 400h;
+    FADF_VARIANT         = 800h;
+    FADF_RESERVED        = 0f0e8h;
+
+TYPE
+    DATE=   LONGREAL;
+    LPDATE= POINTER TO DATE;
+
+	CY_STRUCT=
+		RECORD
+			Lo: ULONG;
+			Hi: LONG;
+		END;
+
+	CY =
+		RECORD
+			CASE : BOOLEAN OF
+			| TRUE:  int64: LONGLONG;
+			| FALSE: parts: CY_STRUCT;
+			ELSE
+			END;
+		END;
+	PCY= POINTER TO CY;
+
+	CURRENCY             = CY;
+
+	VARIANT_BOOL         = WORDBOOL;           (* EH: changed *)
+	PVARIANT_BOOL        = POINTER TO VARIANT_BOOL;
+     VARENUM              = DWORD;
+	INVOKEKIND           = DWORD;
+
+CONST
+    VARIANT_TRUE          = CAST(VARIANT_BOOL, 0ffffh);
+    VARIANT_FALSE         = CAST(VARIANT_BOOL, 0);
+
+    VT_EMPTY            = 0;
+    VT_NULL             = 1;
+    VT_I2               = 2;
+    VT_I4               = 3;
+    VT_R4               = 4;
+    VT_R8               = 5;
+    VT_CY               = 6;
+    VT_DATE             = 7;
+    VT_BSTR             = 8;
+    VT_DISPATCH         = 9;
+    VT_ERROR            = 10;
+    VT_BOOL             = 11;
+    VT_VARIANT          = 12;
+    VT_UNKNOWN          = 13;
+    VT_DECIMAL          = 14;
+    VT_I1               = 16;
+    VT_UI1              = 17;
+    VT_UI2              = 18;
+    VT_UI4              = 19;
+    VT_I8               = 20;
+    VT_UI8              = 21;
+    VT_INT              = 22;
+    VT_UINT             = 23;
+    VT_VOID             = 24;
+    VT_HRESULT          = 25;
+    VT_PTR              = 26;
+    VT_SAFEARRAY        = 27;
+    VT_CARRAY           = 28;
+    VT_USERDEFINED      = 29;
+    VT_LPSTR            = 30;
+    VT_LPWSTR           = 31;
+    VT_RECORD           = 36;
+    VT_INT_PTR          = 37;
+    VT_UINT_PTR         = 38;
+    VT_FILETIME         = 64;
+    VT_BLOB             = 65;
+    VT_STREAM           = 66;
+    VT_STORAGE          = 67;
+    VT_STREAMED_OBJECT  = 68;
+    VT_STORED_OBJECT    = 69;
+    VT_BLOB_OBJECT      = 70;
+    VT_CF               = 71;
+    VT_CLSID            = 72;
+    VT_VERSIONED_STREAM = 73;
+    VT_BSTR_BLOB        = 0fffh;
+    VT_ILLEGALMASKED    = 0fffh;
+    VT_TYPEMASK         = 0fffh;
+    VT_VECTOR           = 01000h;
+    VT_ARRAY            = 02000h;
+    VT_BYREF            = 04000h;
+    VT_RESERVED         = 08000h;
+    VT_ILLEGAL          = 0ffffh;
+
+
+    INVOKE_FUNC                  = 1;
+    INVOKE_PROPERTYGET           = 2;
+    INVOKE_PROPERTYPUT           = 4;
+    INVOKE_PROPERTYPUTREF        = 8;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE INVOKEKIND_to_xmit(Enum : INVOKEKIND; VAR Long : LONG);
+
+PROCEDURE INVOKEKIND_from_xmit(Long : LONG; VAR Enum : INVOKEKIND);
+
+PROCEDURE INVOKEKIND_free_inst(pEnum : INVOKEKIND);
+
+PROCEDURE INVOKEKIND_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+
+ABSTRACT CLASS IDispatch; FORWARD;
+ABSTRACT CLASS IRecordInfo; FORWARD;
+
+TYPE
+	PPDispatch = POINTER TO IDispatch;
+
+CONST
+	PARAMFLAG_FIN			= 0;  (* EH: added as bits *)
+	PARAMFLAG_FOUT			= 1;  (* used in paramdesc.wPARAMFlags, below *)
+	PARAMFLAG_FLCID			= 2;
+	PARAMFLAG_FRETVAL		= 3;
+	PARAMFLAG_FOPT			= 4;
+	PARAMFLAG_FHASDEFAULT	= 5;
+	PARAMFLAG_FHASCUSTDATA	= 6;
+
+TYPE
+	LPSCODE			= POINTER TO SCODE;
+	LPLPSTR			= POINTER TO LPSTR;
+    LPLPWSTR		= POINTER TO LPWSTR;
+	LPLPSAFEARRAY	= POINTER TO LPSAFEARRAY;
+	PLONGREAL		= POINTER TO LONGREAL;
+
+	VARTYPE			= WORD;
+
+	LPVARIANT	= POINTER TO VARIANT;
+	VARIANT  	=
+		RECORD
+			vt			: VARTYPE;
+ 			wReserved1	: WORD;
+			wReserved2	: WORD;
+			wReserved3  : WORD;
+
+			CASE : CARDINAL OF
+			0: llVal		: INTEGER64;|
+			1: lVal			: INTEGER32;|
+			2: bVal			: CARDINAL8;|
+			3: iVal			: INTEGER16;|
+			4: fltVal		: REAL;|
+			5: dblVal		: LONGREAL;|
+			6: bool			: VARIANT_BOOL;|
+			7: scode		: SCODE;|
+			8: cyVal		: CY;|
+			9: date			: DATE;|
+			10: bstrVal		: BSTR;|
+			11: punkVal		: IUnknown;|
+			12: pdispVal	: IDispatch;|
+			13: parray		: LPSAFEARRAY;|
+			14: pbVal		: PCHAR;|
+			15: piVal		: PSHORT;|
+			16: plVal		: PLONG;|
+			17: pllVal		: PLONGLONG;|
+			18: pfltVal		: LPFLOAT;|
+			19: pdblVal		: PLONGREAL;|
+			20: pbool		: PVARIANT_BOOL;|
+			21: pscode		: LPSCODE;|
+			22: pcyVal		: PCY;|
+			23: pdate		: LPDATE;|
+			24: pbstrVal	: LPBSTR;|
+			25: ppunkVal	: PPUnknown;|
+			26: ppdispVal	: PPDispatch;|
+			27: pparray		: LPLPSAFEARRAY;|
+			28: pvarVal		: LPVARIANT;|
+			29: byref		: ADDRESS;|
+			30: cVal		: ACHAR;|
+			31: uiVal		: CARDINAL16;|
+			32: ulVal		: CARDINAL32;|
+			33: ullVal		: CARDINAL64;|
+			34: intVal		: INTEGER;|
+			35: uintVal		: CARDINAL;|
+			(*36: pdecVal	: PDECIMAL;|*)
+			37: pcVal		: PCHAR;|
+			38: puiVal		: PUSHORT;|
+			39: pulVal		: PULONG;|
+			40: pullVal		: PULONGLONG;|
+			41: pintVal		: PINT;|
+        	42: puint		: PUINT;|
+			43: pvRecord	: ADDRESS; pRecInfo : IRecordInfo;
+			ELSE
+			END;
+		END;
+(*
+#define V_UI1(X)         V_UNION(X, bVal)
+#define V_UI1REF(X)      V_UNION(X, pbVal)
+#define V_I2(X)          V_UNION(X, iVal)
+#define V_I2REF(X)       V_UNION(X, piVal)
+#define V_I4(X)          V_UNION(X, lVal)
+#define V_I4REF(X)       V_UNION(X, plVal)
+#define V_I8(X)          V_UNION(X, llVal)
+#define V_I8REF(X)       V_UNION(X, pllVal)
+#define V_R4(X)          V_UNION(X, fltVal)
+#define V_R4REF(X)       V_UNION(X, pfltVal)
+#define V_R8(X)          V_UNION(X, dblVal)
+#define V_R8REF(X)       V_UNION(X, pdblVal)
+#define V_I1(X)          V_UNION(X, cVal)
+#define V_I1REF(X)       V_UNION(X, pcVal)
+#define V_UI2(X)         V_UNION(X, uiVal)
+#define V_UI2REF(X)      V_UNION(X, puiVal)
+#define V_UI4(X)         V_UNION(X, ulVal)
+#define V_UI4REF(X)      V_UNION(X, pulVal)
+#define V_UI8(X)         V_UNION(X, ullVal)
+#define V_UI8REF(X)      V_UNION(X, pullVal)
+#define V_INT(X)         V_UNION(X, intVal)
+#define V_INTREF(X)      V_UNION(X, pintVal)
+#define V_UINT(X)        V_UNION(X, uintVal)
+#define V_UINTREF(X)     V_UNION(X, puintVal)
+
+#ifdef _WIN64
+#define V_INT_PTR(X)        V_UNION(X, llVal)
+#define V_UINT_PTR(X)       V_UNION(X, ullVal)
+#define V_INT_PTRREF(X)     V_UNION(X, pllVal)
+#define V_UINT_PTRREF(X)    V_UNION(X, pullVal)
+#else
+#define V_INT_PTR(X)        V_UNION(X, lVal)
+#define V_UINT_PTR(X)       V_UNION(X, ulVal)
+#define V_INT_PTRREF(X)     V_UNION(X, plVal)
+#define V_UINT_PTRREF(X)    V_UNION(X, pulVal)
+#endif
+
+#define V_CY(X)          V_UNION(X, cyVal)
+#define V_CYREF(X)       V_UNION(X, pcyVal)
+#define V_DATE(X)        V_UNION(X, date)
+#define V_DATEREF(X)     V_UNION(X, pdate)
+#define V_BSTR(X)        V_UNION(X, bstrVal)
+#define V_BSTRREF(X)     V_UNION(X, pbstrVal)
+#define V_DISPATCH(X)    V_UNION(X, pdispVal)
+#define V_DISPATCHREF(X) V_UNION(X, ppdispVal)
+#define V_ERROR(X)       V_UNION(X, scode)
+#define V_ERRORREF(X)    V_UNION(X, pscode)
+#define V_BOOL(X)        V_UNION(X, boolVal)
+#define V_BOOLREF(X)     V_UNION(X, pboolVal)
+#define V_UNKNOWN(X)     V_UNION(X, punkVal)
+#define V_UNKNOWNREF(X)  V_UNION(X, ppunkVal)
+#define V_VARIANTREF(X)  V_UNION(X, pvarVal)
+#define V_ARRAY(X)       V_UNION(X, parray)
+#define V_ARRAYREF(X)    V_UNION(X, pparray)
+#define V_BYREF(X)       V_UNION(X, byref)
+
+#define V_DECIMAL(X)     V_UNION(X, decVal)
+#define V_DECIMALREF(X)  V_UNION(X, pdecVal)
+*)
+
+     VARIANTARG           = VARIANT;
+     LPVARIANTARG         = POINTER TO VARIANTARG;
+
+     DISPID               = LONG;
+     MEMBERID             = DISPID;
+     LPMEMBERID           = POINTER TO MEMBERID;
+
+     HREFTYPE             = DWORD;
+     LPHREFTYPE           = POINTER TO HREFTYPE;
+
+     PROPID               = ULONG;
+
+     TYPEKIND=  (TKIND_ENUM,
+                 TKIND_RECORD,
+                 TKIND_MODULE,
+                 TKIND_INTERFACE,
+                 TKIND_DISPATCH,
+                 TKIND_COCLASS,
+                 TKIND_ALIAS,
+                 TKIND_UNION,
+                 TKIND_MAX) BIG;
+     LPTYPEKIND= POINTER TO TYPEKIND;
+
+     LPARRAYDESC= POINTER TO ARRAYDESC;
+     LPTYPEDESC= POINTER TO TYPEDESC; (* EH: added *)
+     TYPEDESC= RECORD
+                 CASE : CARDINAL OF
+                   0 : lptdesc    : LPTYPEDESC; (* EH: changed *)
+                 | 1 : lpadesc    : LPARRAYDESC;
+                 | 2 : hreftype   : HREFTYPE;
+                 ELSE
+                 END;
+                 vt: VARTYPE;  (* EH: added *)
+               END;
+
+     ARRAYDESC=   RECORD
+                    tdescElem       : TYPEDESC;
+                    cDims           : USHORT;
+                    rgbounds        : ARRAY [0..0] OF SAFEARRAYBOUND;
+                  END;
+
+     IDLDESC=   RECORD                     (* EH: apparently obsolete *)
+                  dwReserved     : ULONG;  (* use PARAMDESC instead *)
+                  wIDLFlags      : USHORT;
+                END;
+
+     PARAMDESCEX= RECORD
+                    cBytes:  ULONG;
+                    varDefaultValue: VARIANTARG;
+                  END; (* record *)
+	 LPPARAMDESCEX = POINTER TO PARAMDESCEX;
+
+     PARAMDESC= RECORD                      (* EH: added *)
+                  pparamdescex: LPPARAMDESCEX;
+                  wParamFlags: BITSET16;    (* contains PARAMFLAG bits, above *)
+                END; (* record *)
+	 LPPARAMDESC = POINTER TO PARAMDESC;
+
+     ELEMDESC=   RECORD
+                   tdesc          : TYPEDESC;
+                   CASE :CARDINAL OF
+                     0: idldesc        : IDLDESC; (* backwards compatibiltiy *)
+                   | 1: paramdesc      : PARAMDESC;
+                   ELSE
+                   END;
+                 END;
+     LPELEMDESC= POINTER TO ELEMDESC;
+
+     TYPEATTR=   RECORD
+                   guid                   : GUID;
+                   lcid                   : LCID;
+                   dwReserved             : DWORD;
+                   memidConstructor       : MEMBERID;
+                   memidDestructor        : MEMBERID;
+                   lpstrSchema            : LPOLESTR;
+                   cbSizeInstance         : ULONG;
+                   typekind               : TYPEKIND;
+                   cFuncs                 : WORD;
+                   cVars                  : WORD;
+                   cImplTypes             : WORD;
+                   cbSizeVft              : WORD;
+                   cbAlignment            : WORD;
+                   wTypeFlags             : WORD;
+                   wMajorVerNum           : WORD;
+                   wMinorVerNum           : WORD;
+                   tdescAlias             : TYPEDESC;
+                   idldescType            : IDLDESC;
+                 END;
+     LPTYPEATTR= POINTER TO TYPEATTR;
+
+     DISPPARAMS= RECORD
+                   rgvarg                 : LPVARIANTARG;
+                   rgdispidNamedArgs      : POINTER TO DISPID;
+                   cArgs                  : UINT;
+                   cNamedArgs             : UINT;
+                 END;
+
+     RemEXCEPINFO= RECORD
+                     wCode          : WORD;
+                     wReserved      : WORD;
+                     dwHelpContext  : DWORD;
+                     scode          : DWORD;
+                     cSource        : DWORD;
+                     cDescription   : DWORD;
+                     cHelpFile      : DWORD;
+                     strings        : ARRAY [0..0] OF OLECHAR;
+                   END;
+
+     EXCEPINFO=   RECORD
+                    wCode                  : WORD;
+                    wReserved              : WORD;
+                    bstrSource             : BSTR;
+                    bstrDescription        : BSTR;
+                    bstrHelpFile           : BSTR;
+                    dwHelpContext          : DWORD;
+                    pvReserved             : ADDRESS;
+                    pfnDeferredFillIn      : PROCEDURE (VAR EXCEPINFO): HRESULT;
+                    scode                  : SCODE;
+                  END;
+     LPEXCEPINFO= POINTER TO EXCEPINFO;
+
+     CALLCONV = (CC_DUMMY0,
+                 CC_CDECL,
+                 CC_PASCAL,
+                 CC_MACPASCAL,
+                 CC_STDCALL,
+                 CC_RESERVED,
+                 CC_SYSCALL,
+                 CC_MPWCDECL,
+                 CC_MPWPASCAL,
+                 CC_MAX) BIG;
+
+VAR NIL_VARIANT [MAKEADR(0)]: VARIANT; (* EH: added *)
+
+CONST
+    CC_MSCPASCAL = CC_PASCAL;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE CALLCONV_to_xmit(Enum : CALLCONV; VAR Long : LONG);
+
+PROCEDURE CALLCONV_from_xmit(Long : LONG; VAR Enum : CALLCONV);
+
+(*DUMMY PROCS*)
+PROCEDURE CALLCONV_free_inst(pEnum : CALLCONV);
+
+PROCEDURE CALLCONV_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+TYPE FUNCKIND= (FUNC_VIRTUAL,
+                FUNC_PUREVIRTUAL,
+                FUNC_NONVIRTUAL,
+                FUNC_STATIC,
+                FUNC_DISPATCH) BIG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE FUNCKIND_to_xmit(Enum : FUNCKIND; VAR Long : LONG);
+
+PROCEDURE FUNCKIND_from_xmit(Long : LONG; VAR Enum : FUNCKIND);
+
+PROCEDURE FUNCKIND_free_inst(pEnum : FUNCKIND);
+
+PROCEDURE FUNCKIND_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+TYPE
+     FUNCDESC=   RECORD
+                   memid                  : MEMBERID;
+                   lprgscode              : POINTER TO SCODE;
+                   lprgelemdescParam      : LPELEMDESC;
+                   funckind               : FUNCKIND;
+                   invkind                : INVOKEKIND;
+                   callconv               : CALLCONV;
+                   cParams                : SHORT;
+                   cParamsOpt             : SHORT;
+                   oVft                   : SHORT;
+                   cScodes                : SHORT;
+                   elemdescFunc           : ELEMDESC;
+                   wFuncFlags             : WORD;
+                 END;
+    LPFUNCDESC= POINTER TO FUNCDESC;
+
+    VARKIND= (VAR_PERINSTANCE,
+              VAR_STATIC,
+              VAR_CONST,
+              VAR_DISPATCH) BIG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE VARKIND_to_xmit(Enum : VARKIND; VAR Long : LONG);
+
+PROCEDURE VARKIND_from_xmit(Long : LONG; VAR Enum : VARKIND);
+
+PROCEDURE VARKIND_free_inst(pEnum : VARKIND);
+
+PROCEDURE VARKIND_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+CONST
+    IMPLTYPEFLAG_FDEFAULT        = 1;
+    IMPLTYPEFLAG_FSOURCE         = 2;
+    IMPLTYPEFLAG_FRESTRICTED     = 4;
+
+    TYPEFLAG_FAPPOBJECT          = 1;
+    TYPEFLAG_FCANCREATE          = 2;
+    TYPEFLAG_FLICENSED           = 4;
+    TYPEFLAG_FPREDECLID          = 8;
+    TYPEFLAG_FHIDDEN             = 10h;
+    TYPEFLAG_FCONTROL            = 20h;
+    TYPEFLAG_FDUAL               = 40h;
+    TYPEFLAG_FNONEXTENSIBLE      = 80h;
+    TYPEFLAG_FOLEAUTOMATION      = 100h;
+    TYPEFLAG_FRESTRICTED         = 200h;
+
+    FUNCFLAG_FRESTRICTED         = 1;
+    FUNCFLAG_FSOURCE             = 2;
+    FUNCFLAG_FBINDABLE           = 4;
+    FUNCFLAG_FREQUESTEDIT        = 8;
+    FUNCFLAG_FDISPLAYBIND        = 10h;
+    FUNCFLAG_FDEFAULTBIND        = 20h;
+    FUNCFLAG_FHIDDEN             = 40h;
+    FUNCFLAG_FUSESGETLASTERROR   = 80h;
+
+    VARFLAG_FREADONLY            = 1;
+    VARFLAG_FSOURCE              = 2;
+    VARFLAG_FBINDABLE            = 4;
+    VARFLAG_FREQUESTEDIT         = 8;
+    VARFLAG_FDISPLAYBIND         = 10h;
+    VARFLAG_FDEFAULTBIND         = 20h;
+    VARFLAG_FHIDDEN              = 40h;
+
+TYPE
+     VARDESC=   RECORD
+                  memid          : MEMBERID;
+                  lpstrSchema    : LPOLESTR;
+                  CASE : CARDINAL OF
+                    0 : oInst      : ULONG;
+                  | 1 : lpvarValue : LPVARIANT;
+                  ELSE
+                  END;
+                  elemdescVar    : ELEMDESC;
+                  wVarFlags      : WORD;
+                  varkind        : VARKIND;
+                END;
+    LPVARDESC= POINTER TO VARDESC;
+
+    TYPEFLAGS= DWORD;
+    FUNCFLAGS= DWORD;
+    VARFLAGS=  DWORD;
+
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE TYPEKIND_to_xmit(Enum : TYPEKIND; VAR Long : LONG);
+
+PROCEDURE TYPEKIND_from_xmit(Long : LONG; VAR pEnum : TYPEKIND);
+
+(*DUMMY PROCS*)
+PROCEDURE TYPEKIND_free_inst(Enum : TYPEKIND);
+
+PROCEDURE TYPEKIND_free_xmit(Long : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+TYPE DESCKIND= (DESCKIND_NONE,
+                DESCKIND_FUNCDESC,
+                DESCKIND_VARDESC,
+                DESCKIND_TYPECOMP,
+                DESCKIND_IMPLICITAPPOBJ,
+                DESCKIND_MAX) BIG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE DESCKIND_to_xmit(Enum : DESCKIND; VAR Long : LONG);
+
+PROCEDURE DESCKIND_from_xmit(Long : LONG; VAR Enum : DESCKIND);
+
+PROCEDURE DESCKIND_free_inst(pEnum : DESCKIND);
+
+PROCEDURE DESCKIND_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+
+ABSTRACT CLASS ITypeComp; FORWARD;
+ABSTRACT CLASS ITypeLib; FORWARD;
+
+ABSTRACT CLASS ITypeInfo;
+  INHERIT IUnknown;
+  REVEAL GetTypeAttr, GetTypeComp, GetFuncDesc,
+         GetVarDesc, GetNames, GetRefTypeOfImplType,
+         GetImplTypeFlags, GetIDsOfNames, Invoke,
+         GetDocumentation, GetDllEntry, GetRefTypeInfo,
+         AddressOfMember, CreateInstance, GetMops,
+         GetContainingTypeLib, ReleaseTypeAttr, ReleaseFuncDesc,
+         ReleaseVarDesc;
+  ABSTRACT PROCEDURE GetTypeAttr(VAR pTypeAttr: LPTYPEATTR): HRESULT;
+  ABSTRACT PROCEDURE GetTypeComp(VAR iTypeComp: ITypeComp): HRESULT;
+  ABSTRACT PROCEDURE GetFuncDesc(    cIndex:    UINT;
+                                 VAR pFuncDesc: LPFUNCDESC): HRESULT;
+  ABSTRACT PROCEDURE GetVarDesc(    cIndex:   UINT;
+                                VAR pVarDesc: LPVARDESC): HRESULT;
+  ABSTRACT PROCEDURE GetNames(    memberid:   MEMBERID;
+                              VAR bstrNames:  ARRAY OF BSTR;
+                                  cMaxNames:  UINT;
+                              VAR cNoOfNames: UINT): HRESULT;
+  ABSTRACT PROCEDURE GetRefTypeOfImplType(    cIndex:   UINT;
+                                          VAR hRefType: HREFTYPE): HRESULT;
+  ABSTRACT PROCEDURE GetImplTypeFlags(    cIndex: UINT;
+                                      VAR nFlags: WINT): HRESULT;
+  ABSTRACT PROCEDURE GetIDsOfNames(    lpNames:   ARRAY OF LPOLESTR;
+                                       cNames:    UINT;
+                                   VAR memberids: ARRAY OF MEMBERID): HRESULT;
+  ABSTRACT PROCEDURE Invoke(    iUnknown:   IUnknown;
+                                memberId:   MEMBERID;
+                                wFlags:     WORD;
+                                dispParams: DISPPARAMS;
+                            VAR varResult:  VARIANT;
+                            VAR exceptInfo: EXCEPINFO;
+                            VAR cArgError:  UINT): HRESULT;
+  ABSTRACT PROCEDURE GetDocumentation(    memberId:     MEMBERID;
+                                      VAR bstrName:     BSTR;
+                                      VAR bstrDoc:      BSTR;
+                                      VAR cHelpContext: DWORD;
+                                      VAR bstrHelpFile: BSTR): HRESULT;
+  ABSTRACT PROCEDURE GetDllEntry(    memberId:   MEMBERID;
+                                     invokeKind: INVOKEKIND;
+                                 VAR bstrDLL:    BSTR;
+                                 VAR bstrEntry:  BSTR;
+                                 VAR cOrdinal:   WORD): HRESULT;
+  ABSTRACT PROCEDURE GetRefTypeInfo(    hRefType:  HREFTYPE;
+                                    VAR iTypeInfo: ITypeInfo): HRESULT;
+  ABSTRACT PROCEDURE AddressOfMember(    memberId:   MEMBERID;
+                                         invokeKind: INVOKEKIND;
+                                     VAR address:    ADDRESS): HRESULT;
+  ABSTRACT PROCEDURE CreateInstance(    iUnknown: IUnknown;
+                                        iid:      IID;
+                                    VAR address:  ADDRESS): HRESULT;
+  ABSTRACT PROCEDURE GetMops(    memberId: MEMBERID;
+                             VAR bstrMops: BSTR): HRESULT;
+  ABSTRACT PROCEDURE GetContainingTypeLib(VAR iTypeLib: ITypeLib; (*IUnknown*)
+                                          VAR cIndex:   UINT): HRESULT;
+  ABSTRACT PROCEDURE ReleaseTypeAttr(pTypeAttr: LPTYPEATTR);  (* EH: changed *)
+  ABSTRACT PROCEDURE ReleaseFuncDesc(pFuncDesc: LPFUNCDESC);  (* EH: changed *)
+  ABSTRACT PROCEDURE ReleaseVarDesc(pVarDesc: LPVARDESC);     (* EH: changed *)
+END ITypeInfo;
+
+
+TYPE SYSKIND=  (SYS_WIN16, SYS_WIN32, SYS_MAC) BIG;
+     LIBFLAGS= (LIBFLAG_FRESTRICTED,
+                LIBFLAG_FCONTROL,
+                LIBFLAG_DUMMY3,
+                LIBFLAG_FHIDDEN) BIG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE SYSKIND_to_xmit(Enum : SYSKIND; VAR Long : LONG);
+
+PROCEDURE SYSKIND_from_xmit(Long : LONG; VAR Enum : SYSKIND);
+
+PROCEDURE SYSKIND_free_inst(pEnum : SYSKIND);
+
+PROCEDURE SYSKIND_free_xmit(pLong : LONG) ;
+(*MACRO ^*) <*/POP*>
+
+
+TYPE
+     BINDPTR=   RECORD
+                  CASE : CARDINAL OF
+                    0 : lpfuncdesc : LPFUNCDESC;
+                  | 1 : lpvardesc  : LPVARDESC;
+                  ELSE
+                    lptcomp: ITypeComp;
+                  END;
+                END;
+    LPBINDPTR= POINTER TO BINDPTR;
+
+
+ABSTRACT CLASS ITypeComp;
+  INHERIT IUnknown;
+  REVEAL Bind, BindType;
+  ABSTRACT PROCEDURE Bind(    szName:    ARRAY OF OLECHAR;
+                              ulHash:    ULONG;
+                              wFlags:    WORD;
+                          VAR iTypeInfo: ITypeInfo;
+                          VAR desckind:  DESCKIND;
+                          VAR bindPtr:   BINDPTR): HRESULT;
+  ABSTRACT PROCEDURE BindType(    szName:    ARRAY OF OLECHAR;
+                                  ulHash:    ULONG;
+                              VAR iTypeInfo: ITypeInfo;
+                              VAR iTypeComp: ITypeComp): HRESULT;
+END ITypeComp;
+
+
+TYPE
+     TLIBATTR=   RECORD
+                   guid           : GUID;
+                   lcid           : LCID;
+                   syskind        : SYSKIND;
+                   wMajorVerNum   : WORD;
+                   wMinorVerNum   : WORD;
+                   wLibFlags      : WORD;
+                 END;
+    LPTLIBATTR= POINTER TO TLIBATTR;
+
+
+ABSTRACT CLASS ITypeLib;
+  INHERIT IUnknown;
+  REVEAL GetTypeInfoCount, GetTypeInfo, GetTypeInfoType,
+         GetTypeInfoOfGuid, GetLibAttr, GetTypeComp,
+         GetDocumentation, IsName, FindName,
+         ReleaseTLibAttr;
+  ABSTRACT PROCEDURE GetTypeInfoCount(): UINT;
+  ABSTRACT PROCEDURE GetTypeInfo(    cIndex:    UINT;
+                                 VAR iTypeInfo: ITypeInfo): HRESULT;
+  ABSTRACT PROCEDURE GetTypeInfoType(    cIndex:   UINT;
+                                     VAR typekind: TYPEKIND): HRESULT;
+  ABSTRACT PROCEDURE GetTypeInfoOfGuid(    guid:      GUID;
+                                       VAR iTypeInfo: ITypeInfo): HRESULT;
+  ABSTRACT PROCEDURE GetLibAttr(VAR tlibattr: TLIBATTR): HRESULT;
+  ABSTRACT PROCEDURE GetTypeComp(VAR iTypeComp: ITypeComp): HRESULT;
+  ABSTRACT PROCEDURE GetDocumentation(    a: WINT;
+                                      VAR b: BSTR;
+                                      VAR c: BSTR;
+                                      VAR d: DWORD;
+                                      VAR e: BSTR): HRESULT;
+  ABSTRACT PROCEDURE IsName(    a: ARRAY OF OLECHAR;
+                                b: ULONG;
+                            VAR c: BOOL): HRESULT;
+  ABSTRACT PROCEDURE FindName(    a: ARRAY OF OLECHAR;
+                                  b: ULONG;
+                              VAR c: ARRAY OF ITypeInfo;
+                              VAR d: ARRAY OF MEMBERID;
+                              VAR e: USHORT): HRESULT;
+  ABSTRACT PROCEDURE ReleaseTLibAttr(a: TLIBATTR);
+END ITypeLib;
+
+
+ABSTRACT CLASS IDispatch;
+  INHERIT IUnknown;
+  REVEAL GetTypeInfoCount, GetTypeInfo, GetIDsOfNames, Invoke;
+  ABSTRACT PROCEDURE GetTypeInfoCount(VAR pctinfo: UINT): HRESULT;
+  ABSTRACT PROCEDURE GetTypeInfo(    iTInfo: UINT;
+                                     lcid: LCID;
+                                 VAR ppTInfo: ITypeInfo): HRESULT;
+  ABSTRACT PROCEDURE GetIDsOfNames(    riid: IID;
+                                       rgszNames: ARRAY OF LPOLESTR;
+                                       cNames: UINT;
+                                       lcid: LCID;
+                                   VAR OUT rgDispId: ARRAY OF DISPID): HRESULT;
+  ABSTRACT PROCEDURE Invoke(    dispIdMember: INTEGER;
+                                riid: IID;
+                                lcid: LCID;
+                                wFlags: WORD;
+                                pDispParams: DISPPARAMS;
+                            VAR pVarResult: VARIANT;
+                            VAR pExcepInfo: EXCEPINFO;
+                            VAR puArgErr: UINT): HRESULT;
+END IDispatch;
+
+ABSTRACT CLASS IClassFactory;
+  INHERIT IUnknown;
+  REVEAL CreateInstance, LockServer;
+  ABSTRACT PROCEDURE CreateInstance(    iunknownOuter: IUnknown;
+                                        iid:           IID;
+                                    VAR pv:            PVOID): HRESULT;
+  ABSTRACT PROCEDURE LockServer(bLock: BOOL): HRESULT;
+END IClassFactory;
+
+
+TYPE STATSTG = RECORD
+                 pwcsName               : LPOLESTR;
+                 type                   : DWORD;
+                 cbSize                 : ULARGE_INTEGER;
+                 mtime                  : FILETIME;
+                 ctime                  : FILETIME;
+                 atime                  : FILETIME;
+                 grfMode                : DWORD;
+                 grfLocksSupported      : DWORD;
+                 clsid                  : CLSID;
+                 grfStateBits           : DWORD;
+                 reserved               : DWORD;
+               END;
+
+     STGTY= (STGTY_DUMMY0,         (*0*)
+             STGTY_STORAGE,        (*1*)
+             STGTY_STREAM,         (*2*)
+             STGTY_LOCKBYTES,      (*3*)
+             STGTY_PROPERTY) BIG;  (*4*)
+
+     STREAM_SEEK= (STREAM_SEEK_SET,      (*0*)
+                   STREAM_SEEK_CUR,      (*1*)
+                   STREAM_SEEK_END) BIG; (*2*)
+
+     LOCKTYPE= (LOCK_DUMMY0,          (*0*)
+                LOCK_WRITE,           (*1*)
+                LOCK_EXCLUSIVE,       (*2*)
+                LOCK_DUMMY3,          (*3*)
+                LOCK_ONLYONCE) BIG;   (*4*)
+
+CONST
+    STDOLE_MAJORVERNUM   = 01h;
+    STDOLE_MINORVERNUM   = 00h;
+    STDOLE_LCID          = 00000h;
+
+ABSTRACT CLASS IEnumSTATSTG;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR statstg:   ARRAY OF STATSTG;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumSTATSTG: IEnumSTATSTG): HRESULT;
+END IEnumSTATSTG;
+
+
+ABSTRACT CLASS ISequentialStream;
+  INHERIT IUnknown;
+  REVEAL Read, Write;
+  ABSTRACT PROCEDURE Read(VAR pv:      ARRAY OF LOC;
+                              cb:      CARDINAL;
+                          VAR pcbRead: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Write(    pv:         ARRAY OF LOC;
+                               cb:         CARDINAL;
+                           VAR pcbWritten: CARDINAL): HRESULT;
+END ISequentialStream;
+
+
+TYPE RPCOLEDATAREP= DWORD;
+
+     RPCOLEMESSAGE=  RECORD
+                       reserved1      : ADDRESS;
+                       dataRepresentation: RPCOLEDATAREP;
+                       Buffer         : ADDRESS;
+                       cbBuffer       : ULONG;
+                       iMethod        : ULONG;
+                       reserved2      : ARRAY [0..5 - 1] OF ADDRESS;
+                       rpcFlags       : ULONG;
+                     END;
+     PRPCOLEMESSAGE= POINTER TO RPCOLEMESSAGE;
+
+     RemSNB=   RECORD
+                 ulCntStr       : DWORD;
+                 ulCntChar      : DWORD;
+                 rgString       : ARRAY [0..1 - 1] OF OLECHAR;
+               END;
+     LPRemSNB= POINTER TO RemSNB;
+
+     SNB= POINTER TO LPOLESTR;
+
+
+ABSTRACT CLASS IStream;
+  INHERIT ISequentialStream;
+  REVEAL Seek, SetSize, CopyTo,
+         Commit, Revert, LockRegion,
+         UnlockRegion, Stat, Clone;
+  ABSTRACT PROCEDURE Seek(    dlibMove:        VALUE LARGE_INTEGER;
+                              dwOrigin:        DWORD;
+                          VAR plibNewPosition: ULARGE_INTEGER): HRESULT;
+  ABSTRACT PROCEDURE SetSize(libNewSize: VALUE ULARGE_INTEGER): HRESULT;
+  ABSTRACT PROCEDURE CopyTo(    pstm:       IStream;
+                                cb:         VALUE ULARGE_INTEGER;
+                            VAR pcbRead:    ULARGE_INTEGER;
+                            VAR pcbWritten: ULARGE_INTEGER): HRESULT;
+  ABSTRACT PROCEDURE Commit(grfCommitFlags: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Revert(): HRESULT;
+  ABSTRACT PROCEDURE LockRegion(libOffset:  VALUE ULARGE_INTEGER;
+                                cb:         VALUE ULARGE_INTEGER;
+                                dwLockType: DWORD): HRESULT;
+  ABSTRACT PROCEDURE UnlockRegion(libOffset:  VALUE ULARGE_INTEGER;
+                                  cb:         VALUE ULARGE_INTEGER;
+                                  dwLockType: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Stat(VAR pstatstg:    STATSTG;
+                              grfStatFlag: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR ppstm: IStream): HRESULT;
+END IStream;
+
+
+ABSTRACT CLASS IStorage;
+  INHERIT IUnknown;
+  REVEAL CreateStream, OpenStream, CreateStorage,
+         OpenStorage, CopyTo, MoveElementTo,
+         Commit, Revert, EnumElements,
+         DestroyElement, RenameElement, SetElementTimes,
+         SetClass, SetStateBits, Stat;
+  ABSTRACT PROCEDURE CreateStream(    pwcsName:  ARRAY OF UCHAR;
+                                      grfMode:   DWORD;
+                                      reserved1: DWORD;
+                                      reserved2: DWORD;
+                                  VAR ppstm:     IStream): HRESULT;
+  ABSTRACT PROCEDURE OpenStream(    pwcsName:  ARRAY OF UCHAR;
+                                    reserved1: LPVOID;
+                                    grfMode:   DWORD;
+                                    reserved2: DWORD;
+                                VAR ppstm:     IStream): HRESULT;
+  ABSTRACT PROCEDURE CreateStorage(    pwcsName:  ARRAY OF UCHAR;
+                                       grfMode:   DWORD;
+                                       reserved1: DWORD;
+                                       reserved2: DWORD;
+                                   VAR ppstg: IStorage): HRESULT;
+  ABSTRACT PROCEDURE OpenStorage(    pwcsName:     ARRAY OF UCHAR;
+                                     pstgPriority: IStorage;
+                                     grfMode:      DWORD;
+                                     snbExclude:   SNB;
+                                     reserved:     DWORD;
+                                 VAR ppstg: IStorage): HRESULT;
+  ABSTRACT PROCEDURE CopyTo(ciidExclude:  DWORD;
+                            rgiidExclude: GUID;
+                            snbExclude:   SNB;
+                            pstgDest:     IStorage): HRESULT;
+  ABSTRACT PROCEDURE MoveElementTo(pwcsName:    ARRAY OF UCHAR;
+                                   pstgDest:    IStorage;
+                                   pwcsNewName: ARRAY OF UCHAR;
+                                   grfFlags:    DWORD): HRESULT;
+  ABSTRACT PROCEDURE Commit(grfCommitFlags: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Revert(): HRESULT;
+  ABSTRACT PROCEDURE EnumElements(    reserved1: DWORD;
+                                      reserved2: LPVOID;
+                                      reserved3: DWORD;
+                                  VAR ppenum:    IEnumSTATSTG): HRESULT;
+  ABSTRACT PROCEDURE DestroyElement(pwcsName: ARRAY OF UCHAR): HRESULT;
+  ABSTRACT PROCEDURE RenameElement(pwcsOldName: ARRAY OF UCHAR;
+                                   pwcsNewName: ARRAY OF UCHAR): HRESULT;
+  ABSTRACT PROCEDURE SetElementTimes(pwcsName: ARRAY OF UCHAR;
+                                     pctime:   FILETIME;
+                                     patime:   FILETIME;
+                                     pmtime:   FILETIME): HRESULT;
+  ABSTRACT PROCEDURE SetClass(clsid: GUID): HRESULT;
+  ABSTRACT PROCEDURE SetStateBits(grfStateBits: DWORD;
+                                  grfMask:      DWORD): HRESULT;
+  ABSTRACT PROCEDURE Stat(VAR pstatstg:    STATSTG;
+                              grfStatFlag: DWORD): HRESULT;
+END IStorage;
+
+
+CONST
+    TYMED_HGLOBAL        = 1;
+    TYMED_FILE           = 2;
+    TYMED_ISTREAM        = 4;
+    TYMED_ISTORAGE       = 8;
+    TYMED_GDI            = 16;
+    TYMED_MFPICT         = 32;
+    TYMED_ENHMF          = 64;
+    TYMED_NULL           = 0;
+
+TYPE TYMED= DWORD;
+
+     RemSTGMEDIUM= RECORD
+                     tymed          : DWORD;
+                     dwHandleType   : DWORD;
+                     pData          : DWORD;
+                     pUnkForRelease : DWORD;
+                     cbData         : DWORD;
+                     data           : ARRAY [0..1 - 1] OF BYTE;
+                   END;
+     LPRemSTGMEDIUM= POINTER TO RemSTGMEDIUM;
+
+    STGMEDIUM_UNION= RECORD
+                       CASE : CARDINAL OF
+                         0 : hBitmap            : HBITMAP;
+                       | 1 : hMetaFilePict      : HMETAFILE;
+                       | 2 : hEnhMetaFile       : HENHMETAFILE;
+                       | 3 : hGlobal            : HGLOBAL;
+                       | 4 : lpszFileName       : LPOLESTR;
+                       | 5 : pstm               : IStream;
+                       | 6 : pstg               : IStorage;
+                       ELSE
+                       END;
+                     END;
+
+     STGMEDIUM=   RECORD
+                    tymed          : DWORD;
+                    u              : STGMEDIUM_UNION;
+                    pUnkForRelease : IUnknown;
+                  END;
+     LPSTGMEDIUM= POINTER TO STGMEDIUM;
+
+     DVTARGETDEVICE=  RECORD
+                        tdSize                 : DWORD;
+                        tdDriverNameOffset     : WORD;
+                        tdDeviceNameOffset     : WORD;
+                        tdPortNameOffset       : WORD;
+                        tdExtDevmodeOffset     : WORD;
+                        tdData                 : ARRAY [0..1 - 1] OF BYTE;
+                      END;
+     PDVTARGETDEVICE= POINTER TO DVTARGETDEVICE;
+
+     CLIPFORMAT=   WORD;
+     LPCLIPFORMAT= POINTER TO CLIPFORMAT;
+
+     FORMATETC=   RECORD
+                    cfFormat       : CLIPFORMAT;
+                    ptd            : PDVTARGETDEVICE;
+                    dwAspect       : DWORD;
+                    lindex         : LONG;
+                    tymed          : DWORD;
+                  END;
+     LPFORMATETC= POINTER TO FORMATETC;
+
+
+ABSTRACT CLASS IEnumFORMATETC;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR formatetc: ARRAY OF FORMATETC;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumFORMATETC: IEnumFORMATETC): HRESULT;
+END IEnumFORMATETC;
+
+
+ABSTRACT CLASS IAdviseSink;
+  INHERIT IUnknown;
+  REVEAL OnDataChange, OnViewChange, OnRename,
+         OnSave, OnClose;
+  ABSTRACT PROCEDURE OnDataChange(formatetc: FORMATETC;
+                                  stgmedium: STGMEDIUM);
+  ABSTRACT PROCEDURE OnViewChange(cAspect: DWORD;
+                                  lIndex:  LONG);
+  ABSTRACT PROCEDURE OnRename(iMoniker: IUnknown);
+  ABSTRACT PROCEDURE OnSave();
+  ABSTRACT PROCEDURE OnClose();
+END IAdviseSink;
+
+
+ABSTRACT CLASS IAdviseSink2;
+  INHERIT IAdviseSink;
+  REVEAL OnLinkSrcChange;
+  ABSTRACT PROCEDURE OnLinkSrcChange(iMoniker: IUnknown);
+END IAdviseSink2;
+
+
+ABSTRACT CLASS IEnumString;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR strings:   ARRAY OF LPOLESTR;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumString: IEnumString): HRESULT;
+END IEnumString;
+
+
+ABSTRACT CLASS IEnumMoniker;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR structs:   ARRAY OF BYTE;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumMoniker: IEnumMoniker): HRESULT;
+END IEnumMoniker;
+
+
+ABSTRACT CLASS IEnumUnknown;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR iUnknowns:  ARRAY OF IUnknown;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumUnknown: IEnumUnknown): HRESULT;
+END IEnumUnknown;
+
+
+CONST
+    ADVF_NODATA                  = 1;
+    ADVF_PRIMEFIRST              = 2;
+    ADVF_ONLYONCE                = 4;
+    ADVF_DATAONSTOP              = 64;
+    ADVFCACHE_NOHANDLER          = 8;
+    ADVFCACHE_FORCEBUILTIN       = 16;
+    ADVFCACHE_ONSAVE             = 32;
+
+TYPE ADVF= DWORD;
+
+     STATDATA=   RECORD
+                   formatetc      : FORMATETC;
+                   advf           : DWORD;
+                   pAdvSink       : IAdviseSink;
+                   dwConnection   : DWORD;
+                 END;
+     LPSTATDATA= POINTER TO STATDATA;
+
+
+ABSTRACT CLASS IEnumSTATDATA;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR statdata:  ARRAY OF STATDATA;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumSTATSTG: IEnumSTATSTG): HRESULT;
+END IEnumSTATDATA;
+
+
+ABSTRACT CLASS IPersist;
+  INHERIT IUnknown;
+  REVEAL GetClassID;
+  ABSTRACT PROCEDURE GetClassID(VAR pClassID: GUID): HRESULT;
+END IPersist;
+
+
+ABSTRACT CLASS IPersistStream;
+  INHERIT IPersist;
+  REVEAL IsDirty, Load, Save, GetSizeMax;
+  ABSTRACT PROCEDURE IsDirty(): HRESULT;
+  ABSTRACT PROCEDURE Load(iStream: IStream): HRESULT;
+  ABSTRACT PROCEDURE Save(iStream:     IStream;
+                          bClearDirty: BOOL): HRESULT;
+  ABSTRACT PROCEDURE GetSizeMax(VAR lnSize: ULARGE_INTEGER): HRESULT;
+END IPersistStream;
+
+
+ABSTRACT CLASS IPersistStreamInit;  (* EH: added *)
+  INHERIT IPersistStream;
+  REVEAL InitNew;
+  ABSTRACT PROCEDURE InitNew(): HRESULT;
+END IPersistStreamInit;
+
+
+ABSTRACT CLASS IRpcChannelBuffer;
+  INHERIT IUnknown;
+  REVEAL GetBuffer, SendReceive, FreeBuffer,
+         GetDestCtx, IsConnected;
+  ABSTRACT PROCEDURE GetBuffer(message: RPCOLEMESSAGE;
+                               iid:     IID): HRESULT;
+  ABSTRACT PROCEDURE SendReceive(VAR message: RPCOLEMESSAGE;
+                                 VAR cStatus: ULONG): HRESULT;
+  ABSTRACT PROCEDURE FreeBuffer(message: RPCOLEMESSAGE): HRESULT;
+  ABSTRACT PROCEDURE GetDestCtx(VAR cDestContext: DWORD;
+                                VAR adrDestContect: ADDRESS): HRESULT;
+  ABSTRACT PROCEDURE IsConnected(): HRESULT;
+END IRpcChannelBuffer;
+
+CONST
+    CLSCTX_INPROC_SERVER        = 1;
+    CLSCTX_INPROC_HANDLER       = 2;
+    CLSCTX_LOCAL_SERVER         = 4;
+    CLSCTX_INPROC_SERVER16      = 8;
+    CLSCTX_REMOTE_SERVER        = 10h;
+    CLSCTX_INPROC_HANDLER16     = 20h;
+    CLSCTX_INPROC_SERVERX86     = 40h;
+    CLSCTX_INPROC_HANDLERX86    = 80h;
+    CLSCTX_ESERVER_HANDLER      = 100h;
+    CLSCTX_RESERVED             = 200h;
+    CLSCTX_NO_CODE_DOWNLOAD     = 400h;
+    CLSCTX_NO_WX86_TRANSLATION  = 800h;
+    CLSCTX_NO_CUSTOM_MARSHAL    = 1000h;
+    CLSCTX_ENABLE_CODE_DOWNLOAD = 2000h;
+    CLSCTX_NO_FAILURE_LOG       = 4000h;
+
+    CLSCTX_ALL= CLSCTX_INPROC_SERVER BOR
+                CLSCTX_INPROC_HANDLER BOR
+                CLSCTX_LOCAL_SERVER BOR
+                CLSCTX_REMOTE_SERVER;
+
+    CLSCTX_INPROC= CLSCTX_INPROC_SERVER BOR
+                   CLSCTX_INPROC_HANDLER;
+
+    CLSCTX_SERVER= CLSCTX_INPROC_SERVER BOR
+                   CLSCTX_LOCAL_SERVER;
+
+    MARSHALINTERFACE_MIN = 500;
+    CWCSTORAGENAME       = 32;
+
+    STGM_DIRECT          = 000000000h;
+    STGM_TRANSACTED      = 000010000h;
+    STGM_SIMPLE          = 008000000h;
+
+    STGM_READ            = 000000000h;
+    STGM_WRITE           = 000000001h;
+    STGM_READWRITE       = 000000002h;
+
+    STGM_SHARE_DENY_NONE = 000000040h;
+    STGM_SHARE_DENY_READ = 000000030h;
+    STGM_SHARE_DENY_WRITE= 000000020h;
+    STGM_SHARE_EXCLUSIVE = 000000010h;
+
+    STGM_PRIORITY        = 000040000h;
+    STGM_DELETEONRELEASE = 004000000h;
+    STGM_NOSCRATCH       = 000100000h;
+
+
+    STGM_CREATE          = 000001000h;
+    STGM_CONVERT         = 000020000h;
+    STGM_FAILIFTHERE     = 000000000h;
+
+CONST
+	REGCLS_SINGLEUSE=      0;
+    REGCLS_MULTIPLEUSE=    1;
+    REGCLS_MULTI_SEPARATE= 2;
+   	REGCLS_SUSPENDED=      4;
+    REGCLS_SURROGATE=      8;
+
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE IsEqualGUID(rguid1 : GUID; rguid2 : GUID): BOOL;
+
+PROCEDURE IsEqualIID(riid1 : IID; riid2 : IID): BOOL;
+
+PROCEDURE IsEqualCLSID(rclsid1 : CLSID; rclsid2 : CLSID): BOOL;
+(*MACRO ^*) <*/POP*>
+
+ABSTRACT CLASS IRpcStubBuffer;
+  INHERIT IUnknown;
+  REVEAL Connect, Disconnect, Invoke,
+         IsIIDSupported, CountRefs, DebugServerQueryInterface,
+         DebugServerRelease;
+  ABSTRACT PROCEDURE Connect(iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE Disconnect();
+  ABSTRACT PROCEDURE Invoke(message:           RPCOLEMESSAGE;
+                            iRpcChannelBuffer: IRpcChannelBuffer): HRESULT;
+  ABSTRACT PROCEDURE IsIIDSupported(iid: IID): IRpcStubBuffer;
+  ABSTRACT PROCEDURE CountRefs(): ULONG;
+  ABSTRACT PROCEDURE DebugServerQueryInterface(VAR iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE DebugServerRelease(iUnknown: IUnknown);
+END IRpcStubBuffer;
+
+
+PROCEDURE MIDL_user_allocate(a : size_t): ADDRESS;
+
+PROCEDURE MIDL_user_free(a : ADDRESS);
+
+
+ABSTRACT CLASS IRunningObjectTable;
+  INHERIT IUnknown;
+  REVEAL Register, Revoke, IsRunning,
+         GetObject, NoteChangeTime, GetTimeOfLastChange,
+         EnumRunning;
+  ABSTRACT PROCEDURE Register(    cFlags:      DWORD;
+                                  iUnknown:    IUnknown;
+                                  iMoniker:    IUnknown;
+                              VAR cRegistered: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Revoke(cRegistered: DWORD): HRESULT;
+  ABSTRACT PROCEDURE IsRunning(iMoniker: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE GetObject(    iMoniker: IUnknown;
+                               VAR iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE NoteChangeTime(cRegistered: DWORD;
+                                    filetime:    FILETIME): HRESULT;
+  ABSTRACT PROCEDURE GetTimeOfLastChange(    iMoniker: IUnknown;
+                                         VAR filetime: FILETIME): HRESULT;
+  ABSTRACT PROCEDURE EnumRunning(VAR iMoniker: IUnknown): HRESULT;
+END IRunningObjectTable;
+
+
+TYPE
+     BIND_OPTS =  RECORD
+                    cbStruct               : DWORD;
+                    grfFlags               : DWORD;
+                    grfMode                : DWORD;
+                    dwTickCountDeadline    : DWORD;
+                  END;
+     LPBIND_OPTS= POINTER TO BIND_OPTS;
+
+     BIND_FLAGS= (BIND_DUMMY0,              (*Filler 0*)
+                  BIND_MAYBOTHERUSER,       (*1*)
+                  BIND_JUSTTESTEXISTENCE    (*2*)
+                  ) BIG;
+
+ABSTRACT CLASS IBindCtx;
+  INHERIT IUnknown;
+  REVEAL RegisterObjectBound, RevokeObjectBound,
+         ReleaseBoundObjects, SetBindOptions,
+         GetBindOptions, GetRunningObjectTable,
+         RegisterObjectParam, GetObjectParam,
+         EnumObjectParam, RevokeObjectParam;
+  ABSTRACT PROCEDURE RegisterObjectBound(iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE RevokeObjectBound(iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE ReleaseBoundObjects(): HRESULT;
+  ABSTRACT PROCEDURE SetBindOptions(bind: BIND_OPTS): HRESULT;
+  ABSTRACT PROCEDURE GetBindOptions(VAR bind: BIND_OPTS): HRESULT;
+  ABSTRACT PROCEDURE GetRunningObjectTable(VAR iRunningObjectTable: IRunningObjectTable): HRESULT;
+  ABSTRACT PROCEDURE RegisterObjectParam(szKey:    ARRAY OF OLECHAR;
+                                         iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE GetObjectParam(    szKey:    ARRAY OF OLECHAR;
+                                    VAR iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE EnumObjectParam(VAR iEnumString: IEnumString): HRESULT;
+  ABSTRACT PROCEDURE RevokeObjectParam(szKey: ARRAY OF OLECHAR): HRESULT;
+END IBindCtx;
+
+TYPE
+    PPBC = POINTER TO IBindCtx;
+
+TYPE MKSYS= (MKSYS_NONE,                 (*0*)
+             MKSYS_GENERICCOMPOSITE,     (*1*)
+             MKSYS_FILEMONIKER,          (*2*)
+             MKSYS_ANTIMONIKER,          (*3*)
+             MKSYS_ITEMMONIKER,          (*4*)
+             MKSYS_POINTERMONIKER) BIG;  (*5*)
+
+     MKREDUCE= DWORD;
+
+CONST
+    MKRREDUCE_ONE           = 3 SHL 16;
+    MKRREDUCE_TOUSER        = 2 SHL 16;
+    MKRREDUCE_THROUGHUSER   = 1 SHL 16;
+    MKRREDUCE_ALL           = 0;
+
+
+ABSTRACT CLASS IMoniker;
+  INHERIT IPersistStream;
+  REVEAL BindToObject, BindToStorage,
+         Reduce, ComposeWith, Enum,
+         IsEqual, Hash, IsRunning,
+         GetTimeOfLastChange, Inverse,
+         CommonPrefixWith, RelativePathTo,
+         GetDisplayName, ParseDisplayName,
+         IsSystemMoniker;
+  ABSTRACT PROCEDURE BindToObject(    iBindCtx:       IBindCtx;
+                                      iMonikerToLeft: IMoniker;
+                                      iidRequested:   IID;
+                                  VAR pv:             PVOID): HRESULT;
+  ABSTRACT PROCEDURE BindToStorage(    iBindCtx:       IBindCtx;
+                                       iMonikerToLeft: IMoniker;
+                                       iidRequested:   IID;
+                                  VAR pv:             PVOID): HRESULT;
+  ABSTRACT PROCEDURE Reduce(    iBindCtx:        IBindCtx;
+                                cReduceHowFar:   DWORD;
+                            VAR INOUT iMoniker:  IMoniker;
+                            VAR iMonikerReduced: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE ComposeWith(    iMonikerToRight:   IMoniker;
+                                     bOnlyIfNotGeneric: BOOL;
+                                 VAR iMonikerComposite: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE Enum(    bForward:     BOOL;
+                          VAR iEnumMoniker: IEnumMoniker): HRESULT;
+  ABSTRACT PROCEDURE IsEqual(iMonikerOther: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE Hash(VAR cHash: DWORD): HRESULT;
+  ABSTRACT PROCEDURE IsRunning(iBindCtx:       IBindCtx;
+                               iMonikerToLeft: IMoniker;
+                               iMonikerToTest: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE GetTimeOfLastChange(    iBindCtx:       IBindCtx;
+                                             iMonikerToLeft: IMoniker;
+                                         VAR filetime:       FILETIME): HRESULT;
+  ABSTRACT PROCEDURE Inverse(VAR iMonikerInverse: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE CommonPrefixWith(    iMonikerOther:  IMoniker;
+                                      VAR iMonikerPrefix: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE RelativePathTo(    iMonikerOther: IMoniker;
+                                    VAR iMonikerPath:  IMoniker): HRESULT;
+  ABSTRACT PROCEDURE GetDisplayName(    iBindCtx:       IBindCtx;
+                                        iMonikerToLeft: IMoniker;
+                                    VAR pszDisplayName: LPOLESTR): HRESULT;
+  ABSTRACT PROCEDURE ParseDisplayName(    iBindCtx:       IBindCtx;
+                                          iMonikerToLeft: IMoniker;
+                                          szDisplayName:  ARRAY OF OLECHAR;
+                                      VAR cEaten:         ULONG;
+                                      VAR iMonikerOut:    IMoniker): HRESULT;
+  ABSTRACT PROCEDURE IsSystemMoniker(VAR mksys: DWORD): HRESULT;
+END IMoniker;
+
+
+ABSTRACT CLASS IMarshal;
+  INHERIT IUnknown;
+  REVEAL GetUnmarshalClass, GetMarshalSizeMax,
+         MarshalInterface, UnmarshalInterface,
+         ReleaseMarshalData, DisconnectObject;
+  ABSTRACT PROCEDURE GetUnmarshalClass(    iid:          IID;
+                                           iUnknown:     IUnknown;
+                                           cDestContext: DWORD;
+                                           iDestContext: IUnknown;
+                                           cFlags:       DWORD;
+                                       VAR clsid:        CLSID): HRESULT;
+  ABSTRACT PROCEDURE GetMarshalSizeMax(    iid:          IID;
+                                           iUnknown:     IUnknown;
+                                           cDestContext: DWORD;
+                                           iDestContext: IUnknown;
+                                           cFlags:       DWORD;
+                                       VAR cSize:        DWORD): HRESULT;
+  ABSTRACT PROCEDURE MarshalInterface(iStream:      IStream;
+                                      iid:          IID;
+                                      iUnknown:     IUnknown;
+                                      cDestContext: DWORD;
+                                      iDestContext: IUnknown;
+                                      cFlags:       DWORD): HRESULT;
+  ABSTRACT PROCEDURE UnmarshalInterface(    iStream:  IStream;
+                                            iid:      IID;
+                                        VAR pv:       PVOID): HRESULT;
+  ABSTRACT PROCEDURE ReleaseMarshalData(iStream: IStream): HRESULT;
+  ABSTRACT PROCEDURE DisconnectObject(cReserved: DWORD): HRESULT;
+END IMarshal;
+
+
+ABSTRACT CLASS IMalloc;
+  INHERIT IUnknown;
+  REVEAL Alloc, Realloc, Free, GetSize,
+         DidAlloc, HeapMinimize;
+  ABSTRACT PROCEDURE Alloc(cSize: ULONG): ADDRESS;
+  ABSTRACT PROCEDURE Realloc(address: ADDRESS;
+                             cSize:   ULONG): ADDRESS;
+  ABSTRACT PROCEDURE Free(address: ADDRESS);
+  ABSTRACT PROCEDURE GetSize(address: ADDRESS): ULONG;
+  ABSTRACT PROCEDURE DidAlloc(address: ADDRESS): WINT;
+  ABSTRACT PROCEDURE HeapMinimize();
+END IMalloc;
+
+
+ABSTRACT CLASS IMallocSpy;
+  INHERIT IUnknown;
+  REVEAL PreAlloc, PostAlloc, PreFree,
+         PostFree, PreRealloc, PostRealloc,
+         PreGetSize, PostGetSize, PreDidAlloc,
+         PostDidAlloc, PreHeapMinimize, PostHeapMinimize;
+  ABSTRACT PROCEDURE PreAlloc(cRequested: ULONG): ULONG;
+  ABSTRACT PROCEDURE PostAlloc(address: ADDRESS): ADDRESS;
+  ABSTRACT PROCEDURE PreFree(address: ADDRESS;
+                             bSpyed:  BOOL): ADDRESS;
+  ABSTRACT PROCEDURE PostFree(bSpyed: BOOL);
+  ABSTRACT PROCEDURE PreRealloc(    adrOld:   ADDRESS;
+                                    cRequest: ULONG;
+                                VAR adrNew:   ADDRESS;
+                                    bSpyed:   BOOL): ULONG;
+  ABSTRACT PROCEDURE PostRealloc(address: ADDRESS;
+                                 bSpyed:  BOOL): ADDRESS;
+  ABSTRACT PROCEDURE PreGetSize(address: ADDRESS;
+                                bSpyed:  BOOL): ADDRESS;
+  ABSTRACT PROCEDURE PostGetSize(address: ULONG;
+                                 bSpyed:  BOOL): ULONG;
+  ABSTRACT PROCEDURE PreDidAlloc(address: ADDRESS;
+                                 bSpyed:  BOOL): ADDRESS;
+  ABSTRACT PROCEDURE PostDidAlloc(address: ADDRESS;
+                                  bSpyed:  BOOL;
+                                  nActual: WINT): WINT;
+  ABSTRACT PROCEDURE PreHeapMinimize();
+  ABSTRACT PROCEDURE PostHeapMinimize();
+END IMallocSpy;
+
+
+ABSTRACT CLASS IStdMarshalInfo;
+  INHERIT IUnknown;
+  REVEAL GetClassForHandler;
+  ABSTRACT PROCEDURE GetClassForHandler(    cDestContext: DWORD;
+                                            iUnknown:     IUnknown;
+                                        VAR clsid:        CLSID): HRESULT;
+END IStdMarshalInfo;
+
+
+TYPE EXTCONN= (EXTCONN_dummy0,      (*Filler 0*)
+               EXTCONN_STRONG,      (*1*)
+               EXTCONN_WEAK,        (*2*)
+               EXTCONN_dummy3,      (*Filler 3*)
+               EXTCONN_CALLABLE     (*4*)
+              ) BIG;
+
+ABSTRACT CLASS IExternalConnection;
+  INHERIT IUnknown;
+  REVEAL AddConnection, ReleaseConnection;
+  ABSTRACT PROCEDURE AddConnection(cExtConn:  DWORD;
+                                   cReserved: DWORD): DWORD;
+  ABSTRACT PROCEDURE ReleaseConnection(cExtConn:           DWORD;
+                                       cReserved:          DWORD;
+                                       bLastReleaseCloses: BOOL): DWORD;
+END IExternalConnection;
+
+
+ABSTRACT CLASS IRunnableObject;
+  INHERIT IUnknown;
+  REVEAL GetRunningClass, Run, IsRunning,
+         LockRunning, SetContainedObject;
+  ABSTRACT PROCEDURE GetRunningClass(VAR clsid: CLSID): HRESULT;
+  ABSTRACT PROCEDURE Run(iBindCtx: IBindCtx): HRESULT;
+  ABSTRACT PROCEDURE IsRunning(): BOOL;
+  ABSTRACT PROCEDURE LockRunning(bLock:             BOOL;
+                                 bLastUnlockCloses: BOOL): HRESULT;
+  ABSTRACT PROCEDURE SetContainedObject(bContained: BOOL): HRESULT;
+END IRunnableObject;
+
+
+ABSTRACT CLASS IPersistFile;
+  INHERIT IPersist;
+  REVEAL IsDirty, Load, Save,
+         SaveCompleted, GetCurFile;
+  ABSTRACT PROCEDURE IsDirty(): HRESULT;
+  ABSTRACT PROCEDURE Load(szuFile: ARRAY OF OLECHAR;
+                          cMode:   DWORD): HRESULT;
+  ABSTRACT PROCEDURE Save(szuFile:   ARRAY OF OLECHAR;
+                          bRemember: BOOL): HRESULT;
+  ABSTRACT PROCEDURE SaveCompleted(szuFile: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE GetCurFile(VAR szuFile: LPOLESTR): HRESULT;
+END IPersistFile;
+
+
+ABSTRACT CLASS IPersistStorage;
+  INHERIT IPersist;
+  REVEAL IsDirty, InitNew, Load,
+         Save, SaveCompleted, HandsOffStorage;
+  ABSTRACT PROCEDURE IsDirty(): HRESULT;
+  ABSTRACT PROCEDURE InitNew(iStorage: IStorage): HRESULT;
+  ABSTRACT PROCEDURE Load(iStorage: IStorage): HRESULT;
+  ABSTRACT PROCEDURE Save(iStorage:    IStorage;
+                          bSameAsLoad: BOOL): HRESULT;
+  ABSTRACT PROCEDURE SaveCompleted(iStorage: IStorage): HRESULT;
+  ABSTRACT PROCEDURE HandsOffStorage(): HRESULT;
+END IPersistStorage;
+
+
+ABSTRACT CLASS ILockBytes;
+  INHERIT IUnknown;
+  REVEAL ReadAt, WriteAt, Flush, SetSize,
+         LockRegion, UnlockRegion, Stat;
+  ABSTRACT PROCEDURE ReadAt(    ulOffset: VALUE ULARGE_INTEGER;
+                            VAR btBuffer: ARRAY OF BYTE;
+                                cRead:    ULONG;
+                            VAR cActual:  ULONG): HRESULT;
+  ABSTRACT PROCEDURE WriteAt(    ulOffset: VALUE ULARGE_INTEGER;
+                                 btBuffer: ARRAY OF BYTE;
+                                 cWrite:   ULONG;
+                             VAR cActual:  ULONG): HRESULT;
+  ABSTRACT PROCEDURE Flush(): HRESULT;
+  ABSTRACT PROCEDURE SetSize(ulSize: VALUE ULARGE_INTEGER): HRESULT;
+  ABSTRACT PROCEDURE LockRegion(ulOffset:  VALUE ULARGE_INTEGER;
+                                ulSize:    VALUE ULARGE_INTEGER;
+                                cLockType: DWORD): HRESULT;
+  ABSTRACT PROCEDURE UnlockRegion(ulOffset:  VALUE ULARGE_INTEGER;
+                                  ulSize:    VALUE ULARGE_INTEGER;
+                                  cLocktype: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Stat(VAR statstg:   STATSTG;
+                              cStatFlag: DWORD): HRESULT;
+END ILockBytes;
+
+
+ABSTRACT CLASS IRootStorage;
+  INHERIT IUnknown;
+  REVEAL SwitchToFile;
+  ABSTRACT PROCEDURE SwitchToFile(psuFile:ARRAY OF OLECHAR): HRESULT;
+END IRootStorage;
+
+
+ABSTRACT CLASS IDataObject;
+  INHERIT IUnknown;
+  REVEAL GetData, GetDataHere, QueryGetData,
+         GetCanonicalFormatEtc, SetData,
+         EnumFormatEtc, DAdvise, DUnadvise,
+         EnumDAdvise;
+  ABSTRACT PROCEDURE GetData(    formatetc: FORMATETC;
+                             VAR stgmedium: STGMEDIUM): HRESULT;
+  ABSTRACT PROCEDURE GetDataHere(    formatetc: FORMATETC;
+                                 VAR stgmedium: STGMEDIUM): HRESULT;
+  ABSTRACT PROCEDURE QueryGetData(formatetc: FORMATETC): HRESULT;
+  ABSTRACT PROCEDURE GetCanonicalFormatEtc(    formatetcIn:  FORMATETC;
+                                           VAR formatetcOut: FORMATETC): HRESULT;
+  ABSTRACT PROCEDURE SetData(formatetc: FORMATETC;
+                             stgmedium: STGMEDIUM;
+                             bRelease:  BOOL): HRESULT;
+  ABSTRACT PROCEDURE EnumFormatEtc(    cDirection:     DWORD;
+                                   VAR iEnumFORMATETC: IEnumFORMATETC): HRESULT;
+  ABSTRACT PROCEDURE DAdvise(    formatetc:   FORMATETC;
+                                 cFlags:      DWORD;
+                                 iAdviseSink: IAdviseSink;
+                             VAR cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE DUnadvise(cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE EnumDAdvise(VAR iEnumSTATDATA: IEnumSTATDATA): HRESULT;
+END IDataObject;
+
+
+ABSTRACT CLASS IDataAdviseHolder;
+  INHERIT IUnknown;
+  REVEAL Advise, Unadvise, EnumAdvise, SendOnDataChange;
+  ABSTRACT PROCEDURE Advise(    iDataObject: IDataObject;
+                                formatetc:   FORMATETC;
+                                cFlags:      DWORD;
+                                iAdviseSink: IAdviseSink;
+                            VAR cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Unadvise(cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE EnumAdvise(VAR iEnumSTATDATA: IEnumSTATDATA): HRESULT;
+  ABSTRACT PROCEDURE SendOnDataChange(iDataObject: IDataObject;
+                                      cReserved:   DWORD;
+                                      cFlags:      DWORD): HRESULT;
+END IDataAdviseHolder;
+
+TYPE CALLTYPE= (CALLTYPE_DUMMY0,                  (*0*)
+                CALLTYPE_TOPLEVEL,                (*1*)
+                CALLTYPE_NESTED,                  (*2*)
+                CALLTYPE_ASYNC,                   (*3*)
+                CALLTYPE_TOPLEVEL_CALLPENDING,    (*4*)
+                CALLTYPE_ASYNC_CALLPENDING) BIG;  (*5*)
+
+     SERVERCALL= (SERVERCALL_ISHANDLED,           (*0*)
+                  SERVERCALL_REJECTED,            (*1*)
+                  SERVERCALL_RETRYLATER) BIG;     (*2*)
+
+     PENDINGTYPE= (PENDINGTYPE_DUMMY0,            (*0*)
+                   PENDINGTYPE_TOPLEVEL,          (*1*)
+                   PENDINGTYPE_NESTED) BIG;       (*2*)
+
+     PENDINGMSG= (PENDINGMSG_CANCELCALL,          (*0*)
+                  PENDINGMSG_WAITNOPROCESS,       (*1*)
+                  PENDINGMSG_WAITDEFPROCESS) BIG; (*2*)
+
+     INTERFACEINFO=   RECORD
+                        pUnk           : IUnknown;
+                        iid            : IID;
+                        wMethod        : WORD;
+                      END;
+     LPINTERFACEINFO= POINTER TO INTERFACEINFO;
+
+
+ABSTRACT CLASS IMessageFilter;
+  INHERIT IUnknown;
+  REVEAL HandleInComingCall, RetryRejectedCall,
+         MessagePending;
+  ABSTRACT PROCEDURE HandleInComingCall(cCallType:     DWORD;
+                                        htaskThread:   HTASK;
+                                        cTickCount:    DWORD;
+                                        interfaceinfo: INTERFACEINFO): DWORD;
+  ABSTRACT PROCEDURE RetryRejectedCall(htaskThread: HTASK;
+                                       cTickCount:  DWORD;
+                                       cRejectType: DWORD): DWORD;
+  ABSTRACT PROCEDURE MessagePending(htaskThread:  HTASK;
+                                    cTickCount:   DWORD;
+                                    cPendingType: DWORD): DWORD;
+END IMessageFilter;
+
+
+ABSTRACT CLASS IRpcProxyBuffer;
+  INHERIT IUnknown;
+  REVEAL Connect, Disconnect;
+  ABSTRACT PROCEDURE Connect(iRpcChannelBuffer: IRpcChannelBuffer): HRESULT;
+  ABSTRACT PROCEDURE Disconnect();
+END IRpcProxyBuffer;
+
+
+ABSTRACT CLASS IPSFactoryBuffer;
+  INHERIT IUnknown;
+  REVEAL CreateProxy, CreateStub;
+  ABSTRACT PROCEDURE CreateProxy(    iUnknown: IUnknown;
+                                     iid:      IID;
+                                 VAR iRpcProxyBuffer: IRpcProxyBuffer;
+                                 VAR address:         ADDRESS): HRESULT;
+  ABSTRACT PROCEDURE CreateStub(    iid:            IID;
+                                    iUnknown:       IUnknown;
+                                VAR iRpcStubBuffer: IRpcStubBuffer): HRESULT;
+END IPSFactoryBuffer;
+
+
+PROCEDURE SNB_to_xmit(VAR a : SNB;
+                      VAR b : LPRemSNB);
+
+PROCEDURE SNB_from_xmit(VAR a : RemSNB;
+                        VAR b : SNB);
+
+PROCEDURE SNB_free_inst(VAR a : SNB);
+
+PROCEDURE SNB_free_xmit(VAR a : RemSNB);
+
+TYPE
+    RemVariant_v0_1_c_ifspec = RPC_IF_HANDLE;
+    RemVariant_v0_1_s_ifspec = RPC_IF_HANDLE;
+
+
+ABSTRACT CLASS ICreateTypeInfo;
+  INHERIT IUnknown;
+  REVEAL SetGuid, SetTypeFlags, SetDocString,
+         SetHelpContext, SetVersion, AddRefTypeInfo,
+         AddFuncDesc, AddImplType, SetImplTypeFlags,
+         SetAlignment, SetSchema, AddVarDesc,
+         SetFuncAndParamNames, SetVarName,
+         SetTypeDescAlias, DefineFuncAsDllEntry,
+         SetFuncDocString, SetVarDocString,
+         SetFuncHelpContext, SetVarHelpContext,
+         SetMops, SetTypeIdldesc, LayOut;
+  ABSTRACT PROCEDURE SetGuid(guid: GUID): HRESULT;
+  ABSTRACT PROCEDURE SetTypeFlags(cTypeFlags: UINT): HRESULT;
+  ABSTRACT PROCEDURE SetDocString(szuDoc: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetHelpContext(szuHelpContext: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetVersion(wMajor: WORD;
+                                wMinor: WORD): HRESULT;
+  ABSTRACT PROCEDURE AddRefTypeInfo(    iTypeInfo: ITypeInfo;
+                                    VAR hRefType:  HREFTYPE): HRESULT;
+  ABSTRACT PROCEDURE AddFuncDesc(cIndex:   UINT;
+                                 funcdesc: FUNCDESC): HRESULT;
+  ABSTRACT PROCEDURE AddImplType(cIndex:   UINT;
+                                 hRefType: HREFTYPE): HRESULT;
+  ABSTRACT PROCEDURE SetImplTypeFlags(cIndex: UINT;
+                                      nFlags: WINT): HRESULT;
+  ABSTRACT PROCEDURE SetAlignment(wAlignment: WORD): HRESULT;
+  ABSTRACT PROCEDURE SetSchema(szuSchema: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE AddVarDesc(cIndex:  UINT;
+                                vardesc: VARDESC): HRESULT;
+  ABSTRACT PROCEDURE SetFuncAndParamNames(cIndex:   UINT;
+                                          szuNames: ARRAY OF LPOLESTR;
+                                          cNames:   UINT): HRESULT;
+  ABSTRACT PROCEDURE SetVarName(cIndex:  UINT;
+                                szuName: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetTypeDescAlias(typedesc: TYPEDESC): HRESULT;
+  ABSTRACT PROCEDURE DefineFuncAsDllEntry(cIndex:      UINT;
+                                          szuDllName:  ARRAY OF OLECHAR;
+                                          szuProcName: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetFuncDocString(cIndex: UINT;
+                                      szuDoc: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetVarDocString(cIndex: UINT;
+                                     szuDoc: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetFuncHelpContext(cIndex:   UINT;
+                                        cContext: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetVarHelpContext(cIndex:   UINT;
+                                       cContext: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetMops(cIndex:   UINT;
+                             bstrMops: BSTR): HRESULT;
+  ABSTRACT PROCEDURE SetTypeIdldesc(idldesc: IDLDESC): HRESULT;
+  ABSTRACT PROCEDURE LayOut(): HRESULT;
+END ICreateTypeInfo;
+
+
+ABSTRACT CLASS ICreateTypeLib;
+  INHERIT IUnknown;
+  REVEAL CreateTypeInfo, SetName, SetVersion,
+         SetGuid, SetDocString, SetHelpFileName,
+         SetHelpContext, SetLcid, SetLibFlags,
+         SaveAllChanges;
+  ABSTRACT PROCEDURE CreateTypeInfo(    szuName:         ARRAY OF OLECHAR;
+                                        typekind:        TYPEKIND;
+                                    VAR iCreateTypeInfo: ICreateTypeInfo): HRESULT;
+  ABSTRACT PROCEDURE SetName(szuName: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetVersion(wMajor: WORD;
+                                wMinor: WORD): HRESULT;
+  ABSTRACT PROCEDURE SetGuid(guid: GUID): HRESULT;
+  ABSTRACT PROCEDURE SetDocString(szuDoc: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetHelpFileName(szuHelp: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetHelpContext(cContext: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetLcid(lcid: LCID): HRESULT;
+  ABSTRACT PROCEDURE SetLibFlags(cFlags: UINT): HRESULT;
+  ABSTRACT PROCEDURE SaveAllChanges(): HRESULT;
+END ICreateTypeLib;
+
+CONST
+    DISPID_UNKNOWN       = -1;
+    DISPID_VALUE         = 0;
+    DISPID_PROPERTYPUT   = -3;
+    DISPID_NEWENUM       = -4;
+    DISPID_EVALUATE      = -5;
+    DISPID_CONSTRUCTOR   = -6;
+    DISPID_DESTRUCTOR    = -7;
+    DISPID_COLLECT       = -8;
+
+
+ABSTRACT CLASS IEnumVARIANT;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR variant:   ARRAY OF VARIANT;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumVARIANT: IEnumVARIANT): HRESULT;
+END IEnumVARIANT;
+
+
+ABSTRACT CLASS IErrorInfo;
+  INHERIT IUnknown;
+  REVEAL GetGUID, GetSource, GetDescription,
+         GetHelpFile, GetHelpContext;
+  ABSTRACT PROCEDURE GetGUID(VAR guid: GUID): HRESULT;
+  ABSTRACT PROCEDURE GetSource(VAR bstrSource: BSTR): HRESULT;
+  ABSTRACT PROCEDURE GetDescription(VAR bstrDescription: BSTR): HRESULT;
+  ABSTRACT PROCEDURE GetHelpFile(VAR bstrHelp: BSTR): HRESULT;
+  ABSTRACT PROCEDURE GetHelpContext(VAR cContext: DWORD): HRESULT;
+END IErrorInfo;
+
+
+ABSTRACT CLASS ICreateErrorInfo;
+  INHERIT IUnknown;
+  REVEAL SetGUID, SetSource, SetDescription,
+         SetHelpFile, SetHelpContext;
+  ABSTRACT PROCEDURE SetGUID(guid: GUID): HRESULT;
+  ABSTRACT PROCEDURE SetSource(szuSource: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetDescription(szuDescription: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetHelpFile(szuHelp: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE SetHelpContext(cContext: DWORD): HRESULT;
+END ICreateErrorInfo;
+
+
+ABSTRACT CLASS ISupportErrorInfo;
+  INHERIT IUnknown;
+  REVEAL InterfaceSupportsErrorInfo;
+  ABSTRACT PROCEDURE InterfaceSupportsErrorInfo(iid: IID): HRESULT;
+END ISupportErrorInfo;
+
+
+PROCEDURE SysAllocString(a: ARRAY OF OLECHAR): BSTR;
+
+PROCEDURE SysReAllocString(VAR a: BSTR;
+                               b: ARRAY OF OLECHAR): WINT;
+
+PROCEDURE SysAllocStringLen(a: ARRAY OF OLECHAR;
+                            b: UINT): BSTR;
+
+PROCEDURE SysReAllocStringLen(VAR a: BSTR;
+                              VAR b: ARRAY OF OLECHAR;
+                                  c: UINT): WINT;
+
+PROCEDURE SysFreeString(a: BSTR);
+
+PROCEDURE SysStringLen(a: BSTR): UINT;
+
+PROCEDURE SysStringByteLen(bstr: BSTR): UINT;
+
+PROCEDURE SysAllocStringByteLen(sz:  ARRAY OF ACHAR;
+                                len: UINT): BSTR;
+
+PROCEDURE DosDateTimeToVariantTime(    wDosDate: UINT;
+                                       wDosTime: UINT;
+                                   VAR pvtime:   LONGREAL): WINT;
+
+PROCEDURE VariantTimeToDosDateTime(    vtime:     LONGREAL;
+                                   VAR pwDosDate: USHORT;
+                                   VAR pwDosTime: USHORT): WINT;
+
+PROCEDURE SafeArrayAllocDescriptor(    cDims:   UINT;
+                                   VAR ppsaOut: LPSAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayAllocData(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayCreate(     vt:       VARTYPE;
+                              cDims:     UINT;
+                          VAR rgsabound: SAFEARRAYBOUND): LPSAFEARRAY;
+
+PROCEDURE SafeArrayDestroyDescriptor(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayDestroyData(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayDestroy(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayRedim(VAR psa:         SAFEARRAY;
+                         VAR psaboundNew: SAFEARRAYBOUND): HRESULT;
+
+PROCEDURE SafeArrayGetDim(VAR psa: SAFEARRAY): UINT;
+
+PROCEDURE SafeArrayGetElemsize(VAR psa: SAFEARRAY): UINT;
+
+PROCEDURE SafeArrayGetUBound(VAR psa:      SAFEARRAY;
+                                 nDim:     UINT;
+                             VAR plUbound: LONG): HRESULT;
+
+PROCEDURE SafeArrayGetLBound(VAR psa:      SAFEARRAY;
+                                 nDim:     UINT;
+                             VAR plLbound: LONG): HRESULT;
+
+PROCEDURE SafeArrayLock(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayUnlock(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayAccessData(VAR psa:     SAFEARRAY;
+                              VAR ppvData: ADDRESS): HRESULT;
+
+PROCEDURE SafeArrayUnaccessData(VAR psa: SAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayGetElement(VAR psa:       SAFEARRAY;
+                              VAR rgIndices: LONG;
+                                  pv:        ADDRESS): HRESULT;
+
+PROCEDURE SafeArrayPutElement(VAR psa: SAFEARRAY;
+                              VAR rgIndices: LONG;
+                                  pv:  ADDRESS): HRESULT;
+
+PROCEDURE SafeArrayCopy(VAR psa:     SAFEARRAY;
+                        VAR ppsaOut: LPSAFEARRAY): HRESULT;
+
+PROCEDURE SafeArrayPtrOfIndex(VAR psa:       SAFEARRAY;
+                              VAR rgIndices: LONG;
+                              VAR ppvData:   ADDRESS): HRESULT;
+
+PROCEDURE VariantInit(VAR pvarg: VARIANTARG);
+
+PROCEDURE VariantClear(VAR pvarg: VARIANTARG): HRESULT;
+
+PROCEDURE VariantCopy(VAR pvargDest: VARIANTARG;
+                      VAR pvargSrc:  VARIANTARG): HRESULT;
+
+PROCEDURE VariantCopyInd(VAR pvarDest: VARIANT;
+                         VAR pvargSrc: VARIANTARG): HRESULT;
+
+PROCEDURE VariantChangeType(VAR pvargDest: VARIANTARG;
+                            VAR pvarSrc:   VARIANTARG;
+                                wFlags:    USHORT;
+                                vt:        VARTYPE): HRESULT;
+
+PROCEDURE VariantChangeTypeEx(VAR pvargDest: VARIANTARG;
+                              VAR pvarSrc:   VARIANTARG;
+                                  lcid:      LCID;
+                                  wFlags:    USHORT;
+                                  vt:        VARTYPE): HRESULT;
+
+CONST
+    VARIANT_NOVALUEPROP  = 1;
+    VAR_TIMEVALUEONLY    = 00001h;
+    VAR_DATEVALUEONLY    = 00002h;
+
+PROCEDURE VarUI1FromI2(    sIn:   SHORT;
+                       VAR pbOut: BYTE): HRESULT;
+
+PROCEDURE VarUI1FromI4(    lIn:   LONG;
+                       VAR pbOut: BYTE): HRESULT;
+
+PROCEDURE VarUI1FromR4(    fltIn: REAL;
+                       VAR pbOut: BYTE): HRESULT;
+
+PROCEDURE VarUI1FromR8(    dblIn: LONGREAL;
+                       VAR pbOut: BYTE): HRESULT;
+
+PROCEDURE VarUI1FromCy(    cyIn:  CY;
+                       VAR pbOut: BYTE): HRESULT;
+
+PROCEDURE VarUI1FromDate(    dateIn: DATE;
+                         VAR pbOut:  BYTE): HRESULT;
+
+PROCEDURE VarUI1FromStr(    strIn:   ARRAY OF OLECHAR;
+                            lcid:    LCID;
+                            dwFlags: ULONG;
+                        VAR pbOut:   BYTE): HRESULT;
+
+PROCEDURE VarUI1FromDisp(    iDispatch: IDispatch;
+                             lcid:      LCID;
+                         VAR pbOut:     BYTE): HRESULT;
+
+PROCEDURE VarUI1FromBool(    boolIn: VARIANT_BOOL;
+                         VAR pbOut:  BYTE): HRESULT;
+
+PROCEDURE VarI2FromUI1(    bIn:   ACHAR;
+                       VAR psOut: SHORT): HRESULT;
+
+PROCEDURE VarI2FromI4(    lIn:   LONG;
+                      VAR psOut: SHORT): HRESULT;
+
+PROCEDURE VarI2FromR4(    fltIn: REAL;
+                      VAR psOut: SHORT): HRESULT;
+
+PROCEDURE VarI2FromR8(    dblIn: LONGREAL;
+                      VAR psOut: SHORT): HRESULT;
+
+PROCEDURE VarI2FromCy(    cyIn:  CY;
+                      VAR psOut: SHORT): HRESULT;
+
+PROCEDURE VarI2FromDate(    dateIn: DATE;
+                        VAR psOut:  SHORT): HRESULT;
+
+PROCEDURE VarI2FromStr(    strIn:   ARRAY OF OLECHAR;
+                           lcid:    LCID;
+                           dwFlags: ULONG;
+                       VAR psOut:   SHORT): HRESULT;
+
+PROCEDURE VarI2FromDisp(    iDispatch: IDispatch;
+                            lcid:      LCID;
+                        VAR psOut:     SHORT): HRESULT;
+
+PROCEDURE VarI2FromBool(    boolIn: VARIANT_BOOL;
+                        VAR psOut:  SHORT): HRESULT;
+
+PROCEDURE VarI4FromUI1(    bIn:   ACHAR;
+                       VAR plOut: LONG): HRESULT;
+
+PROCEDURE VarI4FromI2(    sIn:   SHORT;
+                      VAR plOut: LONG): HRESULT;
+
+PROCEDURE VarI4FromR4(    fltIn: REAL;
+                      VAR plOut: LONG): HRESULT;
+
+PROCEDURE VarI4FromR8(    dblIn: LONGREAL;
+                      VAR plOut: LONG): HRESULT;
+
+PROCEDURE VarI4FromCy(    cyIn:  CY;
+                      VAR plOut: LONG): HRESULT;
+
+PROCEDURE VarI4FromDate(    dateIn: DATE;
+                        VAR plOut:  LONG): HRESULT;
+
+PROCEDURE VarI4FromStr(    strIn:   ARRAY OF OLECHAR;
+                           lcid:    LCID;
+                           dwFlags: ULONG;
+                       VAR plOut:   LONG): HRESULT;
+
+PROCEDURE VarI4FromDisp(    iDispatch: IDispatch;
+                            lcid:      LCID;
+                        VAR plOut:     LONG): HRESULT;
+
+PROCEDURE VarI4FromBool(    boolIn: VARIANT_BOOL;
+                        VAR plOut:  LONG): HRESULT;
+
+PROCEDURE VarR4FromUI1(    bIn:     ACHAR;
+                       VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromI2(    sIn:     SHORT;
+                      VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromI4(    lIn:     LONG;
+                      VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromR8(    dblIn:   LONGREAL;
+                      VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromCy(    cyIn:    CY;
+                      VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromDate(    dateIn:  DATE;
+                        VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR4FromStr(     strIn:   LPWSTR;
+                            lcid:    LCID;
+                            dwFlags: DWORD;
+                       VAR pfltOut:  REAL): HRESULT;
+
+PROCEDURE VarR4FromDisp(    iDispatch: IDispatch;
+                            lcid:      LCID;
+                        VAR pfltOut:   REAL): HRESULT;
+
+PROCEDURE VarR4FromBool(    boolIn:  VARIANT_BOOL;
+                        VAR pfltOut: REAL): HRESULT;
+
+PROCEDURE VarR8FromUI1(    bIn:     ACHAR;
+                       VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromI2(    sIn:     SHORT;
+                      VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromI4(    lIn:     LONG;
+                      VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromR4(    fltIn:   REAL;
+                      VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromCy(    cyIn:    CY;
+                      VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromDate(    dateIn:  DATE;
+                        VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromStr(    strIn:   ARRAY OF OLECHAR;
+                           lcid:    LCID;
+                           dwFlags: DWORD;
+                       VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromDisp(    iDispatch: IDispatch;
+                            lcid:      LCID;
+                        VAR pdblOut:   LONGREAL): HRESULT;
+
+PROCEDURE VarR8FromBool(    boolIn:  VARIANT_BOOL;
+                        VAR pdblOut: LONGREAL): HRESULT;
+
+PROCEDURE VarDateFromUI1(    bIn:      ACHAR;
+                         VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromI2(    sIn:      SHORT;
+                        VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromI4(    lIn:      LONG;
+                        VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromR4(    fltIn:    REAL;
+                        VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromR8(    dblIn:    LONGREAL;
+                        VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromCy(    cyIn:     CY;
+                        VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromStr(    strIn:    ARRAY OF OLECHAR;
+                             lcid:     LCID;
+                             dwFlags:  DWORD;
+                         VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarDateFromDisp(    iDispatch: IDispatch;
+                              lcid:      LCID;
+                          VAR pdateOut:  DATE): HRESULT;
+
+PROCEDURE VarDateFromBool(    boolIn:   VARIANT_BOOL;
+                          VAR pdateOut: DATE): HRESULT;
+
+PROCEDURE VarCyFromUI1(    bIn:    ACHAR;
+                       VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromI2(    sIn:    SHORT;
+                      VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromI4(    lIn:    LONG;
+                      VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromR4(    fltIn:  REAL;
+                      VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromR8(    dblIn:  LONGREAL;
+                      VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromDate(    dateIn: DATE;
+                        VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarCyFromStr(    strIn:   ARRAY OF OLECHAR;
+                           lcid:    LCID;
+                           dwFlags: DWORD;
+                       VAR pcyOut:  CY): HRESULT;
+
+PROCEDURE VarCyFromDisp(    iDispatch: IDispatch;
+                            lcid:      LCID;
+                        VAR pcyOut:    CY): HRESULT;
+
+PROCEDURE VarCyFromBool(    boolIn: VARIANT_BOOL;
+                        VAR pcyOut: CY): HRESULT;
+
+PROCEDURE VarBstrFromUI1(    bVal:     ACHAR;
+                             lcid:     LCID;
+                             dwFlags:  DWORD;
+                         VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromI2(    iVal:     SHORT;
+                            lcid:     LCID;
+                            dwFlags:  DWORD;
+                        VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromI4(    lIn:      LONG;
+                            lcid:     LCID;
+                            dwFlags:  DWORD;
+                        VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromR4(    fltIn:    REAL;
+                            lcid:     LCID;
+                            dwFlags:  DWORD;
+                        VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromR8(    dblIn:    LONGREAL;
+                            lcid:     LCID;
+                            dwFlags:  DWORD;
+                        VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromCy(    cyIn:     CY;
+                            lcid:     LCID;
+                            dwFlags:  DWORD;
+                        VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromDate(    dateIn:   DATE;
+                              lcid:     LCID;
+                              dwFlags:  DWORD;
+                          VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBstrFromDisp(    iDispatch: IDispatch;
+                              lcid:      LCID;
+                              dwFlags:   DWORD;
+                          VAR pbstrOut:  BSTR): HRESULT;
+
+PROCEDURE VarBstrFromBool(    boolIn:   VARIANT_BOOL;
+                              lcid:     LCID;
+                              dwFlags:  DWORD;
+                          VAR pbstrOut: BSTR): HRESULT;
+
+PROCEDURE VarBoolFromUI1(    bIn:      ACHAR;
+                         VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromI2(    sIn:      SHORT;
+                        VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromI4(    lIn:      LONG;
+                        VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromR4(    fltIn:    REAL;
+                        VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromR8(    dblIn:    LONGREAL;
+                        VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromDate(    dateIn:   DATE;
+                          VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromCy(    cyIn:     CY;
+                        VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromStr(    strIn:    ARRAY OF OLECHAR;
+                             lcid:     LCID;
+                             dwFlags:  DWORD;
+                         VAR pboolOut: VARIANT_BOOL): HRESULT;
+
+PROCEDURE VarBoolFromDisp(    iDispatch: IDispatch;
+                              lcid:      LCID;
+                          VAR pboolOut:  VARIANT_BOOL): HRESULT;
+
+(*---------------------------------------------------------------------*/
+/*                     VARTYPE Math API                                */
+/*---------------------------------------------------------------------*)
+
+PROCEDURE VarAdd(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarAnd(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarCat(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarDiv(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarEqv(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarIdiv(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarImp(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarMod(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarMul(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarOr(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarPow(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarSub(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarXor(pvarLeft, pvarRight : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+
+PROCEDURE VarAbs(pvarIn : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarFix(pvarIn : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarInt(pvarIn : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarNeg(pvarIn : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+PROCEDURE VarNot(pvarIn : VARIANT; VAR OUT pvarResult : VARIANT) : HRESULT;
+
+PROCEDURE VarRound(pvarIn : VARIANT; cDecimals : INTEGER; VAR OUT pvarResult : VARIANT);
+
+(* dwFlags passed to CompareString if a string compare *)
+PROCEDURE VarCmp(pvarLeft, pvarRight : VARIANT; lcid : LCID; dwFlags : ULONG) : HRESULT;
+
+(* Decimal math *)
+(*
+PROCEDURE VarDecAdd(pdecLeft, pdecRight : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecDiv(pdecLeft, pdecRight : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecMul(pdecLeft, pdecRight : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecSub(pdecLeft, pdecRight : DECIMAL; VAR OUT pdecResult : DECIMAL);
+
+PROCEDURE VarDecAbs(pdecIn : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecFix(pdecIn : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecInt(pdecIn : DECIMAL; VAR OUT pdecResult : DECIMAL);
+PROCEDURE VarDecNeg(pdecIn : DECIMAL; VAR OUT pdecResult : DECIMAL);
+
+PROCEDURE VarDecRound(pdecIn : DECIMAL;
+                      cDecimals : INTEGER;
+                      VAR OUT pdecResult : DECIMAL);
+
+PROCEDURE VarDecCmp(pdecLeft, pdecRight : DECIMAL) : HRESULT;
+PROCEDURE VarDecCmpR8(pdecLeft : DECIMAL; dblRight : LONGREAL) : HRESULT;
+*)
+
+
+(* Currency math *)
+PROCEDURE VarCyAdd(cyLeft, cyRight : CY; VAR OUT cyResult : CY) : HRESULT;
+PROCEDURE VarCyMul(cyLeft, cyRight : CY; VAR OUT cyResult : CY) : HRESULT;
+PROCEDURE VarCyMulI4(cyLeft : CY; lRight : LONG; VAR OUT pcyResult : CY) : HRESULT;
+PROCEDURE VarCyMulI8(cyLeft : CY; lRight : INTEGER64; VAR OUT pcyResult : CY) : HRESULT;
+PROCEDURE VarCySub(cyLeft, cyRight : CY; VAR OUT cyResult : CY) : HRESULT;
+
+PROCEDURE VarCyAbs(cyIn : CY; VAR OUT cyResult : CY) : HRESULT;
+PROCEDURE VarCyFix(cyIn : CY; VAR OUT cyResult : CY) : HRESULT;
+PROCEDURE VarCyInt(cyIn : CY; VAR OUT cyResult : CY) : HRESULT;
+PROCEDURE VarCyNeg(cyIn : CY; VAR OUT cyResult : CY) : HRESULT;
+
+PROCEDURE VarCyRound(cyIn : CY; cDecimals : INTEGER; VAR OUT cyResult : CY) : HRESULT;
+
+PROCEDURE VarCyCmp(cyLeft, cyRight : CY) : HRESULT;
+PROCEDURE VarCyCmpR8(cyLeft : CY; dblRight : LONGREAL) : HRESULT;
+
+
+(* Misc support functions*)
+PROCEDURE VarBstrCat(bstrLeft, bstrRight : BSTR; VAR OUT pbstrResult : BSTR) : HRESULT;
+PROCEDURE VarBstrCmp(bstrLeft, bstrRight : BSTR;
+                     pcid : LCID;
+                     dwFlags : ULONG) : HRESULT;
+PROCEDURE VarR8Pow(dblLeft, dblRight : LONGREAL; VAR OUT pdblResult : LONGREAL) : HRESULT;
+PROCEDURE VarR4CmpR8(fltLeft : REAL; dblRight : LONGREAL) : HRESULT;
+PROCEDURE VarR8Round(dblIn : LONGREAL;
+                     cDecimals : INTEGER;
+                     VAR OUT pdblResult : LONGREAL) : HRESULT;
+
+
+(* Compare results.  These are returned as a SUCCESS HResult.  Subtracting
+// one gives the usual values of -1 for Less Than, 0 for Equal To, +1 for
+// Greater Than. *)
+CONST
+    VARCMP_LT   =0;
+    VARCMP_EQ   =1;
+    VARCMP_GT   =2;
+    VARCMP_NULL =3;
+
+CONST
+    MEMBERID_NIL         = DISPID_UNKNOWN;
+    ID_DEFAULTINST       = -2;
+
+    IDLFLAG_NONE         = 0;
+    IDLFLAG_FIN          = 01h;
+    IDLFLAG_FOUT         = 02h;
+    IDLFLAG_FLCID        = 04h;
+    IDLFLAG_FRETVAL      = 08h;
+
+    DISPATCH_METHOD         = 01h;
+    DISPATCH_PROPERTYGET    = 02h;
+    DISPATCH_PROPERTYPUT    = 04h;
+    DISPATCH_PROPERTYPUTREF = 08h;
+
+PROCEDURE LHashValOfNameSysA(syskind : SYSKIND;
+                            lcid : LCID;
+                            szName : ARRAY OF ACHAR): ULONG;
+
+PROCEDURE LHashValOfNameSys(syskind : SYSKIND;
+                            lcid : LCID;
+                            szName : ARRAY OF OLECHAR): ULONG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE LHashValOfName(lcid : LCID; szName : ARRAY OF OLECHAR): ULONG;
+
+PROCEDURE WHashValOfLHashVal(lhashval : ULONG): WORD;
+
+PROCEDURE IsHashValCompatible(lhashval1 : ULONG; lhashval2 : ULONG): BOOL;
+(*MACRO ^*) <*/POP*>
+
+PROCEDURE LoadTypeLib(    szFile:   ARRAY OF OLECHAR;
+                      VAR iTypeLib: ITypeLib): HRESULT;
+
+PROCEDURE LoadRegTypeLib(    guid:     GUID;
+                             wMajor:   WORD;
+                             wMinor:   WORD;
+                             lcid:     LCID;
+                         VAR iTypeLib: ITypeLib): HRESULT;
+
+PROCEDURE QueryPathOfRegTypeLib(    guid:     GUID;
+                                    wMajor:   USHORT;
+                                    wMinor:   USHORT;
+                                    lcid:     LCID;
+                                VAR bstrPath: BSTR): HRESULT;
+
+PROCEDURE RegisterTypeLib(iTypeLib:   ITypeLib;
+                          szFullPath: ARRAY OF OLECHAR;
+                          szHelpDir:  ARRAY OF OLECHAR): HRESULT;
+
+PROCEDURE DeregisterTypeLib(guid:   GUID;
+                            wMajor: WORD;
+                            wMinor: WORD;
+                            lcid:   LCID): HRESULT;
+
+PROCEDURE CreateTypeLib(    syskind:    SYSKIND;
+                            szFile:     ARRAY OF OLECHAR;
+                        VAR iCreateLib: ICreateTypeLib): HRESULT;
+
+TYPE
+    PARAMDATA=
+		RECORD
+            szName: LPOLESTR;
+            vt:     VARTYPE;
+        END;
+    LPPARAMDATA= POINTER TO PARAMDATA;
+
+    METHODDATA=
+		RECORD
+            szName         : LPOLESTR;
+            ppdata         : LPPARAMDATA;
+            dispid         : DISPID;
+            iMeth          : UINT;
+            cc             : CALLCONV;
+            cArgs          : UINT;
+            wFlags         : WORD;
+            vtReturn       : VARTYPE;
+        END;
+    LPMETHODDATA= POINTER TO METHODDATA;
+
+    INTERFACEDATA=
+		RECORD
+            pmethdata      : POINTER TO METHODDATA;
+            cMembers       : UINT;
+        END;
+    LPINTERFACEDATA= POINTER TO INTERFACEDATA;
+
+PROCEDURE DispGetParam(VAR dispparams : DISPPARAMS;
+                           position:    UINT;
+                           vtTarg:      VARTYPE;
+                       VAR pvarResult:  VARIANT;
+                       VAR puArgErr:    UINT): HRESULT;
+
+PROCEDURE DispGetIDsOfNames(    iTypeInfo: ITypeInfo;
+                            VAR rgszNames: LPOLESTR;
+                                cNames:    UINT;
+                            VAR rgdispid:  DISPID): HRESULT;
+
+PROCEDURE DispInvoke(    iDispatch:    IDispatch;
+                         iTypeInfo:    ITypeInfo;
+                         dispidMember: DISPID;
+                         wFlags:       WORD;
+                     VAR pparams:      DISPPARAMS;
+                     VAR pvarResult:   VARIANT;
+                     VAR pexcepinfo:   EXCEPINFO;
+                     VAR puArgErr:     UINT): HRESULT;
+
+PROCEDURE CreateDispTypeInfo(VAR pidata:    INTERFACEDATA;
+                                 lcid:      LCID;
+                             VAR iTypeInfo: ITypeInfo): HRESULT;
+
+PROCEDURE CreateStdDispatch(    iUnknown:  IUnknown;
+                                pvThis:    ADDRESS;
+                                iTypeInfo: ITypeInfo;
+                            VAR iStdDisp:  IUnknown): HRESULT;
+
+CONST
+    ACTIVEOBJECT_STRONG  = 00h;
+    ACTIVEOBJECT_WEAK    = 01h;
+
+PROCEDURE RegisterActiveObject(    iUnknown:  IUnknown;
+                                   clsid:     CLSID;
+                                   dwFlags:   DWORD;
+                               VAR cRegister: DWORD): HRESULT;
+
+PROCEDURE RevokeActiveObject(cRegister:  DWORD;
+                             pvReserved: ADDRESS): HRESULT;
+
+PROCEDURE GetActiveObject(    clsid:      CLSID;
+                              pvReserved: ADDRESS;
+                          VAR iUnknown:   IUnknown): HRESULT;
+
+PROCEDURE SetErrorInfo(dwReserved: DWORD;
+                       iErrorInfo: IErrorInfo): HRESULT;
+
+PROCEDURE GetErrorInfo(    cReserved:  DWORD;
+                       VAR iErrorInfo: IErrorInfo): HRESULT;
+
+PROCEDURE CreateErrorInfo(VAR iCreateErrorInfo: ICreateErrorInfo): HRESULT;
+
+PROCEDURE OaBuildVersion(): ULONG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE V_VT(X : LPVARIANT): WORD;
+
+PROCEDURE V_ISBYREF(X : LPVARIANT): BOOL;
+
+PROCEDURE V_ISARRAY(X : LPVARIANT): BOOL;
+
+PROCEDURE V_ISVECTOR(X : LPVARIANT): BOOL;
+
+PROCEDURE V_NONE(X : LPVARIANT): SHORT;
+
+PROCEDURE V_UI1(X : LPVARIANT): BYTE;
+
+PROCEDURE V_UI1REF(X : LPVARIANT): ADDRESS;
+
+PROCEDURE V_I2(X : LPVARIANT): SHORT;
+
+PROCEDURE V_I2REF(X : LPVARIANT): PSHORT;
+
+PROCEDURE V_I4(X : LPVARIANT): LONG;
+
+PROCEDURE V_I4REF(X : LPVARIANT): PLONG;
+
+PROCEDURE V_R4(X : LPVARIANT): WFLOAT;
+
+PROCEDURE V_R4REF(X : LPVARIANT): LPFLOAT;
+
+PROCEDURE V_R8(X : LPVARIANT): LONGREAL;
+
+PROCEDURE V_R8REF(X : LPVARIANT): PLONGREAL;
+
+PROCEDURE V_CY(X : LPVARIANT)  : CY;
+
+PROCEDURE V_CYREF(X : LPVARIANT): PCY;
+
+PROCEDURE V_DATE(X : LPVARIANT): DATE;
+
+PROCEDURE V_DATEREF(X : LPVARIANT): LPDATE;
+
+PROCEDURE V_BSTR(X : LPVARIANT): BSTR;
+
+PROCEDURE V_BSTRREF(X : LPVARIANT): LPBSTR;
+
+PROCEDURE V_DISPATCH(X : LPVARIANT): IDispatch;
+
+PROCEDURE V_DISPATCHREF(X : LPVARIANT): PPDispatch;
+
+PROCEDURE V_ERROR(X : LPVARIANT): SCODE;
+
+
+PROCEDURE V_ERRORREF(X : LPVARIANT): LPSCODE;
+
+PROCEDURE V_BOOL(X : LPVARIANT): VARIANT_BOOL;
+
+PROCEDURE V_BOOLREF(X : LPVARIANT): PVARIANT_BOOL;
+
+PROCEDURE V_UNKNOWN(X : LPVARIANT): IUnknown;
+
+
+PROCEDURE V_UNKNOWNREF(X : LPVARIANT): PPUnknown;
+
+PROCEDURE V_VARIANTREF(X : LPVARIANT): LPVARIANT;
+
+PROCEDURE V_ARRAY(X : LPVARIANT): LPSAFEARRAY;
+
+
+PROCEDURE V_ARRAYREF(X : LPVARIANT): LPLPSAFEARRAY;
+
+PROCEDURE V_BYREF(X : LPVARIANT): ADDRESS;
+(*MACRO ^*) <*/POP*>
+
+CONST
+    E_DRAW                       = VIEW_E_DRAW;
+    DATA_E_FORMATETC             = DV_E_FORMATETC;
+    OLEIVERB_PRIMARY             = 0;
+    OLEIVERB_SHOW                = -1;
+    OLEIVERB_OPEN                = -2;
+    OLEIVERB_HIDE                = -3;
+    OLEIVERB_UIACTIVATE          = -4;
+    OLEIVERB_INPLACEACTIVATE     = -5;
+    OLEIVERB_DISCARDUNDOSTATE    = -6;
+
+    EMBDHLP_INPROC_HANDLER       = 00000h;
+    EMBDHLP_INPROC_SERVER        = 00001h;
+    EMBDHLP_CREATENOW            = 000000000h;
+    EMBDHLP_DELAYCREATE          = 000010000h;
+
+
+ABSTRACT CLASS IOleAdviseHolder;
+  INHERIT IUnknown;
+  REVEAL Advise, Unadvise, EnumAdvise,
+         SendOnRename, SendOnSave, SendOnClose;
+  ABSTRACT PROCEDURE Advise(    iAdviseSink: IAdviseSink;
+                            VAR cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Unadvise(cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE EnumAdvise(VAR iEnumSTATDATA: IEnumSTATDATA): HRESULT;
+  ABSTRACT PROCEDURE SendOnRename(iMoniker: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE SendOnSave(): HRESULT;
+  ABSTRACT PROCEDURE SendOnClose(): HRESULT;
+END IOleAdviseHolder;
+
+
+ABSTRACT CLASS IOleCache;
+  INHERIT IUnknown;
+  REVEAL Cache, Uncache, EnumCache,
+         InitCache, SetData;
+  ABSTRACT PROCEDURE Cache(    formatetc:   FORMATETC;
+                               cFlags:      DWORD;
+                           VAR cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Uncache(cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE EnumCache(VAR iEnumSTATDATA: IEnumSTATDATA): HRESULT;
+  ABSTRACT PROCEDURE InitCache(iDataObject: IDataObject): HRESULT;
+  ABSTRACT PROCEDURE SetData(formatetc: FORMATETC;
+                             stgmedium: STGMEDIUM;
+                             bRelease:  BOOL): HRESULT;
+END IOleCache;
+
+
+CONST
+    UPDFCACHE_NODATACACHE        = 1h;
+    UPDFCACHE_ONSAVECACHE        = 2h;
+    UPDFCACHE_ONSTOPCACHE        = 4h;
+    UPDFCACHE_NORMALCACHE        = 8h;
+    UPDFCACHE_IFBLANK            = 10h;
+    UPDFCACHE_ONLYIFBLANK        = 80000000h;
+
+    UPDFCACHE_IFBLANKORONSAVECACHE= (UPDFCACHE_IFBLANK BOR
+                                     UPDFCACHE_ONSAVECACHE);
+
+    UPDFCACHE_ALL= CAST(DWORD, BNOT UPDFCACHE_ONLYIFBLANK);
+
+    UPDFCACHE_ALLBUTNODATACACHE=(UPDFCACHE_ALL BAND
+                                 CAST(DWORD, BNOT UPDFCACHE_NODATACACHE));
+
+TYPE DISCARDCACHE= (DISCARDCACHE_SAVEIFDIRTY, DISCARDCACHE_NOSAVE) BIG;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE DISCARDCACHE_to_xmit(pEnum : DISCARDCACHE; VAR ppLong : LONG);
+
+PROCEDURE DISCARDCACHE_from_xmit(pLong : LONG; pEnum : DISCARDCACHE);
+
+PROCEDURE DISCARDCACHE_free_inst(pEnum : DISCARDCACHE);
+
+PROCEDURE DISCARDCACHE_free_xmit(pLong : LONG);
+(*MACRO ^*) <*/POP*>
+
+
+ABSTRACT CLASS IOleCache2;
+  INHERIT IOleCache;
+  REVEAL UpdateCache, DiscardCache;
+  ABSTRACT PROCEDURE UpdateCache(iDataObject: IDataObject;
+                                 cType:       DWORD;
+                                 pReserved:   LPVOID): HRESULT;
+  ABSTRACT PROCEDURE DiscardCache(cOptions: DWORD): HRESULT;
+END IOleCache2;
+
+
+ABSTRACT CLASS IOleCacheControl;
+  INHERIT IUnknown;
+  REVEAL OnRun, OnStop;
+  ABSTRACT PROCEDURE OnRun(iDataObject: IDataObject): HRESULT;
+  ABSTRACT PROCEDURE OnStop(): HRESULT;
+END IOleCacheControl;
+
+
+ABSTRACT CLASS IParseDisplayName;
+  INHERIT IUnknown;
+  REVEAL ParseDisplayName;
+  ABSTRACT PROCEDURE ParseDisplayName(    iBindCtx:   IBindCtx;
+                                          szuDisplay: ARRAY OF OLECHAR;
+                                      VAR cEaten:     ULONG;
+                                      VAR iMoniker:   IMoniker): HRESULT;
+END IParseDisplayName;
+
+
+ABSTRACT CLASS IOleContainer;
+  INHERIT IParseDisplayName;
+  REVEAL EnumObjects, LockContainer;
+  ABSTRACT PROCEDURE EnumObjects(    cFlags:       DWORD;
+                                 VAR iEnumUnknown: IEnumUnknown): HRESULT;
+  ABSTRACT PROCEDURE LockContainer(bLock: BOOL): HRESULT;
+END IOleContainer;
+
+
+ABSTRACT CLASS IOleClientSite;
+  INHERIT IUnknown;
+  REVEAL SaveObject, GetMoniker, GetContainer,
+         ShowObject, OnShowWindow, RequestNewObjectLayout;
+  ABSTRACT PROCEDURE SaveObject(): HRESULT;
+  ABSTRACT PROCEDURE GetMoniker(    cAssign:  DWORD;
+                                    cWhich:   DWORD;
+                                VAR iMoniker: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE GetContainer(VAR iOleContainer: IOleContainer): HRESULT;
+  ABSTRACT PROCEDURE ShowObject(): HRESULT;
+  ABSTRACT PROCEDURE OnShowWindow(bShow: BOOL): HRESULT;
+  ABSTRACT PROCEDURE RequestNewObjectLayout(): HRESULT;
+END IOleClientSite;
+
+
+TYPE OLEGETMONIKER= (OLEGETMONIKER_DUMMY0,
+                     OLEGETMONIKER_ONLYIFTHERE,
+                     OLEGETMONIKER_FORCEASSIGN,
+                     OLEGETMONIKER_UNASSIGN,
+                     OLEGETMONIKER_TEMPFORUSER) BIG;
+
+     OLEWHICHMK= (OLEWHICHMK_DUMMY0,
+                  OLEWHICHMK_CONTAINER,
+                  OLEWHICHMK_OBJREL,
+                  OLEWHICHMK_OBJFULL) BIG;
+
+     USERCLASSTYPE= (USERCLASSTYPE_DUMMY0,
+                     USERCLASSTYPE_FULL,
+                     USERCLASSTYPE_SHORT,
+                     USERCLASSTYPE_APPNAME) BIG;
+
+     OLEMISC= DWORD;
+
+TYPE
+     OLEVERB=   RECORD
+                  lVerb          : LONG;
+                  lpszVerbName   : LPOLESTR;
+                  fuFlags        : DWORD;
+                  grfAttribs     : DWORD;
+                END;
+    LPOLEVERB= POINTER TO OLEVERB;
+
+     OLEVERBATTRIB= (OLEVERBATTRIB_DUMMY0,
+                     OLEVERBATTRIB_NEVERDIRTIES,
+                     OLEVERBATTRIB_ONCONTAINERMENU) BIG;
+
+ABSTRACT CLASS IEnumOLEVERB;
+  INHERIT IUnknown;
+  REVEAL Next, Skip, Reset, Clone;
+  ABSTRACT PROCEDURE Next(    cElements: CARDINAL;
+                          VAR cVerbs:    ARRAY OF ULONG;
+                          VAR cFetched:  CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Skip(cElements: CARDINAL): HRESULT;
+  ABSTRACT PROCEDURE Reset(): HRESULT;
+  ABSTRACT PROCEDURE Clone(VAR iEnumSTATSTG: IEnumSTATSTG): HRESULT;
+END IEnumOLEVERB;
+
+
+
+CONST
+    OLEMISC_RECOMPOSEONRESIZE            = 1;
+    OLEMISC_ONLYICONIC                   = 2;
+    OLEMISC_INSERTNOTREPLACE             = 4;
+    OLEMISC_STATIC                       = 8;
+    OLEMISC_CANTLINKINSIDE               = 16;
+    OLEMISC_CANLINKBYOLE1                = 32;
+    OLEMISC_ISLINKOBJECT                 = 64;
+    OLEMISC_INSIDEOUT                    = 128;
+    OLEMISC_ACTIVATEWHENVISIBLE          = 256;
+    OLEMISC_RENDERINGISDEVICEINDEPENDENT = 512;
+
+
+TYPE OLECLOSE= (OLECLOSE_SAVEIFDIRTY,
+                OLECLOSE_NOSAVE,
+                OLECLOSE_PROMPTSAVE) BIG;
+
+
+ABSTRACT CLASS IOleObject;
+  INHERIT IUnknown;
+  REVEAL SetClientSite, GetClientSite, SetHostNames,
+         Close, SetMoniker, GetMoniker,
+         InitFromData, GetClipboardData, DoVerb,
+         EnumVerbs, Update, IsUpToDate,
+         GetUserClassID, GetUserType, SetExtent,
+         GetExtent, Advise, Unadvise, EnumAdvise,
+         GetMiscStatus, SetColorScheme;
+  ABSTRACT PROCEDURE SetClientSite(iOleClientSite: IOleClientSite): HRESULT;
+  ABSTRACT PROCEDURE GetClientSite(VAR iOleClientSite: IOleClientSite): HRESULT;
+  ABSTRACT PROCEDURE SetHostNames(szuContainer: ARRAY OF OLECHAR;
+                                  szuDocument:  ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE Close(cSaveOption: OLECLOSE): HRESULT;
+  ABSTRACT PROCEDURE SetMoniker(cWhich:   DWORD;
+                                iMoniker: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE GetMoniker(    cAssign:  DWORD;
+                                    cWhich:   DWORD;
+                                VAR iMoniker: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE InitFromData(iDataObject: IDataObject;
+                                  bCreation:   BOOL;
+                                  cReserved:   DWORD): HRESULT;
+  ABSTRACT PROCEDURE GetClipboardData(    cReserved:   DWORD;
+                                      VAR iDataObject: IDataObject): HRESULT;
+  ABSTRACT PROCEDURE DoVerb(nVerb:          LONG;
+                            messsage:       MSG;
+                            iOleClientSite: IOleClientSite;
+                            nIndex:         LONG;
+                            hwndParent:     HWND;
+                            rectPosition:   RECT): HRESULT;
+  ABSTRACT PROCEDURE EnumVerbs(VAR iEnumOleVerb: IEnumOLEVERB): HRESULT;
+  ABSTRACT PROCEDURE Update(): HRESULT;
+  ABSTRACT PROCEDURE IsUpToDate(): HRESULT;
+  ABSTRACT PROCEDURE GetUserClassID(VAR clsid: CLSID): HRESULT;
+  ABSTRACT PROCEDURE GetUserType(    cFormOfType: DWORD;
+                                 VAR pszUserType: LPOLESTR): HRESULT;
+  ABSTRACT PROCEDURE SetExtent(cDrawAspect: DWORD;
+                               sizeLimit:   SIZEL): HRESULT;
+  ABSTRACT PROCEDURE GetExtent(    cdrawAspect: DWORD;
+                               VAR sizeLimit:   SIZEL): HRESULT;
+  ABSTRACT PROCEDURE Advise(    iAdviseSink: IAdviseSink;
+                            VAR cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Unadvise(cConnection: DWORD): HRESULT;
+  ABSTRACT PROCEDURE EnumAdvise(VAR iEnumSTATDATA: IEnumSTATDATA): HRESULT;
+  ABSTRACT PROCEDURE GetMiscStatus(    cAspect: DWORD;
+                                   VAR cStatus: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetColorScheme(palette: LOGPALETTE): HRESULT;
+END IOleObject;
+
+
+TYPE
+     OLERENDER=  (OLERENDER_NONE,
+                  OLERENDER_DRAW,
+                  OLERENDER_FORMAT,
+                  OLERENDER_ASIS) BIG;
+    LPOLERENDER= POINTER TO OLERENDER;
+
+    OBJECTDESCRIPTOR=   RECORD
+                          cbSize         : ULONG;
+                          clsid          : CLSID;
+                          dwDrawAspect   : DWORD;
+                          sizel          : SIZEL;
+                          pointl         : POINTL;
+                          dwStatus       : DWORD;
+                          dwFullUserTypeName: DWORD;
+                          dwSrcOfCopy    : DWORD;
+                        END;
+    LPOBJECTDESCRIPTOR= POINTER TO OBJECTDESCRIPTOR;
+
+    LPLINKSRCDESCRIPTOR  = POINTER TO OBJECTDESCRIPTOR;
+    LINKSRCDESCRIPTOR= OBJECTDESCRIPTOR;
+
+VAR
+    IOLETypes_v0_0_c_ifspec : RPC_IF_HANDLE;
+    IOLETypes_v0_0_s_ifspec : RPC_IF_HANDLE;
+
+
+ABSTRACT CLASS IOleWindow;
+  INHERIT IUnknown;
+  REVEAL GetWindow, ContextSensitiveHelp;
+  ABSTRACT PROCEDURE GetWindow(VAR hwnd: HWND): HRESULT;
+  ABSTRACT PROCEDURE ContextSensitiveHelp(bEnterMode: BOOL): HRESULT;
+END IOleWindow;
+
+
+TYPE
+     OLEUPDATE=  (OLEUPDATE_DUMMY0,
+                  OLEUPDATE_ALWAYS,
+                  OLEUPDATE_DUMMY2,
+                  OLEUPDATE_ONCALL);
+    LPOLEUPDATE= POINTER TO OLEUPDATE;
+
+     OLELINKBIND= (OLELINKBIND_DUMMY0,
+                   OLELINKBIND_EVENIFCLASSDIFF);
+
+
+ABSTRACT CLASS IOleLink;
+  INHERIT IUnknown;
+  REVEAL SetUpdateOptions, GetUpdateOptions,
+         SetSourceMoniker, GetSourceMoniker,
+         SetSourceDisplayName, GetSourceDisplayName,
+         BindToSource, BindIfRunning, GetBoundSource,
+         UnbindSource, Update;
+  ABSTRACT PROCEDURE SetUpdateOptions(cOptions: DWORD): HRESULT;
+  ABSTRACT PROCEDURE GetUpdateOptions(VAR cOptions: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetSourceMoniker(iMoniker: IMoniker;
+                                      clsid:    CLSID): HRESULT;
+  ABSTRACT PROCEDURE GetSourceMoniker(VAR iMoniker: IMoniker): HRESULT;
+  ABSTRACT PROCEDURE SetSourceDisplayName(szuName: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE GetSourceDisplayName(VAR pszName: LPOLESTR): HRESULT;
+  ABSTRACT PROCEDURE BindToSource(cBindFlags: DWORD;
+                                  iBindCtx:   IBindCtx): HRESULT;
+  ABSTRACT PROCEDURE BindIfRunning(): HRESULT;
+  ABSTRACT PROCEDURE GetBoundSource(VAR iUnknown: IUnknown): HRESULT;
+  ABSTRACT PROCEDURE UnbindSource(): HRESULT;
+  ABSTRACT PROCEDURE Update(iBindCtx: IBindCtx): HRESULT;
+END IOleLink;
+
+TYPE BINDSPEED= (BINDSPEED_DUMMY0,
+                 BINDSPEED_INDEFINITE,
+                 BINDSPEED_MODERATE,
+                 BINDSPEED_IMMEDIATE) BIG;
+
+    OLECONTF= DWORD;
+
+CONST
+    OLECONTF_EMBEDDINGS       = 1;
+    OLECONTF_LINKS            = 2;
+    OLECONTF_OTHERS           = 4;
+    OLECONTF_ONLYUSER         = 8;
+    OLECONTF_ONLYIFRUNNING    = 16;
+
+
+ABSTRACT CLASS IOleItemContainer;
+  INHERIT IOleContainer;
+  REVEAL GetObject, GetObjectStorage, IsRunning;
+  ABSTRACT PROCEDURE GetObject(    szuItem:  ARRAY OF OLECHAR;
+                                   cSpeed:   DWORD;
+                                   iBindCtx: IBindCtx;
+                                   iid:      IID;
+                               VAR pv:       PVOID): HRESULT;
+  ABSTRACT PROCEDURE GetObjectStorage(    szuItem:  ARRAY OF OLECHAR;
+                                          iBindCtx: IBindCtx;
+                                          iid:      IID;
+                                      VAR pv:       PVOID): HRESULT;
+  ABSTRACT PROCEDURE IsRunning(szuItem: ARRAY OF OLECHAR): HRESULT;
+END IOleItemContainer;
+
+
+TYPE BORDERWIDTHS        = RECT;
+     LPBORDERWIDTHS      = POINTER TO BORDERWIDTHS;
+     LPCBORDERWIDTHS     = LPBORDERWIDTHS;
+
+
+ABSTRACT CLASS IOleInPlaceActiveObject; FORWARD;
+
+ABSTRACT CLASS IOleInPlaceUIWindow;
+  INHERIT IOleWindow;
+  REVEAL GetBorder, RequestBorderSpace,
+         SetBorderSpace, SetActiveObject;
+  ABSTRACT PROCEDURE GetBorder(VAR rectBorder: RECT): HRESULT;
+  ABSTRACT PROCEDURE RequestBorderSpace(borderwidths: BORDERWIDTHS): HRESULT;
+  ABSTRACT PROCEDURE SetBorderSpace(borderwidths: BORDERWIDTHS): HRESULT;
+  ABSTRACT PROCEDURE SetActiveObject(iOleInPlaceActiveObject: IOleInPlaceActiveObject;
+                                     szuObjectName:           ARRAY OF OLECHAR): HRESULT;
+END IOleInPlaceUIWindow;
+
+
+ABSTRACT CLASS IOleInPlaceActiveObject;
+  INHERIT IOleWindow;
+  REVEAL TranslateAccelerator, OnFrameWindowActivate,
+         OnDocWindowActivate, ResizeBorder, EnableModeless;
+  ABSTRACT PROCEDURE TranslateAccelerator(msg: MSG): HRESULT;
+  ABSTRACT PROCEDURE OnFrameWindowActivate(bActivate: BOOL): HRESULT;
+  ABSTRACT PROCEDURE OnDocWindowActivate(bActivate: BOOL): HRESULT;
+  ABSTRACT PROCEDURE ResizeBorder(rectBorder:          RECT;
+                                  iOleInPlaceUIWindow: IOleInPlaceUIWindow;
+                                  bFrameWindow:        BOOL): HRESULT;
+  ABSTRACT PROCEDURE EnableModeless(bEnable: BOOL): HRESULT;
+END IOleInPlaceActiveObject;
+
+
+TYPE
+     OLEINPLACEFRAMEINFO=   RECORD
+                              cb             : UINT;
+                              fMDIApp        : BOOL;
+                              hwndFrame      : HWND;
+                              haccel         : HACCEL;
+                              cAccelEntries  : UINT;
+                            END;
+    LPOLEINPLACEFRAMEINFO= POINTER TO OLEINPLACEFRAMEINFO;
+
+    OLEMENUGROUPWIDTHS=   RECORD
+                            width: ARRAY [0..6 - 1] OF LONG;
+                          END;
+
+    HOLEMENU= HGLOBAL;
+
+
+ABSTRACT CLASS IOleInPlaceFrame;
+  INHERIT IOleInPlaceUIWindow;
+  REVEAL InsertMenus, SetMenu, RemoveMenus,
+         SetStatusText, EnableModeless,
+         TranslateAccelerator;
+  ABSTRACT PROCEDURE InsertMenus(    hmenuShared: HMENU;
+                                 VAR menuwidths:  OLEMENUGROUPWIDTHS): HRESULT; (* EH: changed *)
+  ABSTRACT PROCEDURE SetMenu(hmenuShared:      HMENU;
+                             holemenu:         HOLEMENU;
+                             hwndActiveObject: HWND): HRESULT;
+  ABSTRACT PROCEDURE RemoveMenus(hmenuShared: HMENU): HRESULT;
+  ABSTRACT PROCEDURE SetStatusText(szuStatus: ARRAY OF OLECHAR): HRESULT;
+  ABSTRACT PROCEDURE EnableModeless(bEnable: BOOL): HRESULT;
+  ABSTRACT PROCEDURE TranslateAccelerator(msg: MSG;
+                                          wID: WORD): HRESULT;
+END IOleInPlaceFrame;
+
+
+ABSTRACT CLASS IOleInPlaceObject;
+  INHERIT IOleWindow;
+  REVEAL InPlaceDeactivate, UIDeactivate,
+         SetObjectRects, ReactivateAndUndo;
+  ABSTRACT PROCEDURE InPlaceDeactivate(): HRESULT;
+  ABSTRACT PROCEDURE UIDeactivate(): HRESULT;
+  ABSTRACT PROCEDURE SetObjectRects(rectPos:  RECT;
+                                    rectClip: RECT): HRESULT;
+  ABSTRACT PROCEDURE ReactivateAndUndo(): HRESULT;
+END IOleInPlaceObject;
+
+
+ABSTRACT CLASS IOleInPlaceSite;
+  INHERIT IOleWindow;
+  REVEAL CanInPlaceActivate, OnInPlaceActivate,
+         OnUIActivate, GetWindowContext, Scroll,
+         OnUIDeactivate, OnInPlaceDeactivate,
+         DiscardUndoState, DeactivateAndUndo,
+         OnPosRectChange;
+  ABSTRACT PROCEDURE CanInPlaceActivate(): HRESULT;
+  ABSTRACT PROCEDURE OnInPlaceActivate(): HRESULT;
+  ABSTRACT PROCEDURE OnUIActivate(): HRESULT;
+  ABSTRACT PROCEDURE GetWindowContext(VAR iOleInPlaceFrame:    IOleInPlaceFrame;
+                                      VAR iOleInPlaceUIWindow: IOleInPlaceUIWindow;
+                                      VAR rectPos:             RECT;
+                                      VAR rectClip:            RECT;
+                                      VAR oleInPlaceFrameInfo: OLEINPLACEFRAMEINFO): HRESULT;
+  ABSTRACT PROCEDURE Scroll(sizeExtent: VALUE WSIZE): HRESULT;
+  ABSTRACT PROCEDURE OnUIDeactivate(bUndoable: BOOL): HRESULT;
+  ABSTRACT PROCEDURE OnInPlaceDeactivate(): HRESULT;
+  ABSTRACT PROCEDURE DiscardUndoState(): HRESULT;
+  ABSTRACT PROCEDURE DeactivateAndUndo(): HRESULT;
+  ABSTRACT PROCEDURE OnPosRectChange(rectPos: RECT): HRESULT;
+END IOleInPlaceSite;
+
+
+CONST DVASPECTINFOFLAG_CANOPTIMIZE= 1;
+
+TYPE CONTINUE_DRAWING= PROCEDURE (DWORD): BOOL;
+
+     DVASPECTINFO=  RECORD
+                      cSize:   UINT;
+                      dwFlags: DWORD;
+                    END;
+     PDVASPECTINFO= POINTER TO DVASPECTINFO;
+
+ABSTRACT CLASS IViewObject;
+  INHERIT IUnknown;
+  REVEAL Draw, GetColorSet, Freeze, Unfreeze,
+         SetAdvise, GetAdvise;
+  ABSTRACT PROCEDURE Draw(cAspect:         DWORD;
+                          nIndex:          LONG;
+                          pAspect:         PDVASPECTINFO;
+                          pTarget:         PDVTARGETDEVICE;
+                          hdcTarget:       HDC;
+                          hdcDraw:         HDC;
+                          rectlBounds:     RECTL;
+                          rectlWBounds:    RECTL;
+                          continue:        CONTINUE_DRAWING;
+                          cPassToContinue: DWORD): HRESULT;
+  ABSTRACT PROCEDURE GetColorSet(    cAspect:    DWORD;
+                                     nIndex:     LONG;
+                                     pAspect:    ADDRESS;
+                                     pTarget:    PDVTARGETDEVICE;
+                                     hdcTarget:  HDC;
+                                 VAR logpalette: LPLOGPALETTE) : HRESULT;
+  ABSTRACT PROCEDURE Freeze(    cAspect: DWORD;
+                                nIndex:  LONG;
+                                pAspect: ADDRESS;
+                            VAR cFreeze: DWORD): HRESULT;
+  ABSTRACT PROCEDURE Unfreeze(cFreeze: DWORD): HRESULT;
+  ABSTRACT PROCEDURE SetAdvise(cAspect:     DWORD;
+                               cFlags:      DWORD;
+                               iAdviseSink: IAdviseSink): HRESULT;
+  ABSTRACT PROCEDURE GetAdvise(VAR cAspect:     DWORD;
+                               VAR cFlags:      DWORD;
+                               VAR iAdviseSink: IAdviseSink): HRESULT;
+END IViewObject;
+
+
+ABSTRACT CLASS IViewObject2;
+  INHERIT IViewObject;
+  REVEAL GetExtent;
+  ABSTRACT PROCEDURE GetExtent(    cAspect: DWORD;
+                                   nIndex:  LONG;
+                                   pTarget: PDVTARGETDEVICE;
+                               VAR sizel:   SIZEL): HRESULT;
+END IViewObject2;
+
+
+ABSTRACT CLASS IDropSource;
+  INHERIT IUnknown;
+  REVEAL QueryContinueDrag, GiveFeedback;
+  ABSTRACT PROCEDURE QueryContinueDrag(bEscapePressed: BOOL;
+                                       cKeyState:      DWORD): HRESULT;
+  ABSTRACT PROCEDURE GiveFeedback(cEffect: DWORD): HRESULT;
+END IDropSource;
+
+
+CONST
+    MK_ALT               = 20h;
+
+    DROPEFFECT_NONE      = 0;
+    DROPEFFECT_COPY      = 1;
+    DROPEFFECT_MOVE      = 2;
+    DROPEFFECT_LINK      = 4;
+    DROPEFFECT_SCROLL    = 80000000h;
+
+    DD_DEFSCROLLINSET    = 11;
+    DD_DEFSCROLLDELAY    = 50;
+    DD_DEFSCROLLINTERVAL = 50;
+    DD_DEFDRAGDELAY      = 200;
+    DD_DEFDRAGMINDIST    = 2;
+
+
+ABSTRACT CLASS IDropTarget;
+  INHERIT IUnknown;
+  REVEAL DragEnter, DragOver, DragLeave, Drop;
+  ABSTRACT PROCEDURE DragEnter(    iDataObject: IDataObject;
+                                   cKeyState:   DWORD;
+                                   ptCursor:    POINTL;
+                               VAR INOUT cEffect: DWORD): HRESULT;
+  ABSTRACT PROCEDURE DragOver(    cKeyState: DWORD;
+                                  ptCursor:  POINTL;
+                              VAR INOUT cEffect: DWORD): HRESULT;
+  ABSTRACT PROCEDURE DragLeave(): HRESULT;
+  ABSTRACT PROCEDURE Drop(    iDataObject: IDataObject;
+                              cKeyState:   DWORD;
+                              ptCursor:    POINTL;
+                          VAR INOUT cEffect: DWORD): HRESULT;
+END IDropTarget;
+
+
+ABSTRACT CLASS IRecordInfo;
+  INHERIT IUnknown;
+  (* To do: to copy methods from C++ sources *)
+END IRecordInfo;
+
+(*MACRO V*) <*/PUSH/CALLS:StonyBrook*>
+PROCEDURE UINT_to_xmit(VAR a : UINT;
+                       VAR b : PULONG);
+
+PROCEDURE UINT_from_xmit(VAR a : ULONG;
+                         VAR b : UINT);
+
+PROCEDURE UINT_free_inst(VAR a : UINT);
+
+PROCEDURE UINT_free_xmit(VAR a : ULONG);
+
+PROCEDURE WPARAM_to_xmit(VAR a : WPARAM;
+                         VAR b : PULONG);
+
+PROCEDURE WPARAM_from_xmit(VAR a : ULONG;
+                           VAR b : WPARAM);
+
+PROCEDURE WPARAM_free_inst(VAR a : WPARAM);
+
+PROCEDURE WPARAM_free_xmit(VAR a : ULONG);
+
+PROCEDURE HWND_to_xmit(VAR a : HWND;
+                       VAR b : PLONG);
+
+PROCEDURE HWND_from_xmit(VAR a : ULONG;
+                         VAR b : HWND);
+
+PROCEDURE HWND_free_inst(VAR a : HWND);
+
+PROCEDURE HWND_free_xmit(VAR a : ULONG);
+
+PROCEDURE HMENU_to_xmit(VAR a : HMENU;
+                       VAR b : PLONG);
+
+PROCEDURE HMENU_from_xmit(VAR a : ULONG;
+                         VAR b : HMENU);
+
+PROCEDURE HMENU_free_inst(VAR a : HMENU);
+
+PROCEDURE HMENU_free_xmit(VAR a : LONG);
+
+PROCEDURE HACCEL_to_xmit(VAR a : HACCEL;
+                         VAR b : PLONG);
+
+PROCEDURE HACCEL_from_xmit(VAR a : LONG;
+                           VAR b : HACCEL);
+
+PROCEDURE HACCEL_free_inst(VAR a : HACCEL);
+
+PROCEDURE HACCEL_free_xmit(VAR a : LONG);
+
+PROCEDURE HOLEMENU_to_xmit(VAR a :  HOLEMENU  ; VAR b : LPRemHGLOBAL);
+
+PROCEDURE HOLEMENU_from_xmit(VAR a : RemHGLOBAL; VAR b : HOLEMENU);
+
+PROCEDURE HOLEMENU_free_inst(VAR a : HOLEMENU);
+
+PROCEDURE HOLEMENU_free_xmit(VAR a : RemHGLOBAL);
+(*MACRO ^*) <*/POP*>
+
+PROCEDURE CreateDataAdviseHolder(VAR ppDAHolder : IDataAdviseHolder): HRESULT;
+
+PROCEDURE OleBuildVersion(): DWORD;
+
+PROCEDURE ReadClassStg(    iStorage: IStorage;
+                       VAR clsid:    CLSID): HRESULT;
+
+PROCEDURE WriteClassStg(iStorage: IStorage;
+                        clsid:    CLSID): HRESULT;
+
+PROCEDURE ReadClassStm(    iStream: IStream;
+                       VAR clsid:   CLSID): HRESULT;
+
+PROCEDURE WriteClassStm(iStream: IStream;
+                        clsid:   CLSID): HRESULT;
+
+PROCEDURE WriteFmtUserTypeStg(iStorage: IStorage;
+                              cfFormat: CLIPFORMAT;
+                              szFormat: ARRAY OF OLECHAR): HRESULT;
+
+PROCEDURE ReadFmtUserTypeStg(    iStorage:     IStorage;
+                             VAR clipformat:   CLIPFORMAT;
+                             VAR pszuUserType: LPOLESTR): HRESULT;
+
+PROCEDURE OleInitialize(pvReserved : LPVOID): HRESULT;
+
+PROCEDURE OleUninitialize();
+
+PROCEDURE OleQueryLinkFromData(iDataObject: IDataObject): HRESULT;
+
+PROCEDURE OleQueryCreateFromData(iDataObject: IDataObject): HRESULT;
+
+PROCEDURE OleCreate(    clsid:          CLSID;
+                        iid:            IID;
+                        renderopt:      DWORD;
+                        formatetc:      FORMATETC;
+                        iOleClientSite: IOleClientSite;
+                        iStorage:       IStorage;
+                    VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleCreateFromData(    iDataObject:    IDataObject;
+                                iid:            IID;
+                                renderopt:      DWORD;
+                                formatetc:      FORMATETC;
+                                iOleClientSite: IOleClientSite;
+                                iStorage:       IStorage;
+                            VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleCreateLinkFromData(    iDataObject:    IDataObject;
+                                    iid:            IID;
+                                    renderopt:      DWORD;
+                                    formatetc:      FORMATETC;
+                                    iOleClientSite: IOleClientSite;
+                                    iStorage:       IStorage;
+                                VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleCreateStaticFromData(    iDataObject:    IDataObject;
+                                      iid:            IID;
+                                      renderopt:      DWORD;
+                                      formatetc:      FORMATETC;
+                                      iOleClientSite: IOleClientSite;
+                                      iStorage:       IStorage;
+                                  VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleCreateLink(    iMoniker:       IMoniker;
+                            iid:            IID;
+                            renderopt:      DWORD;
+                            formatetc:      FORMATETC;
+                            iOleClientSite: IOleClientSite;
+                            iStorage:       IStorage;
+                        VAR pv:       PVOID): HRESULT;
+
+PROCEDURE OleCreateLinkToFile(    szFileName:     ARRAY OF OLECHAR;
+                                  iid:            IID;
+                                  renderopt:      DWORD;
+                                  formatetc:      FORMATETC;
+                                  iOleClientSite: IOleClientSite;
+                                  iStorage:       IStorage;
+                              VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleCreateFromFile(    clsid:          CLSID;
+                                szFileName:     ARRAY OF OLECHAR;
+                                iid:            IID;
+                                renderopt:      DWORD;
+                                formatetc:      FORMATETC;
+                                iOleClientSite: IOleClientSite;
+                                iStorage:       IStorage;
+                            VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleLoad(    iStorage:       IStorage;
+                      iid:            IID;
+                      iOleClientSite: IOleClientSite;
+                  VAR pv:             PVOID): HRESULT;
+
+PROCEDURE OleSave(iPersistStorage: IPersistStorage;
+                  iStorage:        IStorage;
+                  fSameAsLoad:     BOOL): HRESULT;
+
+PROCEDURE OleLoadFromStream(    iStream:      IStream;
+                                iidInterface: IID;
+                            VAR pv:           PVOID): HRESULT;
+
+PROCEDURE OleSaveToStream(iPersistStream: IPersistStream;
+                          iStream:        IStream): HRESULT;
+
+PROCEDURE OleSetContainedObject(iUnknown:   IUnknown;
+                                fContained: BOOL): HRESULT;
+
+PROCEDURE OleNoteObjectVisible(iUnknown: IUnknown;
+                               fVisible: BOOL): HRESULT;
+
+PROCEDURE RegisterDragDrop(hwnd:        HWND;
+                           iDropTarget: IDropTarget): HRESULT;
+
+PROCEDURE RevokeDragDrop(hwnd: HWND): HRESULT;
+
+PROCEDURE DoDragDrop(    iDataObject: IDataObject;
+                         iDropSource: IDropSource;
+                         cOKEffects:  DWORD;
+                     VAR cEffect:     DWORD): HRESULT;
+
+PROCEDURE OleSetClipboard(iDataObject: IDataObject): HRESULT;
+
+PROCEDURE OleGetClipboard(VAR iDataObject: IDataObject): HRESULT;
+
+PROCEDURE OleFlushClipboard(): HRESULT;
+
+PROCEDURE OleIsCurrentClipboard(iDataObject: IDataObject): HRESULT;
+
+PROCEDURE OleCreateMenuDescriptor(    hmenuCombined: HMENU;
+                                  VAR MenuWidths:    OLEMENUGROUPWIDTHS): HOLEMENU;
+
+PROCEDURE OleSetMenuDescriptor(holemenu:                HOLEMENU;
+                               hwndFrame:               HWND;
+                               hwndActiveObject:        HWND;
+                               iOleInPlaceFrame:        IOleInPlaceFrame;
+                               iOleInPlaceActivePbject: IOleInPlaceActiveObject): HRESULT;
+
+PROCEDURE OleDestroyMenuDescriptor(holemenu : HOLEMENU): HRESULT;
+
+PROCEDURE OleTranslateAccelerator(iOleInPlaceFrame: IOleInPlaceFrame;
+                                  oleframeinfo:     OLEINPLACEFRAMEINFO;
+                                  msg:              MSG): HRESULT;
+
+PROCEDURE OleDuplicateData(hSrc:     HANDLE;
+                           cfFormat: CLIPFORMAT;
+                           uiFlags:  UINT): HANDLE;
+
+PROCEDURE OleDraw(iUnknown:   IUnknown;
+                  dwAspect:   DWORD;
+                  hdcDraw:    HDC;
+                  rectBounds: RECT): HRESULT;
+
+PROCEDURE OleRun(iUnknown: IUnknown): HRESULT;
+
+PROCEDURE OleIsRunning(iOleObject: IOleObject): BOOL;
+
+PROCEDURE OleLockRunning(iUnknown:          IUnknown;
+                         fLock:             BOOL;
+                         fLastUnlockCloses: BOOL): HRESULT;
+
+PROCEDURE ReleaseStgMedium(VAR a: STGMEDIUM);
+
+PROCEDURE CreateOleAdviseHolder(VAR iOleAdviseHolder: IOleAdviseHolder): HRESULT;
+
+PROCEDURE OleCreateDefaultHandler(    clsid:         CLSID;
+                                      iUnknownOuter: IUnknown;
+                                      iid:           IID;
+                                  VAR iUnknown:      IUnknown): HRESULT;
+
+PROCEDURE OleCreateEmbeddingHelper(    clsid:            CLSID;
+                                       iUnknownOuter:    IUnknown;
+                                       flags:            DWORD;
+                                       iClassFactorypCF: IClassFactory;
+                                       iid:              IID;
+                                   VAR pv:               PVOID): HRESULT;
+
+PROCEDURE IsAccelerator(    hAccel:        HACCEL;
+                            cAccelEntries: WINT;
+                            msg:           MSG;
+                        VAR wCmd:          WORD): BOOL;
+
+PROCEDURE OleGetIconOfFile(szPath:          ARRAY OF OLECHAR;
+                           fUseFileAsLabel: BOOL): HGLOBAL;
+
+PROCEDURE OleGetIconOfClass(clsid:           CLSID;
+                            szLabel:         ARRAY OF OLECHAR;
+                            fUseTypeAsLabel: BOOL): HGLOBAL;
+
+PROCEDURE OleMetafilePictFromIconAndLabel(hIcon:        HICON;
+                                          szLabel:      ARRAY OF OLECHAR;
+                                          szSourceFile: ARRAY OF OLECHAR;
+                                          iIconIndex:   UINT): HGLOBAL;
+
+PROCEDURE OleRegGetUserType(    clsid:        CLSID;
+                                dwFormOfType: DWORD;
+                            VAR szUserType:   LPOLESTR): HRESULT;
+
+PROCEDURE OleRegGetMiscStatus(    clsid:    CLSID;
+                                  dwAspect: DWORD;
+                              VAR dwStatus: DWORD): HRESULT;
+
+PROCEDURE OleRegEnumFormatEtc(    clsid:          CLSID;
+                                  dwDirection:    DWORD;
+                              VAR iEnumFORMATETC: IEnumFORMATETC): HRESULT;
+
+PROCEDURE OleRegEnumVerbs(    clsid:        CLSID;
+                          VAR iEnumOLEVERB: IEnumOLEVERB): HRESULT;
+
+
+TYPE
+    LPOLESTREAM          = POINTER TO OLESTREAM;
+
+    OLESTREAMVTBL =
+		RECORD
+           Get                : PROCEDURE(LPOLESTREAM, ADDRESS, DWORD): DWORD;
+           Put                : PROCEDURE(LPOLESTREAM, ADDRESS, DWORD): DWORD;
+    	END;
+
+    OLESTREAM = RECORD
+        lpstbl                : LPOLESTREAM;
+    END;
+
+PROCEDURE OleConvertOLESTREAMToIStorage(    olestream: OLESTREAM;
+                                        VAR iStorage:  IStorage;
+                                            pTarget:   PDVTARGETDEVICE): HRESULT;
+
+PROCEDURE OleConvertIStorageToOLESTREAM(    iStorage:  IStorage;
+                                        VAR olestream: OLESTREAM): HRESULT;
+
+PROCEDURE GetHGlobalFromILockBytes(    iLockBytes: ILockBytes;
+                                   VAR hglobal:    HGLOBAL): HRESULT;
+
+PROCEDURE CreateILockBytesOnHGlobal(    hglobal:          HGLOBAL;
+                                        fDeleteOnRelease: BOOL;
+                                    VAR iLockBytes:       ILockBytes): HRESULT;
+
+PROCEDURE GetHGlobalFromStream(    iStream: IStream;
+                               VAR hglobal: HGLOBAL): HRESULT;
+
+PROCEDURE CreateStreamOnHGlobal(    hglobal:          HGLOBAL;
+                                    fDeleteOnRelease: BOOL;
+                                VAR iStream:          IStream): HRESULT;
+
+PROCEDURE OleDoAutoConvert(    iStorage: IStorage;
+                           VAR clsid:    CLSID): HRESULT;
+
+PROCEDURE OleGetAutoConvert(    clsidOld: CLSID;
+                            VAR clsidNew: CLSID): HRESULT;
+
+PROCEDURE OleSetAutoConvert(clsidOld: CLSID;
+                            clsidNew: CLSID): HRESULT;
+
+PROCEDURE GetConvertStg(iStorage: IStorage): HRESULT;
+
+PROCEDURE SetConvertStg(iStorage: IStorage;
+                        fConvert: BOOL): HRESULT;
+
+PROCEDURE OleConvertIStorageToOLESTREAMEx(    iStorage:  IStorage;
+                                              cfFormat:  CLIPFORMAT;
+                                              lWidth:    LONG;
+                                              lHeight:   LONG;
+                                              dwSize:    DWORD;
+                                              stgmedium: STGMEDIUM;
+                                          VAR olestm:    OLESTREAM): HRESULT;
+
+PROCEDURE OleConvertOLESTREAMToIStorageEx(    olestm:    OLESTREAM;
+                                          VAR iStorage:  IStorage;
+                                          VAR cfFormat:  CLIPFORMAT;
+                                          VAR lWidth:    LONG;
+                                          VAR lHeight:   LONG;
+                                          VAR wSize:     DWORD;
+                                          VAR stgmedium: STGMEDIUM): HRESULT;
+
+PROCEDURE CoBuildVersion(): DWORD;
+
+CONST (* COM initialization flags; passed to CoInitialize. *)
+      COINIT_APARTMENTTHREADED= 2;  (* single threaded apartment *)
+      COINIT_MULTITHREADED=     0;  (* multi threaded apartment *)
+      COINIT_DISABLE_OLE1DDE=   4;  (* Don't use DDE for Ole1 support. *)
+      COINIT_SPEED_OVER_MEMORY= 8;  (* Trade memory for speed. *)
+
+PROCEDURE CoInitialize(pvReserved : LPVOID): HRESULT;
+
+PROCEDURE CoInitializeEx(pvReserved: LPVOID;
+                         dwCoInit:   DWORD): HRESULT;
+
+PROCEDURE CoUninitialize();
+
+PROCEDURE CoGetMalloc(    dwMemContext: DWORD;
+                      VAR iMalloc:      IMalloc): HRESULT;
+
+PROCEDURE CoGetCurrentProcess(): DWORD;
+
+PROCEDURE CoRegisterMallocSpy(iMallocSpy: IMallocSpy): HRESULT;
+
+PROCEDURE CoRevokeMallocSpy(): HRESULT;
+
+PROCEDURE CoCreateStandardMalloc(    memctx:  DWORD;
+                                 VAR iMalloc: IMalloc): HRESULT;
+
+PROCEDURE CoAddRefServerProcess() : ULONG;
+
+PROCEDURE CoReleaseServerProcess() : ULONG;
+
+(* obsolete, use CoGetMalloc *)
+
+PROCEDURE DebugCoGetRpcFault(): ULONG;
+
+PROCEDURE DebugCoSetRpcFault(a : ULONG);
+
+
+TYPE
+     COAUTHIDENTITY=  RECORD
+                        User:           LPWSTR;
+                        UserLength:     ULONG;
+                        Domain:         LPWSTR;
+                        DomainLength:   ULONG;
+                        Password:       LPWSTR;
+                        PasswordLength: ULONG;
+                        Flags:          ULONG;
+                      END;
+    PCOAUTHIDENTITY= POINTER TO COAUTHIDENTITY;
+
+     COAUTHINFO=    RECORD
+                      dwAuthnSvc:           DWORD;
+                      dwAuthzSvc:           DWORD;
+                      pwszServerPrincName:  LPWSTR;
+                      dwAuthnLevel:         DWORD;
+                      dwImpersonationLevel: DWORD;
+                      pAuthIdentityData:    PCOAUTHIDENTITY;
+                      dwCapabilities:       DWORD;
+                    END;
+     PCOAUTHINFO=   POINTER TO COAUTHINFO;
+
+     COSERVERINFO=  RECORD
+                      dwReserved1: DWORD;
+                      pwszName:    LPWSTR;
+                      pAuthInfo:   PCOAUTHINFO;
+                      dwReserved2: DWORD;
+                    END;
+     PCOSERVERINFO= POINTER TO COSERVERINFO;
+
+PROCEDURE CoGetClassObject(    clsid:        CLSID;
+                               dwClsContext: DWORD;
+                               pServerInfo:  PCOSERVERINFO;
+                               iid:          IID;
+                           VAR pv:           PVOID): HRESULT;
+
+PROCEDURE CoRegisterClassObject(    clsid:        CLSID;
+                                    iUnknown:     IUnknown;
+                                    dwClsContext: DWORD;
+                                    flags:        DWORD;
+                                VAR cRegister:    DWORD): HRESULT;
+
+PROCEDURE CoRevokeClassObject(cRegister: DWORD): HRESULT;
+
+PROCEDURE CoGetMarshalSizeMax(VAR pulSize:       ULONG;
+                                  iid:           IID;
+                                  iUnknown:      IUnknown;
+                                  dwDestContext: DWORD;
+                                  pvDestContext: LPVOID;
+                                  mshlflags:     DWORD): HRESULT;
+
+PROCEDURE CoMarshalInterface(iStream:       IStream;
+                             iid:           IID;
+                             iUnknown:      IUnknown;
+                             dwDestContext: DWORD;
+                             pvDestContext: LPVOID;
+                             mshlflags:     DWORD): HRESULT;
+
+PROCEDURE CoUnmarshalInterface(    iStream:  IStream;
+                                   iid:      IID;
+                               VAR pv:       PVOID): HRESULT;
+
+PROCEDURE CoMarshalHresult(iStream: IStream;
+                           hresult: HRESULT): HRESULT;
+
+PROCEDURE CoUnmarshalHresult(    iStream: IStream;
+                             VAR hresult: HRESULT): HRESULT;
+
+PROCEDURE CoReleaseMarshalData(iStream: IStream): HRESULT;
+
+PROCEDURE CoDisconnectObject(iUnknown:   IUnknown;
+                             dwReserved: DWORD): HRESULT;
+
+PROCEDURE CoLockObjectExternal(iUnknown:            IUnknown;
+                               fLock:               BOOL;
+                               fLastUnlockReleases: BOOL): HRESULT;
+
+PROCEDURE CoGetStandardMarshal(    iid:           IID;
+                                   iUnknown:      IUnknown;
+                                   dwDestContext: DWORD;
+                                   pvDestContext: LPVOID;
+                                   mshlflags:     DWORD;
+                               VAR iMarshal:      IMarshal): HRESULT;
+
+PROCEDURE CoIsHandlerConnected(iUnknown: IUnknown): BOOL;
+
+PROCEDURE CoHasStrongExternalConnections(iUnknown: IUnknown): BOOL;
+
+PROCEDURE CoMarshalInterThreadInterfaceInStream(    iid:      IID;
+                                                    iUnknown: IUnknown;
+                                                VAR iStream:  IStream): HRESULT;
+
+PROCEDURE CoGetInterfaceAndReleaseStream(    iStream:  IStream;
+                                             iid:      IID;
+                                         VAR pv:       PVOID): HRESULT;
+
+PROCEDURE CoCreateFreeThreadedMarshaler(    iUnknownOuter:   IUnknown;
+                                        VAR iUnknownMarshal: IUnknown): HRESULT;
+
+PROCEDURE CoLoadLibrary(szLibName: ARRAY OF OLECHAR;
+                        bAutoFree: BOOL): HINSTANCE;
+
+PROCEDURE CoFreeLibrary(hInst: HINSTANCE);
+
+PROCEDURE CoFreeAllLibraries();
+
+PROCEDURE CoFreeUnusedLibraries();
+
+PROCEDURE CoCreateInstance(    clsid:         CLSID;
+                               iUnknownOuter: IUnknown;
+                               dwClsContext:  DWORD;
+                               iid:           IID;
+                           VAR pv:            PVOID): HRESULT;
+
+TYPE
+    MULTI_QI =
+        RECORD
+        pIID    : LPIID;(*in*)
+        pItf    : IUnknown;(*out*)
+        hr      : HRESULT;(*out*)
+        END;
+
+PROCEDURE CoCreateInstanceEx(    clsid:         CLSID;
+                               iUnknownOuter: IUnknown;
+                               dwClsContext:  DWORD;
+                               pServerInfo : COSERVERINFO;
+                               cmq : ULONG;(* elements in pResults *)
+                               VAR INOUT pResults : ARRAY OF MULTI_QI
+                               ): HRESULT;
+
+PROCEDURE StringFromCLSID(    clsid:    CLSID;
+                          VAR pszCLSID: LPOLESTR): HRESULT;
+
+PROCEDURE CLSIDFromString(    szCLSID: ARRAY OF OLECHAR;
+                          VAR clsid:   CLSID): HRESULT;
+
+PROCEDURE StringFromIID(    iid:    IID;
+                        VAR pszIID: LPOLESTR): HRESULT;
+
+PROCEDURE IIDFromString(    szIID: ARRAY OF OLECHAR;
+                        VAR iid:   IID): HRESULT;
+
+PROCEDURE CoIsOle1Class(clsid: CLSID): BOOL;
+
+PROCEDURE ProgIDFromCLSID(    clsid:     CLSID;
+                          VAR pszProgID: LPOLESTR): HRESULT;
+
+PROCEDURE CLSIDFromProgID(    szProgID: ARRAY OF OLECHAR;
+                          VAR clsid:    CLSID): HRESULT;
+
+PROCEDURE StringFromGUID2(guid:  GUID;
+                          lpsz:  LPOLESTR;
+                          cbMax: WINT): WINT;
+
+PROCEDURE CoCreateGuid(VAR guid : GUID): HRESULT;
+
+PROCEDURE CoFileTimeToDosDateTime(    filetime: FILETIME;
+                                  VAR wDosDate:  WORD;
+                                  VAR wDosTime:  WORD): BOOL;
+
+PROCEDURE CoDosDateTimeToFileTime(    wDosDate: WORD;
+                                      wDosTime: WORD;
+                                  VAR filetime: FILETIME): BOOL;
+
+PROCEDURE CoFileTimeNow(VAR filetime : FILETIME): HRESULT;
+
+PROCEDURE CoRegisterMessageFilter(    iMessageFilterNew:      IMessageFilter;
+                                  VAR iMessageFilterPrevious: IMessageFilter): HRESULT;
+
+PROCEDURE CoGetTreatAsClass(    clsidOld: CLSID;
+                            VAR clsidNew: CLSID): HRESULT;
+
+PROCEDURE CoTreatAsClass(clsidOld: CLSID;
+                         clsidNew: CLSID): HRESULT;
+
+TYPE LPFNGETCLASSOBJECT= PROCEDURE (CLSID, IID, ADDRESS): HRESULT;
+     LPFNCANUNLOADNOW=   PROCEDURE (): HRESULT;
+
+PROCEDURE CoTaskMemAlloc(cb : ULONG): LPVOID;
+
+PROCEDURE CoTaskMemRealloc(pv : LPVOID;
+                           cb : ULONG): LPVOID;
+
+PROCEDURE CoTaskMemFree(pv : LPVOID);
+
+PROCEDURE CreateDataCache(    iUnknownOuter: IUnknown;
+                              clsid:         CLSID;
+                              iid:           IID;
+                          VAR iUnknown:      IUnknown): HRESULT;
+
+PROCEDURE StgCreateDocfile(    szName:      ARRAY OF OLECHAR;
+                               cAccessMode: DWORD;
+                               reserved:    DWORD;
+                           VAR iStorage:    IStorage): HRESULT;
+
+PROCEDURE StgCreateDocfileOnILockBytes(    iLockBytes:  ILockBytes;
+                                           cAccessMode: DWORD;
+                                           reserved:    DWORD;
+                                       VAR iStorage:    IStorage): HRESULT;
+
+PROCEDURE StgOpenStorage(    szName:           ARRAY OF OLECHAR;
+                             iStoragePriority: IStorage;
+                             cAccessMode:      DWORD;
+                             snbExclude:       SNB;
+                             reserved:         DWORD;
+                         VAR iStorage:         IStorage): HRESULT;
+
+PROCEDURE StgOpenStorageOnILockBytes(    iLockBytes:       ILockBytes;
+                                         iStoragePriority: IStorage;
+                                         cAccessMode:      DWORD;
+                                         snbExclude:       SNB;
+                                         reserved:         DWORD;
+                                     VAR iStorage:         IStorage): HRESULT;
+
+PROCEDURE StgIsStorageFile(szName : ARRAY OF OLECHAR): HRESULT;
+
+PROCEDURE StgIsStorageILockBytes(iLockBytes: ILockBytes): HRESULT;
+
+PROCEDURE StgSetTimes(szName:     ARRAY OF OLECHAR;
+                      ftCreation: FILETIME;
+                      ftAccessed: FILETIME;
+                      ftModified: FILETIME): HRESULT;
+
+PROCEDURE BindMoniker(    iMoniker:  IMoniker;
+                          grfOpt:    DWORD;
+                          iidResult: IID;
+                      VAR pv:        PVOID): HRESULT;
+
+PROCEDURE MkParseDisplayName(    iBindCtx:   IBindCtx;
+                                 szUserName: ARRAY OF OLECHAR;
+                             VAR cEaten:     ULONG;
+                             VAR iMoniker:   IMoniker): HRESULT;
+
+PROCEDURE MonikerRelativePathTo(    iMonikerSrc:     IMoniker;
+                                    iMonikerDest:    IMoniker;
+                                VAR iMonikerRelPath: IMoniker;
+                                    dwReserved:      BOOL): HRESULT;
+
+PROCEDURE MonikerCommonPrefixWith(    iMonikerThis:   IMoniker;
+                                      iMonikerOther:  IMoniker;
+                                  VAR iMonikerCommon: IMoniker): HRESULT;
+
+PROCEDURE CreateBindCtx(    reserved: DWORD;
+                        VAR iBindCtx: IBindCtx): HRESULT;
+
+PROCEDURE CreateGenericComposite(    iMonikerFirst:     IMoniker;
+                                     iMonikerRest:      IMoniker;
+                                 VAR iMonikerComposite: IMoniker): HRESULT;
+
+PROCEDURE GetClassFile(    szFilename: ARRAY OF OLECHAR;
+                       VAR clsid:      CLSID): HRESULT;
+
+PROCEDURE CreateFileMoniker(    szPathName: ARRAY OF OLECHAR;
+                            VAR iMoniker:   IMoniker): HRESULT;
+
+PROCEDURE CreateItemMoniker(    szDelim:  ARRAY OF OLECHAR;
+                                szItem:   ARRAY OF OLECHAR;
+                            VAR iMoniker: IMoniker): HRESULT;
+
+PROCEDURE CreateAntiMoniker(VAR iMoniker: IMoniker): HRESULT;
+
+PROCEDURE CreatePointerMoniker(    iUnknown: IUnknown;
+                               VAR iMoniker: IMoniker): HRESULT;
+
+PROCEDURE GetRunningObjectTable(    reserved:            DWORD;
+                                VAR iRunningObjectTable: IRunningObjectTable): HRESULT;
+
+
+END OOle2.

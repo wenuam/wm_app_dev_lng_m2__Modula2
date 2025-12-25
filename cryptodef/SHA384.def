@@ -1,0 +1,64 @@
+DEFINITION MODULE SHA384;
+(*
+  FIPS 180-2 SHA-384 secure hash algorithm
+*)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    HashLength  = 48;(*bytes, 384 bits*)
+
+    HashBlockSize   = 128;(*not useful information, exists here for the HMAC module*)
+
+TYPE
+    SHA384;
+
+PROCEDURE Create() : SHA384;
+(* create an SHA384 hash object.
+   the hash object is initialized when created.
+   only one thread at a time can use a hash object.
+*)
+
+PROCEDURE Destroy(VAR OUT hash : SHA384);
+(* destroys a previously created SHA384 hash object.
+   hash = NIL after this call.
+*)
+
+PROCEDURE Reset(hash : SHA384);
+(* resets and initializes the hash object.
+   after this you can hash a new data stream
+*)
+
+PROCEDURE HashBytes(hash : SHA384; data : ADDRESS; amount : CARDINAL);
+(* adds bytes to hash *)
+
+PROCEDURE Finalize(hash : SHA384);
+(* finalizes hash.
+   you cannot hash additional bytes after a hash has been finalized.
+*)
+
+PROCEDURE GetHash(hash : SHA384; VAR OUT data : ARRAY OF BYTE);
+(* a SHA384 hash is 48 bytes.
+   data is an open array so that you can implement a single buffer
+   large enough to hold different hashes, each of which is likely a different
+   size in bytes.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE GetString(hash : SHA384; VAR OUT str : ARRAY OF CHAR);
+(* the string returned is 96 characters long.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END SHA384.

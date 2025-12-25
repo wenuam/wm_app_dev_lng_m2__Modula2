@@ -1,0 +1,2273 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINSPOOL;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    LPSTR, DWORD, LPWSTR, PSECURITY_DESCRIPTOR, SYSTEMTIME, SIZEL, RECTL,
+    ACCESS_MASK, LPBYTE, HANDLE, BOOL, LPVOID, HWND, LONG, WORD, PWORD,
+    STANDARD_RIGHTS_REQUIRED, STANDARD_RIGHTS_READ, STANDARD_RIGHTS_WRITE,
+    STANDARD_RIGHTS_EXECUTE;
+
+FROM WINGDI IMPORT
+    LPDEVMODEA, LPDEVMODEW, LPDEVMODE, DEVMODEA, DEVMODEW;
+
+FROM WIN32 IMPORT
+    LPARAM;
+FROM COMMCTRL IMPORT
+    LPFNADDPROPSHEETPAGE;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+TYPE
+    PRINTER_INFO_1A = RECORD
+          Flags          : DWORD;
+          pDescription   : LPSTR;
+          pName          : LPSTR;
+          pComment       : LPSTR;
+    END;
+    PPRINTER_INFO_1A     = POINTER TO PRINTER_INFO_1A;
+    LPPRINTER_INFO_1A    = PPRINTER_INFO_1A;
+
+    PRINTER_INFO_1W = RECORD
+          Flags          : DWORD;
+          pDescription   : LPWSTR;
+          pName          : LPWSTR;
+          pComment       : LPWSTR;
+    END;
+    PPRINTER_INFO_1W     = POINTER TO PRINTER_INFO_1W;
+    LPPRINTER_INFO_1W    = PPRINTER_INFO_1W;
+
+%IF UNICODE %THEN
+    PRINTER_INFO_1 = PRINTER_INFO_1W;
+    PPRINTER_INFO_1     = PPRINTER_INFO_1W;
+%ELSE
+    PRINTER_INFO_1 = PRINTER_INFO_1A;
+    PPRINTER_INFO_1     = PPRINTER_INFO_1A;
+%END
+    LPPRINTER_INFO_1    = PPRINTER_INFO_1;
+
+    PRINTER_INFO_2A = RECORD
+          pServerName    : LPSTR;
+          pPrinterName   : LPSTR;
+          pShareName     : LPSTR;
+          pPortName      : LPSTR;
+          pDriverName    : LPSTR;
+          pComment       : LPSTR;
+          pLocation      : LPSTR;
+          pDevMode       : LPDEVMODEA;
+          pSepFile       : LPSTR;
+          pPrintProcessor: LPSTR;
+          pDatatype      : LPSTR;
+          pParameters    : LPSTR;
+          pSecurityDescriptor: PSECURITY_DESCRIPTOR;
+          Attributes     : DWORD;
+          Priority       : DWORD;
+          DefaultPriority: DWORD;
+          StartTime      : DWORD;
+          UntilTime      : DWORD;
+          Status         : DWORD;
+          cJobs          : DWORD;
+          AveragePPM     : DWORD;
+    END;
+    PPRINTER_INFO_2A     = POINTER TO PRINTER_INFO_2A;
+    LPPRINTER_INFO_2A    = PPRINTER_INFO_2A;
+
+    PRINTER_INFO_2W = RECORD
+          pServerName    : LPWSTR;
+          pPrinterName   : LPWSTR;
+          pShareName     : LPWSTR;
+          pPortName      : LPWSTR;
+          pDriverName    : LPWSTR;
+          pComment       : LPWSTR;
+          pLocation      : LPWSTR;
+          pDevMode       : LPDEVMODEW;
+          pSepFile       : LPWSTR;
+          pPrintProcessor: LPWSTR;
+          pDatatype      : LPWSTR;
+          pParameters    : LPWSTR;
+          pSecurityDescriptor: PSECURITY_DESCRIPTOR;
+          Attributes     : DWORD;
+          Priority       : DWORD;
+          DefaultPriority: DWORD;
+          StartTime      : DWORD;
+          UntilTime      : DWORD;
+          Status         : DWORD;
+          cJobs          : DWORD;
+          AveragePPM     : DWORD;
+    END;
+    PPRINTER_INFO_2W     = POINTER TO PRINTER_INFO_2W;
+    LPPRINTER_INFO_2W    = PPRINTER_INFO_2W;
+
+%IF UNICODE %THEN
+    PRINTER_INFO_2      = PRINTER_INFO_2W;
+    PPRINTER_INFO_2     = PPRINTER_INFO_2W;
+%ELSE
+    PRINTER_INFO_2      = PRINTER_INFO_2A;
+    PPRINTER_INFO_2     = PPRINTER_INFO_2A;
+%END
+    LPPRINTER_INFO_2    = PPRINTER_INFO_2;
+
+    PRINTER_INFO_3 = RECORD
+          pSecurityDescriptor: PSECURITY_DESCRIPTOR;
+    END;
+    PPRINTER_INFO_3      = POINTER TO PRINTER_INFO_3;
+    LPPRINTER_INFO_3     = PPRINTER_INFO_3;
+
+TYPE
+    PRINTER_INFO_4A = RECORD
+        pPrinterName    : LPSTR;
+        pServerName     : LPSTR;
+        Attributes      : DWORD;
+    END;
+    PPRINTER_INFO_4A = POINTER TO PRINTER_INFO_4A;
+    LPPRINTER_INFO_4A = PPRINTER_INFO_4A;
+
+    PRINTER_INFO_4W = RECORD
+        pPrinterName    : LPWSTR;
+        pServerName     : LPWSTR;
+        Attributes      : DWORD;
+    END;
+    PPRINTER_INFO_4W = POINTER TO PRINTER_INFO_4W;
+    LPPRINTER_INFO_4W = PPRINTER_INFO_4W;
+
+%IF UNICODE %THEN
+    PRINTER_INFO_4 = PRINTER_INFO_4W;
+    PPRINTER_INFO_4     = PPRINTER_INFO_4W;
+%ELSE
+    PRINTER_INFO_4 = PRINTER_INFO_4A;
+    PPRINTER_INFO_4     = PPRINTER_INFO_4A;
+%END
+    LPPRINTER_INFO_4    = PPRINTER_INFO_4;
+
+    PRINTER_INFO_5A = RECORD
+        pPrinterName            : LPSTR;
+        pPortName               : LPSTR;
+        Attributes              : DWORD;
+        DeviceNotSelectedTimeout: DWORD;
+        TransmissionRetryTimeout: DWORD;
+    END;
+    PPRINTER_INFO_5A  = POINTER TO PRINTER_INFO_5A;
+    LPPRINTER_INFO_5A = PPRINTER_INFO_5A;
+
+    PRINTER_INFO_5W = RECORD
+        pPrinterName            : LPWSTR;
+        pPortName               : LPWSTR;
+        Attributes              : DWORD;
+        DeviceNotSelectedTimeout: DWORD;
+        TransmissionRetryTimeout: DWORD;
+    END;
+    PPRINTER_INFO_5W  = POINTER TO PRINTER_INFO_5W;
+    LPPRINTER_INFO_5W = PPRINTER_INFO_5W;
+
+%IF UNICODE %THEN
+    PRINTER_INFO_5 = PRINTER_INFO_5W;
+    PPRINTER_INFO_5  = PPRINTER_INFO_5W;
+%ELSE
+    PRINTER_INFO_5 = PRINTER_INFO_5A;
+    PPRINTER_INFO_5  = PPRINTER_INFO_5A;
+%END
+    LPPRINTER_INFO_5 = PPRINTER_INFO_5;
+
+    PRINTER_INFO_6 = RECORD
+    dwStatus    : DWORD;
+    END;
+    PPRINTER_INFO_6 = POINTER TO PRINTER_INFO_6;
+    LPPRINTER_INFO_6 = PPRINTER_INFO_6;
+
+
+    PRINTER_INFO_7A = RECORD
+    pszObjectGUID       : LPSTR;
+    dwAction            : DWORD;
+    END;
+    PPRINTER_INFO_7A =  POINTER TO PRINTER_INFO_7A;
+    LPPRINTER_INFO_7A = PPRINTER_INFO_7A;
+
+    PRINTER_INFO_7W = RECORD
+    pszObjectGUID       : LPWSTR;
+    dwAction            : DWORD;
+    END;
+    PPRINTER_INFO_7W =  POINTER TO PRINTER_INFO_7W;
+    LPPRINTER_INFO_7W = PPRINTER_INFO_7W;
+
+    %IF UNICODE %THEN
+    PRINTER_INFO_7      = PRINTER_INFO_7W;
+    PPRINTER_INFO_7     = PPRINTER_INFO_7W;
+    LPPRINTER_INFO_7    = LPPRINTER_INFO_7W;
+    %ELSE
+    PRINTER_INFO_7      = PRINTER_INFO_7A;
+    PPRINTER_INFO_7     = PPRINTER_INFO_7A;
+    LPPRINTER_INFO_7    = LPPRINTER_INFO_7A;
+    %END
+
+CONST
+    DSPRINT_PUBLISH         =1;
+    DSPRINT_UPDATE          =2;
+    DSPRINT_UNPUBLISH       =3;
+
+    PRINTER_CONTROL_PAUSE               = 1;
+    PRINTER_CONTROL_RESUME              = 2;
+    PRINTER_CONTROL_PURGE               = 3;
+    PRINTER_CONTROL_SET_STATUS          = 4;
+
+    PRINTER_STATUS_PAUSED               = 000000001h;
+    PRINTER_STATUS_ERROR                = 000000002h;
+    PRINTER_STATUS_PENDING_DELETION     = 000000004h;
+    PRINTER_STATUS_PAPER_JAM            = 000000008h;
+    PRINTER_STATUS_PAPER_OUT            = 000000010h;
+    PRINTER_STATUS_MANUAL_FEED          = 000000020h;
+    PRINTER_STATUS_PAPER_PROBLEM        = 000000040h;
+    PRINTER_STATUS_OFFLINE              = 000000080h;
+    PRINTER_STATUS_IO_ACTIVE            = 000000100h;
+    PRINTER_STATUS_BUSY                 = 000000200h;
+    PRINTER_STATUS_PRINTING             = 000000400h;
+    PRINTER_STATUS_OUTPUT_BIN_FULL      = 000000800h;
+    PRINTER_STATUS_NOT_AVAILABLE        = 000001000h;
+    PRINTER_STATUS_WAITING              = 000002000h;
+    PRINTER_STATUS_PROCESSING           = 000004000h;
+    PRINTER_STATUS_INITIALIZING         = 000008000h;
+    PRINTER_STATUS_WARMING_UP           = 000010000h;
+    PRINTER_STATUS_TONER_LOW            = 000020000h;
+    PRINTER_STATUS_NO_TONER             = 000040000h;
+    PRINTER_STATUS_PAGE_PUNT            = 000080000h;
+    PRINTER_STATUS_USER_INTERVENTION    = 000100000h;
+    PRINTER_STATUS_OUT_OF_MEMORY        = 000200000h;
+    PRINTER_STATUS_DOOR_OPEN            = 000400000h;
+    PRINTER_STATUS_SERVER_UNKNOWN       = 000800000h;
+    PRINTER_STATUS_POWER_SAVE           = 001000000h;
+
+    PRINTER_ATTRIBUTE_QUEUED            = 000000001h;
+    PRINTER_ATTRIBUTE_DIRECT            = 000000002h;
+    PRINTER_ATTRIBUTE_DEFAULT           = 000000004h;
+    PRINTER_ATTRIBUTE_SHARED            = 000000008h;
+    PRINTER_ATTRIBUTE_NETWORK           = 000000010h;
+    PRINTER_ATTRIBUTE_HIDDEN            = 000000020h;
+    PRINTER_ATTRIBUTE_LOCAL             = 000000040h;
+    PRINTER_ATTRIBUTE_ENABLE_DEVQ       = 000000080h;
+    PRINTER_ATTRIBUTE_KEEPPRINTEDJOBS   = 000000100h;
+    PRINTER_ATTRIBUTE_DO_COMPLETE_FIRST = 000000200h;
+    PRINTER_ATTRIBUTE_WORK_OFFLINE      = 000000400h;
+    PRINTER_ATTRIBUTE_ENABLE_BIDI       = 000000800h;
+    PRINTER_ATTRIBUTE_RAW_ONLY       = 00001000h;
+    PRINTER_ATTRIBUTE_PUBLISHED      = 00002000h;
+
+    NO_PRIORITY                         = 0;
+    MAX_PRIORITY                        = 99;
+    MIN_PRIORITY                        = 1;
+    DEF_PRIORITY                        = 1;
+
+TYPE
+    JOB_INFO_1A = RECORD
+          JobId          : DWORD;
+          pPrinterName   : LPSTR;
+          pMachineName   : LPSTR;
+          pUserName      : LPSTR;
+          pDocument      : LPSTR;
+          pDatatype      : LPSTR;
+          pStatus        : LPSTR;
+          Status         : DWORD;
+          Priority       : DWORD;
+          Position       : DWORD;
+          TotalPages     : DWORD;
+          PagesPrinted   : DWORD;
+          Submitted      : SYSTEMTIME;
+    END;
+    PJOB_INFO_1A         = POINTER TO JOB_INFO_1A;
+    LPJOB_INFO_1A        = PJOB_INFO_1A;
+
+    JOB_INFO_1W = RECORD
+          JobId          : DWORD;
+          pPrinterName   : LPWSTR;
+          pMachineName   : LPWSTR;
+          pUserName      : LPWSTR;
+          pDocument      : LPWSTR;
+          pDatatype      : LPWSTR;
+          pStatus        : LPWSTR;
+          Status         : DWORD;
+          Priority       : DWORD;
+          Position       : DWORD;
+          TotalPages     : DWORD;
+          PagesPrinted   : DWORD;
+          Submitted      : SYSTEMTIME;
+    END;
+    PJOB_INFO_1W         = POINTER TO JOB_INFO_1W;
+    LPJOB_INFO_1W        = PJOB_INFO_1W;
+
+%IF UNICODE %THEN
+    JOB_INFO_1          = JOB_INFO_1W;
+    PJOB_INFO_1         = PJOB_INFO_1W;
+%ELSE
+    JOB_INFO_1          = JOB_INFO_1A;
+    PJOB_INFO_1         = PJOB_INFO_1A;
+%END
+    LPJOB_INFO_1        = PJOB_INFO_1;
+
+    JOB_INFO_2A = RECORD
+          JobId          : DWORD;
+          pPrinterName   : LPSTR;
+          pMachineName   : LPSTR;
+          pUserName      : LPSTR;
+          pDocument      : LPSTR;
+          pNotifyName    : LPSTR;
+          pDatatype      : LPSTR;
+          pPrintProcessor: LPSTR;
+          pParameters    : LPSTR;
+          pDriverName    : LPSTR;
+          pDevMode       : LPDEVMODE;
+          pStatus        : LPSTR;
+          pSecurityDescriptor: PSECURITY_DESCRIPTOR;
+          Status         : DWORD;
+          Priority       : DWORD;
+          Position       : DWORD;
+          StartTime      : DWORD;
+          UntilTime      : DWORD;
+          TotalPages     : DWORD;
+          Size           : DWORD;
+          Submitted      : SYSTEMTIME;
+          Time           : DWORD;
+          PagesPrinted   : DWORD;
+    END;
+    PJOB_INFO_2A         = POINTER TO JOB_INFO_2A;
+    LPJOB_INFO_2A        = PJOB_INFO_2A;
+
+    JOB_INFO_2W = RECORD
+          JobId          : DWORD;
+          pPrinterName   : LPWSTR;
+          pMachineName   : LPWSTR;
+          pUserName      : LPWSTR;
+          pDocument      : LPWSTR;
+          pNotifyName    : LPWSTR;
+          pDatatype      : LPWSTR;
+          pPrintProcessor: LPWSTR;
+          pParameters    : LPWSTR;
+          pDriverName    : LPWSTR;
+          pDevMode       : LPDEVMODE;
+          pStatus        : LPWSTR;
+          pSecurityDescriptor: PSECURITY_DESCRIPTOR;
+          Status         : DWORD;
+          Priority       : DWORD;
+          Position       : DWORD;
+          StartTime      : DWORD;
+          UntilTime      : DWORD;
+          TotalPages     : DWORD;
+          Size           : DWORD;
+          Submitted      : SYSTEMTIME;
+          Time           : DWORD;
+          PagesPrinted   : DWORD;
+    END;
+    PJOB_INFO_2W         = POINTER TO JOB_INFO_2W;
+    LPJOB_INFO_2W        = PJOB_INFO_2W;
+
+%IF UNICODE %THEN
+    JOB_INFO_2          = JOB_INFO_2W;
+    PJOB_INFO_2         = PJOB_INFO_2W;
+%ELSE
+    JOB_INFO_2          = JOB_INFO_2A;
+    PJOB_INFO_2         = PJOB_INFO_2A;
+%END
+    LPJOB_INFO_2        = PJOB_INFO_2;
+
+    JOB_INFO_3 = RECORD
+    JobId       : DWORD;
+    NextJobId   : DWORD;
+    Reserved    : DWORD;
+    END;
+    PJOB_INFO_3 = POINTER TO JOB_INFO_3;
+    LPJOB_INFO_3 = PJOB_INFO_3;
+
+CONST
+    JOB_CONTROL_PAUSE    = 1;
+    JOB_CONTROL_RESUME   = 2;
+    JOB_CONTROL_CANCEL   = 3;
+    JOB_CONTROL_RESTART  = 4;
+    JOB_CONTROL_DELETE   = 5;
+    JOB_CONTROL_SENT_TO_PRINTER    =6;
+    JOB_CONTROL_LAST_PAGE_EJECTED  =7;
+
+    JOB_STATUS_PAUSED    = 000000001h;
+    JOB_STATUS_ERROR     = 000000002h;
+    JOB_STATUS_DELETING  = 000000004h;
+    JOB_STATUS_SPOOLING  = 000000008h;
+    JOB_STATUS_PRINTING  = 000000010h;
+    JOB_STATUS_OFFLINE   = 000000020h;
+    JOB_STATUS_PAPEROUT  = 000000040h;
+    JOB_STATUS_PRINTED   = 000000080h;
+
+    JOB_STATUS_DELETED          = 000000100h;
+    JOB_STATUS_BLOCKED_DEVQ     = 000000200h;
+    JOB_STATUS_USER_INTERVENTION= PRINTER_STATUS_USER_INTERVENTION;
+    JOB_STATUS_RESTART              = 00000800h;
+
+    JOB_POSITION_UNSPECIFIED= 0;
+
+TYPE
+    ADDJOB_INFO_1A = RECORD
+          Path           : LPSTR;
+          JobId          : DWORD;
+    END;
+    PADDJOB_INFO_1A      = POINTER TO ADDJOB_INFO_1A;
+    LPADDJOB_INFO_1A     = PADDJOB_INFO_1A;
+
+    ADDJOB_INFO_1W = RECORD
+          Path           : LPWSTR;
+          JobId          : DWORD;
+    END;
+    PADDJOB_INFO_1W      = POINTER TO ADDJOB_INFO_1W;
+    LPADDJOB_INFO_1W     = PADDJOB_INFO_1W;
+
+%IF UNICODE %THEN
+    ADDJOB_INFO_1       = ADDJOB_INFO_1W;
+    PADDJOB_INFO_1      = PADDJOB_INFO_1W;
+%ELSE
+    ADDJOB_INFO_1       = ADDJOB_INFO_1A;
+    PADDJOB_INFO_1      = PADDJOB_INFO_1A;
+%END
+    LPADDJOB_INFO_1     = PADDJOB_INFO_1;
+
+    DRIVER_INFO_1A = RECORD
+          pName          : LPSTR;
+    END;
+    PDRIVER_INFO_1A      = POINTER TO DRIVER_INFO_1A;
+    LPDRIVER_INFO_1A     = PDRIVER_INFO_1A;
+
+    DRIVER_INFO_1W = RECORD
+          pName          : LPWSTR;
+    END;
+    PDRIVER_INFO_1W      = POINTER TO DRIVER_INFO_1W;
+    LPDRIVER_INFO_1W     = PDRIVER_INFO_1W;
+
+%IF UNICODE %THEN
+    DRIVER_INFO_1       = DRIVER_INFO_1W;
+    PDRIVER_INFO_1      = PDRIVER_INFO_1W;
+%ELSE
+    DRIVER_INFO_1       = DRIVER_INFO_1A;
+    PDRIVER_INFO_1      = PDRIVER_INFO_1A;
+%END
+    LPDRIVER_INFO_1     = PDRIVER_INFO_1;
+
+    DRIVER_INFO_2A = RECORD
+          cVersion       : DWORD;
+          pName          : LPSTR;
+          pEnvironment   : LPSTR;
+          pDriverPath    : LPSTR;
+          pDataFile      : LPSTR;
+          pConfigFile    : LPSTR;
+    END;
+    PDRIVER_INFO_2A      = POINTER TO DRIVER_INFO_2A;
+    LPDRIVER_INFO_2A     = PDRIVER_INFO_2A;
+
+    DRIVER_INFO_2W = RECORD
+          cVersion       : DWORD;
+          pName          : LPWSTR;
+          pEnvironment   : LPWSTR;
+          pDriverPath    : LPWSTR;
+          pDataFile      : LPWSTR;
+          pConfigFile    : LPWSTR;
+    END;
+    PDRIVER_INFO_2W      = POINTER TO DRIVER_INFO_2W;
+    LPDRIVER_INFO_2W     = PDRIVER_INFO_2W;
+
+%IF UNICODE %THEN
+    DRIVER_INFO_2       = DRIVER_INFO_2W;
+    PDRIVER_INFO_2      = PDRIVER_INFO_2W;
+%ELSE
+    DRIVER_INFO_2       = DRIVER_INFO_2A;
+    PDRIVER_INFO_2      = PDRIVER_INFO_2A;
+%END
+    LPDRIVER_INFO_2     = PDRIVER_INFO_2;
+
+    DRIVER_INFO_3A = RECORD
+        cVersion        : DWORD;
+        pName           : LPSTR;
+        pEnvironment    : LPSTR;
+        pDriverPath     : LPSTR;
+        pDataFile       : LPSTR;
+        pConfigFile     : LPSTR;
+        pHelpFile       : LPSTR;
+        pDependentFiles : LPSTR;
+        pMonitorName    : LPSTR;
+        pDefaultDataType: LPSTR;
+    END;
+    PDRIVER_INFO_3A = POINTER TO DRIVER_INFO_3A;
+    LPDRIVER_INFO_3A = PDRIVER_INFO_3A;
+
+    DRIVER_INFO_3W = RECORD
+        cVersion        : DWORD;
+        pName           : LPWSTR;
+        pEnvironment    : LPWSTR;
+        pDriverPath     : LPWSTR;
+        pDataFile       : LPWSTR;
+        pConfigFile     : LPWSTR;
+        pHelpFile       : LPWSTR;
+        pDependentFiles : LPWSTR;
+        pMonitorName    : LPWSTR;
+        pDefaultDataType: LPWSTR;
+    END;
+    PDRIVER_INFO_3W = POINTER TO DRIVER_INFO_3W;
+    LPDRIVER_INFO_3W = PDRIVER_INFO_3W;
+
+%IF UNICODE %THEN
+    DRIVER_INFO_3 = DRIVER_INFO_3W;
+    PDRIVER_INFO_3 = PDRIVER_INFO_3W;
+%ELSE
+    DRIVER_INFO_3 = DRIVER_INFO_3A;
+    PDRIVER_INFO_3 = PDRIVER_INFO_3A;
+%END
+    LPDRIVER_INFO_3 = PDRIVER_INFO_3;
+
+CONST
+(* FLAGS for DeletePrinterDriverEx.*)
+    DPD_DELETE_UNUSED_FILES          = 00000001h;
+    DPD_DELETE_SPECIFIC_VERSION      = 00000002h;
+    DPD_DELETE_ALL_FILES             = 00000004h;
+
+(* FLAGS for AddPrinterDriverEx.*)
+    APD_STRICT_UPGRADE               = 00000001h;
+    APD_STRICT_DOWNGRADE             = 00000002h;
+    APD_COPY_ALL_FILES               = 00000004h;
+    APD_COPY_NEW_FILES               = 00000008h;
+
+TYPE
+    DOC_INFO_1A = RECORD
+          pDocName       : LPSTR;
+          pOutputFile    : LPSTR;
+          pDatatype      : LPSTR;
+    END;
+    PDOC_INFO_1A         = POINTER TO DOC_INFO_1A;
+    LPDOC_INFO_1A        = PDOC_INFO_1A;
+
+    DOC_INFO_1W = RECORD
+          pDocName       : LPWSTR;
+          pOutputFile    : LPWSTR;
+          pDatatype      : LPWSTR;
+    END;
+    PDOC_INFO_1W         = POINTER TO DOC_INFO_1W;
+    LPDOC_INFO_1W        = PDOC_INFO_1W;
+
+%IF UNICODE %THEN
+    DOC_INFO_1          = DOC_INFO_1W;
+    PDOC_INFO_1         = PDOC_INFO_1W;
+%ELSE
+    DOC_INFO_1          = DOC_INFO_1A;
+    PDOC_INFO_1         = PDOC_INFO_1A;
+%END
+    LPDOC_INFO_1        = PDOC_INFO_1;
+
+    DOC_INFO_2A = RECORD
+        pDocName        : LPSTR;
+        pOutputFile     : LPSTR;
+        pDatatype       : LPSTR;
+        dwMode          : DWORD;
+        JobId           : DWORD;
+    END;
+    PDOC_INFO_2A  = POINTER TO DOC_INFO_2A;
+    LPDOC_INFO_2A = PDOC_INFO_2A;
+
+    DOC_INFO_2W = RECORD
+        pDocName        : LPWSTR;
+        pOutputFile     : LPWSTR;
+        pDatatype       : LPWSTR;
+        dwMode          : DWORD;
+        JobId           : DWORD;
+    END;
+    PDOC_INFO_2W  = POINTER TO DOC_INFO_2W;
+    LPDOC_INFO_2W = PDOC_INFO_2W;
+
+%IF UNICODE %THEN
+    DOC_INFO_2 = DOC_INFO_2W;
+    PDOC_INFO_2  = PDOC_INFO_2W;
+%ELSE
+    DOC_INFO_2 = DOC_INFO_2A;
+    PDOC_INFO_2  = PDOC_INFO_2A;
+%END
+    LPDOC_INFO_2 = PDOC_INFO_2;
+
+CONST
+    DI_CHANNEL              = 1;
+    DI_CHANNEL_WRITE        = 2;
+    DI_READ_SPOOL_JOB       = 3;
+
+TYPE
+    FORM_INFO_1A = RECORD
+          Flags          : DWORD;
+          pName          : LPSTR;
+          Size           : SIZEL;
+          ImageableArea  : RECTL;
+    END;
+    PFORM_INFO_1A        = POINTER TO FORM_INFO_1A;
+    LPFORM_INFO_1A       = PFORM_INFO_1A;
+
+    FORM_INFO_1W = RECORD
+          Flags          : DWORD;
+          pName          : LPWSTR;
+          Size           : SIZEL;
+          ImageableArea  : RECTL;
+    END;
+    PFORM_INFO_1W        = POINTER TO FORM_INFO_1W;
+    LPFORM_INFO_1W       = PFORM_INFO_1W;
+
+%IF UNICODE %THEN
+    FORM_INFO_1         = FORM_INFO_1W;
+    PFORM_INFO_1        = PFORM_INFO_1W;
+%ELSE
+    FORM_INFO_1         = FORM_INFO_1A;
+    PFORM_INFO_1        = PFORM_INFO_1A;
+%END
+    LPFORM_INFO_1       = PFORM_INFO_1;
+
+CONST
+    FORM_USER       = 00000000h;
+    FORM_BUILTIN    = 000000001h;
+    FORM_PRINTER    = 00000002h;
+
+TYPE
+    PRINTPROCESSOR_INFO_1A = RECORD
+          pName          : LPSTR;
+    END;
+    PPRINTPROCESSOR_INFO_1A= POINTER TO PRINTPROCESSOR_INFO_1A;
+    LPPRINTPROCESSOR_INFO_1A= PPRINTPROCESSOR_INFO_1A;
+
+    PRINTPROCESSOR_INFO_1W = RECORD
+          pName          : LPWSTR;
+    END;
+    PPRINTPROCESSOR_INFO_1W= POINTER TO PRINTPROCESSOR_INFO_1W;
+    LPPRINTPROCESSOR_INFO_1W= PPRINTPROCESSOR_INFO_1W;
+
+%IF UNICODE %THEN
+    PRINTPROCESSOR_INFO_1 = PRINTPROCESSOR_INFO_1W;
+    PPRINTPROCESSOR_INFO_1 = PPRINTPROCESSOR_INFO_1W;
+%ELSE
+    PRINTPROCESSOR_INFO_1 = PRINTPROCESSOR_INFO_1A;
+    PPRINTPROCESSOR_INFO_1 = PPRINTPROCESSOR_INFO_1A;
+%END
+    LPPRINTPROCESSOR_INFO_1= PPRINTPROCESSOR_INFO_1;
+
+    PRINTPROCESSOR_CAPS_1 = RECORD
+    dwLevel             : DWORD;
+    dwNupOptions        : DWORD;
+    dwPageOrderFlags    : DWORD;
+    dwNumberOfCopies    : DWORD;
+    END;
+    PPRINTPROCESSOR_CAPS_1 = POINTER TO PRINTPROCESSOR_CAPS_1;
+
+    PORT_INFO_1A = RECORD
+          pName          : LPSTR;
+    END;
+    PPORT_INFO_1A        = POINTER TO PORT_INFO_1A;
+    LPPORT_INFO_1A       = PPORT_INFO_1A;
+
+    PORT_INFO_1W = RECORD
+          pName          : LPWSTR;
+    END;
+    PPORT_INFO_1W        = POINTER TO PORT_INFO_1W;
+    LPPORT_INFO_1W       = PPORT_INFO_1W;
+
+%IF UNICODE %THEN
+    PORT_INFO_1         = PORT_INFO_1W;
+    PPORT_INFO_1        = PPORT_INFO_1W;
+%ELSE
+    PORT_INFO_1         = PORT_INFO_1A;
+    PPORT_INFO_1        = PPORT_INFO_1A;
+%END
+    LPPORT_INFO_1       = PPORT_INFO_1;
+
+    PORT_INFO_2A = RECORD
+        pPortName       : LPSTR;
+        pMonitorName    : LPSTR;
+        pDescription    : LPSTR;
+        fPortType       : DWORD;
+        Reserved        : DWORD;
+    END;
+    PPORT_INFO_2A  = POINTER TO PORT_INFO_2A;
+    LPPORT_INFO_2A = PPORT_INFO_2A;
+
+    PORT_INFO_2W = RECORD
+        pPortName       : LPWSTR;
+        pMonitorName    : LPWSTR;
+        pDescription    : LPWSTR;
+        fPortType       : DWORD;
+        Reserved        : DWORD;
+    END;
+    PPORT_INFO_2W  = POINTER TO PORT_INFO_2W;
+    LPPORT_INFO_2W = PPORT_INFO_2W;
+
+%IF UNICODE %THEN
+    PORT_INFO_2 = PORT_INFO_2W;
+    PPORT_INFO_2  = PPORT_INFO_2W;
+%ELSE
+    PORT_INFO_2 = PORT_INFO_2A;
+    PPORT_INFO_2  = PPORT_INFO_2A;
+%END
+    LPPORT_INFO_2 = PPORT_INFO_2;
+
+    PORT_INFO_3A = RECORD
+    dwStatus    : DWORD;
+    pszStatus   : LPSTR;
+    dwSeverity  : DWORD;
+    END;
+    PPORT_INFO_3A = POINTER TO PORT_INFO_3A;
+    LPPORT_INFO_3A = PPORT_INFO_3A;
+
+    PORT_INFO_3W = RECORD
+    dwStatus    : DWORD;
+    pszStatus   : LPWSTR;
+    dwSeverity  : DWORD;
+    END;
+    PPORT_INFO_3W = POINTER TO PORT_INFO_3W;
+    LPPORT_INFO_3W = PPORT_INFO_3W;
+
+    %IF UNICODE %THEN
+    PORT_INFO_3 = PORT_INFO_3W;
+    PPORT_INFO_3 = PPORT_INFO_3W;
+    LPPORT_INFO_3 = LPPORT_INFO_3W;
+    %ELSE
+    PORT_INFO_3 = PORT_INFO_3A;
+    PPORT_INFO_3 = PPORT_INFO_3A;
+    LPPORT_INFO_3 = LPPORT_INFO_3A;
+    %END
+
+CONST
+    PORT_STATUS_TYPE_ERROR      =1;
+    PORT_STATUS_TYPE_WARNING    =2;
+    PORT_STATUS_TYPE_INFO       =3;
+
+    PORT_STATUS_OFFLINE                 =1;
+    PORT_STATUS_PAPER_JAM               =2;
+    PORT_STATUS_PAPER_OUT               =3;
+    PORT_STATUS_OUTPUT_BIN_FULL         =4;
+    PORT_STATUS_PAPER_PROBLEM           =5;
+    PORT_STATUS_NO_TONER                =6;
+    PORT_STATUS_DOOR_OPEN               =7;
+    PORT_STATUS_USER_INTERVENTION       =8;
+    PORT_STATUS_OUT_OF_MEMORY           =9;
+
+    PORT_STATUS_TONER_LOW              =10;
+
+    PORT_STATUS_WARMING_UP             =11;
+    PORT_STATUS_POWER_SAVE             =12;
+
+    PORT_TYPE_WRITE         = 00001h;
+    PORT_TYPE_READ          = 00002h;
+    PORT_TYPE_REDIRECTED    = 00004h;
+    PORT_TYPE_NET_ATTACHED  = 00008h;
+
+TYPE
+    MONITOR_INFO_1A = RECORD
+          pName          : LPSTR;
+    END;
+    PMONITOR_INFO_1A     = POINTER TO MONITOR_INFO_1A;
+    LPMONITOR_INFO_1A    = PMONITOR_INFO_1A;
+
+    MONITOR_INFO_1W = RECORD
+          pName          : LPWSTR;
+    END;
+    PMONITOR_INFO_1W     = POINTER TO MONITOR_INFO_1W;
+    LPMONITOR_INFO_1W    = PMONITOR_INFO_1W;
+
+%IF UNICODE %THEN
+    MONITOR_INFO_1      = MONITOR_INFO_1W;
+    PMONITOR_INFO_1     = PMONITOR_INFO_1W;
+%ELSE
+    MONITOR_INFO_1      = MONITOR_INFO_1A;
+    PMONITOR_INFO_1     = PMONITOR_INFO_1A;
+%END
+    LPMONITOR_INFO_1    = PMONITOR_INFO_1;
+
+    MONITOR_INFO_2A = RECORD
+          pName          : LPSTR;
+          pEnvironment   : LPSTR;
+          pDLLName       : LPSTR;
+    END;
+    PMONITOR_INFO_2A     = POINTER TO MONITOR_INFO_2A;
+    LPMONITOR_INFO_2A    = PMONITOR_INFO_2A;
+
+    MONITOR_INFO_2W = RECORD
+          pName          : LPWSTR;
+          pEnvironment   : LPWSTR;
+          pDLLName       : LPWSTR;
+    END;
+    PMONITOR_INFO_2W     = POINTER TO MONITOR_INFO_2W;
+    LPMONITOR_INFO_2W    = PMONITOR_INFO_2W;
+
+%IF UNICODE %THEN
+    MONITOR_INFO_2      = MONITOR_INFO_2W;
+    PMONITOR_INFO_2     = PMONITOR_INFO_2W;
+%ELSE
+    MONITOR_INFO_2      = MONITOR_INFO_2A;
+    PMONITOR_INFO_2     = PMONITOR_INFO_2A;
+%END
+    LPMONITOR_INFO_2    = PMONITOR_INFO_2;
+
+    DATATYPES_INFO_1A = RECORD
+          pName          : LPSTR;
+    END;
+    PDATATYPES_INFO_1A   = POINTER TO DATATYPES_INFO_1A;
+    LPDATATYPES_INFO_1A  = PDATATYPES_INFO_1A;
+
+    DATATYPES_INFO_1W = RECORD
+          pName          : LPWSTR;
+    END;
+    PDATATYPES_INFO_1W   = POINTER TO DATATYPES_INFO_1W;
+    LPDATATYPES_INFO_1W  = PDATATYPES_INFO_1W;
+
+%IF UNICODE %THEN
+    DATATYPES_INFO_1    = DATATYPES_INFO_1W;
+    PDATATYPES_INFO_1   = PDATATYPES_INFO_1W;
+%ELSE
+    DATATYPES_INFO_1    = DATATYPES_INFO_1A;
+    PDATATYPES_INFO_1   = PDATATYPES_INFO_1A;
+%END
+    LPDATATYPES_INFO_1  = PDATATYPES_INFO_1;
+
+    PRINTER_DEFAULTSA = RECORD
+          pDatatype      : LPSTR;
+          pDevMode       : LPDEVMODEA;
+          DesiredAccess  : ACCESS_MASK;
+    END;
+    PPRINTER_DEFAULTSA   = POINTER TO PRINTER_DEFAULTSA;
+    LPPRINTER_DEFAULTSA  = PPRINTER_DEFAULTSA;
+
+    PRINTER_DEFAULTSW = RECORD
+          pDatatype      : LPWSTR;
+          pDevMode       : LPDEVMODEW;
+          DesiredAccess  : ACCESS_MASK;
+    END;
+    PPRINTER_DEFAULTSW   = POINTER TO PRINTER_DEFAULTSW;
+    LPPRINTER_DEFAULTSW  = PPRINTER_DEFAULTSW;
+
+%IF UNICODE %THEN
+    PRINTER_DEFAULTS    = PRINTER_DEFAULTSW;
+    PPRINTER_DEFAULTS   = PPRINTER_DEFAULTSW;
+%ELSE
+    PRINTER_DEFAULTS    = PRINTER_DEFAULTSA;
+    PPRINTER_DEFAULTS   = PPRINTER_DEFAULTSA;
+%END
+    LPPRINTER_DEFAULTS  = PPRINTER_DEFAULTS;
+
+    PRINTER_ENUM_VALUESA = RECORD
+    pValueName          : LPSTR;
+    cbValueName         : DWORD;
+    dwType              : DWORD;
+    pData               : LPBYTE;
+    cbData              : DWORD;
+    END;
+    PPRINTER_ENUM_VALUESA = POINTER TO PRINTER_ENUM_VALUESA;
+    LPPRINTER_ENUM_VALUESA = PPRINTER_ENUM_VALUESA;
+
+    PRINTER_ENUM_VALUESW = RECORD
+    pValueName          : LPWSTR;
+    cbValueName         : DWORD;
+    dwType              : DWORD;
+    pData               : LPBYTE;
+    cbData              : DWORD;
+    END;
+    PPRINTER_ENUM_VALUESW = POINTER TO PRINTER_ENUM_VALUESW;
+    LPPRINTER_ENUM_VALUESW = PPRINTER_ENUM_VALUESW;
+
+    %IF UNICODE %THEN
+    PRINTER_ENUM_VALUES         = PRINTER_ENUM_VALUESW;
+    PPRINTER_ENUM_VALUES        = PPRINTER_ENUM_VALUESW;
+    LPPRINTER_ENUM_VALUES       = LPPRINTER_ENUM_VALUESW;
+    %ELSE
+    PRINTER_ENUM_VALUES         = PRINTER_ENUM_VALUESA;
+    PPRINTER_ENUM_VALUES        = PPRINTER_ENUM_VALUESA;
+    LPPRINTER_ENUM_VALUES       = LPPRINTER_ENUM_VALUESA;
+    %END
+PROCEDURE EnumPrintersA(Flags : DWORD;
+                        Name : ARRAY OF ACHAR;
+                        Level : DWORD;
+                        pPrinterEnum : LPBYTE;
+                        cbBuf : DWORD;
+                        VAR pcbNeeded : DWORD;
+                        VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPrintersW(Flags : DWORD;
+                        Name : ARRAY OF UCHAR;
+                        Level : DWORD;
+                        pPrinterEnum : LPBYTE;
+                        cbBuf : DWORD;
+                        VAR pcbNeeded : DWORD;
+                        VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrinters = EnumPrintersW;
+%ELSE
+PROCEDURE EnumPrinters = EnumPrintersA;
+%END
+
+CONST
+    PRINTER_ENUM_DEFAULT = 000000001h;
+    PRINTER_ENUM_LOCAL   = 000000002h;
+    PRINTER_ENUM_CONNECTIONS= 000000004h;
+    PRINTER_ENUM_FAVORITE= 000000004h;
+    PRINTER_ENUM_NAME    = 000000008h;
+    PRINTER_ENUM_REMOTE  = 000000010h;
+    PRINTER_ENUM_SHARED  = 000000020h;
+    PRINTER_ENUM_NETWORK = 000000040h;
+    PRINTER_ENUM_EXPAND  = 000004000h;
+    PRINTER_ENUM_CONTAINER= 000008000h;
+    PRINTER_ENUM_ICONMASK= 000ff0000h;
+    PRINTER_ENUM_ICON1   = 000010000h;
+    PRINTER_ENUM_ICON2   = 000020000h;
+    PRINTER_ENUM_ICON3   = 000040000h;
+    PRINTER_ENUM_ICON4   = 000080000h;
+    PRINTER_ENUM_ICON5   = 000100000h;
+    PRINTER_ENUM_ICON6   = 000200000h;
+    PRINTER_ENUM_ICON7   = 000400000h;
+    PRINTER_ENUM_ICON8   = 000800000h;
+
+PROCEDURE OpenPrinterA(pPrinterName : ARRAY OF ACHAR;
+                       VAR phPrinter : HANDLE;
+                       pDefault : LPPRINTER_DEFAULTSA) : BOOL;
+
+PROCEDURE OpenPrinterW(pPrinterName : ARRAY OF UCHAR;
+                       VAR phPrinter : HANDLE;
+                       pDefault : LPPRINTER_DEFAULTSW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE OpenPrinter = OpenPrinterW;
+%ELSE
+PROCEDURE OpenPrinter = OpenPrinterA;
+%END
+
+PROCEDURE ResetPrinterA(hPrinter : HANDLE;
+                        pDefault : LPPRINTER_DEFAULTSA) : BOOL;
+
+PROCEDURE ResetPrinterW(hPrinter : HANDLE;
+                        pDefault : LPPRINTER_DEFAULTSW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ResetPrinter = ResetPrinterW;
+%ELSE
+PROCEDURE ResetPrinter = ResetPrinterA;
+%END
+
+PROCEDURE SetJobA(hPrinter : HANDLE;
+                  JobId : DWORD;
+                  Level : DWORD;
+                  pJob : LPBYTE;
+                  Command : DWORD) : BOOL;
+
+PROCEDURE SetJobW(hPrinter : HANDLE;
+                  JobId : DWORD;
+                  Level : DWORD;
+                  pJob : LPBYTE;
+                  Command : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetJob = SetJobW;
+%ELSE
+PROCEDURE SetJob = SetJobA;
+%END
+
+PROCEDURE GetJobA(hPrinter : HANDLE;
+                  JobId : DWORD;
+                  Level : DWORD;
+                  pJob : LPBYTE;
+                  cbBuf : DWORD;
+                  VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetJobW(hPrinter : HANDLE;
+                  JobId : DWORD;
+                  Level : DWORD;
+                  pJob : LPBYTE;
+                  cbBuf : DWORD;
+                  VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetJob = GetJobW;
+%ELSE
+PROCEDURE GetJob = GetJobA;
+%END
+
+PROCEDURE EnumJobsA(hPrinter : HANDLE;
+                    FirstJob : DWORD;
+                    NoJobs : DWORD;
+                    Level : DWORD;
+                    pJob : LPBYTE;
+                    cbBuf : DWORD;
+                    VAR pcbNeeded : DWORD;
+                    VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumJobsW(hPrinter : HANDLE;
+                    FirstJob : DWORD;
+                    NoJobs : DWORD;
+                    Level : DWORD;
+                    pJob : LPBYTE;
+                    cbBuf : DWORD;
+                    VAR pcbNeeded : DWORD;
+                    VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumJobs = EnumJobsW;
+%ELSE
+PROCEDURE EnumJobs = EnumJobsA;
+%END
+
+PROCEDURE AddPrinterA(pName : ARRAY OF ACHAR;
+                      Level : DWORD;
+                      pPrinter : LPBYTE) : HANDLE;
+
+PROCEDURE AddPrinterW(pName : ARRAY OF UCHAR;
+                      Level : DWORD;
+                      pPrinter : LPBYTE) : HANDLE;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrinter = AddPrinterW;
+%ELSE
+PROCEDURE AddPrinter = AddPrinterA;
+%END
+
+PROCEDURE DeletePrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE SetPrinterA(hPrinter : HANDLE;
+                      Level : DWORD;
+                      pPrinter : LPBYTE;
+                      Command : DWORD) : BOOL;
+
+PROCEDURE SetPrinterW(hPrinter : HANDLE;
+                      Level : DWORD;
+                      pPrinter : LPBYTE;
+                      Command : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetPrinter = SetPrinterW;
+%ELSE
+PROCEDURE SetPrinter = SetPrinterA;
+%END
+
+PROCEDURE GetPrinterA(hPrinter : HANDLE;
+                      Level : DWORD;
+                      pPrinter : LPBYTE;
+                      cbBuf : DWORD;
+                      VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetPrinterW(hPrinter : HANDLE;
+                      Level : DWORD;
+                      pPrinter : LPBYTE;
+                      cbBuf : DWORD;
+                      VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinter = GetPrinterW;
+%ELSE
+PROCEDURE GetPrinter = GetPrinterA;
+%END
+
+PROCEDURE AddPrinterDriverA(pName : ARRAY OF ACHAR;
+                            Level : DWORD;
+                            pDriverInfo : LPBYTE) : BOOL;
+
+PROCEDURE AddPrinterDriverW(pName : ARRAY OF UCHAR;
+                            Level : DWORD;
+                            pDriverInfo : LPBYTE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrinterDriver = AddPrinterDriverW;
+%ELSE
+PROCEDURE AddPrinterDriver = AddPrinterDriverA;
+%END
+
+PROCEDURE AddPrinterDriverExA(pName : ARRAY OF ACHAR;
+                              Level : DWORD;
+                              pDriverInfo : ARRAY OF LOC;
+                              dwFileCopyFlags : DWORD) : BOOL;
+
+PROCEDURE AddPrinterDriverExW(pName : ARRAY OF UCHAR;
+                              Level : DWORD;
+                              pDriverInfo : ARRAY OF LOC;
+                              dwFileCopyFlags : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrinterDriverEx = AddPrinterDriverExW;
+%ELSE
+PROCEDURE AddPrinterDriverEx = AddPrinterDriverExA;
+%END
+
+PROCEDURE EnumPrinterDriversA(pName : ARRAY OF ACHAR;
+                              pEnvironment : ARRAY OF ACHAR;
+                              Level : DWORD;
+                              pDriverInfo : LPBYTE;
+                              cbBuf : DWORD;
+                              VAR pcbNeeded : DWORD;
+                              VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPrinterDriversW(pName : ARRAY OF UCHAR;
+                              pEnvironment : ARRAY OF UCHAR;
+                              Level : DWORD;
+                              pDriverInfo : LPBYTE;
+                              cbBuf : DWORD;
+                              VAR pcbNeeded : DWORD;
+                              VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrinterDrivers = EnumPrinterDriversW;
+%ELSE
+PROCEDURE EnumPrinterDrivers = EnumPrinterDriversA;
+%END
+
+PROCEDURE GetPrinterDriverA(hPrinter : HANDLE;
+                            pEnvironment : ARRAY OF ACHAR;
+                            Level : DWORD;
+                            pDriverInfo : LPBYTE;
+                            cbBuf : DWORD;
+                            VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetPrinterDriverW(hPrinter : HANDLE;
+                            pEnvironment : ARRAY OF UCHAR;
+                            Level : DWORD;
+                            pDriverInfo : LPBYTE;
+                            cbBuf : DWORD;
+                            VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinterDriver = GetPrinterDriverW;
+%ELSE
+PROCEDURE GetPrinterDriver = GetPrinterDriverA;
+%END
+
+PROCEDURE GetPrinterDriverDirectoryA(pName : ARRAY OF ACHAR;
+                                     pEnvironment : ARRAY OF ACHAR;
+                                     Level : DWORD;
+                                     pDriverDirectory : LPBYTE;
+                                     cbBuf : DWORD;
+                                     VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetPrinterDriverDirectoryW(pName : ARRAY OF UCHAR;
+                                     pEnvironment : ARRAY OF UCHAR;
+                                     Level : DWORD;
+                                     pDriverDirectory : LPBYTE;
+                                     cbBuf : DWORD;
+                                     VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinterDriverDirectory = GetPrinterDriverDirectoryW;
+%ELSE
+PROCEDURE GetPrinterDriverDirectory = GetPrinterDriverDirectoryA;
+%END
+
+PROCEDURE DeletePrinterDriverA(pName : ARRAY OF ACHAR;
+                               pEnvironment : ARRAY OF ACHAR;
+                               pDriverName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePrinterDriverW(pName : ARRAY OF UCHAR;
+                               pEnvironment : ARRAY OF UCHAR;
+                               pDriverName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterDriver = DeletePrinterDriverW;
+%ELSE
+PROCEDURE DeletePrinterDriver = DeletePrinterDriverA;
+%END
+
+PROCEDURE DeletePrinterDriverExA(pName : ARRAY OF ACHAR;
+                                 pEnvironment : ARRAY OF ACHAR;
+                                 pDriverName : ARRAY OF ACHAR;
+                                 dwDeleteFlag : DWORD;
+                                 dwVersionFlag : DWORD) : BOOL;
+
+PROCEDURE DeletePrinterDriverExW(pName : ARRAY OF UCHAR;
+                                 pEnvironment : ARRAY OF UCHAR;
+                                 pDriverName : ARRAY OF UCHAR;
+                                 dwDeleteFlag : DWORD;
+                                 dwVersionFlag : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterDriverEx = DeletePrinterDriverExW;
+%ELSE
+PROCEDURE DeletePrinterDriverEx = DeletePrinterDriverExA;
+%END
+
+PROCEDURE AddPerMachineConnectionA(pServer,
+                                   pPrinterName,
+                                   pPrintServer,
+                                   pProvider : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE AddPerMachineConnectionW(pServer,
+                                   pPrinterName,
+                                   pPrintServer,
+                                   pProvider : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPerMachineConnection = AddPerMachineConnectionW;
+%ELSE
+PROCEDURE AddPerMachineConnection = AddPerMachineConnectionA;
+%END
+
+PROCEDURE DeletePerMachineConnectionA(pServer,
+                                      pPrinterName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePerMachineConnectionW(pServer,
+                                      pPrinterName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePerMachineConnection = DeletePerMachineConnectionW;
+%ELSE
+PROCEDURE DeletePerMachineConnection = DeletePerMachineConnectionA;
+%END
+
+PROCEDURE EnumPerMachineConnectionsA(pServer : ARRAY OF ACHAR;
+                                     pPrinterEnum : ARRAY OF LOC;
+                                     cbBuf : DWORD;
+                                     VAR pcbNeeded : DWORD;
+                                     VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPerMachineConnectionsW(pServer : ARRAY OF UCHAR;
+                                     pPrinterEnum : ARRAY OF LOC;
+                                     cbBuf : DWORD;
+                                     VAR pcbNeeded : DWORD;
+                                     VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPerMachineConnections = EnumPerMachineConnectionsW;
+%ELSE
+PROCEDURE EnumPerMachineConnections = EnumPerMachineConnectionsA;
+%END
+
+PROCEDURE AddPrintProcessorA(pName : ARRAY OF ACHAR;
+                             pEnvironment : ARRAY OF ACHAR;
+                             pPathName : ARRAY OF ACHAR;
+                             pPrintProcessorName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE AddPrintProcessorW(pName : ARRAY OF UCHAR;
+                             pEnvironment : ARRAY OF UCHAR;
+                             pPathName : ARRAY OF UCHAR;
+                             pPrintProcessorName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrintProcessor = AddPrintProcessorW;
+%ELSE
+PROCEDURE AddPrintProcessor = AddPrintProcessorA;
+%END
+
+PROCEDURE EnumPrintProcessorsA(pName : ARRAY OF ACHAR;
+                               pEnvironment : ARRAY OF ACHAR;
+                               Level : DWORD;
+                               pPrintProcessorInfo : LPBYTE;
+                               cbBuf : DWORD;
+                               VAR pcbNeeded : DWORD;
+                               VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPrintProcessorsW(pName : ARRAY OF UCHAR;
+                               pEnvironment : ARRAY OF UCHAR;
+                               Level : DWORD;
+                               pPrintProcessorInfo : LPBYTE;
+                               cbBuf : DWORD;
+                               VAR pcbNeeded : DWORD;
+                               VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrintProcessors = EnumPrintProcessorsW;
+%ELSE
+PROCEDURE EnumPrintProcessors = EnumPrintProcessorsA;
+%END
+
+PROCEDURE GetPrintProcessorDirectoryA(pName : ARRAY OF ACHAR;
+                                      pEnvironment : ARRAY OF ACHAR;
+                                      Level : DWORD;
+                                      pPrintProcessorInfo : LPBYTE;
+                                      cbBuf : DWORD;
+                                      VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetPrintProcessorDirectoryW(pName : ARRAY OF UCHAR;
+                                      pEnvironment : ARRAY OF UCHAR;
+                                      Level : DWORD;
+                                      pPrintProcessorInfo : LPBYTE;
+                                      cbBuf : DWORD;
+                                      VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrintProcessorDirectory = GetPrintProcessorDirectoryW;
+%ELSE
+PROCEDURE GetPrintProcessorDirectory = GetPrintProcessorDirectoryA;
+%END
+
+PROCEDURE EnumPrintProcessorDatatypesW(pName : ARRAY OF UCHAR;
+                                       pPrintProcessorName : ARRAY OF UCHAR;
+                                       Level : DWORD;
+                                       pDatatypes : LPBYTE;
+                                       cbBuf : DWORD;
+                                       VAR pcbNeeded : DWORD;
+                                       VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPrintProcessorDatatypesA(pName : ARRAY OF ACHAR;
+                                       pPrintProcessorName : ARRAY OF ACHAR;
+                                       Level : DWORD;
+                                       pDatatypes : LPBYTE;
+                                       cbBuf : DWORD;
+                                       VAR pcbNeeded : DWORD;
+                                       VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrintProcessorDatatypes = EnumPrintProcessorDatatypesW;
+%ELSE
+PROCEDURE EnumPrintProcessorDatatypes = EnumPrintProcessorDatatypesA;
+%END
+
+PROCEDURE DeletePrintProcessorA(pName : ARRAY OF ACHAR;
+                                pEnvironment : ARRAY OF ACHAR;
+                                pPrintProcessorName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePrintProcessorW(pName : ARRAY OF UCHAR;
+                                pEnvironment : ARRAY OF UCHAR;
+                                pPrintProcessorName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrintProcessor = DeletePrintProcessorW;
+%ELSE
+PROCEDURE DeletePrintProcessor = DeletePrintProcessorA;
+%END
+
+PROCEDURE StartDocPrinterA(hPrinter : HANDLE;
+                           Level : DWORD;
+                           pDocInfo : LPBYTE) : DWORD;
+
+PROCEDURE StartDocPrinterW(hPrinter : HANDLE;
+                           Level : DWORD;
+                           pDocInfo : LPBYTE) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE StartDocPrinter = StartDocPrinterW;
+%ELSE
+PROCEDURE StartDocPrinter = StartDocPrinterA;
+%END
+
+PROCEDURE StartPagePrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE WritePrinter(hPrinter : HANDLE;
+                       pBuf : LPVOID;
+                       cbBuf : DWORD;
+                       VAR pcWritten : DWORD) : BOOL;
+
+PROCEDURE EndPagePrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE AbortPrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE ReadPrinter(hPrinter : HANDLE;
+                      pBuf : LPVOID;
+                      cbBuf : DWORD;
+                      VAR pNoBytesRead : DWORD) : BOOL;
+
+PROCEDURE EndDocPrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE AddJobA(hPrinter : HANDLE;
+                  Level : DWORD;
+                  pData : LPBYTE;
+                  cbBuf : DWORD;
+                  VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE AddJobW(hPrinter : HANDLE;
+                  Level : DWORD;
+                  pData : LPBYTE;
+                  cbBuf : DWORD;
+                  VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddJob = AddJobW;
+%ELSE
+PROCEDURE AddJob = AddJobA;
+%END
+
+PROCEDURE ScheduleJob(hPrinter : HANDLE;
+                      JobId : DWORD) : BOOL;
+
+PROCEDURE PrinterProperties(hWnd : HWND;
+                            hPrinter : HANDLE) : BOOL;
+
+PROCEDURE DocumentPropertiesA(hWnd : HWND;
+                              hPrinter : HANDLE;
+                              pDeviceName : ARRAY OF ACHAR;
+                              VAR pDevModeOutput : DEVMODEA;
+                              pDevModeInput : DEVMODEA;
+                              fMode : DWORD) : LONG;
+
+PROCEDURE DocumentPropertiesW(hWnd : HWND;
+                              hPrinter : HANDLE;
+                              pDeviceName : ARRAY OF UCHAR;
+                              VAR pDevModeOutput : DEVMODEW;
+                              pDevModeInput : DEVMODEW;
+                              fMode : DWORD) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE DocumentProperties = DocumentPropertiesW;
+%ELSE
+PROCEDURE DocumentProperties = DocumentPropertiesA;
+%END
+
+PROCEDURE AdvancedDocumentPropertiesA(hWnd : HWND;
+                                      hPrinter : HANDLE;
+                                      pDeviceName : ARRAY OF ACHAR;
+                                      VAR pDevModeOutput : DEVMODEA;
+                                      pDevModeInput : DEVMODEA) : LONG;
+
+PROCEDURE AdvancedDocumentPropertiesW(hWnd : HWND;
+                                      hPrinter : HANDLE;
+                                      pDeviceName : ARRAY OF UCHAR;
+                                      VAR pDevModeOutput : DEVMODEW;
+                                      pDevModeInput : DEVMODEW) : LONG;
+
+%IF UNICODE %THEN
+PROCEDURE AdvancedDocumentProperties = AdvancedDocumentPropertiesW;
+%ELSE
+PROCEDURE AdvancedDocumentProperties = AdvancedDocumentPropertiesA;
+%END
+
+(*??? need to verify this procedure *)
+PROCEDURE EnumPrinterPropertySheets(
+                                    hPrinter : HANDLE;
+                                    hWnd : HWND;
+                                    VAR lpfnAdd : LPFNADDPROPSHEETPAGE;
+                                    lParam : LPARAM
+                                    ) : BOOL;
+
+PROCEDURE GetPrinterDataA(hPrinter : HANDLE;
+                          pValueName : ARRAY OF ACHAR;
+                          VAR pType : DWORD;
+                          pData : LPBYTE;
+                          nSize : DWORD;
+                          VAR pcbNeeded : DWORD) : DWORD;
+
+PROCEDURE GetPrinterDataW(hPrinter : HANDLE;
+                          pValueName : ARRAY OF UCHAR;
+                          VAR pType : DWORD;
+                          pData : LPBYTE;
+                          nSize : DWORD;
+                          VAR pcbNeeded : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinterData = GetPrinterDataW;
+%ELSE
+PROCEDURE GetPrinterData = GetPrinterDataA;
+%END
+
+PROCEDURE GetPrinterDataExA(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF ACHAR;
+                            pValueName : ARRAY OF ACHAR;
+                            VAR pType : DWORD;
+                            VAR pData : ARRAY OF LOC;
+                            nSize : DWORD;
+                            VAR pcbNeeded : DWORD) : DWORD;
+
+PROCEDURE GetPrinterDataExW(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF UCHAR;
+                            pValueName : ARRAY OF UCHAR;
+                            VAR pType : DWORD;
+                            VAR pData : ARRAY OF LOC;
+                            nSize : DWORD;
+                            VAR pcbNeeded : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinterDataEx = GetPrinterDataExW;
+%ELSE
+PROCEDURE GetPrinterDataEx = GetPrinterDataExA;
+%END
+
+PROCEDURE EnumPrinterDataA(hPrinter : HANDLE;
+                           dwIndex : DWORD;
+                           VAR pValueName : ARRAY OF ACHAR;
+                           cbValueName : DWORD;
+                           VAR pcbValueName : DWORD;
+                           VAR pType : DWORD;
+                           VAR pData : ARRAY OF LOC;
+                           cbData : DWORD;
+                           VAR pcbData : DWORD) : DWORD;
+
+PROCEDURE EnumPrinterDataW(hPrinter : HANDLE;
+                           dwIndex : DWORD;
+                           VAR pValueName : ARRAY OF UCHAR;
+                           cbValueName : DWORD;
+                           VAR pcbValueName : DWORD;
+                           VAR pType : DWORD;
+                           VAR pData : ARRAY OF LOC;
+                           cbData : DWORD;
+                           VAR pcbData : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrinterData = EnumPrinterDataW;
+%ELSE
+PROCEDURE EnumPrinterData = EnumPrinterDataA;
+%END
+
+PROCEDURE EnumPrinterDataExA(hPrinter : HANDLE;
+                             pKeyName : ARRAY OF ACHAR;
+                             VAR pEnumValues : ARRAY OF LOC;
+                             cbEnumValues : DWORD;
+                             VAR pcbEnumValues : DWORD;
+                             VAR pnEnumValues : DWORD) : DWORD;
+
+PROCEDURE EnumPrinterDataExW(hPrinter : HANDLE;
+                             pKeyName : ARRAY OF UCHAR;
+                             VAR pEnumValues : ARRAY OF LOC;
+                             cbEnumValues : DWORD;
+                             VAR pcbEnumValues : DWORD;
+                             VAR pnEnumValues : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrinterDataEx = EnumPrinterDataExW;
+%ELSE
+PROCEDURE EnumPrinterDataEx = EnumPrinterDataExA;
+%END
+
+PROCEDURE EnumPrinterKeyA(hPrinter : HANDLE;
+                          pKeyName : ARRAY OF ACHAR;
+                          VAR pSubkey : ARRAY OF ACHAR;
+                          cbSubkey : DWORD;
+                          VAR pcbSubkey : DWORD) : DWORD;
+
+PROCEDURE EnumPrinterKeyW(hPrinter : HANDLE;
+                          pKeyName : ARRAY OF UCHAR;
+                          VAR pSubkey : ARRAY OF UCHAR;
+                          cbSubkey : DWORD;
+                          VAR pcbSubkey : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPrinterKey = EnumPrinterKeyW;
+%ELSE
+PROCEDURE EnumPrinterKey = EnumPrinterKeyA;
+%END
+
+PROCEDURE SetPrinterDataA(hPrinter : HANDLE;
+                          pValueName : ARRAY OF ACHAR;
+                          Type : DWORD;
+                          pData : LPBYTE;
+                          cbData : DWORD) : DWORD;
+
+PROCEDURE SetPrinterDataW(hPrinter : HANDLE;
+                          pValueName : ARRAY OF UCHAR;
+                          Type : DWORD;
+                          pData : LPBYTE;
+                          cbData : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE SetPrinterData = SetPrinterDataW;
+%ELSE
+PROCEDURE SetPrinterData = SetPrinterDataA;
+%END
+
+PROCEDURE SetPrinterDataExA(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF ACHAR;
+                            pValueName : ARRAY OF ACHAR;
+                            Type : DWORD;
+                            pData : ARRAY OF LOC;
+                            cbData : DWORD) : DWORD;
+
+PROCEDURE SetPrinterDataExW(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF UCHAR;
+                            pValueName : ARRAY OF UCHAR;
+                            Type : DWORD;
+                            pData : ARRAY OF LOC;
+                            cbData : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE SetPrinterDataEx = SetPrinterDataExW;
+%ELSE
+PROCEDURE SetPrinterDataEx = SetPrinterDataExA;
+%END
+
+PROCEDURE DeletePrinterDataA(hPrinter : HANDLE;
+                             pValueName : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE DeletePrinterDataW(hPrinter : HANDLE;
+                             pValueName : ARRAY OF UCHAR) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterData = DeletePrinterDataW;
+%ELSE
+PROCEDURE DeletePrinterData = DeletePrinterDataA;
+%END
+
+PROCEDURE DeletePrinterDataExA(hPrinter : HANDLE;
+                               pKeyName : ARRAY OF ACHAR;
+                               pValueName : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE DeletePrinterDataExW(hPrinter : HANDLE;
+                               pKeyName : ARRAY OF UCHAR;
+                               pValueName : ARRAY OF UCHAR) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterDataEx = DeletePrinterDataExW;
+%ELSE
+PROCEDURE DeletePrinterDataEx = DeletePrinterDataExA;
+%END
+
+PROCEDURE DeletePrinterKeyA(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE DeletePrinterKeyW(hPrinter : HANDLE;
+                            pKeyName : ARRAY OF UCHAR) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterKey = DeletePrinterKeyW;
+%ELSE
+PROCEDURE DeletePrinterKey = DeletePrinterKeyA;
+%END
+
+CONST
+    PRINTER_NOTIFY_TYPE                         = 0;
+    JOB_NOTIFY_TYPE                             = 1;
+
+    PRINTER_NOTIFY_FIELD_SERVER_NAME             = 000h;
+    PRINTER_NOTIFY_FIELD_PRINTER_NAME            = 001h;
+    PRINTER_NOTIFY_FIELD_SHARE_NAME              = 002h;
+    PRINTER_NOTIFY_FIELD_PORT_NAME               = 003h;
+    PRINTER_NOTIFY_FIELD_DRIVER_NAME             = 004h;
+    PRINTER_NOTIFY_FIELD_COMMENT                 = 005h;
+    PRINTER_NOTIFY_FIELD_LOCATION                = 006h;
+    PRINTER_NOTIFY_FIELD_DEVMODE                 = 007h;
+    PRINTER_NOTIFY_FIELD_SEPFILE                 = 008h;
+    PRINTER_NOTIFY_FIELD_PRINT_PROCESSOR         = 009h;
+    PRINTER_NOTIFY_FIELD_PARAMETERS              = 00Ah;
+    PRINTER_NOTIFY_FIELD_DATATYPE                = 00Bh;
+    PRINTER_NOTIFY_FIELD_SECURITY_DESCRIPTOR     = 00Ch;
+    PRINTER_NOTIFY_FIELD_ATTRIBUTES              = 00Dh;
+    PRINTER_NOTIFY_FIELD_PRIORITY                = 00Eh;
+    PRINTER_NOTIFY_FIELD_DEFAULT_PRIORITY        = 00Fh;
+    PRINTER_NOTIFY_FIELD_START_TIME              = 010h;
+    PRINTER_NOTIFY_FIELD_UNTIL_TIME              = 011h;
+    PRINTER_NOTIFY_FIELD_STATUS                  = 012h;
+    PRINTER_NOTIFY_FIELD_STATUS_STRING           = 013h;
+    PRINTER_NOTIFY_FIELD_CJOBS                   = 014h;
+    PRINTER_NOTIFY_FIELD_AVERAGE_PPM             = 015h;
+    PRINTER_NOTIFY_FIELD_TOTAL_PAGES             = 016h;
+    PRINTER_NOTIFY_FIELD_PAGES_PRINTED           = 017h;
+    PRINTER_NOTIFY_FIELD_TOTAL_BYTES             = 018h;
+    PRINTER_NOTIFY_FIELD_BYTES_PRINTED           = 019h;
+    PRINTER_NOTIFY_FIELD_OBJECT_GUID             = 01Ah;
+
+    JOB_NOTIFY_FIELD_PRINTER_NAME                = 000h;
+    JOB_NOTIFY_FIELD_MACHINE_NAME                = 001h;
+    JOB_NOTIFY_FIELD_PORT_NAME                   = 002h;
+    JOB_NOTIFY_FIELD_USER_NAME                   = 003h;
+    JOB_NOTIFY_FIELD_NOTIFY_NAME                 = 004h;
+    JOB_NOTIFY_FIELD_DATATYPE                    = 005h;
+    JOB_NOTIFY_FIELD_PRINT_PROCESSOR             = 006h;
+    JOB_NOTIFY_FIELD_PARAMETERS                  = 007h;
+    JOB_NOTIFY_FIELD_DRIVER_NAME                 = 008h;
+    JOB_NOTIFY_FIELD_DEVMODE                     = 009h;
+    JOB_NOTIFY_FIELD_STATUS                      = 00Ah;
+    JOB_NOTIFY_FIELD_STATUS_STRING               = 00Bh;
+    JOB_NOTIFY_FIELD_SECURITY_DESCRIPTOR         = 00Ch;
+    JOB_NOTIFY_FIELD_DOCUMENT                    = 00Dh;
+    JOB_NOTIFY_FIELD_PRIORITY                    = 00Eh;
+    JOB_NOTIFY_FIELD_POSITION                    = 00Fh;
+    JOB_NOTIFY_FIELD_SUBMITTED                   = 010h;
+    JOB_NOTIFY_FIELD_START_TIME                  = 011h;
+    JOB_NOTIFY_FIELD_UNTIL_TIME                  = 012h;
+    JOB_NOTIFY_FIELD_TIME                        = 013h;
+    JOB_NOTIFY_FIELD_TOTAL_PAGES                 = 014h;
+    JOB_NOTIFY_FIELD_PAGES_PRINTED               = 015h;
+    JOB_NOTIFY_FIELD_TOTAL_BYTES                 = 016h;
+    JOB_NOTIFY_FIELD_BYTES_PRINTED               = 017h;
+    PRINTER_NOTIFY_OPTIONS_REFRESH               = 1;
+    PRINTER_NOTIFY_INFO_DISCARDED                = 1;
+
+TYPE
+    PRINTER_NOTIFY_OPTIONS_TYPE = RECORD
+        Type            : WORD;
+        Reserved0       : WORD;
+        Reserved1       : DWORD;
+        Reserved2       : DWORD;
+        Count           : DWORD;
+        pFields         : PWORD;
+    END;
+    PPRINTER_NOTIFY_OPTIONS_TYPE        =  POINTER TO PRINTER_NOTIFY_OPTIONS_TYPE;
+    LPPRINTER_NOTIFY_OPTIONS_TYPE       = PPRINTER_NOTIFY_OPTIONS_TYPE;
+
+    PRINTER_NOTIFY_OPTIONS = RECORD
+        Version : DWORD;
+        Flags   : DWORD;
+        Count   : DWORD;
+        pTypes  : PPRINTER_NOTIFY_OPTIONS_TYPE;
+    END;
+    PPRINTER_NOTIFY_OPTIONS     = POINTER TO PRINTER_NOTIFY_OPTIONS;
+    LPPRINTER_NOTIFY_OPTIONS    = PPRINTER_NOTIFY_OPTIONS;
+
+    DataStruct = RECORD
+        cbBuf           : DWORD;
+        pBuf            : LPVOID;
+    END;
+
+    NotifyDataUnion = RECORD
+        CASE :CARDINAL OF
+            1 : adwData : ARRAY [0..2-1] OF DWORD; |
+            2 : Data    : DataStruct;              |
+            ELSE
+        END;
+    END;
+
+    PRINTER_NOTIFY_INFO_DATA = RECORD
+        Type            : WORD;
+        Field           : WORD;
+        Reserved        : DWORD;
+        Id              : DWORD;
+        NotifyData      : NotifyDataUnion;
+    END;
+    PPRINTER_NOTIFY_INFO_DATA   = POINTER TO PRINTER_NOTIFY_INFO_DATA;
+    LPPRINTER_NOTIFY_INFO_DATA  = PPRINTER_NOTIFY_INFO_DATA;
+
+    PRINTER_NOTIFY_INFO = RECORD
+        Version         : DWORD;
+        Flags           : DWORD;
+        Count           : DWORD;
+        aData           : ARRAY [0..1-1] OF PRINTER_NOTIFY_INFO_DATA;
+    END;
+    PPRINTER_NOTIFY_INFO        = POINTER TO PRINTER_NOTIFY_INFO;
+    LPPRINTER_NOTIFY_INFO       = PPRINTER_NOTIFY_INFO;
+
+PROCEDURE WaitForPrinterChange(hPrinter : HANDLE;
+                               Flags : DWORD) : DWORD;
+
+PROCEDURE FindFirstPrinterChangeNotification(hPrinter : HANDLE;
+                                            fdwFlags : DWORD;
+                                            fdwOptions : DWORD;
+                                            pPrinterNotifyOptions : LPVOID) : HANDLE;
+
+PROCEDURE FindNextPrinterChangeNotification(hChange : HANDLE;
+                                            VAR pdwChange : DWORD;
+                                            pvReserved : LPVOID;
+                                            VAR ppPrinterNotifyInfo : LPVOID) : BOOL;
+
+PROCEDURE FreePrinterNotifyInfo( pPrinterNotifyInfo : PPRINTER_NOTIFY_INFO) : BOOL;
+
+PROCEDURE FindClosePrinterChangeNotification(hChange : HANDLE) : BOOL;
+
+CONST
+    PRINTER_CHANGE_ADD_PRINTER          = 000000001h;
+    PRINTER_CHANGE_SET_PRINTER          = 000000002h;
+    PRINTER_CHANGE_DELETE_PRINTER       = 000000004h;
+    PRINTER_CHANGE_FAILED_CONNECTION_PRINTER = 000000008h;
+    PRINTER_CHANGE_PRINTER              = 0000000FFh;
+    PRINTER_CHANGE_ADD_JOB              = 000000100h;
+    PRINTER_CHANGE_SET_JOB              = 000000200h;
+    PRINTER_CHANGE_DELETE_JOB           = 000000400h;
+    PRINTER_CHANGE_WRITE_JOB            = 000000800h;
+    PRINTER_CHANGE_JOB                  = 00000FF00h;
+    PRINTER_CHANGE_ADD_FORM             = 000010000h;
+    PRINTER_CHANGE_SET_FORM             = 000020000h;
+    PRINTER_CHANGE_DELETE_FORM          = 000040000h;
+    PRINTER_CHANGE_FORM                 = 000070000h;
+    PRINTER_CHANGE_ADD_PORT             = 000100000h;
+    PRINTER_CHANGE_CONFIGURE_PORT       = 000200000h;
+    PRINTER_CHANGE_DELETE_PORT          = 000400000h;
+    PRINTER_CHANGE_PORT                 = 000700000h;
+    PRINTER_CHANGE_ADD_PRINT_PROCESSOR  = 001000000h;
+    PRINTER_CHANGE_DELETE_PRINT_PROCESSOR= 004000000h;
+    PRINTER_CHANGE_PRINT_PROCESSOR      = 007000000h;
+    PRINTER_CHANGE_ADD_PRINTER_DRIVER   = 010000000h;
+    PRINTER_CHANGE_SET_PRINTER_DRIVER   = 020000000h;
+    PRINTER_CHANGE_DELETE_PRINTER_DRIVER= 040000000h;
+    PRINTER_CHANGE_PRINTER_DRIVER       = 070000000h;
+    PRINTER_CHANGE_TIMEOUT              = 080000000h;
+    PRINTER_CHANGE_ALL                  = 07777FFFFh;
+
+PROCEDURE PrinterMessageBoxA(hPrinter : HANDLE;
+                             Error : DWORD;
+                             hWnd : HWND;
+                             pText : ARRAY OF ACHAR;
+                             pCaption : ARRAY OF ACHAR;
+                             dwType : DWORD) : DWORD;
+
+PROCEDURE PrinterMessageBoxW(hPrinter : HANDLE;
+                             Error : DWORD;
+                             hWnd : HWND;
+                             pText : ARRAY OF UCHAR;
+                             pCaption : ARRAY OF UCHAR;
+                             dwType : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE PrinterMessageBox = PrinterMessageBoxW;
+%ELSE
+PROCEDURE PrinterMessageBox = PrinterMessageBoxA;
+%END
+
+CONST
+    PRINTER_ERROR_INFORMATION= 080000000h;
+    PRINTER_ERROR_WARNING= 040000000h;
+    PRINTER_ERROR_SEVERE = 020000000h;
+    PRINTER_ERROR_OUTOFPAPER= 000000001h;
+    PRINTER_ERROR_JAM    = 000000002h;
+    PRINTER_ERROR_OUTOFTONER= 000000004h;
+
+PROCEDURE ClosePrinter(hPrinter : HANDLE) : BOOL;
+
+PROCEDURE AddFormA(hPrinter : HANDLE;
+                   Level : DWORD;
+                   pForm : LPBYTE) : BOOL;
+
+PROCEDURE AddFormW(hPrinter : HANDLE;
+                   Level : DWORD;
+                   pForm : LPBYTE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddForm = AddFormW;
+%ELSE
+PROCEDURE AddForm = AddFormA;
+%END
+
+PROCEDURE DeleteFormA(hPrinter : HANDLE;
+                      pFormName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeleteFormW(hPrinter : HANDLE;
+                      pFormName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeleteForm = DeleteFormW;
+%ELSE
+PROCEDURE DeleteForm = DeleteFormA;
+%END
+
+PROCEDURE GetFormA(hPrinter : HANDLE;
+                   pFormName : ARRAY OF ACHAR;
+                   Level : DWORD;
+                   pForm : LPBYTE;
+                   cbBuf : DWORD;
+                   VAR pcbNeeded : DWORD) : BOOL;
+
+PROCEDURE GetFormW(hPrinter : HANDLE;
+                   pFormName : ARRAY OF UCHAR;
+                   Level : DWORD;
+                   pForm : LPBYTE;
+                   cbBuf : DWORD;
+                   VAR pcbNeeded : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetForm = GetFormW;
+%ELSE
+PROCEDURE GetForm = GetFormA;
+%END
+
+PROCEDURE SetFormA(hPrinter : HANDLE;
+                   pFormName : ARRAY OF ACHAR;
+                   Level : DWORD;
+                   pForm : LPBYTE) : BOOL;
+
+PROCEDURE SetFormW(hPrinter : HANDLE;
+                   pFormName : ARRAY OF UCHAR;
+                   Level : DWORD;
+                   pForm : LPBYTE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetForm = SetFormW;
+%ELSE
+PROCEDURE SetForm = SetFormA;
+%END
+
+PROCEDURE EnumFormsA(hPrinter : HANDLE;
+                     Level : DWORD;
+                     pForm : LPBYTE;
+                     cbBuf : DWORD;
+                     VAR pcbNeeded : DWORD;
+                     VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumFormsW(hPrinter : HANDLE;
+                     Level : DWORD;
+                     pForm : LPBYTE;
+                     cbBuf : DWORD;
+                     VAR pcbNeeded : DWORD;
+                     VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumForms = EnumFormsW;
+%ELSE
+PROCEDURE EnumForms = EnumFormsA;
+%END
+
+PROCEDURE EnumMonitorsA(pName : ARRAY OF ACHAR;
+                        Level : DWORD;
+                        pMonitors : LPBYTE;
+                        cbBuf : DWORD;
+                        VAR pcbNeeded : DWORD;
+                        VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumMonitorsW(pName : ARRAY OF UCHAR;
+                        Level : DWORD;
+                        pMonitors : LPBYTE;
+                        cbBuf : DWORD;
+                        VAR pcbNeeded : DWORD;
+                        VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumMonitors = EnumMonitorsW;
+%ELSE
+PROCEDURE EnumMonitors = EnumMonitorsA;
+%END
+
+PROCEDURE AddMonitorA(pName : ARRAY OF ACHAR;
+                      Level : DWORD;
+                      pMonitors : LPBYTE) : BOOL;
+
+PROCEDURE AddMonitorW(pName : ARRAY OF UCHAR;
+                      Level : DWORD;
+                      pMonitors : LPBYTE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddMonitor = AddMonitorW;
+%ELSE
+PROCEDURE AddMonitor = AddMonitorA;
+%END
+
+PROCEDURE DeleteMonitorA(pName : ARRAY OF ACHAR;
+                         pEnvironment : ARRAY OF ACHAR;
+                         pMonitorName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeleteMonitorW(pName : ARRAY OF UCHAR;
+                         pEnvironment : ARRAY OF UCHAR;
+                         pMonitorName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeleteMonitor = DeleteMonitorW;
+%ELSE
+PROCEDURE DeleteMonitor = DeleteMonitorA;
+%END
+
+PROCEDURE EnumPortsA(pName : ARRAY OF ACHAR;
+                     Level : DWORD;
+                     pPorts : LPBYTE;
+                     cbBuf : DWORD;
+                     VAR pcbNeeded : DWORD;
+                     VAR pcReturned : DWORD) : BOOL;
+
+PROCEDURE EnumPortsW(pName : ARRAY OF UCHAR;
+                     Level : DWORD;
+                     pPorts : LPBYTE;
+                     cbBuf : DWORD;
+                     VAR pcbNeeded : DWORD;
+                     VAR pcReturned : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumPorts = EnumPortsW;
+%ELSE
+PROCEDURE EnumPorts = EnumPortsA;
+%END
+
+PROCEDURE AddPortA(pName : ARRAY OF ACHAR;
+                   hWnd : HWND;
+                   pMonitorName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE AddPortW(pName : ARRAY OF UCHAR;
+                   hWnd : HWND;
+                   pMonitorName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPort = AddPortW;
+%ELSE
+PROCEDURE AddPort = AddPortA;
+%END
+
+PROCEDURE ConfigurePortA(pName : ARRAY OF ACHAR;
+                         hWnd : HWND;
+                         pPortName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE ConfigurePortW(pName : ARRAY OF UCHAR;
+                         hWnd : HWND;
+                         pPortName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE ConfigurePort = ConfigurePortW;
+%ELSE
+PROCEDURE ConfigurePort = ConfigurePortA;
+%END
+
+PROCEDURE DeletePortA(pName : ARRAY OF ACHAR;
+                      hWnd : HWND;
+                      pPortName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePortW(pName : ARRAY OF UCHAR;
+                      hWnd : HWND;
+                      pPortName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePort = DeletePortW;
+%ELSE
+PROCEDURE DeletePort = DeletePortA;
+%END
+
+PROCEDURE XcvDataW(hXcv : HANDLE;
+                   pszDataName : ARRAY OF UCHAR;
+                   pInputData : ARRAY OF LOC;
+                   cbInputData : DWORD;
+                   VAR pOutputData : ARRAY OF LOC;
+                   cbOutputData : DWORD;
+                   VAR pcbOutputNeeded : DWORD;
+                   VAR pdwStatus : DWORD) : BOOL;
+
+PROCEDURE XcvData["_XcvDataW@32"]
+                 (hXcv : HANDLE;
+                  pszDataName : ARRAY OF UCHAR;
+                  pInputData : ARRAY OF LOC;
+                  cbInputData : DWORD;
+                  VAR pOutputData : ARRAY OF LOC;
+                  cbOutputData : DWORD;
+                  VAR pcbOutputNeeded : DWORD;
+                  VAR pdwStatus : DWORD) : BOOL;
+
+PROCEDURE SetPortA(pName : ARRAY OF ACHAR;
+                   pPortName : ARRAY OF ACHAR;
+                   dwLevel : DWORD;
+                   pPortInfo : ARRAY OF LOC) : BOOL;
+
+PROCEDURE SetPortW(pName : ARRAY OF UCHAR;
+                   pPortName : ARRAY OF UCHAR;
+                   dwLevel : DWORD;
+                   pPortInfo : ARRAY OF LOC) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetPort = SetPortW;
+%ELSE
+PROCEDURE SetPort = SetPortA;
+%END
+
+PROCEDURE AddPrinterConnectionA(pName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE AddPrinterConnectionW(pName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrinterConnection = AddPrinterConnectionW;
+%ELSE
+PROCEDURE AddPrinterConnection = AddPrinterConnectionA;
+%END
+
+PROCEDURE DeletePrinterConnectionA(pName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePrinterConnectionW(pName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrinterConnection = DeletePrinterConnectionW;
+%ELSE
+PROCEDURE DeletePrinterConnection = DeletePrinterConnectionA;
+%END
+
+PROCEDURE ConnectToPrinterDlg(hwnd : HWND;
+                              Flags : DWORD) : HANDLE;
+
+
+TYPE
+    PROVIDOR_INFO_1A = RECORD
+          pName          : LPSTR;
+          pEnvironment   : LPSTR;
+          pDLLName       : LPSTR;
+    END;
+    PPROVIDOR_INFO_1A    = POINTER TO PROVIDOR_INFO_1A;
+    LPPROVIDOR_INFO_1A   = PPROVIDOR_INFO_1A;
+
+    PROVIDOR_INFO_1W = RECORD
+          pName          : LPWSTR;
+          pEnvironment   : LPWSTR;
+          pDLLName       : LPWSTR;
+    END;
+    PPROVIDOR_INFO_1W    = POINTER TO PROVIDOR_INFO_1W;
+    LPPROVIDOR_INFO_1W   = PPROVIDOR_INFO_1W;
+
+%IF UNICODE %THEN
+    PROVIDOR_INFO_1     = PROVIDOR_INFO_1W;
+    PPROVIDOR_INFO_1    = PPROVIDOR_INFO_1W;
+%ELSE
+    PROVIDOR_INFO_1     = PROVIDOR_INFO_1A;
+    PPROVIDOR_INFO_1    = PPROVIDOR_INFO_1A;
+%END
+    LPPROVIDOR_INFO_1   = PPROVIDOR_INFO_1;
+
+PROCEDURE AddPrintProvidorA(pName : ARRAY OF ACHAR;
+                            Level : DWORD;
+                            pProvidorInfo : LPBYTE) : BOOL;
+
+PROCEDURE AddPrintProvidorW(pName : ARRAY OF UCHAR;
+                            Level : DWORD;
+                            pProvidorInfo : LPBYTE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE AddPrintProvidor = AddPrintProvidorW;
+%ELSE
+PROCEDURE AddPrintProvidor = AddPrintProvidorA;
+%END
+
+PROCEDURE DeletePrintProvidorA(pName : ARRAY OF ACHAR;
+                               pEnvironment : ARRAY OF ACHAR;
+                               pPrintProvidorName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeletePrintProvidorW(pName : ARRAY OF UCHAR;
+                               pEnvironment : ARRAY OF UCHAR;
+                               pPrintProvidorName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE DeletePrintProvidor = DeletePrintProvidorW;
+%ELSE
+PROCEDURE DeletePrintProvidor = DeletePrintProvidorA;
+%END
+
+CONST
+(*
+ * SetPrinterData and GetPrinterData Server Handle Key values
+ *)
+    SPLREG_DEFAULT_SPOOL_DIRECTORY             ="DefaultSpoolDirectory";
+    SPLREG_PORT_THREAD_PRIORITY_DEFAULT        ="PortThreadPriorityDefault";
+    SPLREG_PORT_THREAD_PRIORITY                ="PortThreadPriority";
+    SPLREG_SCHEDULER_THREAD_PRIORITY_DEFAULT   ="SchedulerThreadPriorityDefault";
+    SPLREG_SCHEDULER_THREAD_PRIORITY           ="SchedulerThreadPriority";
+    SPLREG_BEEP_ENABLED                        ="BeepEnabled";
+    SPLREG_NET_POPUP                           ="NetPopup";
+    SPLREG_EVENT_LOG                           ="EventLog";
+    SPLREG_MAJOR_VERSION                       ="MajorVersion";
+    SPLREG_MINOR_VERSION                       ="MinorVersion";
+    SPLREG_ARCHITECTURE                        ="Architecture";
+    SPLREG_OS_VERSION                          ="OSVersion";
+    SPLREG_DS_PRESENT                          ="DsPresent";
+
+    SERVER_ACCESS_ADMINISTER    = 000000001h;
+    SERVER_ACCESS_ENUMERATE     = 000000002h;
+    PRINTER_ACCESS_ADMINISTER   = 000000004h;
+    PRINTER_ACCESS_USE          = 000000008h;
+    JOB_ACCESS_ADMINISTER       = 000000010h;
+
+    SERVER_ALL_ACCESS   =    (STANDARD_RIGHTS_REQUIRED      BOR
+                              SERVER_ACCESS_ADMINISTER      BOR
+                              SERVER_ACCESS_ENUMERATE);
+
+    SERVER_READ         =    (STANDARD_RIGHTS_READ          BOR
+                              SERVER_ACCESS_ENUMERATE);
+
+    SERVER_WRITE        =    (STANDARD_RIGHTS_WRITE         BOR
+                              SERVER_ACCESS_ADMINISTER      BOR
+                              SERVER_ACCESS_ENUMERATE);
+
+    SERVER_EXECUTE      =    (STANDARD_RIGHTS_EXECUTE       BOR
+                              SERVER_ACCESS_ENUMERATE);
+
+    PRINTER_ALL_ACCESS  =    (STANDARD_RIGHTS_REQUIRED      BOR
+                              PRINTER_ACCESS_ADMINISTER     BOR
+                              PRINTER_ACCESS_USE);
+
+    PRINTER_READ        =    (STANDARD_RIGHTS_READ         BOR
+                              PRINTER_ACCESS_USE);
+
+    PRINTER_WRITE       =    (STANDARD_RIGHTS_WRITE        BOR
+                              PRINTER_ACCESS_USE);
+
+    PRINTER_EXECUTE     =    (STANDARD_RIGHTS_EXECUTE      BOR
+                              PRINTER_ACCESS_USE);
+
+    JOB_ALL_ACCESS      =      (STANDARD_RIGHTS_REQUIRED    BOR
+                                JOB_ACCESS_ADMINISTER);
+
+    JOB_READ            =      (STANDARD_RIGHTS_READ        BOR
+                                JOB_ACCESS_ADMINISTER);
+
+    JOB_WRITE           =      (STANDARD_RIGHTS_WRITE       BOR
+                                JOB_ACCESS_ADMINISTER);
+
+    JOB_EXECUTE         =      (STANDARD_RIGHTS_EXECUTE     BOR
+                                JOB_ACCESS_ADMINISTER);
+
+(* Predefined Registry Keys used by Set/GetPrinterDataEx *)
+    SPLDS_SPOOLER_KEY                       ="DsSpooler";
+    SPLDS_DRIVER_KEY                        ="DsDriver";
+    SPLDS_USER_KEY                          ="DsUser";
+
+(* DS Print-Queue properties *)
+
+    SPLDS_ASSET_NUMBER                      = "assetNumber";
+    SPLDS_BYTES_PER_MINUTE                  = "bytesPerMinute";
+    SPLDS_DESCRIPTION                       = "description";
+    SPLDS_DRIVER_NAME                       = "driverName";
+    SPLDS_DRIVER_VERSION                    = "driverVersion";
+    SPLDS_LOCATION                          = "location";
+    SPLDS_PORT_NAME                         = "portName";
+    SPLDS_PRINT_ATTRIBUTES                  = "printAttributes";
+    SPLDS_PRINT_BIN_NAMES                   = "printBinNames";
+    SPLDS_PRINT_COLLATE                     = "printCollate";
+    SPLDS_PRINT_COLOR                       = "printColor";
+    SPLDS_PRINT_DUPLEX_SUPPORTED            = "printDuplexSupported";
+    SPLDS_PRINT_END_TIME                    = "printEndTime";
+    SPLDS_PRINTER_CLASS                     = "printQueue";
+    SPLDS_PRINTER_NAME                      = "printerName";
+    SPLDS_PRINT_KEEP_PRINTED_JOBS           = "printKeepPrintedJobs";
+    SPLDS_PRINT_LANGUAGE                    = "printLanguage";
+    SPLDS_PRINT_MAC_ADDRESS                 = "printMACAddress";
+    SPLDS_PRINT_MAX_X_EXTENT                = "printMaxXExtent";
+    SPLDS_PRINT_MAX_Y_EXTENT                = "printMaxYExtent";
+    SPLDS_PRINT_MAX_RESOLUTION_SUPPORTED    = "printMaxResolutionSupported";
+    SPLDS_PRINT_MEDIA_READY                 = "printMediaReady";
+    SPLDS_PRINT_MEDIA_SUPPORTED             = "printMediaSupported";
+    SPLDS_PRINT_MEMORY                      = "printMemory";
+    SPLDS_PRINT_MIN_X_EXTENT                = "printMinXExtent";
+    SPLDS_PRINT_MIN_Y_EXTENT                = "printMinYExtent";
+    SPLDS_PRINT_NETWORK_ADDRESS             = "printNetworkAddress";
+    SPLDS_PRINT_NOTIFY                      = "printNotify";
+    SPLDS_PRINT_NUMBER_UP                   = "printNumberUp";
+    SPLDS_PRINT_ORIENTATIONS_SUPPORTED      = "printOrientationsSupported";
+    SPLDS_PRINT_OWNER                       = "printOwner";
+    SPLDS_PRINT_RATE                        = "printRate";
+    SPLDS_PRINT_RATE_UNIT                   = "printRateUnit";
+    SPLDS_PRINT_SEPARATOR_FILE              = "printSeparatorFile";
+    SPLDS_PRINT_SHARE_NAME                  = "printShareName";
+    SPLDS_PRINT_SPOOLING                    = "printSpooling";
+    SPLDS_PRINT_STAPLING_SUPPORTED          = "printStaplingSupported";
+    SPLDS_PRINT_START_TIME                  = "printStartTime";
+    SPLDS_PRINT_STATUS                      = "printStatus";
+    SPLDS_PRIORITY                          = "priority";
+    SPLDS_SERVER_NAME                       = "serverName";
+    SPLDS_UNC_NAME                          = "uNCName";
+    SPLDS_URL                               = "url";
+    SPLDS_VERSION_NUMBER                    = "versionNumber";
+
+(*
+    -- Additional Print-Queue properties --
+
+    These properties are not defined in the default Directory Services Schema,
+    but should be used when extending the Schema so a consistent interface is maintained.
+
+*)
+
+    SPLDS_PRINTER_NAME_ALIASES              = "printerNameAliases";      (* MULTI_SZ*)
+    SPLDS_PRINTER_LOCATIONS                 = "printerLocations";        (* MULTI_SZ*)
+    SPLDS_PRINTER_MODEL                     = "printerModel";            (* SZ*)
+
+
+
+    PRINTER_HTML_VIEW_QUEUE             =0;
+    PRINTER_HTML_VIEW_PRINTPROPERTIES   =1;
+    PRINTER_HTML_VIEW_INSTALL           =2;
+    PRINTER_HTML_VIEW_JOBPROPERTIES     =3;
+
+
+PROCEDURE SetPrinterHTMLViewA(hPrinter : HANDLE;
+                              dwView : DWORD;
+                              lpszPath : ARRAY OF ACHAR) : DWORD;
+
+PROCEDURE SetPrinterHTMLViewW(hPrinter : HANDLE;
+                              dwView : DWORD;
+                              lpszPath : ARRAY OF UCHAR) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE SetPrinterHTMLView = SetPrinterHTMLViewW;
+%ELSE
+PROCEDURE SetPrinterHTMLView = SetPrinterHTMLViewA;
+%END
+
+PROCEDURE GetPrinterHTMLViewA(hPrinter : HANDLE;
+                              dwView : DWORD;
+                              VAR lpszPath : ARRAY OF ACHAR;
+                              nSize : DWORD;
+                              VAR pcbNeeded : DWORD) : DWORD;
+
+PROCEDURE GetPrinterHTMLViewW(hPrinter : HANDLE;
+                              dwView : DWORD;
+                              VAR lpszPath : ARRAY OF UCHAR;
+                              nSize : DWORD;
+                              VAR pcbNeeded : DWORD) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE GetPrinterHTMLView = GetPrinterHTMLViewW;
+%ELSE
+PROCEDURE GetPrinterHTMLView = GetPrinterHTMLViewA;
+%END
+
+END WINSPOOL.

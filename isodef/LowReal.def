@@ -1,0 +1,109 @@
+DEFINITION MODULE LowReal;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+=========================================== *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* Access to underlying properties of the type REAL *)
+
+CONST
+    radix       = 2;    (* number base used to represent real numbers *)
+    places      = 32;   (* radix places used to store number *)
+    expoMin     = -126; (* powers of radix *)
+    expoMax     = 127;  (* powers of radix *)
+    large       = MAX(REAL);
+    small       = 1.18E-38;(*normalized*)
+    IEEE        = TRUE; (* IEEE 754, 854 floating point standard *)
+    ISO         = FALSE;(* ISO/IEC 10967-1(LIA-1) standard *)
+    rounds      = TRUE; (* after each mathematical operation *)
+    gUnderflow  = TRUE; (* TRUE of there can exist numbers 0 > num < small *)
+                        (* gradual underflow *)
+    exception   = FALSE;(* exception is raised for out of range numbers *)
+                        (* after an operation *)
+    extend      = TRUE; (* computations are performed at a higher precision *)
+                        (* than the stored precision *)
+    nModes      = 1;
+
+    (*
+       radix information.
+       floating point numbers are stored in scientific notation
+           using a number radix of 2.
+       mantissa X 2**exponent
+       (0 >= mantissa < 2).
+
+       all procedures in this module operate on the number at the most primitive
+       low level, which is in the native radix, which is NOT base 10. therefore
+       the APIs in this module will not return what you want when you are thinking
+       in "base 10".
+    *)
+
+TYPE
+    Modes       = PACKEDSET OF [0..nModes-1];
+
+PROCEDURE exponent(x : REAL) : INTEGER;
+(* returns the exponent value of x *)
+(* see radix comments at top of file  *)
+
+PROCEDURE fraction(x : REAL) : REAL;
+(* returns the significand (or significant part) of x *)
+(* see radix comments at top of file  *)
+
+PROCEDURE sign(x : REAL) : REAL;
+(* returns the signum of x *)
+
+PROCEDURE succ(x : REAL) : REAL;
+(* returns the next value of the type REAL greater than x *)
+
+PROCEDURE ulp(x : REAL) : REAL;
+(* returns the value of a unit in the last place of x *)
+
+PROCEDURE pred(x : REAL) : REAL;
+(* returns the previous value of the type REAL less than x *)
+
+PROCEDURE intpart(x : REAL) : REAL;
+(* returns the integer parts of x *)
+(* see radix comments at top of file  *)
+
+PROCEDURE fractpart(x : REAL) : REAL;
+(* returns the fractional parts of x *)
+(* see radix comments at top of file  *)
+
+PROCEDURE scale(x : REAL; n : INTEGER) : REAL;
+(* returns the value of (x * radix ** n) *)
+
+PROCEDURE trunc(x : REAL; n : INTEGER) : REAL;
+(* returns the value of the first n places of x *)
+(* see radix comments at top of file  *)
+
+PROCEDURE round(x : REAL; n : INTEGER) : REAL;
+(* returns the value of x rounded to the first n places *)
+(* see radix comments at top of file  *)
+
+PROCEDURE synthesize(expart : INTEGER; frapart : REAL) : REAL;
+(* returns a value of the type REAL constructed from the given
+   expart and frapart
+*)
+
+PROCEDURE setMode(m : Modes);
+(* sets status flags approiate to the underlying implementation of the
+   type REAL
+*)
+
+PROCEDURE currentMode() : Modes;
+(* returns the current status flags in the form set by setMode *)
+
+PROCEDURE IsLowException() : BOOLEAN;
+(* returns TRUE if the current coroutine is in the exception state
+   because of the raising of an exception in a routine from this module;
+   otherwise returns FALSE
+*)
+
+END LowReal.

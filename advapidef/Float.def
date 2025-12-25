@@ -1,0 +1,264 @@
+DEFINITION MODULE Float;
+
+(* Primitive real operations for x86-x64 Intel CPUs *)
+
+(* A. Mutylin                          	March 2017 *)
+
+
+(* Floating point processor control register definitions and operations. *)
+
+TYPE
+	RoundingMode = (rmNear, rmDown, rmUp, rmChop);
+	Precision = (p24, pReserved, p53, p64); (* only for x87 *)
+
+(*
+ * Procedures without special suffix access FPU control word for 32-bit code and MXSCR for 64-bit code.
+ * Procedures with suffix 87 access FPU control word.
+ * Procedures with suffix SSE access MXCSR.
+ * Procedures with suffix Both access both FPU control word and MXCSR.
+ *)
+
+PROCEDURE GetPrecision87 () : Precision [Alters(AX)];
+PROCEDURE GetRounding87  () : RoundingMode [Alters(AX)];
+PROCEDURE GetRoundingSSE () : RoundingMode [Alters(AX)];
+PROCEDURE GetFlushToZeroSSE		  () : BOOLEAN [Alters(AX)];
+PROCEDURE GetDenormalsAreZerosSSE () : BOOLEAN [Alters(AX)];
+
+PROCEDURE SetPrecision87 (P : Precision) [Pass(BX),Alters()];
+PROCEDURE SetRounding87   (RM : RoundingMode) [Pass(BX),Alters(BX)];
+PROCEDURE SetRoundingSSE  (RM : RoundingMode) [Pass(BX),Alters(BX)];
+PROCEDURE SetFlushToZeroSSE		  (Bit : BOOLEAN) [Pass(BX),Alters(BX)];
+PROCEDURE SetDenormalsAreZerosSSE (Bit : BOOLEAN) [Pass(BX),Alters(BX)];
+
+PROCEDURE Init87  () [Alters()];
+PROCEDURE InitSSE () [Alters()];
+
+%IF IA32 %THEN
+	CONST
+		GetRounding = GetRounding87;
+		SetRounding = SetRounding87;
+		Init		= Init87	   ;
+	VAR
+		SetRoundingBoth : PROCEDURE (RoundingMode) [Pass(BX),Alters(BX)] = SetRounding87;
+		InitBoth		: PROCEDURE (            ) [         Alters(  )] = Init87       ;
+%ELSE
+	CONST
+		GetRounding = GetRoundingSSE;
+		SetRounding = SetRoundingSSE;
+		Init		= InitSSE		;
+	PROCEDURE SetRoundingBoth (RM : RoundingMode) [Pass(BX),Alters(BX)];
+	PROCEDURE InitBoth () [Alters()];
+%END
+
+(*
+ * Rounding and conversion routines, 32-bit versions use FPU, 64-bit ones use SSE.
+ *
+ * Note that procedures using current rounding mode (Round...) are much faster in 32-bit mode
+ * because they do not manage control registers.
+ *)
+
+(*
+ * Integer part operations
+ *)
+
+%IF IA32 %THEN
+
+(* Round to an integer value in the current rounding mode *)
+PROCEDURE Round (X : LONGREAL) : LONGREAL [Alters()];
+PROCEDURE Round32 (X : REAL) : REAL [Alters()];
+
+(* Round to the nearest integer value (so called banker rounding) *)
+PROCEDURE Nearest (X : LONGREAL) : LONGREAL [Invariant,Alters()];
+PROCEDURE Nearest32 (X : REAL) : REAL [Invariant,Alters()];
+
+(* Round to the nearest integer value having not greater absolute value *)
+PROCEDURE Trunc (X : LONGREAL) : LONGREAL [Invariant,Alters()];
+PROCEDURE Trunc32 (X : REAL) : REAL [Invariant,Alters()];
+
+(* Round to the nearest integer value having not greater value *)
+PROCEDURE Floor (X : LONGREAL) : LONGREAL [Invariant,Alters()];
+PROCEDURE Floor32 (X : REAL) : REAL [Invariant,Alters()];
+
+(* Round to the nearest integer value having not lesser value *)
+PROCEDURE Ceiling (X : LONGREAL) : LONGREAL [Invariant,Alters()];
+PROCEDURE Ceiling32 (X : REAL) : REAL [Invariant,Alters()];
+
+%ELSE
+
+VAR
+	Round : PROCEDURE (LONGREAL) : LONGREAL [Alters()];
+	Nearest, Trunc, Floor, Ceiling : PROCEDURE (LONGREAL) : LONGREAL [Invariant,Alters()];
+	Round32 : PROCEDURE (REAL) : REAL [Alters()];
+	Nearest32, Trunc32, Floor32, Ceiling32 : PROCEDURE (REAL) : REAL [Invariant,Alters()];
+
+%END
+(*
+ * Real to integer convert operations
+ *
+ * These operations are very fast because they use special CPU instructions.
+ *)
+
+(* Convert to an integer value using current rounding mode *)
+
+PROCEDURE RoundToInt64 (X : LONGREAL) : INTEGER64 [Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE RoundToInt32 (X : LONGREAL) : INTEGER32 [Alters(AX)];
+PROCEDURE RoundToInt16 (X : LONGREAL) : INTEGER16 [Alters(AX)];
+PROCEDURE Round32ToInt64 (X : REAL) : INTEGER64 [Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE Round32ToInt32 (X : REAL) : INTEGER32 [Alters(AX)];
+PROCEDURE Round32ToInt16 (X : REAL) : INTEGER16 [Alters(AX)];
+
+(* Convert rounding to the nearest integer value (so called banker rounding) *)
+
+PROCEDURE NearestToInt64 (X : LONGREAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE NearestToInt32 (X : LONGREAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE NearestToInt16 (X : LONGREAL) : INTEGER16 [Invariant, Alters(AX)];
+PROCEDURE Nearest32ToInt64 (X : REAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE Nearest32ToInt32 (X : REAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE Nearest32ToInt16 (X : REAL) : INTEGER16 [Invariant, Alters(AX)];
+
+(* Convert rounding to the nearest integer value having not greater absolute value *)
+
+PROCEDURE TruncToInt64 (X : LONGREAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE TruncToInt32 (X : LONGREAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE TruncToInt16 (X : LONGREAL) : INTEGER16 [Invariant, Alters(AX)];
+PROCEDURE Trunc32ToInt64 (X : REAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE Trunc32ToInt32 (X : REAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE Trunc32ToInt16 (X : REAL) : INTEGER16 [Invariant, Alters(AX)];
+
+(* Convert rounding to the nearest integer value having not greater value *)
+
+PROCEDURE FloorToInt64 (X : LONGREAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE FloorToInt32 (X : LONGREAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE FloorToInt16 (X : LONGREAL) : INTEGER16 [Invariant, Alters(AX)];
+PROCEDURE Floor32ToInt64 (X : REAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE Floor32ToInt32 (X : REAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE Floor32ToInt16 (X : REAL) : INTEGER16 [Invariant, Alters(AX)];
+
+(* Convert rounding to the nearest integer value having not lesser value *)
+
+PROCEDURE CeilingToInt64 (X : LONGREAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE CeilingToInt32 (X : LONGREAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE CeilingToInt16 (X : LONGREAL) : INTEGER16 [Invariant, Alters(AX)];
+PROCEDURE Ceiling32ToInt64 (X : REAL) : INTEGER64 [Invariant, Alters (AX %IF IA32 %THEN , DX %END)];
+PROCEDURE Ceiling32ToInt32 (X : REAL) : INTEGER32 [Invariant, Alters(AX)];
+PROCEDURE Ceiling32ToInt16 (X : REAL) : INTEGER16 [Invariant, Alters(AX)];
+
+(******************************************************************************************
+ *
+ * Exception handling means
+ *
+ * When during floating point calcualtions some exceptional situations occur
+ * both FPU(87) and SSE form non-finite results (either infinities or not-a-numbers).
+ * In most cases it would be enough, therefore commonly flolating point exceptions should not be raised.
+ *
+ * Nevertheless, if in some program it is necessary to catch such exceptionl situations the following means could be used.
+ *)
+
+TYPE
+	FPException = (exInvalid, exDenormal, exZeroDivide, exOverflow, exUnderflow, exInexact);
+	FPExceptions = PACKEDSET OF FPException;
+CONST
+	NoFPException = FPExceptions{};
+
+(* Clear all exception flags *)
+
+PROCEDURE ClearExceptions87  () [Alters()];
+PROCEDURE ClearExceptionsSSE () [Alters()];
+
+(* Get set exceptions flags *)
+
+PROCEDURE GetExceptions87   () : FPExceptions [Alters(AX)];
+PROCEDURE GetExceptionsSSE  () : FPExceptions [Alters(AX)];
+
+(* Raise an exception if any exception flag in 'Exceptions' is set *)
+
+PROCEDURE CheckException87   (Exceptions : FPExceptions) [Pass(BX),Alters(AX)];
+PROCEDURE CheckExceptionSSE  (Exceptions : FPExceptions) [Pass(BX),Alters(  )];
+
+(*
+ * Procedure to be called in EXCEPT part.
+ *
+ * It returns set of FP exceptions being cause of an FP exception. It returns FPExceptions{} if an FP Exception is not raised.
+ *)
+PROCEDURE RaisedFPExceptions () : FPExceptions;
+
+%IF IA32 %THEN
+	CONST
+		ClearFPExceptions = ClearExceptions87;
+		GetFPExceptions   = GetExceptions87  ;
+		CheckFPException  = CheckException87 ;
+	VAR
+		ClearExceptionsBoth : PROCEDURE (            )                [         Alters(  )] = ClearExceptions87;
+		GetExceptionsBoth   : PROCEDURE (            ) : FPExceptions [         Alters(AX)] = GetExceptions87  ;
+		CheckExceptionBoth  : PROCEDURE (FPExceptions)                [Pass(BX),Alters(AX)] = CheckException87 ;
+%ELSE
+	CONST
+		ClearFPExceptions = ClearExceptionsSSE;
+		GetFPExceptions   = GetExceptionsSSE  ;
+		CheckFPException  = CheckExceptionSSE ;
+	PROCEDURE ClearExceptionsBoth() [Alters()];
+	PROCEDURE GetExceptionsBoth () : FPExceptions [Alters(AX)];
+	PROCEDURE CheckExceptionBoth (Exceptions : FPExceptions) [Pass(BX),Alters(AX)];
+%END
+
+(*
+ * Typical examples how to use FP exception handling procedures.
+ *
+ * The following routine check what is greater A*B or C*D
+ * where A, B, C and D are 3-dimensional vectors and * denotes so-called dot product (scalra product).
+ * If some intermediate result is not finite such comparison has no sense.
+ *
+ * Two routines below do the same calculation, the first uses exception check,
+ * the second uses Modula-2 exceptions.
+ *
+ *  TYPE
+ *		Index = [0..2];
+ *		Correlation = (Less, Equal, Greater, Imcomparable);
+ *		Vector = ARRAY Index OF REAL;
+ *
+ *	PROCEDURE Product (A, B : Vector) : REAL;
+ *	VAR
+ *		X : REAL;
+ *		I : Index;
+ *	BEGIN
+ *		X := 0.;
+ *		FOR I := MIN(Index) TO MAX(Index) DO
+ *			X := X + A[I]*B[I]
+ *		END;
+ *		RETURN X;
+ *	END Product;
+ *
+ *	PROCEDURE Compare1 (A, B, C, D : Vector) : Correlation;
+ *	VAR
+ *		X, Y : REAL;
+ *	BEGIN
+ * 		ClearFPExceptions;
+ *		X := Product(A,B);
+ *		IF exOverflow IN GetFPExceptions() THEN RETURN Imcomparable END;
+ *		Y := Product(C,D);
+ *		IF exOverflow IN GetFPExceptions() THEN RETURN Imcomparable END;
+ *		IF X < Y THEN RETURN Less;
+ *		ELSIF X > Y THEN RETURN Greater;
+ *		ELSE RETURN Equal;
+ *		END;
+ *	END Compare1;
+ *
+ *	PROCEDURE Compare2 (A, B, C, D : Vector) : Correlation;
+ *	VAR
+ *		X, Y : REAL;
+ *	BEGIN
+ * 		ClearFPExceptions;
+ *		X := Product(A,B);
+ *		CheckFPException(FPExceptions{exOverflow});
+ *		Y := Product(C,D);
+ *		CheckFPException(FPExceptions{exOverflow});
+ *		IF X < Y THEN RETURN Less;
+ *		ELSIF X > Y THEN RETURN Greater;
+ *		ELSE RETURN Equal;
+ *		END;
+ *	EXCEPT
+ *		IF exOverflow IN RaisedFPExceptions() THEN RETURN Imcomparable END;
+ *	END Compare2;
+ *)
+
+END Float.

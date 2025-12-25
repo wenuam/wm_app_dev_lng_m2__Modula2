@@ -1,0 +1,78 @@
+(*
+Name:     MD5
+Creation: 08-03-2001
+LastEdit: 10-04-2001
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  Message Digest Algorith MD5 (RFC 1321), based on Netwerkbeveiliging en Cryptografie, pp314-321.
+*)
+(* adapted by ADW, 2009 *)
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE MD5;
+(* adapted by ADW, 2009 *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    HashLength  = 16;(*bytes, 128 bits*)
+
+    HashBlockSize   = 64;(*not useful information, exists here for the HMAC module*)
+
+TYPE
+    MD5;
+
+PROCEDURE Create() : MD5;
+(* create an MD5 hash object.
+   the hash object is initialized when created.
+   only one thread at a time can use a hash object.
+*)
+
+PROCEDURE Destroy(VAR OUT hash : MD5);
+(* destroys a previously created MD5 hash object.
+   hash = NIL after this call.
+*)
+
+PROCEDURE Reset(hash : MD5);
+(* resets and initializes the hash object.
+   after this you can hash bytes *)
+
+PROCEDURE HashBytes(hash : MD5; data : ADDRESS; amount : CARDINAL);
+(* adds bytes to hash *)
+
+PROCEDURE Finalize(hash : MD5);
+(* finalizes hash.
+   you cannot hash additional bytes after a hash has been finalized.
+*)
+
+PROCEDURE GetHash(hash : MD5; VAR OUT data : ARRAY OF BYTE);
+(* a MD5 hash is 16 bytes.
+   data is an open array so that you can implement a single buffer
+   large enough to hold different hashes, each of which is likely a different
+   size in bytes.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE GetString(hash : MD5; VAR OUT str : ARRAY OF CHAR);
+(* the string returned is 32 characters long.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END MD5.

@@ -1,0 +1,131 @@
+DEFINITION MODULE AES;
+(* implements the AES encryption algorithm.
+   Advanced Encryption Standard. FIPS 197.
+
+   AES specifies the Rijndael algorithm with the following parameters.
+       128, 192 and 256-bit keys.
+       16-byte block size. (128-bit)
+       10 rounds with 128-bit key
+       12 rounds with 192-bit key
+       14 rounds with 256-bit key
+
+   ECB, CBC and CFB modes are supported.
+*)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    BlockSize   = 16;(* bytes *)
+    (* input data size for ECB and CBC modes must be an even multiple of this size.
+
+       in CFB mode the very last block of a complete data stream is allowed to be
+       smaller than the cipher block size.
+
+       a common block padding algorithm used in many standards is RFC 1423.
+       the CryptEncode module provides functions to pad an unpad data blocks using
+       this algorithm.
+    *)
+
+TYPE
+    AES;
+
+    Key128      = ARRAY [0..15] OF BYTE;
+    Key192      = ARRAY [0..23] OF BYTE;
+    Key256      = ARRAY [0..31] OF BYTE;
+
+    IV = (* initial vector for CBC and CFB modes *)
+    RECORD
+    CASE : BOOLEAN OF
+    FALSE: bytes        : ARRAY [0..BlockSize-1] OF CARDINAL8;|
+    TRUE: dwords        : ARRAY [0..(BlockSize/4)-1] OF CARDINAL32;
+    END;
+    END;
+
+PROCEDURE Create(key : ARRAY OF BYTE; keySize : CARDINAL) : AES;
+(*
+  create a new AES encryption object with the given key.
+
+  keySize = the size in *bits* of the key.
+            must be either 128, 192 or 256 (bits).
+
+  key is the key data. it must have at least keySize/8 bytes of data.
+
+  failure is indicated by a NIL return value, otherwise
+  the return value is a valid AES object.
+
+  the returned object is ready to encrypt/decrypt data.
+
+  only one thread at a time can use an encryption object, except for ECB mode.
+*)
+
+PROCEDURE Destroy(VAR INOUT crypt : AES);
+(* destroy a previously created encryption object *)
+
+PROCEDURE ResetIV(crypt : AES; iv : IV);
+(*
+   reset the encryption engine with the specific IV.
+   you only need use this call with the CBC and CFB encryption routines.
+   you must reset the IV before you encrypt/decrypt each unique
+   data stream.
+*)
+
+PROCEDURE EncryptECB(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE EncryptCBC(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE EncryptCFB(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+(*
+  encrypt a block of data of size amount.
+  you can encrypt a large data stream in multiple smaller pieces using this call.
+  you can pass the same variable to both input and output should you so desire.
+  this procedure expects the buffers have a minimum of 4-byte alignment.
+  amount must be an even multiple of the block size.
+
+  ECB = Electronic code book.
+        C[i] := Encrypt(P[i])
+  CBC = cipher block chaining.
+        C[i] := Encrypt(C[i-1] BXOR P[i])
+        You must have setup an IV via ResetIV to use CBC.
+  CFB = cipher feedback.
+        C[i] := Encrypt(C[i-1]) BXOR P[i]
+        You must have setup an IV via ResetIV to use CFB.
+        In CFB mode the data stream does not need to be an even multiple of
+        the block size. the very last "block" in the stream can be a partial block.
+        if you are processing a large stream in multiple smaller pieces (buffers),
+        all buffers must be an even multiple, except the very last one.
+*)
+
+PROCEDURE DecryptECB(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE DecryptCBC(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE DecryptCFB(crypt : AES; input, output : ADDRESS; amount : CARDINAL);
+(*
+  decrypt a block of data of size amount.
+  you can decrypt a large data stream in multiple smaller pieces using this call.
+  you can pass the same variable to both input and output should you so desire.
+  this procedure expects the buffers have a minimum of 4-byte alignment.
+  amount must be an even multiple of the block size.
+
+  ECB = Electronic code book.
+        P[i] := Decrypt(C[i])
+  CBC = cipher block chaining.
+        P[i] := Decrypt(C[i]) BXOR C[i-1]
+        You must have setup an IV via ResetIV to use CBC.
+  CFB = cipher feedback.
+        P[i] := Encrypt(C[i-1]) BXOR C[i]
+        You must have setup an IV via ResetIV to use CFB.
+        In CFB mode the data stream does not need to be an even multiple of
+        the block size. the very last "block" in the stream can be a partial block.
+        if you are processing a large stream in multiple smaller pieces (buffers),
+        all buffers must be an even multiple, except the very last one.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END AES.

@@ -1,0 +1,59 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE FormatDT;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SysClock IMPORT
+    DateTime;
+
+TYPE
+    DateFormats         = (MonthDayYear, DayMonthYear, YearMonthDay);
+
+(* the following variables contain the formatting information *)
+(* used in converting between strings and the DateTime record *)
+
+VAR
+    LeadingDayZero      : BOOLEAN;
+    LeadingMonthZero    : BOOLEAN;
+    LeadingTimeZero     : BOOLEAN;
+
+    Time24Hour          : BOOLEAN;
+
+    TimeSep             : ARRAY [0..15] OF CHAR;
+    DateSep             : ARRAY [0..15] OF CHAR;
+
+    FullYear            : BOOLEAN;
+
+    AmStr               : ARRAY [0..15] OF CHAR;
+    PmStr               : ARRAY [0..15] OF CHAR;
+
+    DateFormat          : DateFormats;
+
+PROCEDURE GetSystemFormatInfo;
+(* this procedure retrieves the formatting information from the system *)
+(* and stores it in the above variables *)
+(* This procedure is called by the module initialization code. *)
+(* It is here in case you need to reload the system information later *)
+
+PROCEDURE DateTimeToString(dt : DateTime;
+                           VAR OUT date : ARRAY OF CHAR;
+                           VAR OUT time : ARRAY OF CHAR);
+(* this function converts the DateTime to string format using *)
+(* the current formatting information *)
+
+PROCEDURE StringToDateTime(dateStr : ARRAY OF CHAR;
+                           timeStr : ARRAY OF CHAR;
+                           VAR OUT dt : DateTime) : BOOLEAN;
+(* the function converts the strings to a DateTime record using the *)
+(* current formatting information *)
+
+END FormatDT.

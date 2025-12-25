@@ -1,0 +1,85 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE CryptKey;
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    MaxHashLen          = 64;(*bytes, 512 bits*)
+
+TYPE
+    KeyHashFunction = PROCEDURE((*userData:*) ADDRESS,
+                                (*input:*) ADDRESS,
+                                (*inputSize:*) CARDINAL,
+                                VAR OUT (*output:*) ARRAY OF BYTE);
+    (*
+      userData = whatever data you wish passed to your hash procedure.
+      input = the data to be hashed.
+      inputSize = the number of bytes to be hashed.
+                  this parameter can have a value of zero.
+      output = the hash result. this can be at most MaxHashLen bytes.
+    *)
+
+PROCEDURE KDF1(password : ARRAY OF CHAR;
+               salt : ADDRESS;
+               saltLen : CARDINAL;
+               iterationCount : CARDINAL;
+               hashFunc : KeyHashFunction;
+               hashUserData : ADDRESS;
+               hashLen : CARDINAL;
+               derivedKey : ADDRESS;
+               keyLen : CARDINAL) : BOOLEAN;
+(*
+  a generalized version of the PKCS #5 PBKDF1 key derivation function.
+  see www.rsasecurity.com for the PCKS #5 document for details on the
+  PBKDF1 function.
+
+  saltLen = the length, in bytes, of the salt parameter.
+
+  hashLen = the size in bytes of the hash function you are using.
+      this value cannot be any larger than MaxHashLen.
+
+  this function can accept any hash up to MaxHashLen.
+      this means you can generate a derived key up to 512-bits (64-bytes).
+          more than enough for an AES 256-bit key and 128-bit IV value = 384-bits.
+
+  keyLen = the size, in bytes, of the key you want returned in derivedKey.
+
+  returns TRUE if successful
+  returns FALSE if
+      keyLen > hashLen
+      the size of password + saltLen is too large for an internal buffer.
+          this is unlikely with typical passwords and salts.
+*)
+
+PROCEDURE KDF2(password : ARRAY OF CHAR;
+               salt : ADDRESS;
+               saltLen : CARDINAL;
+               iterationCount : CARDINAL;
+               derivedKey : ADDRESS;
+               keyLen : CARDINAL) : BOOLEAN;
+(*
+  implements the PKCS #5 PBKDF2 key derivation function.
+  see www.rsasecurity.com for the PCKS #5 document for details on the
+  PBKDF2 function.
+
+  the PRF (pseudo random function) used is HMAC_SHA1
+
+  saltLen = the length, in bytes, of the salt parameter.
+
+  keyLen = the size, in bytes, of the key you want returned in derivedKey.
+
+  returns TRUE if successful
+  returns FALSE if
+      the size of saltLen is too large for an internal buffer.
+          this is unlikely with typical salts.
+*)
+
+END CryptKey.

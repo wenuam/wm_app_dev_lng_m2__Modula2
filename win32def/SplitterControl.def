@@ -1,0 +1,185 @@
+DEFINITION MODULE SplitterControl;
+(*
+/*
+ * Module   : CCsplitter.h
+ * Copyright: R.W.G. Hünen (rhunen@xs4all.nl)
+ *
+ * Based on original code by Rob Pitt.
+ *
+ * This file is part of the Splitter Control.
+ *
+ * The Splitter Control is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option) any
+ * later version.
+ *
+ * The Splitter Control is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * the Splitter Control; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * $Log: $
+ */
+*)
+
+(* ported to Modula-2, and extended, by Stony Brook Software 2002
+   see the testSplitter example program for an example showing the splitter use
+   and capabilities.
+   a help file SplitterControl.chm also exists.
+*)
+
+FROM SYSTEM IMPORT
+    CAST, ADR, FUNC;
+
+FROM WIN32 IMPORT
+    HWND, WPARAM, LPARAM, UINT, DWORD, RECT;
+
+FROM WINUSER IMPORT
+    WM_USER, NMHDR, SendMessage;
+
+CONST
+    CCSP_DEFWIDTH           = 3;       (* Default split bar width in pixels *)
+
+    CCSPN_FIRST             = CAST(DWORD, 0-2000);
+    CCSPN_LAST              = CAST(DWORD, 0-2019);
+
+(* Splitter flags *)
+    CCSP_POS                = 000000001h;(*position in pixels*)
+    CCSP_FPOS               = 000000002h;(*position as a percentage*)
+    CCSP_LOWER              = 000000004h;(*lower split position limit - pixels*)
+    CCSP_FLOWER             = 000000008h;(*lower split position limit - percentage*)
+    CCSP_UPPER              = 000000010h;(*upper split position limit - pixels*)
+    CCSP_FUPPER             = 000000020h;(*upper split position limit - pixels*)
+    CCSP_WIDTH              = 000000040h;
+
+(* Splitter messages. see the macros in this file. *)
+    CCSPM_SETSPLIT          = WM_USER+100;(*set split position*)
+    CCSPM_SETHANDLE         = WM_USER+101;(*set a view handle*)
+
+    CCSPM_POSITIONVIEWS     = WM_USER+102;(*SB added,
+                                            normally not necessary as set handle will
+                                            do this.*)
+    CCSPM_SETACTIVEVIEW     = WM_USER+103;(*SB added.
+                                            if focus is transferred to the splitter
+                                            window then it will transfer focus to
+                                            the active view. *)
+
+    CCSPM_SETUSERRESIZE     = WM_USER+104;(*SB added.
+                                            enable (the default) or disable the
+                                            users ability to resize the split*)
+
+    CCSPM_SETACTIVE         = WM_USER+105;(*SB added.
+                                            the splitter window is the active window.
+                                            when active the splitter window brings its children to the top when
+                                            positioning them.
+                                            this is useful when putting a splitter in a tab control.
+                                          *)
+
+    CCSPM_GETSPLIT          = WM_USER+200;(*get the split position*)
+    CCSPM_GETHANDLE         = WM_USER+201;(*get a view handle*)
+    CCSPM_GETRECT           = WM_USER+202;(*get a view rectangle*)
+
+(* Splitter notifications *)
+    CCSPN_POSCHANGED        = CCSPN_FIRST-1;(*split view windows were moved*)
+    CCSPN_SPLITCHANGED      = CCSPN_FIRST-2;(*split position changed*)
+
+(* Splitter view IDs *)
+    CCSPV_TOPLEFT           = 0;
+    CCSPV_TOPRIGHT          = 1;
+    CCSPV_BOTTOMLEFT        = 2;
+    CCSPV_BOTTOMRIGHT       = 3;
+
+    CCSPV_TOP               = CCSPV_TOPLEFT;
+    CCSPV_BOTTOM            = CCSPV_BOTTOMLEFT;
+    CCSPV_LEFT              = CCSPV_TOPLEFT;
+    CCSPV_RIGHT             = CCSPV_TOPRIGHT;
+
+(* Splitter window class *)
+    WC_CCSPLITTER           = "CCSPLITTER";
+
+(********************************************************************************/
+/* Type definitions                                                             */
+/********************************************************************************)
+
+TYPE
+    CCSPLIT =
+    RECORD
+    cbSize      : UINT;                     (* Size of CCSPLIT structure *)
+    flags       : DWORD;                    (* Set/get flags *)
+    pos         : INTEGER;                  (* Split position *)
+    width       : INTEGER;                  (* Split width *)
+    lower       : INTEGER;                  (* Split lower (left/top) drag margin *)
+    upper       : INTEGER;                  (* Split upper (right/bottom) drag margin *)
+    END;
+    PCCSPLIT    = POINTER TO CCSPLIT;
+
+    NMCCSPLIT =
+    RECORD
+    hdr         : NMHDR;                    (* WM_NOTIFY message header *)
+    x           : INTEGER;                  (* X-parameter of notification *)
+    y           : INTEGER;                  (* Y-parameter of notification *)
+    END;
+    PNMCCSPLIT  = POINTER TO NMCCSPLIT;
+
+(********************************************************************************/
+/* Macro definitions                                                            */
+/********************************************************************************)
+
+PROCEDURE CCsplitter_GetHandle(hWnd : HWND; idView : CARDINAL) : HWND; MACRO;
+BEGIN
+    RETURN CAST(HWND, SendMessage(hWnd, CCSPM_GETHANDLE, idView, 0));
+END CCsplitter_GetHandle;
+
+PROCEDURE CCsplitter_GetRect(hWnd : HWND;
+                             idView : CARDINAL;
+                             VAR OUT lpRect : RECT) : BOOLEAN; MACRO;
+BEGIN
+    RETURN SendMessage(hWnd, CCSPM_GETRECT, idView, CAST(LPARAM, ADR(lpRect))) = 1;
+END CCsplitter_GetRect;
+
+PROCEDURE CCsplitter_GetSplit(hWnd : HWND;
+                              lpSplitX, lpSplitY : PCCSPLIT) : BOOLEAN; MACRO;
+BEGIN
+    RETURN SendMessage(hWnd, CCSPM_GETSPLIT,
+                       CAST(WPARAM, lpSplitX), CAST(LPARAM, lpSplitY)) = 1;
+END CCsplitter_GetSplit;
+
+PROCEDURE CCsplitter_SetHandle(hWnd : HWND;
+                               idView : CARDINAL;
+                               hView : HWND) : BOOLEAN; MACRO;
+BEGIN
+    RETURN SendMessage(hWnd, CCSPM_SETHANDLE, idView, CAST(LPARAM, hView)) = 1;
+END CCsplitter_SetHandle;
+
+PROCEDURE CCsplitter_SetSplit(hWnd : HWND;
+                              lpSplitX, lpSplitY : PCCSPLIT) : BOOLEAN; MACRO;
+BEGIN
+    RETURN SendMessage(hWnd, CCSPM_SETSPLIT,
+                       CAST(WPARAM, lpSplitX), CAST(LPARAM, lpSplitY)) = 1;
+END CCsplitter_SetSplit;
+
+PROCEDURE CCsplitter_PositionViews(hWnd : HWND); MACRO;
+BEGIN
+    FUNC SendMessage(hWnd, CCSPM_POSITIONVIEWS, 0, 0);
+END CCsplitter_PositionViews;
+
+PROCEDURE CCsplitter_SetActiveView(hWnd : HWND; idView : CARDINAL) : BOOLEAN; MACRO;
+BEGIN
+    RETURN SendMessage(hWnd, CCSPM_SETACTIVEVIEW, idView, 0) = 1;
+END CCsplitter_SetActiveView;
+
+PROCEDURE CCsplitter_SetUserResize(hWnd : HWND; yes : BOOLEAN); MACRO;
+BEGIN
+    FUNC SendMessage(hWnd, CCSPM_SETUSERRESIZE, ORD(yes), 0);
+END CCsplitter_SetUserResize;
+
+PROCEDURE CCsplitter_SetActive(hWnd : HWND; yes : BOOLEAN); MACRO;
+BEGIN
+    FUNC SendMessage(hWnd, CCSPM_SETACTIVE, ORD(yes), 0);
+END CCsplitter_SetActive;
+
+END SplitterControl.

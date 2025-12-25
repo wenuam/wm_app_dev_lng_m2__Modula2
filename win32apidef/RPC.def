@@ -1,0 +1,2330 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+UNSAFEGUARDED DEFINITION MODULE RPC;
+
+FROM WIN32 IMPORT
+    LONG, SHORT, ULONG, USHORT, BYTE, DWORD, LPSTR, LPWSTR, WINT, LPVOID,
+    PointerToArraySize, HRESULT, GUID, PULONG;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+FROM WINERROR IMPORT
+    ERROR_SUCCESS, ERROR_OUTOFMEMORY, ERROR_MAX_THRDS_REACHED,
+    ERROR_INVALID_PARAMETER, ERROR_INSUFFICIENT_BUFFER, ERROR_INVALID_USER_BUFFER,
+    ERROR_INVALID_SECURITY_DESCR, ERROR_ACCESS_DENIED, ERROR_INVALID_HANDLE,
+    ERROR_NOT_ENOUGH_SERVER_MEMORY, RPC_S_INVALID_BOUND, RPC_S_INVALID_TAG,
+    RPC_X_ENUM_VALUE_OUT_OF_RANGE;
+
+FROM OOle2 IMPORT
+    IRpcStubBuffer, IRpcChannelBuffer;
+
+FROM RPCCore IMPORT
+    RPC_NS_HANDLE, RPC_BINDING_HANDLE, RPC_BINDING_VECTOR, RPC_STATUS,
+    size_t, PRPC_MESSAGE, wchar_t, handle_t, RPC_MESSAGE, IID,
+    UUID, LPRPC_BINDING_VECTOR, RPC_IF_HANDLE,
+    RPC_IF_ID, LPRPC_PROTSEQ_VECTORA, LPRPC_PROTSEQ_VECTORW,
+    RPC_OBJECT_INQ_FN, LPRPC_STATS_VECTOR, LPRPC_IF_ID_VECTOR,
+    UUID_VECTOR, I_RPC_HANDLE, RPC_FORWARD_FUNCTION;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+
+<*/VALIDVER:WINNT*>
+(*<*/VERSION:WINNT*>*)
+
+TYPE
+    RPC_IMPORT_CONTEXT_P = RECORD
+          LookupContext  : RPC_NS_HANDLE;
+          ProposedHandle : RPC_BINDING_HANDLE;
+          Bindings       : LPRPC_BINDING_VECTOR;
+    END;
+    PRPC_IMPORT_CONTEXT_P       = POINTER TO RPC_IMPORT_CONTEXT_P;
+
+PROCEDURE I_RpcNsGetBuffer(Message : PRPC_MESSAGE) : RPC_STATUS;
+
+PROCEDURE I_RpcNsSendReceive(Message : PRPC_MESSAGE;
+                             VAR Handle : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE I_RpcNsRaiseException(Message : PRPC_MESSAGE;
+                                Status : RPC_STATUS);
+
+PROCEDURE I_RpcReBindBuffer(Message : PRPC_MESSAGE) : RPC_STATUS;
+
+PROCEDURE I_NsServerBindSearch() : RPC_STATUS;
+
+PROCEDURE I_NsClientBindSearch() : RPC_STATUS;
+
+PROCEDURE I_NsClientBindDone();
+
+CONST
+    NDR_CHAR_REP_MASK               = 00000000Fh;
+    NDR_INT_REP_MASK                = 0000000F0h;
+    NDR_FLOAT_REP_MASK              = 00000FF00h;
+
+    NDR_LITTLE_ENDIAN               = 000000010h;
+    NDR_BIG_ENDIAN                  = 000000000h;
+
+    NDR_IEEE_FLOAT                  = 000000000h;
+    NDR_VAX_FLOAT                   = 000000100h;
+
+    NDR_ASCII_CHAR                  = 000000000h;
+    NDR_EBCDIC_CHAR                 = 000000001h;
+
+    NDR_LOCAL_DATA_REPRESENTATION   = 000000010h;
+    NDR_LOCAL_ENDIAN                = NDR_LITTLE_ENDIAN;
+
+
+PROCEDURE MIDL_user_allocate(a : size_t) : ADDRESS;
+
+PROCEDURE MIDL_user_free(a : LPVOID);
+
+TYPE
+%IF Windows %THEN
+    hyper       = INTEGER64;
+    MIDL_uhyper = INTEGER64;
+%ELSE
+    hyper       = LONGREAL;
+    MIDL_uhyper = LONGREAL;
+%END
+
+TYPE
+    NDR_CCONTEXT         = ADDRESS;
+    NDR_SCONTEXT_RECORD = RECORD
+          pad            : ARRAY [0..2 - 1] OF ADDRESS;
+          userContext    : ADDRESS;
+    END;
+    NDR_SCONTEXT = POINTER TO NDR_SCONTEXT_RECORD;
+
+    RPC_BUFPTR           = POINTER TO ARRAY [0..PointerToArraySize-1] OF ACHAR;
+
+CONST
+    cbNDRContext         = 20;
+
+PROCEDURE NDRSContextValue(hContext : NDR_SCONTEXT) : ADDRESS;
+
+TYPE
+    NDR_RUNDOWN          = PROCEDURE (ADDRESS);
+
+    SCONTEXT_QUEUE = RECORD
+          NumberOfObjects: ULONG;
+          ArrayOfObjects : POINTER TO ARRAY [0..0] OF NDR_SCONTEXT;
+    END;
+    PSCONTEXT_QUEUE      = POINTER TO SCONTEXT_QUEUE;
+
+PROCEDURE NDRCContextBinding(CContext : NDR_CCONTEXT) : RPC_BINDING_HANDLE;
+
+PROCEDURE NDRCContextMarshall(CContext : NDR_CCONTEXT;
+                              pBuff : ADDRESS);
+
+PROCEDURE NDRCContextUnmarshall(VAR pCContext : NDR_CCONTEXT;
+                                hBinding : RPC_BINDING_HANDLE;
+                                pBuff : ADDRESS;
+                                DataRepresentation : ULONG);
+
+PROCEDURE NDRSContextMarshall(CContext : NDR_SCONTEXT;
+                              pBuff : ADDRESS;
+                              userRunDownIn : NDR_RUNDOWN);
+
+PROCEDURE NDRSContextUnmarshall(pBuff : ADDRESS;
+                                DataRepresentation : ULONG) : NDR_SCONTEXT;
+
+PROCEDURE RpcSsDestroyClientContext(VAR ContextHandle : ADDRESS);
+
+
+PROCEDURE byte_from_ndr(VAR source : RPC_MESSAGE; VAR target : BYTE);
+
+PROCEDURE byte_array_from_ndr(VAR Source : RPC_MESSAGE;
+                              LowerIndex : DWORD;
+                              UpperIndex : DWORD;
+                              VAR Target : ARRAY OF BYTE);
+
+PROCEDURE boolean_from_ndr(VAR source : RPC_MESSAGE; VAR target : BOOLEAN);
+
+(*USER MUST NORMALIZE THESE TO BOOLEANS AS THE MACRO DOES NOT*)
+PROCEDURE boolean_array_from_ndr(VAR Source : RPC_MESSAGE;
+                              LowerIndex : DWORD;
+                              UpperIndex : DWORD;
+                              VAR Target : ARRAY OF BYTE);
+
+PROCEDURE NDRcopy(pTarget : ADDRESS;
+                  pSource : ADDRESS;
+                  size : DWORD);
+
+PROCEDURE MIDL_ascii_strlen(string : ARRAY OF ACHAR) : WINT;
+
+PROCEDURE MIDL_ascii_strcpy(VAR target : ARRAY OF ACHAR; source : ARRAY OF ACHAR) : WINT;
+
+PROCEDURE MIDL_memset(VAR s : ARRAY OF BYTE; c : BYTE; n : WINT);
+
+PROCEDURE MIDL_wchar_strlen(VAR s : wchar_t) : size_t;
+
+PROCEDURE MIDL_wchar_strcpy(t : ADDRESS;
+                            s : ARRAY OF wchar_t);
+
+PROCEDURE char_from_ndr(SourceMessage : PRPC_MESSAGE;
+                        VAR Target : ACHAR);
+
+PROCEDURE char_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                              LowerIndex : ULONG;
+                              UpperIndex : ULONG;
+                              VAR Target : ARRAY OF ACHAR);
+
+PROCEDURE short_from_ndr(source : PRPC_MESSAGE;
+                         VAR target : USHORT);
+
+PROCEDURE short_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                               LowerIndex : ULONG;
+                               UpperIndex : ULONG;
+                               VAR Target : ARRAY OF UCHAR);
+
+PROCEDURE short_from_ndr_temp(VAR source : LPSTR;
+                              VAR target : USHORT;
+                              format : ULONG);
+
+PROCEDURE long_from_ndr(source : PRPC_MESSAGE;
+                        VAR target : ULONG);
+
+PROCEDURE long_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                              LowerIndex : ULONG;
+                              UpperIndex : ULONG;
+                              VAR Target : ARRAY OF ULONG);
+
+PROCEDURE long_from_ndr_temp(VAR source : LPSTR;
+                             VAR target : ULONG;
+                             format : ULONG);
+
+PROCEDURE enum_from_ndr(SourceMessage : PRPC_MESSAGE;
+                        VAR Target : DWORD);
+
+PROCEDURE float_from_ndr(SourceMessage : PRPC_MESSAGE;
+                         Target : ADDRESS);
+
+PROCEDURE float_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                               LowerIndex : ULONG;
+                               UpperIndex : ULONG;
+                               Target : ADDRESS);
+
+PROCEDURE double_from_ndr(SourceMessage : PRPC_MESSAGE;
+                          Target : ADDRESS) : ADDRESS;
+
+PROCEDURE double_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                                LowerIndex : ULONG;
+                                UpperIndex : ULONG;
+                                Target : ADDRESS);
+
+PROCEDURE hyper_from_ndr(source : PRPC_MESSAGE;
+                         VAR target : hyper);
+
+PROCEDURE hyper_array_from_ndr(SourceMessage : PRPC_MESSAGE;
+                               LowerIndex : DWORD;
+                               UpperIndex : DWORD;
+                               VAR Target : ARRAY OF hyper);
+
+PROCEDURE hyper_from_ndr_temp (VAR source : LPSTR;
+                               VAR target : hyper;
+                               format : DWORD);
+
+PROCEDURE data_from_ndr(source : PRPC_MESSAGE;
+                        target : ADDRESS;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE data_into_ndr(source : ADDRESS;
+                        target : PRPC_MESSAGE;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE tree_into_ndr(source : ADDRESS;
+                        target : PRPC_MESSAGE;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE data_size_ndr(source : ADDRESS;
+                        target : PRPC_MESSAGE;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE tree_size_ndr(source : ADDRESS;
+                        target : PRPC_MESSAGE;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE tree_peek_ndr(source : PRPC_MESSAGE;
+                        VAR buffer : LPSTR;
+                        VAR format : ACHAR;
+                        MscPak : ACHAR);
+
+PROCEDURE midl_allocate(size : size_t) : ADDRESS;
+
+
+TYPE
+    error_status_t       = ULONG;
+
+PROCEDURE _midl_fa2(VAR p : RPC_BUFPTR);
+
+PROCEDURE _midl_fa4(VAR p : RPC_BUFPTR);
+
+PROCEDURE _midl_fa8(VAR p : RPC_BUFPTR);
+
+TYPE
+    PPULONG     = POINTER TO PULONG;
+
+PROCEDURE _midl_marsh_up(VAR mp : ADDRESS; p : ULONG);
+
+PROCEDURE _midl_advmp(VAR mp : ADDRESS) : ULONG;
+
+PROCEDURE _midl_unmarsh_up(VAR p : ADDRESS) : ULONG;
+
+PROCEDURE NdrMarshCCtxtHdl(pc : NDR_CCONTEXT; p : ADDRESS) : ADDRESS;
+
+PROCEDURE NdrUnMarshCCtxtHdl(VAR pc : NDR_CCONTEXT;
+                             p : RPC_BINDING_HANDLE;
+                             h : ADDRESS;
+                             drep : ULONG) : ADDRESS;
+
+PROCEDURE NdrUnMarshSCtxtHdl(pc : NDR_SCONTEXT;
+                             p : ADDRESS;
+                             drep : ULONG);
+
+PROCEDURE NdrMarshSCtxtHdl(CContext : NDR_SCONTEXT;
+                          pBuff : ADDRESS;
+                          userRunDownIn : NDR_RUNDOWN);
+
+
+TYPE
+    RPC_LENGTH           = ULONG;
+
+
+    PFORMAT_STRING       = POINTER TO ACHAR;
+
+    ARRAY_INFO = RECORD
+          Dimension             : LONG;
+          BufferConformanceMark : PULONG;
+          BufferVarianceMark    : PULONG;
+          MaxCountArray         : POINTER TO ARRAY [0..0] OF ULONG;
+          OffsetArray           : POINTER TO ARRAY [0..0] OF ULONG;
+          ActualCountArray      : POINTER TO ARRAY [0..0] OF ULONG;
+    END;
+    PARRAY_INFO          = POINTER TO ARRAY_INFO;
+
+    MIDL_STUB_MESSAGE = RECORD
+        RpcMsg               : PRPC_MESSAGE;
+        Buffer               : POINTER TO ACHAR;
+        BufferStart          : POINTER TO ACHAR;
+        BufferEnd            : POINTER TO ACHAR;
+        BufferMark           : POINTER TO ACHAR;
+        BufferLength         : ULONG;
+        MemorySize           : ULONG;
+        Memory               : POINTER TO ACHAR;
+        IsClient             : WINT;
+        ReuseBuffer          : WINT;
+        AllocAllNodesMemory  : POINTER TO ACHAR;
+        AllocAllNodesMemoryEnd: POINTER TO ACHAR;
+        IgnoreEmbeddedPointers: WINT;
+        PointerBufferMark    : POINTER TO ACHAR;
+        fBufferValid         : ACHAR;
+        Unused               : ACHAR;
+        sbDummy1             : ARRAY [0..1] OF ACHAR;(*STONY BROOK*)
+        MaxCount             : ULONG;
+        Offset               : ULONG;
+        ActualCount          : ULONG;
+        pfnAllocate          : PROCEDURE (size_t) : ADDRESS;
+        pfnFree              : PROCEDURE (ADDRESS);
+        StackTop             : POINTER TO ACHAR;
+        pPresentedType       : POINTER TO ACHAR;
+        pTransmitType        : POINTER TO ACHAR;
+        SavedHandle          : handle_t;
+        StubDesc             : POINTER TO MIDL_STUB_DESC;
+        FullPtrXlatTables    : POINTER TO FULL_PTR_XLAT_TABLES;
+        fCheckBounds         : WINT;
+        FullPtrRefId         : ULONG;
+
+        (*
+        fInDontFree          : WINT;
+        fDontCallFreeInst    : WINT;
+        fInOnlyParam         : WINT;
+        *)
+        BITFIELD1            : WINT;(*STONY BROOK*)
+        dwDestContext        : ULONG;
+        pvDestContext        : ADDRESS;
+        SavedContextHandles  : POINTER TO NDR_SCONTEXT;
+        ParamNumber          : LONG;
+        pRpcChannelBuffer    : POINTER TO IRpcChannelBuffer;
+        pArrayInfo           : PARRAY_INFO;
+        SizePtrCountArray    : PULONG;
+        SizePtrOffsetArray   : PULONG;
+        SizePtrLengthArray   : PULONG;
+        pArgQueue            : ADDRESS;
+        dwStubPhase          : ULONG;
+        Reserved             : ARRAY [0..5 - 1] OF ULONG;
+    END;
+    PMIDL_STUB_MESSAGE   = POINTER TO MIDL_STUB_MESSAGE;
+
+CONST
+    fInDontFree          = 1;   (*STONY BROOK*)
+    fDontCallFreeInst    = 2;   (*STONY BROOK*)
+    fInOnlyParam         = 4;   (*STONY BROOK*)
+
+TYPE
+    EXPR_EVAL            = PROCEDURE (VAR MIDL_STUB_MESSAGE);
+
+    GENERIC_BINDING_ROUTINE             = PROCEDURE (ADDRESS) : ADDRESS;
+    GENERIC_UNBIND_ROUTINE              = PROCEDURE (ADDRESS, LPSTR);
+
+    GENERIC_BINDING_ROUTINE_PAIR = RECORD
+          pfnBind        : GENERIC_BINDING_ROUTINE;
+          pfnUnbind      : GENERIC_UNBIND_ROUTINE;
+    END;
+    PGENERIC_BINDING_ROUTINE_PAIR       = POINTER TO GENERIC_BINDING_ROUTINE_PAIR;
+
+    GENERIC_BINDING_INFO = RECORD
+          pObj           : ADDRESS;
+          Size           : DWORD;
+          pfnBind        : GENERIC_BINDING_ROUTINE;
+          pfnUnbind      : GENERIC_UNBIND_ROUTINE;
+    END;
+    PGENERIC_BINDING_INFO= POINTER TO GENERIC_BINDING_INFO;
+
+    XMIT_HELPER_ROUTINE  = PROCEDURE (PMIDL_STUB_MESSAGE);
+
+    XMIT_ROUTINE_QUINTUPLE = RECORD
+          pfnTranslateToXmit    : XMIT_HELPER_ROUTINE;
+          pfnTranslateFromXmit  : XMIT_HELPER_ROUTINE;
+          pfnFreeXmit           : XMIT_HELPER_ROUTINE;
+          pfnFreeInst           : XMIT_HELPER_ROUTINE;
+    END;
+    PXMIT_ROUTINE_QUINTUPLE= POINTER TO XMIT_ROUTINE_QUINTUPLE;
+
+    MALLOC_FREE_STRUCT = RECORD
+          pfnAllocate    : PROCEDURE (size_t) : ADDRESS;
+          pfnFree        : PROCEDURE (ADDRESS);
+    END;
+
+    COMM_FAULT_OFFSETS = RECORD
+        CommOffset      : SHORT;
+        FaultOffset     : SHORT;
+    END;
+
+    IMPLICIT_HANDLE_INFO = RECORD
+        CASE : CARDINAL OF
+          0 : pAutoHandle: POINTER TO handle_t;
+          |
+          1 : pPrimitiveHandle: POINTER TO handle_t;
+          |
+          2 : pGenericBindingInfo: PGENERIC_BINDING_INFO;
+          ELSE
+        END;
+    END;
+
+    MIDL_STUB_DESC = RECORD
+        RpcInterfaceInformation         : ADDRESS;
+        pfnAllocate                     : PROCEDURE (size_t) : ADDRESS;
+        pfnFree                         : PROCEDURE (ADDRESS);
+        union1                          : IMPLICIT_HANDLE_INFO;
+        apfnNdrRundownRoutines          : NDR_RUNDOWN;
+        aGenericBindingRoutinePairs     : POINTER TO GENERIC_BINDING_ROUTINE_PAIR;
+        apfnExprEval                    : POINTER TO EXPR_EVAL;
+        aXmitQuintuple                  : POINTER TO XMIT_ROUTINE_QUINTUPLE;
+        pFormatTypes                    : POINTER TO ARRAY [0..0] OF ACHAR;
+        fCheckBounds                    : WINT;
+        Version                         : ULONG;
+        pMallocFreeStruct               : POINTER TO MALLOC_FREE_STRUCT;
+        MIDLVersion                     : LONG;
+        CommFaultOffsets                : LONG;
+    END;
+    PMIDL_STUB_DESC      = POINTER TO MIDL_STUB_DESC;
+
+    PMIDL_XMIT_TYPE      = ADDRESS;
+
+    MIDL_FORMAT_STRING = RECORD
+          Pad            : SHORT;
+          Format         : ARRAY [0..0] OF ACHAR;
+    END;
+
+    STUB_THUNK           = PROCEDURE (PMIDL_STUB_MESSAGE);
+    SERVER_ROUTINE       = PROCEDURE ():LONG;
+
+    MIDL_SERVER_INFO = RECORD
+          pStubDesc      : PMIDL_STUB_DESC;
+          DispatchTable  : POINTER TO SERVER_ROUTINE;
+          ProcString     : PFORMAT_STRING;
+          FmtStringOffset: POINTER TO USHORT;
+          ThunkTable     : POINTER TO ARRAY [0..0] OF STUB_THUNK;
+    END;
+    PMIDL_SERVER_INFO    = POINTER TO MIDL_SERVER_INFO;
+
+    MIDL_STUBLESS_PROXY_INFO = RECORD
+        pStubDesc               : PMIDL_STUB_DESC;
+        ProcFormatString        : PFORMAT_STRING;
+        FormatStringOffset      : POINTER TO UCHAR;
+    END;
+
+    PMIDL_STUBLESS_PROXY_INFO = POINTER TO MIDL_STUBLESS_PROXY_INFO;
+
+    CLIENT_CALL_RETURN = RECORD
+        CASE : CARDINAL OF
+          0 : Pointer    : ADDRESS;
+          |
+          1 : Simple     : LONG;
+          ELSE
+        END;
+    END;
+
+    XLAT_SIDE = (XLAT_DUMMY, XLAT_SERVER, XLAT_CLIENT) BIG;
+
+    PFULL_PTR_TO_REFID_ELEMENT = POINTER TO FULL_PTR_TO_REFID_ELEMENT;
+    FULL_PTR_TO_REFID_ELEMENT  = RECORD
+          Next           : PFULL_PTR_TO_REFID_ELEMENT;
+          Pointer        : ADDRESS;
+          RefId          : ULONG;
+          State          : ACHAR;
+    END;
+
+    PointerToRefId_RECORD = RECORD
+          XlatTable      : PFULL_PTR_TO_REFID_ELEMENT;
+          NumberOfBuckets: ULONG;
+          HashMask       : ULONG;
+    END;
+
+    RefIdToPointer_RECORD = RECORD
+          XlatTable      : POINTER TO ADDRESS;
+          NumberOfBuckets: LPSTR;
+          HashMask       : ULONG;
+    END;
+
+    FULL_PTR_XLAT_TABLES = RECORD
+        RefIdToPointer          : RefIdToPointer_RECORD;
+        PointerToRefId          : PointerToRefId_RECORD;
+        NextRefId               : ULONG;
+        XlatSide                : XLAT_SIDE;
+    END;
+    PFULL_PTR_XLAT_TABLES= POINTER TO FULL_PTR_XLAT_TABLES;
+
+PROCEDURE NdrSimpleTypeMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                pMemory : ADDRESS;
+                                FormatChar : ACHAR);
+
+PROCEDURE NdrPointerMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                             pMemory : ADDRESS;
+                             pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrSimpleStructMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrConformantStructMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                      pMemory : ADDRESS;
+                                      pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrConformantVaryingStructMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                             pMemory : ADDRESS;
+                                             pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrHardStructMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                pMemory : ADDRESS;
+                                pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrComplexStructMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   pMemory : ADDRESS;
+                                   pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrFixedArrayMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                pMemory : ADDRESS;
+                                pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrConformantArrayMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                     pMemory : ADDRESS;
+                                     pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrConformantVaryingArrayMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                            pMemory : ADDRESS;
+                                            pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrVaryingArrayMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrComplexArrayMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrNonConformantStringMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                         pMemory : ADDRESS;
+                                         pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrConformantStringMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                      pMemory : ADDRESS;
+                                      pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrEncapsulatedUnionMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                       pMemory : ADDRESS;
+                                       pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrNonEncapsulatedUnionMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                          pMemory : ADDRESS;
+                                          pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrByteCountPointerMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                      pMemory : ADDRESS;
+                                      pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrXmitOrRepAsMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                 pMemory : ADDRESS;
+                                 pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrInterfacePointerMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                      pMemory : ADDRESS;
+                                      pFormat : PFORMAT_STRING) : ADDRESS;
+
+PROCEDURE NdrClientContextMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   ContextHandle : NDR_CCONTEXT;
+                                   fCheck : WINT);
+
+PROCEDURE NdrServerContextMarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   ContextHandle : NDR_SCONTEXT;
+                                   RundownRoutine : NDR_RUNDOWN);
+
+PROCEDURE NdrSimpleTypeUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  FormatChar : ACHAR);
+
+PROCEDURE NdrPointerUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                               VAR ppMemory : ADDRESS;
+                               pFormat : PFORMAT_STRING;
+                               fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrSimpleStructUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    VAR ppMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING;
+                                    fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrConformantStructUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        VAR ppMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING;
+                                        fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrConformantVaryingStructUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                               VAR ppMemory : ADDRESS;
+                                               pFormat : PFORMAT_STRING;
+                                               fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrHardStructUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  VAR ppMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING;
+                                  fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrComplexStructUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                     VAR ppMemory : ADDRESS;
+                                     pFormat : PFORMAT_STRING;
+                                     fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrFixedArrayUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  VAR ppMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING;
+                                  fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrConformantArrayUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                       VAR ppMemory : ADDRESS;
+                                       pFormat : PFORMAT_STRING;
+                                       fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrConformantVaryingArrayUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                              VAR ppMemory : ADDRESS;
+                                              pFormat : PFORMAT_STRING;
+                                              fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrVaryingArrayUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    VAR ppMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING;
+                                    fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrComplexArrayUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    VAR ppMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING;
+                                    fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrNonConformantStringUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                           VAR ppMemory : ADDRESS;
+                                           pFormat : PFORMAT_STRING;
+                                           fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrConformantStringUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        VAR ppMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING;
+                                        fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrEncapsulatedUnionUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                         VAR ppMemory : ADDRESS;
+                                         pFormat : PFORMAT_STRING;
+                                         fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrNonEncapsulatedUnionUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                            VAR ppMemory : ADDRESS;
+                                            pFormat : PFORMAT_STRING;
+                                            fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrByteCountPointerUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        VAR ppMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING;
+                                        fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrXmitOrRepAsUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   VAR ppMemory : ADDRESS;
+                                   pFormat : PFORMAT_STRING;
+                                   fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrInterfacePointerUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        VAR ppMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING;
+                                        fMustAlloc : ACHAR) : ADDRESS;
+
+PROCEDURE NdrClientContextUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                     VAR pContextHandle : NDR_CCONTEXT;
+                                     BindHandle : RPC_BINDING_HANDLE);
+
+PROCEDURE NdrServerContextUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE) : NDR_SCONTEXT;
+
+PROCEDURE NdrPointerBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                               pMemory : ADDRESS;
+                               pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrSimpleStructBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantStructBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantVaryingStructBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                               pMemory : ADDRESS;
+                                               pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrHardStructBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrComplexStructBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                     pMemory : ADDRESS;
+                                     pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrFixedArrayBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantArrayBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                       pMemory : ADDRESS;
+                                       pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantVaryingArrayBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                              pMemory : ADDRESS;
+                                              pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrVaryingArrayBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrComplexArrayBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pMemory : ADDRESS;
+                                    pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantStringBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrNonConformantStringBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                           pMemory : ADDRESS;
+                                           pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrEncapsulatedUnionBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                         pMemory : ADDRESS;
+                                         pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrNonEncapsulatedUnionBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                            pMemory : ADDRESS;
+                                            pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrByteCountPointerBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrXmitOrRepAsBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   pMemory : ADDRESS;
+                                   pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrInterfacePointerBufferSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrContextHandleSize(pStubMsg : PMIDL_STUB_MESSAGE;
+                               pMemory : ADDRESS;
+                               pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrPointerMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                               pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrSimpleStructMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrConformantStructMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrConformantVaryingStructMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                               pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrHardStructMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrComplexStructMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                     pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrFixedArrayMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrConformantArrayMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                       pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrConformantVaryingArrayMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                              pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrVaryingArrayMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrComplexArrayMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                    pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrConformantStringMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrNonConformantStringMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                           pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrEncapsulatedUnionMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                         pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrNonEncapsulatedUnionMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                            pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrXmitOrRepAsMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrInterfacePointerMemorySize(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pFormat : PFORMAT_STRING) : ULONG;
+
+PROCEDURE NdrPointerFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                         pMemory : ADDRESS;
+                         pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrSimpleStructFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                              pMemory : ADDRESS;
+                              pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantStructFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantVaryingStructFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                         pMemory : ADDRESS;
+                                         pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrHardStructFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                            pMemory : ADDRESS;
+                            pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrComplexStructFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                               pMemory : ADDRESS;
+                               pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrFixedArrayFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                            pMemory : ADDRESS;
+                            pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantArrayFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                 pMemory : ADDRESS;
+                                 pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConformantVaryingArrayFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pMemory : ADDRESS;
+                                        pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrVaryingArrayFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                              pMemory : ADDRESS;
+                              pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrComplexArrayFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                              pMemory : ADDRESS;
+                              pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrEncapsulatedUnionFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   pMemory : ADDRESS;
+                                   pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrNonEncapsulatedUnionFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                      pMemory : ADDRESS;
+                                      pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrByteCountPointerFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrXmitOrRepAsFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                             pMemory : ADDRESS;
+                             pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrInterfacePointerFree(pStubMsg : PMIDL_STUB_MESSAGE;
+                                  pMemory : ADDRESS;
+                                  pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrConvert(pStubMsg : PMIDL_STUB_MESSAGE;
+                     pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrClientInitializeNew(pRpcMsg : PRPC_MESSAGE;
+                                 pStubMsg : PMIDL_STUB_MESSAGE;
+                                 pStubDescriptor : PMIDL_STUB_DESC;
+                                 ProcNum : DWORD);
+
+PROCEDURE NdrServerInitializeNew(pRpcMsg : PRPC_MESSAGE;
+                                 pStubMsg : PMIDL_STUB_MESSAGE;
+                                 pStubDescriptor : PMIDL_STUB_DESC) : LPSTR;
+
+PROCEDURE NdrClientInitialize(pRpcMsg : PRPC_MESSAGE;
+                              pStubMsg : PMIDL_STUB_MESSAGE;
+                              pStubDescriptor : PMIDL_STUB_DESC;
+                              ProcNum : DWORD);
+
+PROCEDURE NdrServerInitialize(pRpcMsg : PRPC_MESSAGE;
+                              pStubMsg : PMIDL_STUB_MESSAGE;
+                              pStubDescriptor : PMIDL_STUB_DESC) : LPSTR;
+
+PROCEDURE NdrServerInitializeUnmarshall(pStubMsg : PMIDL_STUB_MESSAGE;
+                                        pStubDescriptor : PMIDL_STUB_DESC;
+                                        pRpcMsg : PRPC_MESSAGE) : LPSTR;
+
+PROCEDURE NdrServerInitializeMarshall(pRpcMsg : PRPC_MESSAGE;
+                                      pStubMsg : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrGetBuffer(pStubMsg : PMIDL_STUB_MESSAGE;
+                       BufferLength : ULONG;
+                       Handle : RPC_BINDING_HANDLE) : ADDRESS;
+
+PROCEDURE NdrNsGetBuffer(pStubMsg : PMIDL_STUB_MESSAGE;
+                         BufferLength : ULONG;
+                         Handle : RPC_BINDING_HANDLE) : ADDRESS;
+
+PROCEDURE NdrSendReceive(pStubMsg : PMIDL_STUB_MESSAGE;
+                         pBufferEnd : ADDRESS) : ADDRESS;
+
+PROCEDURE NdrNsSendReceive(pStubMsg : PMIDL_STUB_MESSAGE;
+                           pBufferEnd : ADDRESS;
+                           VAR pAutoHandle : RPC_BINDING_HANDLE) : ADDRESS;
+
+PROCEDURE NdrFreeBuffer(pStubMsg : PMIDL_STUB_MESSAGE);
+
+(*SIMPLY CAST THE RETURN TO ADDRESS IF NEEDED.*)
+PROCEDURE NdrClientCall(pStubDescriptor : PMIDL_STUB_DESC;
+                        pFormat : PFORMAT_STRING) : LONG [VARIABLE, msCDECL];
+
+TYPE
+    STUB_PHASE = (STUB_UNMARSHAL,
+                  STUB_CALL_SERVER,
+                  STUB_MARSHAL,
+                  STUB_CALL_SERVER_NO_HRESULT) BIG;
+
+    PROXY_PHASE = (PROXY_CALCSIZE,
+                   PROXY_GETBUFFER,
+                   PROXY_MARSHAL,
+                   PROXY_SENDRECEIVE,
+                   PROXY_UNMARSHAL) BIG;
+
+PROCEDURE NdrStubCall(VAR pThis : IRpcStubBuffer;
+                      VAR pChannel : IRpcChannelBuffer;
+                      pRpcMsg : PRPC_MESSAGE;
+                      VAR pdwStubPhase : ULONG) : LONG;
+
+PROCEDURE NdrServerCall(pRpcMsg : PRPC_MESSAGE);
+
+PROCEDURE NdrServerUnmarshall(VAR pChannel : IRpcChannelBuffer;
+                              pRpcMsg : PRPC_MESSAGE;
+                              pStubMsg : PMIDL_STUB_MESSAGE;
+                              pStubDescriptor : PMIDL_STUB_DESC;
+                              pFormat : PFORMAT_STRING;
+                              pParamList : ADDRESS) : WINT;
+
+PROCEDURE NdrServerMarshall(VAR pThis : IRpcStubBuffer;
+                            VAR pChannel : IRpcChannelBuffer;
+                            pStubMsg : PMIDL_STUB_MESSAGE;
+                            pFormat : PFORMAT_STRING);
+
+PROCEDURE NdrMapCommAndFaultStatus(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   VAR pCommStatus : ULONG;
+                                   VAR pFaultStatus : ULONG;
+                                   Status : RPC_STATUS) : RPC_STATUS;
+
+PROCEDURE NdrSH_UPDecision(pStubMsg : PMIDL_STUB_MESSAGE;
+                           VAR pPtrInMem : ADDRESS;
+                           pBuffer : RPC_BUFPTR) : WINT;
+
+PROCEDURE NdrSH_TLUPDecision(pStubMsg : PMIDL_STUB_MESSAGE;
+                             VAR pPtrInMem : ADDRESS) : WINT;
+
+PROCEDURE NdrSH_TLUPDecisionBuffer(pStubMsg : PMIDL_STUB_MESSAGE;
+                                   VAR pPtrInMem : ADDRESS) : WINT;
+
+PROCEDURE NdrSH_IfAlloc(pStubMsg : PMIDL_STUB_MESSAGE;
+                        VAR pPtrInMem : ADDRESS;
+                        Count : ULONG) : WINT;
+
+PROCEDURE NdrSH_IfAllocRef(pStubMsg : PMIDL_STUB_MESSAGE;
+                           VAR pPtrInMem : ADDRESS;
+                           Count : ULONG) : WINT;
+
+PROCEDURE NdrSH_IfAllocSet(pStubMsg : PMIDL_STUB_MESSAGE;
+                           VAR pPtrInMem : ADDRESS;
+                           Count : ULONG) : WINT;
+
+PROCEDURE NdrSH_IfCopy(pStubMsg : PMIDL_STUB_MESSAGE;
+                       VAR pPtrInMem : ADDRESS;
+                       Count : ULONG) : RPC_BUFPTR;
+
+PROCEDURE NdrSH_IfAllocCopy(pStubMsg : PMIDL_STUB_MESSAGE;
+                            VAR pPtrInMem : ADDRESS;
+                            Count : ULONG) : RPC_BUFPTR;
+
+PROCEDURE NdrSH_Copy(VAR pStubMsg : ADDRESS;
+                     VAR pPtrInMem : ADDRESS;
+                     Count : ULONG) : ULONG;
+
+PROCEDURE NdrSH_IfFree(pMessage : PMIDL_STUB_MESSAGE;
+                       VAR pPtr : ADDRESS);
+
+PROCEDURE NdrSH_StringMarshall(pMessage : PMIDL_STUB_MESSAGE;
+                               VAR pMemory : ADDRESS;
+                               Count : ULONG;
+                               Size : WINT) : RPC_BUFPTR;
+
+PROCEDURE NdrSH_StringUnMarshall(pMessage : PMIDL_STUB_MESSAGE;
+                                 VAR pMemory : ADDRESS;
+                                 Size : WINT) : RPC_BUFPTR;
+
+TYPE
+    RPC_SS_THREAD_HANDLE = ADDRESS;
+
+
+
+TYPE
+    RPC_CLIENT_ALLOC    = PROCEDURE (size_t) : ADDRESS;
+    LPRPC_CLIENT_ALLOC  = POINTER TO RPC_CLIENT_ALLOC;
+
+    RPC_CLIENT_FREE     = PROCEDURE (ADDRESS);
+    LPRPC_CLIENT_FREE   = POINTER TO RPC_CLIENT_FREE;
+
+PROCEDURE RpcSsAllocate(Size : size_t) : ADDRESS;
+
+PROCEDURE RpcSsDisableAllocate();
+
+PROCEDURE RpcSsEnableAllocate();
+
+PROCEDURE RpcSsFree(NodeToFree : ADDRESS);
+
+PROCEDURE RpcSsGetThreadHandle() : RPC_SS_THREAD_HANDLE;
+
+PROCEDURE RpcSsSetClientAllocFree(ClientAlloc : RPC_CLIENT_ALLOC;
+                                  ClientFree : RPC_CLIENT_FREE);
+
+PROCEDURE RpcSsSetThreadHandle(Id : RPC_SS_THREAD_HANDLE);
+
+PROCEDURE RpcSsSwapClientAllocFree(ClientAlloc : RPC_CLIENT_ALLOC;
+                                   ClientFree : RPC_CLIENT_FREE;
+                                   VAR OldClientAlloc : LPRPC_CLIENT_ALLOC;
+                                   VAR OldClientFree : LPRPC_CLIENT_FREE);
+
+PROCEDURE RpcSmAllocate(Size : size_t;
+                        VAR pStatus : RPC_STATUS) : ADDRESS;
+
+PROCEDURE RpcSmClientFree(pNodeToFree : LPVOID) : RPC_STATUS;
+
+PROCEDURE RpcSmDestroyClientContext(VAR ContextHandle : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcSmDisableAllocate() : RPC_STATUS;
+
+PROCEDURE RpcSmEnableAllocate() : RPC_STATUS;
+
+PROCEDURE RpcSmFree(NodeToFree : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcSmGetThreadHandle(VAR pStatus : RPC_STATUS) : RPC_SS_THREAD_HANDLE;
+
+PROCEDURE RpcSmSetClientAllocFree(ClientAlloc : RPC_CLIENT_ALLOC;
+                                  ClientFree : RPC_CLIENT_FREE) : RPC_STATUS;
+
+PROCEDURE RpcSmSetThreadHandle(Id : RPC_SS_THREAD_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcSmSwapClientAllocFree(ClientAlloc : RPC_CLIENT_ALLOC;
+                                   ClientFree : RPC_CLIENT_FREE;
+                                   VAR OldClientAlloc : RPC_CLIENT_ALLOC;
+                                   VAR OldClientFree : RPC_CLIENT_FREE) : RPC_STATUS;
+
+PROCEDURE NdrRpcSsEnableAllocate(pMessage : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrRpcSsDisableAllocate(pMessage : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrRpcSmSetClientToOsf(pMessage : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrRpcSmClientAllocate(Size : size_t) : ADDRESS;
+
+PROCEDURE NdrRpcSmClientFree(NodeToFree : ADDRESS);
+
+PROCEDURE NdrRpcSsDefaultAllocate(Size : size_t) : ADDRESS;
+
+PROCEDURE NdrRpcSsDefaultFree(NodeToFree : ADDRESS);
+
+PROCEDURE NdrFullPointerXlatInit(NumberOfPointers : ULONG;
+                                 XlatSide : XLAT_SIDE) : PFULL_PTR_XLAT_TABLES;
+
+PROCEDURE NdrFullPointerXlatFree(pXlatTables : PFULL_PTR_XLAT_TABLES);
+
+PROCEDURE NdrFullPointerQueryPointer(pXlatTables : PFULL_PTR_XLAT_TABLES;
+                                     pPointer : ADDRESS;
+                                     QueryType : ACHAR;
+                                     VAR pRefId : ULONG) : WINT;
+
+PROCEDURE NdrFullPointerQueryRefId(pXlatTables : PFULL_PTR_XLAT_TABLES;
+                                   RefId : ULONG;
+                                   QueryType : ACHAR;
+                                   VAR ppPointer : ADDRESS) : WINT;
+
+PROCEDURE NdrFullPointerInsertRefId(pXlatTables : PFULL_PTR_XLAT_TABLES;
+                                    RefId : ULONG;
+                                    pPointer : ADDRESS);
+
+PROCEDURE NdrFullPointerFree(pXlatTables : PFULL_PTR_XLAT_TABLES;
+                             Pointer : ADDRESS) : WINT;
+
+PROCEDURE NdrAllocate(pStubMsg : PMIDL_STUB_MESSAGE;
+                      Len : size_t) : ADDRESS;
+
+PROCEDURE NdrClearOutParameters(pStubMsg : PMIDL_STUB_MESSAGE;
+                                pFormat : PFORMAT_STRING;
+                                ArgAddr : ADDRESS);
+
+PROCEDURE NdrOleAllocate(Size : size_t) : ADDRESS;
+
+PROCEDURE NdrOleFree(NodeToFree : ADDRESS);
+
+VAR
+    GUID_NULL  [%IF IA32 %THEN "_GUID_NULL" %ELSE "GUID_NULL" %END EXTERNAL] : GUID;
+    IID_NULL   [%IF IA32 %THEN "_GUID_NULL" %ELSE "GUID_NULL" %END EXTERNAL] : GUID;
+    CLSID_NULL [%IF IA32 %THEN "_GUID_NULL" %ELSE "GUID_NULL" %END EXTERNAL] : GUID;
+
+(*!!!
+TYPE
+    PCInterfaceName     = LPSTR;
+
+    IIDLookupRtn        = PROCEDURE (IID, VAR WINT) : WINT;
+    PIIDLookup          = IIDLookupRtn;
+
+    ProxyFileInfo = RECORD
+          pProxyVtblList : POINTER TO PCInterfaceProxyVtblList;
+          pStubVtblList  : POINTER TO PCInterfaceStubVtblList;
+          pNamesArray    : POINTER TO PCInterfaceName;
+          pDelegatedIIDs : POINTER TO IID;
+          pIIDLookupRtn  : PIIDLookup;
+          TableSize      : USHORT;
+          TableVersion   : USHORT;
+          Filler1        : ULONG;
+          Filler2        : ULONG;
+          Filler3        : ULONG;
+          Filler4        : ULONG;
+    END;
+    LPProxyFileInfo     = POINTER TO ProxyFileInfo;
+
+    ExtendedProxyFileInfo= ProxyFileInfo;
+
+    CInterfaceProxyHeader = RECORD
+          piid           : POINTER TO IID;
+    END;
+
+    CInterfaceProxyVtbl = RECORD
+        header  : CInterfaceProxyHeader;
+        Vtbl    : POINTER TO ARRAY [0..0] OF ADDRESS;
+    END;
+
+    PRPC_STUB_FUNCTION   = PROCEDURE (VAR IRpcStubBuffer,
+                                      VAR IRpcChannelBuffer,
+                                      PRPC_MESSAGE,
+                                      VAR DWORD);
+
+    CInterfaceStubHeader = RECORD
+          piid           : POINTER TO IID;
+          pServerInfo    : POINTER TO MIDL_SERVER_INFO;
+          DispatchTableCount: ULONG;
+          pDispatchTable : POINTER TO ARRAY [0..0] OF PRPC_STUB_FUNCTION;
+    END;
+
+    CInterfaceStubVtbl = RECORD
+        header  : CInterfaceStubHeader;
+        Vtbl    : IRpcStubBufferVtbl;
+    END;
+
+    CStdStubBuffer = RECORD
+          lpVtbl         : POINTER TO IRpcStubBufferVtbl;
+          RefCount       : LONG;
+          pvServerObject : POINTER TO IUnknown;
+    END;
+
+    CStdPSFactoryBuffer = RECORD
+          lpVtbl                : IPSFactoryBufferVtbl;
+          RefCount       : LONG;
+          pProxyFileList : POINTER TO POINTER TO ProxyFileInfo;
+          Filler1        : LONG;
+    END;
+    PCInterfaceStubVtblList     = POINTER TO CInterfaceStubVtbl;
+    PCInterfaceProxyVtblList    = POINTER TO CInterfaceProxyVtbl;
+*)
+
+PROCEDURE NdrProxyInitialize(This : ADDRESS;
+                             pRpcMsg : PRPC_MESSAGE;
+                             pStubMsg : PMIDL_STUB_MESSAGE;
+                             pStubDescriptor : PMIDL_STUB_DESC;
+                             ProcNum : DWORD);
+
+PROCEDURE NdrProxyGetBuffer(This : ADDRESS;
+                            pStubMsg : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrProxySendReceive(This : ADDRESS;
+                              VAR pStubMsg : MIDL_STUB_MESSAGE);
+
+PROCEDURE NdrProxyFreeBuffer(This : ADDRESS;
+                             VAR pStubMsg : MIDL_STUB_MESSAGE);
+
+PROCEDURE NdrProxyErrorHandler(dwExceptionCode : DWORD) : HRESULT;
+
+PROCEDURE NdrStubInitialize(pRpcMsg : PRPC_MESSAGE;
+                            pStubMsg : PMIDL_STUB_MESSAGE;
+                            pStubDescriptor : PMIDL_STUB_DESC;
+                            VAR pRpcChannelBuffer : IRpcChannelBuffer);
+
+PROCEDURE NdrStubForwardingFunction(VAR This : IRpcStubBuffer;
+                                    pChannel : IRpcChannelBuffer;
+                                    pmsg : PRPC_MESSAGE;
+                                    VAR pdwStubPhase : DWORD);
+
+PROCEDURE NdrStubGetBuffer(VAR This : IRpcStubBuffer;
+                           VAR pRpcChannelBuffer : IRpcChannelBuffer;
+                           pStubMsg : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrStubErrorHandler(dwExceptionCode : DWORD) : HRESULT;
+
+(*!!!
+PROCEDURE NdrDllGetClassObject(rclsid : REFCLSID;
+                               riid : REFIID;
+                               VAR ppv : ADDRESS;
+                               VAR pProxyFileList : LPProxyFileInfo;
+                               pclsid : CLSID;
+                               pPSFactoryBuffer : CStdPSFactoryBuffer) : HRESULT;
+
+PROCEDURE NdrDllCanUnloadNow(pPSFactoryBuffer : CStdPSFactoryBuffer) : HRESULT;
+
+PROCEDURE NdrDllRegisterProxy(hDll : HMODULE;
+                              VAR pProxyFileList : LPProxyFileInfo;
+                              pclsid : CLSID) : HRESULT;
+
+PROCEDURE NdrDllUnregisterProxy(hDll : HMODULE;
+                                VAR pProxyFileList : LPProxyFileInfo;
+                                pclsid : CLSID) : HRESULT;
+*)
+
+PROCEDURE RpcBindingCopy(SourceBinding : RPC_BINDING_HANDLE;
+                         VAR DestinationBinding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcBindingFree(VAR Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcBindingFromStringBindingA(StringBinding : ARRAY OF ACHAR;
+                                       VAR Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcBindingFromStringBindingW(VAR StringBinding : ARRAY OF UCHAR;
+                                       VAR Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcBindingFromStringBinding = RpcBindingFromStringBindingW;
+%ELSE
+PROCEDURE RpcBindingFromStringBinding = RpcBindingFromStringBindingA;
+%END
+
+PROCEDURE RpcBindingInqObject(Binding : RPC_BINDING_HANDLE;
+                              VAR ObjectUuid : UUID) : RPC_STATUS;
+
+PROCEDURE RpcBindingReset(Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcBindingSetObject(Binding : RPC_BINDING_HANDLE;
+                              VAR ObjectUuid : UUID) : RPC_STATUS;
+
+PROCEDURE RpcMgmtInqDefaultProtectLevel(AuthnSvc : ULONG;
+                                        VAR AuthnLevel : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcBindingToStringBindingA(Binding : RPC_BINDING_HANDLE;
+                                     VAR StringBinding : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcBindingToStringBindingW(Binding : RPC_BINDING_HANDLE;
+                                     VAR StringBinding : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcBindingToStringBinding = RpcBindingToStringBindingW;
+%ELSE
+PROCEDURE RpcBindingToStringBinding = RpcBindingToStringBindingA;
+%END
+
+PROCEDURE RpcBindingVectorFree(VAR BindingVector : LPRPC_BINDING_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcStringBindingComposeA(ObjUuid : ARRAY OF ACHAR;
+                                   Protseq : ARRAY OF ACHAR;
+                                   NetworkAddr : ARRAY OF ACHAR;
+                                   Endpoint : ARRAY OF ACHAR;
+                                   Options : ARRAY OF ACHAR;
+                                   VAR StringBinding : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcStringBindingComposeW(ObjUuid : ARRAY OF UCHAR;
+                                   Protseq : ARRAY OF UCHAR;
+                                   NetworkAddr : ARRAY OF UCHAR;
+                                   Endpoint : ARRAY OF UCHAR;
+                                   Options : ARRAY OF UCHAR;
+                                   VAR StringBinding : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcStringBindingCompose = RpcStringBindingComposeW;
+%ELSE
+PROCEDURE RpcStringBindingCompose = RpcStringBindingComposeA;
+%END
+
+PROCEDURE RpcStringBindingParseA(StringBinding : ARRAY OF ACHAR;
+                                 VAR ObjUuid : LPSTR;
+                                 VAR Protseq : LPSTR;
+                                 VAR NetworkAddr : LPSTR;
+                                 VAR Endpoint : LPSTR;
+                                 VAR Networkoptions : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcStringBindingParseW(StringBinding : ARRAY OF UCHAR;
+                                 VAR ObjUuid : LPWSTR;
+                                 VAR Protseq : LPWSTR;
+                                 VAR NetworkAddr : LPWSTR;
+                                 VAR Endpoint : LPWSTR;
+                                 NetworkOptions : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcStringBindingParse = RpcStringBindingParseW;
+%ELSE
+PROCEDURE RpcStringBindingParse = RpcStringBindingParseA;
+%END
+
+PROCEDURE RpcStringFreeA(VAR String : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcStringFreeW(VAR String : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcStringFree = RpcStringFreeW;
+%ELSE
+PROCEDURE RpcStringFree = RpcStringFreeA;
+%END
+
+PROCEDURE RpcIfInqId(RpcIfHandle : RPC_IF_HANDLE;
+                     VAR RpcIfId : RPC_IF_ID) : RPC_STATUS;
+
+PROCEDURE RpcNetworkIsProtseqValidA(Protseq : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNetworkIsProtseqValidW(Protseq : ARRAY OF UCHAR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNetworkIsProtseqValid = RpcNetworkIsProtseqValidW;
+%ELSE
+PROCEDURE RpcNetworkIsProtseqValid = RpcNetworkIsProtseqValidA;
+%END
+
+PROCEDURE RpcMgmtInqComTimeout(Binding : RPC_BINDING_HANDLE;
+                               VAR Timeout : DWORD) : RPC_STATUS;
+
+PROCEDURE RpcMgmtSetComTimeout(Binding : RPC_BINDING_HANDLE;
+                               Timeout : DWORD) : RPC_STATUS;
+
+PROCEDURE RpcMgmtSetCancelTimeout(Timeout : LONG) : RPC_STATUS;
+
+PROCEDURE RpcNetworkInqProtseqsA(VAR ProtseqVector : LPRPC_PROTSEQ_VECTORA) : RPC_STATUS;
+
+PROCEDURE RpcNetworkInqProtseqsW(VAR ProtseqVector : LPRPC_PROTSEQ_VECTORW) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNetworkInqProtseqs = RpcNetworkInqProtseqsW;
+%ELSE
+PROCEDURE RpcNetworkInqProtseqs = RpcNetworkInqProtseqsA;
+%END
+
+PROCEDURE RpcObjectInqType(ObjUuid : UUID;
+                           VAR TypeUuid : UUID) : RPC_STATUS;
+
+PROCEDURE RpcObjectSetInqFn(InquiryFn : RPC_OBJECT_INQ_FN) : RPC_STATUS;
+
+PROCEDURE RpcObjectSetType(VAR ObjUuid : UUID;
+                           TypeUuid : UUID) : RPC_STATUS;
+
+PROCEDURE RpcProtseqVectorFreeA(VAR ProtseqVector : LPRPC_PROTSEQ_VECTORA) : RPC_STATUS;
+
+PROCEDURE RpcProtseqVectorFreeW(VAR ProtseqVector : LPRPC_PROTSEQ_VECTORW) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcProtseqVectorFree = RpcProtseqVectorFreeW;
+%ELSE
+PROCEDURE RpcProtseqVectorFree = RpcProtseqVectorFreeA;
+%END
+
+PROCEDURE RpcServerInqBindings(VAR BindingVector : LPRPC_BINDING_VECTOR) : RPC_STATUS;
+
+
+PROCEDURE RpcServerInqIf(IfSpec : RPC_IF_HANDLE;
+                         MgrTypeUuid : UUID;
+                         VAR MgrEvp : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerListen(MinimumCallThreads : DWORD;
+                          MaxCalls : DWORD;
+                          DontWait : DWORD) : RPC_STATUS;
+
+PROCEDURE RpcServerRegisterIf(IfSpec : RPC_IF_HANDLE;
+                              MgrTypeUuid : UUID;
+                              MgrEpv : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUnregisterIf(IfSpec : RPC_IF_HANDLE;
+                                MgrTypeUuid : UUID;
+                                WaitForCallsToComplete : DWORD) : RPC_STATUS;
+
+PROCEDURE RpcServerUseAllProtseqs(MaxCalls : DWORD;
+                                  SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUseAllProtseqsIf(MaxCalls : DWORD;
+                                    IfSpec : RPC_IF_HANDLE;
+                                    SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUseProtseqA(Protseq : ARRAY OF ACHAR;
+                               MaxCalls : DWORD;
+                               SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUseProtseqW(Protseq : ARRAY OF UCHAR;
+                               MaxCalls : DWORD;
+                               SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcServerUseProtseq = RpcServerUseProtseqW;
+%ELSE
+PROCEDURE RpcServerUseProtseq = RpcServerUseProtseqA;
+%END
+
+PROCEDURE RpcServerUseProtseqEpA(Protseq : ARRAY OF ACHAR;
+                                 MaxCalls : DWORD;
+                                 Endpoint : ARRAY OF ACHAR;
+                                 SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUseProtseqEpW(Protseq : ARRAY OF UCHAR;
+                                 MaxCalls : DWORD;
+                                 Endpoint : ARRAY OF UCHAR;
+                                 SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcServerUseProtseqEp = RpcServerUseProtseqEpW;
+%ELSE
+PROCEDURE RpcServerUseProtseqEp = RpcServerUseProtseqEpA;
+%END
+
+PROCEDURE RpcServerUseProtseqIfA(Protseq : ARRAY OF ACHAR;
+                                 MaxCalls : DWORD;
+                                 IfSpec : RPC_IF_HANDLE;
+                                 SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerUseProtseqIfW(Protseq : ARRAY OF UCHAR;
+                                 MaxCalls : DWORD;
+                                 IfSpec : RPC_IF_HANDLE;
+                                 SecurityDescriptor : ADDRESS) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcServerUseProtseqIf = RpcServerUseProtseqIfW;
+%ELSE
+PROCEDURE RpcServerUseProtseqIf = RpcServerUseProtseqIfA;
+%END
+
+PROCEDURE RpcMgmtStatsVectorFree(VAR StatsVector : LPRPC_STATS_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcMgmtInqStats(Binding : RPC_BINDING_HANDLE;
+                          VAR Statistics : LPRPC_STATS_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcMgmtIsServerListening(Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcMgmtStopServerListening(Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcMgmtWaitServerListen() : RPC_STATUS;
+
+PROCEDURE RpcMgmtSetServerStackSize(ThreadStackSize : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcMgmtEnableIdleCleanup() : RPC_STATUS;
+
+PROCEDURE RpcMgmtInqIfIds(Binding : RPC_BINDING_HANDLE;
+                          VAR IfIdVector : LPRPC_IF_ID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcIfIdVectorFree(VAR IfIdVector : LPRPC_IF_ID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcMgmtInqServerPrincNameA(Binding : RPC_BINDING_HANDLE;
+                                     AuthnSvc : ULONG;
+                                     VAR ServerPrincName : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcMgmtInqServerPrincNameW(Binding : RPC_BINDING_HANDLE;
+                                     AuthnSvc : ULONG;
+                                     VAR ServerPrincName : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcMgmtInqServerPrincName = RpcMgmtInqServerPrincNameW;
+%ELSE
+PROCEDURE RpcMgmtInqServerPrincName = RpcMgmtInqServerPrincNameA;
+%END
+
+PROCEDURE RpcServerInqDefaultPrincNameA(AuthnSvc : ULONG;
+                                        VAR PrincName : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcServerInqDefaultPrincNameW(AuthnSvc : ULONG;
+                                        VAR PrincName : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcServerInqDefaultPrincName = RpcServerInqDefaultPrincNameW;
+%ELSE
+PROCEDURE RpcServerInqDefaultPrincName = RpcServerInqDefaultPrincNameA;
+%END
+
+PROCEDURE RpcEpResolveBinding(Binding : RPC_BINDING_HANDLE;
+                              IfSpec : RPC_IF_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingInqEntryNameA(Binding : RPC_BINDING_HANDLE;
+                                    EntryNameSyntax : ULONG;
+                                    VAR EntryName : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingInqEntryNameW(Binding : RPC_BINDING_HANDLE;
+                                    EntryNameSyntax : ULONG;
+                                    VAR EntryName : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNsBindingInqEntryName = RpcNsBindingInqEntryNameW;
+%ELSE
+PROCEDURE RpcNsBindingInqEntryName = RpcNsBindingInqEntryNameA;
+%END
+
+TYPE
+    RPC_AUTH_IDENTITY_HANDLE    = ADDRESS;
+    RPC_AUTHZ_HANDLE            = ADDRESS;
+
+CONST
+    RPC_C_AUTHN_LEVEL_DEFAULT           = 0;
+    RPC_C_AUTHN_LEVEL_NONE              = 1;
+    RPC_C_AUTHN_LEVEL_CONNECT           = 2;
+    RPC_C_AUTHN_LEVEL_CALL              = 3;
+    RPC_C_AUTHN_LEVEL_PKT               = 4;
+    RPC_C_AUTHN_LEVEL_PKT_INTEGRITY     = 5;
+    RPC_C_AUTHN_LEVEL_PKT_PRIVACY       = 6;
+
+    RPC_C_PROTECT_LEVEL_DEFAULT         = RPC_C_AUTHN_LEVEL_DEFAULT;
+    RPC_C_PROTECT_LEVEL_NONE            = RPC_C_AUTHN_LEVEL_NONE;
+    RPC_C_PROTECT_LEVEL_CONNECT         = RPC_C_AUTHN_LEVEL_CONNECT;
+    RPC_C_PROTECT_LEVEL_CALL            = RPC_C_AUTHN_LEVEL_CALL;
+    RPC_C_PROTECT_LEVEL_PKT             = RPC_C_AUTHN_LEVEL_PKT;
+    RPC_C_PROTECT_LEVEL_PKT_INTEGRITY   = RPC_C_AUTHN_LEVEL_PKT_INTEGRITY;
+    RPC_C_PROTECT_LEVEL_PKT_PRIVACY     = RPC_C_AUTHN_LEVEL_PKT_PRIVACY;
+
+    RPC_C_AUTHN_NONE                    = 0;
+    RPC_C_AUTHN_DCE_PRIVATE             = 1;
+    RPC_C_AUTHN_DCE_PUBLIC              = 2;
+    RPC_C_AUTHN_DEC_PUBLIC              = 4;
+    RPC_C_AUTHN_WINNT                   = 10;
+    RPC_C_AUTHN_DEFAULT                 = 0FFFFFFFFh;
+
+    SEC_WINNT_AUTH_IDENTITY_ANSI        = 1;
+    SEC_WINNT_AUTH_IDENTITY_UNICODE     = 2;
+
+TYPE
+
+    SEC_WINNT_AUTH_IDENTITY_W = RECORD
+        User            : LPWSTR;
+        UserLength      : ULONG;
+        Domain          : LPWSTR;
+        DomainLength    : ULONG;
+        Password        : LPWSTR;
+        PasswordLength  : ULONG;
+        Flags           : ULONG;
+    END;
+    PSEC_WINNT_AUTH_IDENTITY_W = POINTER TO SEC_WINNT_AUTH_IDENTITY_W;
+
+    SEC_WINNT_AUTH_IDENTITY_A = RECORD
+        User            : LPSTR;
+        UserLength      : ULONG;
+        Domain          : LPSTR;
+        DomainLength    : ULONG;
+        Password        : LPSTR;
+        PasswordLength  : ULONG;
+        Flags           : ULONG;
+    END;
+    PSEC_WINNT_AUTH_IDENTITY_A = POINTER TO SEC_WINNT_AUTH_IDENTITY_A;
+
+%IF UNICODE %THEN
+    SEC_WINNT_AUTH_IDENTITY = SEC_WINNT_AUTH_IDENTITY_W;
+    PSEC_WINNT_AUTH_IDENTITY    = SEC_WINNT_AUTH_IDENTITY_W;
+%ELSE
+    SEC_WINNT_AUTH_IDENTITY = SEC_WINNT_AUTH_IDENTITY_A;
+    PSEC_WINNT_AUTH_IDENTITY    = SEC_WINNT_AUTH_IDENTITY_A;
+%END
+
+CONST
+    RPC_C_AUTHZ_NONE     = 0;
+    RPC_C_AUTHZ_NAME     = 1;
+    RPC_C_AUTHZ_DCE      = 2;
+
+PROCEDURE RpcBindingInqAuthClientA(ClientBinding : RPC_BINDING_HANDLE;
+                                   VAR Privs : RPC_AUTHZ_HANDLE;
+                                   VAR ServerPrincName : LPSTR;
+                                   VAR AuthnLevel : ULONG;
+                                   VAR AuthnSvc : ULONG;
+                                   VAR AuthzSvc : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcBindingInqAuthClientW(ClientBinding : RPC_BINDING_HANDLE;
+                                   VAR Privs : RPC_AUTHZ_HANDLE;
+                                   VAR ServerPrincName : LPWSTR;
+                                   VAR AuthnLevel : ULONG;
+                                   VAR AuthnSvc : ULONG;
+                                   VAR AuthzSvc : ULONG) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcBindingInqAuthClient = RpcBindingInqAuthClientW;
+%ELSE
+PROCEDURE RpcBindingInqAuthClient = RpcBindingInqAuthClientA;
+%END
+
+PROCEDURE RpcBindingInqAuthInfoA(Binding : RPC_BINDING_HANDLE;
+                                 VAR ServerPrincName : LPSTR;
+                                 VAR AuthnLevel : ULONG;
+                                 VAR AuthnSvc : ULONG;
+                                 VAR AuthIdentity : RPC_AUTH_IDENTITY_HANDLE;
+                                 VAR AuthzSvc : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcBindingInqAuthInfoW(Binding : RPC_BINDING_HANDLE;
+                                 VAR ServerPrincName : LPWSTR;
+                                 VAR AuthnLevel : ULONG;
+                                 VAR AuthnSvc : ULONG;
+                                 VAR AuthIdentity : RPC_AUTH_IDENTITY_HANDLE;
+                                 VAR AuthzSvc : ULONG) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcBindingInqAuthInfo = RpcBindingInqAuthInfoW;
+%ELSE
+PROCEDURE RpcBindingInqAuthInfo = RpcBindingInqAuthInfoA;
+%END
+
+PROCEDURE RpcBindingSetAuthInfoA(Binding : RPC_BINDING_HANDLE;
+                                 ServerPrincName : ARRAY OF ACHAR;
+                                 AuthnLevel : ULONG;
+                                 AuthnSvc : ULONG;
+                                 AuthIdentity : RPC_AUTH_IDENTITY_HANDLE;
+                                 AuthzSvc : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcBindingSetAuthInfoW(Binding : RPC_BINDING_HANDLE;
+                                 ServerPrincName : ARRAY OF UCHAR;
+                                 AuthnLevel : ULONG;
+                                 AuthnSvc : ULONG;
+                                 AuthIdentity : RPC_AUTH_IDENTITY_HANDLE;
+                                 AuthzSvc : ULONG) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcBindingSetAuthInfo = RpcBindingSetAuthInfoW;
+%ELSE
+PROCEDURE RpcBindingSetAuthInfo = RpcBindingSetAuthInfoA;
+%END
+
+TYPE
+
+    RPC_AUTH_KEY_RETRIEVAL_FN   = PROCEDURE (ADDRESS,
+                                             ARRAY OF UCHAR,
+                                             ULONG,
+                                             VAR ADDRESS,
+                                             VAR RPC_STATUS);
+
+PROCEDURE RpcServerRegisterAuthInfoA(ServerPrincName : ARRAY OF ACHAR;
+                                     AuthnSvc : ULONG;
+                                     GetKeyFn : RPC_AUTH_KEY_RETRIEVAL_FN;
+                                     Arg : ADDRESS) : RPC_STATUS;
+
+PROCEDURE RpcServerRegisterAuthInfoW(ServerPrincName : ARRAY OF UCHAR;
+                                     AuthnSvc : ULONG;
+                                     GetKeyFn : RPC_AUTH_KEY_RETRIEVAL_FN;
+                                     Arg : ADDRESS) : RPC_STATUS;
+
+
+%IF UNICODE %THEN
+PROCEDURE RpcServerRegisterAuthInfo = RpcServerRegisterAuthInfoW;
+%ELSE
+PROCEDURE RpcServerRegisterAuthInfo = RpcServerRegisterAuthInfoA;
+%END
+
+TYPE
+    RPC_CLIENT_INFORMATION1 = RECORD
+          UserName       : POINTER TO ACHAR;
+          ComputerName   : POINTER TO ACHAR;
+          Privilege      : USHORT;
+          DUMMY1         : ARRAY [0..1] OF ACHAR;(*STONY BROOK*)
+          AuthFlags      : ULONG;
+    END;
+    PRPC_CLIENT_INFORMATION1    = POINTER TO RPC_CLIENT_INFORMATION1;
+
+
+PROCEDURE RpcBindingServerFromClient(ClientBinding : RPC_BINDING_HANDLE;
+                                     VAR ServerBinding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcRaiseException(exception : RPC_STATUS);
+
+PROCEDURE RpcTestCancel() : RPC_STATUS;
+
+PROCEDURE RpcCancelThread(Thread : ADDRESS) : RPC_STATUS;
+
+PROCEDURE UuidCreate(VAR Uuid : UUID) : RPC_STATUS;
+
+PROCEDURE UuidCreateSequential(VAR Uuid : UUID) : RPC_STATUS;
+
+PROCEDURE UuidToStringA(Uuid : UUID;
+                        VAR StringUuid : LPSTR) : RPC_STATUS;
+
+PROCEDURE UuidFromStringA(StringUuid : ARRAY OF ACHAR;
+                          VAR Uuid : UUID) : RPC_STATUS;
+
+PROCEDURE UuidToStringW(Uuid : UUID;
+                        VAR StringUuid : LPWSTR) : RPC_STATUS;
+
+PROCEDURE UuidFromStringW(StringUuid : ARRAY OF UCHAR;
+                          VAR Uuid : UUID) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE UuidToString = UuidToStringW;
+
+PROCEDURE UuidFromString = UuidFromStringW;
+
+%ELSE
+PROCEDURE UuidToString = UuidToStringA;
+
+PROCEDURE UuidFromString = UuidFromStringA;
+%END
+
+PROCEDURE UuidCompare(Uuid1 : UUID;
+                      Uuid2 : UUID;
+                      VAR Status : RPC_STATUS) : WINT;
+
+PROCEDURE UuidCreateNil(VAR NilUuid : UUID) : RPC_STATUS;
+
+PROCEDURE UuidEqual(Uuid1 : UUID;
+                    Uuid2 : UUID;
+                    VAR Status : RPC_STATUS) : WINT;
+
+PROCEDURE UuidHash(Uuid : UUID;
+                   VAR Status : RPC_STATUS) : USHORT;
+
+PROCEDURE UuidIsNil(Uuid : UUID;
+                    VAR Status : RPC_STATUS) : WINT;
+
+PROCEDURE RpcEpRegisterNoReplaceA(IfSpec : RPC_IF_HANDLE;
+                                  BindingVector : RPC_BINDING_VECTOR;
+                                  UuidVector : UUID_VECTOR;
+                                  Annotation : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcEpRegisterNoReplaceW(IfSpec : RPC_IF_HANDLE;
+                                  BindingVector : RPC_BINDING_VECTOR;
+                                  UuidVector : UUID_VECTOR;
+                                  Annotation : ARRAY OF UCHAR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcEpRegisterNoReplace = RpcEpRegisterNoReplaceW;
+%ELSE
+PROCEDURE RpcEpRegisterNoReplace = RpcEpRegisterNoReplaceA;
+%END
+
+PROCEDURE RpcEpRegisterA(IfSpec : RPC_IF_HANDLE;
+                         BindingVector : RPC_BINDING_VECTOR;
+                         UuidVector : UUID_VECTOR;
+                         Annotation : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcEpRegisterW(IfSpec : RPC_IF_HANDLE;
+                         BindingVector : RPC_BINDING_VECTOR;
+                         UuidVector : UUID_VECTOR;
+                         Annotation : ARRAY OF UCHAR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcEpRegister = RpcEpRegisterW;
+%ELSE
+PROCEDURE RpcEpRegister = RpcEpRegisterA;
+%END
+
+PROCEDURE RpcEpUnregister(IfSpec : RPC_IF_HANDLE;
+                          BindingVector : RPC_BINDING_VECTOR;
+                          UuidVector : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE DceErrorInqTextA(RpcStatus : RPC_STATUS;
+                           VAR ErrorText : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE DceErrorInqTextW(RpcStatus : RPC_STATUS;
+                           VAR ErrorText : ARRAY OF UCHAR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE DceErrorInqText = DceErrorInqTextW;
+%ELSE
+PROCEDURE DceErrorInqText = DceErrorInqTextA;
+%END
+
+CONST
+    DCE_C_ERROR_STRING_LEN      = 256;
+
+TYPE
+    RPC_EP_INQ_HANDLE           = POINTER TO I_RPC_HANDLE;
+
+CONST
+    RPC_C_EP_ALL_ELTS           = 0;
+    RPC_C_EP_MATCH_BY_IF        = 1;
+    RPC_C_EP_MATCH_BY_OBJ       = 2;
+    RPC_C_EP_MATCH_BY_BOTH      = 3;
+
+    RPC_C_VERS_ALL              = 1;
+    RPC_C_VERS_COMPATIBLE       = 2;
+    RPC_C_VERS_EXACT            = 3;
+    RPC_C_VERS_MAJOR_ONLY       = 4;
+    RPC_C_VERS_UPTO             = 5;
+
+PROCEDURE RpcMgmtEpEltInqBegin(EpBinding : RPC_BINDING_HANDLE;
+                               InquiryType : ULONG;
+                               IfId : RPC_IF_ID;
+                               VersOption : ULONG;
+                               ObjectUuid : UUID;
+                               VAR InquiryContext : RPC_EP_INQ_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcMgmtEpEltInqDone(VAR InquiryContext : RPC_EP_INQ_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcMgmtEpEltInqNextA(InquiryContext : RPC_EP_INQ_HANDLE;
+                               VAR IfId : RPC_IF_ID;
+                               VAR Binding : RPC_BINDING_HANDLE;
+                               VAR ObjectUuid : UUID;
+                               VAR Annotation : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcMgmtEpEltInqNextW(InquiryContext : RPC_EP_INQ_HANDLE;
+                               VAR IfId : RPC_IF_ID;
+                               VAR Binding : RPC_BINDING_HANDLE;
+                               VAR ObjectUuid : UUID;
+                               VAR Annotation : LPWSTR) : RPC_STATUS;
+%IF UNICODE %THEN
+PROCEDURE RpcMgmtEpEltInqNext = RpcMgmtEpEltInqNextW;
+%ELSE
+PROCEDURE RpcMgmtEpEltInqNext = RpcMgmtEpEltInqNextA;
+%END
+
+PROCEDURE RpcMgmtEpUnregister(EpBinding : RPC_BINDING_HANDLE;
+                              IfId : RPC_IF_ID;
+                              Binding : RPC_BINDING_HANDLE;
+                              ObjectUuid : UUID) : RPC_STATUS;
+
+
+TYPE
+    RPC_MGMT_AUTHORIZATION_FN = PROCEDURE (RPC_BINDING_HANDLE,
+                                           ULONG,
+                                           VAR RPC_STATUS) : WINT;
+
+CONST
+    RPC_C_MGMT_INQ_IF_IDS               = 0;
+    RPC_C_MGMT_INQ_PRINC_NAME           = 1;
+    RPC_C_MGMT_INQ_STATS                = 2;
+    RPC_C_MGMT_IS_SERVER_LISTEN         = 3;
+    RPC_C_MGMT_STOP_SERVER_LISTEN       = 4;
+
+PROCEDURE RpcMgmtSetAuthorizationFn(AuthorizationFn : RPC_MGMT_AUTHORIZATION_FN) : RPC_STATUS;
+
+TYPE
+
+PROCEDURE I_RpcGetBuffer(VAR Message : RPC_MESSAGE) : RPC_STATUS;
+
+PROCEDURE I_RpcSendReceive(VAR Message : RPC_MESSAGE) : RPC_STATUS;
+
+PROCEDURE I_RpcFreeBuffer(VAR Message : RPC_MESSAGE) : RPC_STATUS;
+
+TYPE
+    I_RPC_MUTEX          = ADDRESS;
+
+PROCEDURE I_RpcRequestMutex(VAR Mutex : I_RPC_MUTEX);
+
+PROCEDURE I_RpcClearMutex(Mutex : I_RPC_MUTEX);
+
+PROCEDURE I_RpcDeleteMutex(Mutex : I_RPC_MUTEX);
+
+PROCEDURE I_RpcAllocate(Size : DWORD) : ADDRESS;
+
+PROCEDURE I_RpcFree(Object : ADDRESS);
+
+PROCEDURE I_RpcPauseExecution(Milliseconds : ULONG);
+
+
+TYPE
+    PRPC_RUNDOWN         = PROCEDURE (ADDRESS);
+
+PROCEDURE I_RpcMonitorAssociation(Handle : RPC_BINDING_HANDLE;
+                                  RundownRoutine : PRPC_RUNDOWN;
+                                  Context : ADDRESS) : RPC_STATUS;
+
+PROCEDURE I_RpcStopMonitorAssociation(Handle : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE I_RpcGetCurrentCallHandle() : RPC_BINDING_HANDLE;
+
+PROCEDURE I_RpcGetAssociationContext(VAR AssociationContext : ADDRESS) : RPC_STATUS;
+
+PROCEDURE I_RpcSetAssociationContext(AssociationContext : ADDRESS) : RPC_STATUS;
+
+%IF WINNT %THEN
+PROCEDURE I_RpcNsBindingSetEntryName(Binding : RPC_BINDING_HANDLE;
+                                     EntryNameSyntax : ULONG;
+                                     EntryName : ARRAY OF UCHAR) : RPC_STATUS;
+%ELSE
+PROCEDURE I_RpcNsBindingSetEntryName(Binding : RPC_BINDING_HANDLE;
+                                     EntryNameSyntax : ULONG;
+                                     EntryName : ARRAY OF ACHAR) : RPC_STATUS;
+%END
+
+%IF WINNT %THEN
+PROCEDURE I_RpcBindingInqDynamicEndpoint(Binding : RPC_BINDING_HANDLE;
+                                         VAR DynamicEndpoint : LPWSTR) : RPC_STATUS;
+%ELSE
+PROCEDURE I_RpcBindingInqDynamicEndpoint(Binding : RPC_BINDING_HANDLE;
+                                         VAR DynamicEndpoint : LPSTR) : RPC_STATUS;
+%END
+
+CONST
+    TRANSPORT_TYPE_CN    = 01h;
+    TRANSPORT_TYPE_DG    = 02h;
+    TRANSPORT_TYPE_LPC   = 04h;
+    TRANSPORT_TYPE_WMSG  = 08h;
+
+PROCEDURE I_RpcBindingInqTransportType(Binding : RPC_BINDING_HANDLE;
+                                       VAR Type : DWORD) : RPC_STATUS;
+
+
+TYPE
+    RPC_TRANSFER_SYNTAX = RECORD
+          Uuid           : UUID;
+          VersMajor      : USHORT;
+          VersMinor      : USHORT;
+    END;
+
+PROCEDURE I_RpcIfInqTransferSyntaxes(RpcIfHandle : RPC_IF_HANDLE;
+                                     VAR TransferSyntaxes : RPC_TRANSFER_SYNTAX;
+                                     TransferSyntaxSize : DWORD;
+                                     VAR TransferSyntaxCount : DWORD) : RPC_STATUS;
+
+PROCEDURE I_UuidCreate(VAR Uuid : UUID) : RPC_STATUS;
+
+PROCEDURE I_RpcBindingCopy(SourceBinding : RPC_BINDING_HANDLE;
+                           VAR DestinationBinding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE I_RpcBindingIsClientLocal(BindingHandle : RPC_BINDING_HANDLE;
+                                    VAR ClientLocalFlag : DWORD) : RPC_STATUS;
+
+PROCEDURE I_RpcSsDontSerializeContext();
+
+PROCEDURE I_RpcServerRegisterForwardFunction(pForwardFunction : RPC_FORWARD_FUNCTION) : RPC_STATUS;
+
+PROCEDURE I_RpcConnectionInqSockBuffSize(VAR RecvBuffSize : ULONG;
+                                         VAR SendBuffSize : ULONG) : RPC_STATUS;
+
+PROCEDURE I_RpcConnectionSetSockBuffSize(RecvBuffSize : ULONG;
+                                         SendBuffSize : ULONG) : RPC_STATUS;
+
+TYPE
+    RPC_BLOCKING_FUNCTION       = PROCEDURE(ADDRESS, ADDRESS) : RPC_STATUS;
+
+PROCEDURE I_RpcBindingSetAsync(Binding : RPC_BINDING_HANDLE;
+                               BlockingHook : RPC_BLOCKING_FUNCTION) : RPC_STATUS;
+
+PROCEDURE I_RpcAsyncSendReceive(VAR Message : RPC_MESSAGE;
+                                Context : ADDRESS) : RPC_STATUS;
+
+PROCEDURE I_RpcGetThreadWindowHandle(VAR WindowHandle : ADDRESS) : RPC_STATUS;
+
+PROCEDURE I_RpcServerThreadPauseListening() : RPC_STATUS;
+
+PROCEDURE I_RpcServerThreadContinueListening() : RPC_STATUS;
+
+PROCEDURE I_RpcServerUnregisterEndpointA(Protseq : ARRAY OF ACHAR;
+                                         Endpoint : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE I_RpcServerUnregisterEndpointW(Protseq : ARRAY OF UCHAR;
+                                         Endpoint : ARRAY OF UCHAR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE I_RpcServerUnregisterEndpoint = I_RpcServerUnregisterEndpointW;
+%ELSE
+PROCEDURE I_RpcServerUnregisterEndpoint = I_RpcServerUnregisterEndpointA;
+%END
+
+CONST
+    RPC_C_NS_SYNTAX_DEFAULT     = 0;
+    RPC_C_NS_SYNTAX_DCE         = 3;
+
+    RPC_C_PROFILE_DEFAULT_ELT   = 0;
+    RPC_C_PROFILE_ALL_ELT       = 1;
+    RPC_C_PROFILE_MATCH_BY_IF   = 2;
+    RPC_C_PROFILE_MATCH_BY_MBR  = 3;
+    RPC_C_PROFILE_MATCH_BY_BOTH = 4;
+
+    RPC_C_NS_DEFAULT_EXP_AGE    = -1;
+
+PROCEDURE RpcNsBindingExportA(EntryNameSyntax : ULONG;
+                              EntryName : ARRAY OF ACHAR;
+                              IfSpec : RPC_IF_HANDLE;
+                              BindingVec : RPC_BINDING_VECTOR;
+                              ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingUnexportA(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF ACHAR;
+                                IfSpec : RPC_IF_HANDLE;
+                                ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingExportW(EntryNameSyntax : ULONG;
+                              EntryName : ARRAY OF UCHAR;
+                              IfSpec : RPC_IF_HANDLE;
+                              BindingVec : RPC_BINDING_VECTOR;
+                              ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingUnexportW(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF UCHAR;
+                                IfSpec : RPC_IF_HANDLE;
+                                ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+%IF UNICODE %THEN
+PROCEDURE RpcNsBindingExport = RpcNsBindingExportW;
+
+PROCEDURE RpcNsBindingUnexport = RpcNsBindingUnexportW;
+%ELSE
+PROCEDURE RpcNsBindingExport = RpcNsBindingExportA;
+
+PROCEDURE RpcNsBindingUnexport = RpcNsBindingUnexportA;
+%END
+
+PROCEDURE RpcNsBindingLookupBeginA(EntryNameSyntax : ULONG;
+                                   EntryName : ARRAY OF ACHAR;
+                                   IfSpec : RPC_IF_HANDLE;
+                                   ObjUuid : UUID;
+                                   BindingMaxCount : ULONG;
+                                   VAR LookupContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingLookupBeginW(EntryNameSyntax : ULONG;
+                                   EntryName : ARRAY OF UCHAR;
+                                   IfSpec : RPC_IF_HANDLE;
+                                   VAR ObjUuid : UUID;
+                                   BindingMaxCount : ULONG;
+                                   VAR LookupContext : RPC_NS_HANDLE) : RPC_STATUS;
+%IF UNICODE %THEN
+PROCEDURE RpcNsBindingLookupBegin = RpcNsBindingLookupBeginW;
+%ELSE
+PROCEDURE RpcNsBindingLookupBegin = RpcNsBindingLookupBeginA;
+%END
+
+PROCEDURE RpcNsBindingLookupNext(LookupContext : RPC_NS_HANDLE;
+                                 VAR BindingVec : LPRPC_BINDING_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingLookupDone(VAR LookupContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupDeleteA(GroupNameSyntax : ULONG;
+                            GroupName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrAddA(GroupNameSyntax : ULONG;
+                            GroupName : ARRAY OF ACHAR;
+                            MemberNameSyntax : ULONG;
+                            MemberName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrRemoveA(GroupNameSyntax : ULONG;
+                               GroupName : ARRAY OF ACHAR;
+                               MemberNameSyntax : ULONG;
+                               MemberName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrInqBeginA(GroupNameSyntax : ULONG;
+                                 GroupName : ARRAY OF ACHAR;
+                                 MemberNameSyntax : ULONG;
+                                 VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrInqNextA(InquiryContext : RPC_NS_HANDLE;
+                                VAR MemberName : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupDeleteW(GroupNameSyntax : ULONG;
+                            GroupName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrAddW(GroupNameSyntax : ULONG;
+                            GroupName : ARRAY OF UCHAR;
+                            MemberNameSyntax : ULONG;
+                            MemberName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrRemoveW(GroupNameSyntax : ULONG;
+                               GroupName : ARRAY OF UCHAR;
+                               MemberNameSyntax : ULONG;
+                               MemberName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrInqBeginW(GroupNameSyntax : ULONG;
+                                 GroupName : ARRAY OF UCHAR;
+                                 MemberNameSyntax : ULONG;
+                                 VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsGroupMbrInqNextW(InquiryContext : RPC_NS_HANDLE;
+                                VAR MemberName : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNsGroupDelete = RpcNsGroupDeleteW;
+
+PROCEDURE RpcNsGroupMbrAdd = RpcNsGroupMbrAddW;
+
+PROCEDURE RpcNsGroupMbrRemove = RpcNsGroupMbrRemoveW;
+
+PROCEDURE RpcNsGroupMbrInqBegin = RpcNsGroupMbrInqBeginW;
+
+PROCEDURE RpcNsGroupMbrInqNext = RpcNsGroupMbrInqNextW;
+%ELSE
+PROCEDURE RpcNsGroupDelete = RpcNsGroupDeleteA;
+
+PROCEDURE RpcNsGroupMbrAdd = RpcNsGroupMbrAddA;
+
+PROCEDURE RpcNsGroupMbrRemove = RpcNsGroupMbrRemoveA;
+
+PROCEDURE RpcNsGroupMbrInqBegin = RpcNsGroupMbrInqBeginA;
+
+PROCEDURE RpcNsGroupMbrInqNext = RpcNsGroupMbrInqNextA;
+%END
+
+PROCEDURE RpcNsGroupMbrInqDone(VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileDeleteA(ProfileNameSyntax : ULONG;
+                              ProfileName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltAddA(ProfileNameSyntax : ULONG;
+                              ProfileName : ARRAY OF ACHAR;
+                              IfId : RPC_IF_ID;
+                              MemberNameSyntax : ULONG;
+                              MemberName : ARRAY OF ACHAR;
+                              Priority : ULONG;
+                              Annotation : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltRemoveA(ProfileNameSyntax : ULONG;
+                                 ProfileName : ARRAY OF ACHAR;
+                                 IfId : RPC_IF_ID;
+                                 MemberNameSyntax : ULONG;
+                                 MemberName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltInqBeginA(ProfileNameSyntax : ULONG;
+                                   ProfileName : ARRAY OF ACHAR;
+                                   InquiryType : ULONG;
+                                   IfId : RPC_IF_ID;
+                                   VersOption : ULONG;
+                                   MemberNameSyntax : ULONG;
+                                   MemberName : ARRAY OF ACHAR;
+                                   VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltInqNextA(InquiryContext : RPC_NS_HANDLE;
+                                  VAR IfId : RPC_IF_ID;
+                                  VAR MemberName : LPSTR;
+                                  VAR Priority : ULONG;
+                                  VAR Annotation : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileDeleteW(ProfileNameSyntax : ULONG;
+                              ProfileName : LPWSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltAddW(ProfileNameSyntax : ULONG;
+                              ProfileName : ARRAY OF UCHAR;
+                              IfId : RPC_IF_ID;
+                              MemberNameSyntax : ULONG;
+                              MemberName : ARRAY OF UCHAR;
+                              Priority : ULONG;
+                              Annotation : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltRemoveW(ProfileNameSyntax : ULONG;
+                                 ProfileName : ARRAY OF UCHAR;
+                                 IfId : RPC_IF_ID;
+                                 MemberNameSyntax : ULONG;
+                                 MemberName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltInqBeginW(ProfileNameSyntax : ULONG;
+                                   ProfileName : ARRAY OF UCHAR;
+                                   InquiryType : ULONG;
+                                   IfId : RPC_IF_ID;
+                                   VersOption : ULONG;
+                                   MemberNameSyntax : ULONG;
+                                   MemberName : ARRAY OF UCHAR;
+                                   VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsProfileEltInqNextW(InquiryContext : RPC_NS_HANDLE;
+                                  VAR IfId : RPC_IF_ID;
+                                  VAR MemberName : LPWSTR;
+                                  VAR Priority : ULONG;
+                                  VAR Annotation : LPWSTR) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNsProfileDelete = RpcNsProfileDeleteW;
+
+PROCEDURE RpcNsProfileEltAdd = RpcNsProfileEltAddW;
+
+PROCEDURE RpcNsProfileEltRemove = RpcNsProfileEltRemoveW;
+
+PROCEDURE RpcNsProfileEltInqBegin = RpcNsProfileEltInqBeginW;
+
+PROCEDURE RpcNsProfileEltInqNext = RpcNsProfileEltInqNextW;
+%ELSE
+PROCEDURE RpcNsProfileDelete = RpcNsProfileDeleteA;
+
+PROCEDURE RpcNsProfileEltAdd = RpcNsProfileEltAddA;
+
+PROCEDURE RpcNsProfileEltRemove = RpcNsProfileEltRemoveA;
+
+PROCEDURE RpcNsProfileEltInqBegin = RpcNsProfileEltInqBeginA;
+
+PROCEDURE RpcNsProfileEltInqNext = RpcNsProfileEltInqNextA;
+%END
+
+PROCEDURE RpcNsProfileEltInqDone(VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsEntryObjectInqBeginA(EntryNameSyntax : ULONG;
+                                    EntryName : ARRAY OF ACHAR;
+                                    VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsEntryObjectInqBeginW(EntryNameSyntax : ULONG;
+                                    VAR EntryName : ARRAY OF UCHAR;
+                                    VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNsEntryObjectInqBegin = RpcNsEntryObjectInqBeginW;
+%ELSE
+PROCEDURE RpcNsEntryObjectInqBegin = RpcNsEntryObjectInqBeginA;
+%END
+
+PROCEDURE RpcNsEntryObjectInqNext(InquiryContext : RPC_NS_HANDLE;
+                                  VAR ObjUuid : UUID) : RPC_STATUS;
+
+PROCEDURE RpcNsEntryObjectInqDone(VAR InquiryContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsEntryExpandNameA(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF ACHAR;
+                                VAR ExpandedName : LPSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtBindingUnexportA(EntryNameSyntax : ULONG;
+                                    EntryName : ARRAY OF ACHAR;
+                                    IfId : RPC_IF_ID;
+                                    VersOption : ULONG;
+                                    ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryCreateA(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryDeleteA(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF ACHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryInqIfIdsA(EntryNameSyntax : ULONG;
+                                  EntryName : ARRAY OF ACHAR;
+                                  VAR IfIdVec : LPRPC_IF_ID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingImportBeginA(EntryNameSyntax : ULONG;
+                                   EntryName : ARRAY OF ACHAR;
+                                   IfSpec : RPC_IF_HANDLE;
+                                   ObjUuid : UUID;
+                                   VAR ImportContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsEntryExpandNameW(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF UCHAR;
+                                VAR ExpandedName : LPWSTR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtBindingUnexportW(EntryNameSyntax : ULONG;
+                                    EntryName : ARRAY OF UCHAR;
+                                    IfId : RPC_IF_ID;
+                                    VersOption : ULONG;
+                                    ObjectUuidVec : UUID_VECTOR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryCreateW(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryDeleteW(EntryNameSyntax : ULONG;
+                                EntryName : ARRAY OF UCHAR) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtEntryInqIfIdsW(EntryNameSyntax : ULONG;
+                                  EntryName : ARRAY OF UCHAR;
+                                  VAR IfIdVec : LPRPC_IF_ID_VECTOR) : RPC_STATUS;
+
+
+PROCEDURE RpcNsBindingImportBeginW(EntryNameSyntax : ULONG;
+                                   EntryName : ARRAY OF UCHAR;
+                                   IfSpec : RPC_IF_HANDLE;
+                                   ObjUuid : UUID;
+                                   VAR ImportContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+%IF UNICODE %THEN
+PROCEDURE RpcNsEntryExpandName = RpcNsEntryExpandNameW;
+
+PROCEDURE RpcNsMgmtBindingUnexport = RpcNsMgmtBindingUnexportW;
+
+PROCEDURE RpcNsMgmtEntryCreate = RpcNsMgmtEntryCreateW;
+
+PROCEDURE RpcNsMgmtEntryDelete = RpcNsMgmtEntryDeleteW;
+
+PROCEDURE RpcNsMgmtEntryInqIfIds = RpcNsMgmtEntryInqIfIdsW;
+
+PROCEDURE RpcNsBindingImportBegin = RpcNsBindingImportBeginW;
+%ELSE
+PROCEDURE RpcNsEntryExpandName = RpcNsEntryExpandNameA;
+
+PROCEDURE RpcNsMgmtBindingUnexport = RpcNsMgmtBindingUnexportA;
+
+PROCEDURE RpcNsMgmtEntryCreate = RpcNsMgmtEntryCreateA;
+
+PROCEDURE RpcNsMgmtEntryDelete = RpcNsMgmtEntryDeleteA;
+
+PROCEDURE RpcNsMgmtEntryInqIfIds = RpcNsMgmtEntryInqIfIdsA;
+
+PROCEDURE RpcNsBindingImportBegin = RpcNsBindingImportBeginA;
+%END
+
+PROCEDURE RpcNsMgmtHandleSetExpAge(NsHandle : RPC_NS_HANDLE;
+                                   ExpirationAge : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtInqExpAge(VAR ExpirationAge : ULONG) : RPC_STATUS;
+
+PROCEDURE RpcNsMgmtSetExpAge(ExpirationAge : ULONG) : RPC_STATUS;
+
+
+PROCEDURE RpcNsBindingImportNext(ImportContext : RPC_NS_HANDLE;
+                                 VAR Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingImportDone(VAR ImportContext : RPC_NS_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcNsBindingSelect(VAR BindingVec : RPC_BINDING_VECTOR;
+                             VAR Binding : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+CONST
+    RPC_S_OK                          = ERROR_SUCCESS;
+    RPC_S_INVALID_ARG                 = ERROR_INVALID_PARAMETER;
+    RPC_S_OUT_OF_MEMORY               = ERROR_OUTOFMEMORY;
+    RPC_S_OUT_OF_THREADS              = ERROR_MAX_THRDS_REACHED;
+    RPC_S_INVALID_LEVEL               = ERROR_INVALID_PARAMETER;
+    RPC_S_BUFFER_TOO_SMALL            = ERROR_INSUFFICIENT_BUFFER;
+    RPC_S_INVALID_SECURITY_DESC       = ERROR_INVALID_SECURITY_DESCR;
+    RPC_S_ACCESS_DENIED               = ERROR_ACCESS_DENIED;
+    RPC_S_SERVER_OUT_OF_MEMORY        = ERROR_NOT_ENOUGH_SERVER_MEMORY;
+
+    RPC_X_NO_MEMORY                   = RPC_S_OUT_OF_MEMORY;
+    RPC_X_INVALID_BOUND               = RPC_S_INVALID_BOUND;
+    RPC_X_INVALID_TAG                 = RPC_S_INVALID_TAG;
+    RPC_X_ENUM_VALUE_TOO_LARGE        = RPC_X_ENUM_VALUE_OUT_OF_RANGE;
+    RPC_X_SS_CONTEXT_MISMATCH         = ERROR_INVALID_HANDLE;
+    RPC_X_INVALID_BUFFER              = ERROR_INVALID_USER_BUFFER;
+
+PROCEDURE RpcImpersonateClient(BindingHandle : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcRevertToSelfEx(BindingHandle : RPC_BINDING_HANDLE) : RPC_STATUS;
+
+PROCEDURE RpcRevertToSelf() : RPC_STATUS;
+
+PROCEDURE I_RpcMapWin32Status(Status : RPC_STATUS) : LONG;
+
+END RPC.

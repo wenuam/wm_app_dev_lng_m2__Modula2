@@ -1,0 +1,67 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Timers;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+TYPE
+    TimerProc   = PROCEDURE((*timerId:*)CARDINAL, (*data:*)ADDRESS);
+                  (*
+                    the parameter is the timerId value passed to the
+                    CreateTimer procedure.
+                  *)
+
+    Timers      = (StandardTimer, HighResTimer);
+
+PROCEDURE CreateTimer(proc : TimerProc;
+                      data : ADDRESS;(*data parameter of timer callback*)
+                      timerId : CARDINAL;
+                      interval : CARDINAL;
+                      timer : Timers) : BOOLEAN;
+(*
+  create a new timer.
+  returns TRUE if successfull.
+
+  proc = the timer procedure to receive the timer event.
+  timerId = a unique value to identify the timer. this value is passed to
+            your timer callback procedure.
+  interval = the rate of timer events in milliseconds.
+  timer = the type of timer.
+
+  StandardTimer = this timer has a resolution of about 10ms. The exact resolution
+                  depends on the operating system timer tick resolution.
+                  This means that if your timer interval is 100ms you will receive
+                  the timer event between 100-110ms.
+                  this is a simple timer and does not burden and/or add
+                  to the overhead of the system.
+
+  HighResTimer = this timer, if available, can have a resolution up to 1ms. it
+                 might increase the burden/overhead on the operating system.
+                 On Unix systems this timer may be available only to processes running
+                 with root priviledges.
+                 The resolution of the HighResTimer is undefined and depends on
+                 the underlying system. You can expect 1ms capability.
+                 On Windows the resolution is 1/3 the timer interval or 10ms,
+                 whichever is smaller. Never less than 1ms.
+
+  Of course you may not receive timer events at precise intervals, even beyond the
+  timer resolution. This is because on a multi-tasking operating system no
+  guarantees are made as to system event scheduling.
+
+  On Solaris this module uses the following signals
+  SIGRTMIN, SIGRTMIN+1, SIGRTMIN+2
+*)
+
+PROCEDURE DestroyTimer(timerId : CARDINAL);
+(*
+  stop a previously created timer.
+*)
+
+END Timers.

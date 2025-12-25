@@ -1,0 +1,333 @@
+UNSAFEGUARDED DEFINITION MODULE WinCodecSDK;
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2019, ADW Software. All rights reserved. *)
+
+FROM SYSTEM IMPORT
+	ADDRESS;
+
+FROM WIN32 IMPORT
+	GUID, REFGUID, IID, ULARGE_INTEGER, ULONG, UINT, BOOL, DWORD, HRESULT;
+
+FROM OOle2 IMPORT
+    IUnknown, IStream, IPersistStream, IEnumUnknown;
+
+FROM PropIdl IMPORT
+	PROPVARIANT;
+
+FROM OCIdl IMPORT
+	IPropertyBag2;
+
+FROM WinCodec IMPORT
+	IWICEnumMetadataItem, IWICComponentInfo, IWICMetadataQueryWriter, IWICMetadataQueryReader,
+	IWICImagingFactory;
+
+<*/CALLS:WINDOWSCALL/DLLDEF/Foreign*>
+<*/NOHIGH/ENUMSIZE:BIG*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+	GUID_MetadataFormatUnknown					= GUID {0A45E592FH, 09078H, 04A7CH, {0ADH,0B5H,04EH,0DCH,04FH,0D6H,01BH,01FH}};
+	GUID_MetadataFormatIfd						= GUID {0537396C6H, 02D8AH, 04BB6H, {09BH,0F8H,02FH,00AH,08EH,02AH,03AH,0DFH}};
+	GUID_MetadataFormatSubIfd					= GUID {058A2E128H, 02DB9H, 04E57H, {0BBH,014H,051H,077H,089H,01EH,0D3H,031H}};
+	GUID_MetadataFormatExif						= GUID {01C3C4F9DH, 0B84AH, 0467DH, {094H,093H,036H,0CFH,0BDH,059H,0EAH,057H}};
+	GUID_MetadataFormatGps						= GUID {07134AB8AH, 09351H, 044ADH, {0AFH,062H,044H,08DH,0B6H,0B5H,002H,0ECH}};
+	GUID_MetadataFormatInterop					= GUID {0ED686F8EH, 0681FH, 04C8BH, {0BDH,041H,0A8H,0ADH,0DBH,0F6H,0B3H,0FCH}};
+	GUID_MetadataFormatApp0						= GUID {079007028H, 0268DH, 045d6H, {0A3H,0C2H,035H,04EH,06AH,050H,04BH,0C9H}};
+	GUID_MetadataFormatApp1						= GUID {08FD3DFC3H, 0F951H, 0492BH, {081H,07FH,069H,0C2H,0E6H,0D9H,0A5H,0B0H}};
+	GUID_MetadataFormatApp13					= GUID {0326556A2H, 0F502H, 04354H, {09CH,0C0H,08EH,03FH,048H,0EAH,0F6H,0B5H}};
+	GUID_MetadataFormatIPTC						= GUID {04FAB0914H, 0E129H, 04087H, {0A1H,0D1H,0BCH,081H,02DH,045H,0A7H,0B5H}};
+	GUID_MetadataFormatIRB						= GUID {016100D66H, 08570H, 04BB9H, {0B9H,02DH,0FDH,0A4H,0B2H,03EH,0CEH,067H}};
+	GUID_MetadataFormat8BIMIPTC					= GUID {00010568cH, 00852H, 04e6aH, {0b1H,091H,05cH,033H,0acH,05bH,004H,030H}};
+	GUID_MetadataFormat8BIMResolutionInfo		= GUID {0739F305DH, 081DBH, 043CBH, {0ACH,05EH,055H,001H,03EH,0F9H,0F0H,003H}};
+	GUID_MetadataFormat8BIMIPTCDigest			= GUID {01CA32285H, 09CCDH, 04786H, {08BH,0D8H,079H,053H,09DH,0B6H,0A0H,006H}};
+	GUID_MetadataFormatXMP						= GUID {0BB5ACC38H, 0F216H, 04CECH, {0A6H,0C5H,05FH,06EH,073H,097H,063H,0A9H}};
+	GUID_MetadataFormatThumbnail				= GUID {0243dcee9H, 08703H, 040eeH, {08eH,0f0H,022H,0a6H,000H,0b8H,005H,08cH}};
+	GUID_MetadataFormatChunktEXt				= GUID {0568d8936H, 0c0a9H, 04923H, {090H,05dH,0dfH,02bH,038H,023H,08fH,0bcH}};
+	GUID_MetadataFormatXMPStruct				= GUID {022383CF1H, 0ED17H, 04E2EH, {0AFH,017H,0D8H,05BH,08FH,06BH,030H,0D0H}};
+	GUID_MetadataFormatXMPBag					= GUID {0833CCA5FH, 0DCB7H, 04516H, {080H,06FH,065H,096H,0ABH,026H,0DCH,0E4H}};
+	GUID_MetadataFormatXMPSeq					= GUID {063E8DF02H, 0EB6CH, 0456CH, {0A2H,024H,0B2H,05EH,079H,04FH,0D6H,048H}};
+	GUID_MetadataFormatXMPAlt					= GUID {07B08A675H, 091AAH, 0481BH, {0A7H,098H,04DH,0A9H,049H,008H,061H,03BH}};
+	GUID_MetadataFormatLSD						= GUID {0E256031EH, 06299H, 04929H, {0B9H,08DH,05AH,0C8H,084H,0AFH,0BAH,092H}};
+	GUID_MetadataFormatIMD						= GUID {0BD2BB086H, 04D52H, 048DDH, {096H,077H,0DBH,048H,03EH,085H,0AEH,08FH}};
+	GUID_MetadataFormatGCE						= GUID {02A25CAD8H, 0DEEBH, 04C69H, {0A7H,088H,00EH,0C2H,026H,06DH,0CAH,0FDH}};
+	GUID_MetadataFormatAPE						= GUID {02E043DC2H, 0C967H, 04E05H, {087H,05EH,061H,08BH,0F6H,07EH,085H,0C3H}};
+	GUID_MetadataFormatJpegChrominance			= GUID {0F73D0DCFH, 0CEC6H, 04F85H, {09BH,00EH,01CH,039H,056H,0B1H,0BEH,0F7H}};
+	GUID_MetadataFormatJpegLuminance			= GUID {086908007H, 0EDFCH, 04860H, {08DH,04BH,04EH,0E6H,0E8H,03EH,060H,058H}};
+	GUID_MetadataFormatJpegComment				= GUID {0220E5F33H, 0AFD3H, 0474EH, {09DH,031H,07DH,04FH,0E7H,030H,0F5H,057H}};
+	GUID_MetadataFormatGifComment				= GUID {0C4B6E0E0H, 0CFB4H, 04AD3H, {0ABH,033H,09AH,0ADH,023H,055H,0A3H,04AH}};
+	GUID_MetadataFormatChunkgAMA				= GUID {0F00935A5H, 01D5DH, 04CD1H, {081H,0B2H,093H,024H,0D7H,0ECH,0A7H,081H}};
+	GUID_MetadataFormatChunkbKGD				= GUID {0E14D3571H, 06B47H, 04DEAH, {0B6H,00AH,087H,0CEH,00AH,078H,0DFH,0B7H}};
+	GUID_MetadataFormatChunkiTXt				= GUID {0C2BEC729H, 00B68H, 04B77H, {0AAH,00EH,062H,095H,0A6H,0ACH,018H,014H}};
+	GUID_MetadataFormatChunkcHRM				= GUID {09DB3655BH, 02842H, 044B3H, {080H,067H,012H,0E9H,0B3H,075H,055H,06AH}};
+	GUID_MetadataFormatChunkhIST				= GUID {0C59A82DAH, 0DB74H, 048A4H, {0BDH,06AH,0B6H,09CH,049H,031H,0EFH,095H}};
+	GUID_MetadataFormatChunkiCCP				= GUID {0EB4349ABH, 0B685H, 0450FH, {091H,0B5H,0E8H,002H,0E8H,092H,053H,06CH}};
+	GUID_MetadataFormatChunksRGB				= GUID {0C115FD36H, 0CC6FH, 04E3FH, {083H,063H,052H,04BH,087H,0C6H,0B0H,0D9H}};
+	GUID_MetadataFormatChunktIME				= GUID {06B00AE2DH, 0E24BH, 0460AH, {098H,0B6H,087H,08BH,0D0H,030H,072H,0FDH}};
+	CLSID_WICUnknownMetadataReader				= GUID {0699745c2H, 05066H, 04b82H, {0a8H,0e3H,0d4H,004H,078H,0dbH,0ecH,08cH}};
+	CLSID_WICUnknownMetadataWriter				= GUID {0a09cca86H, 027baH, 04f39H, {090H,053H,012H,01fH,0a4H,0dcH,008H,0fcH}};
+	CLSID_WICApp0MetadataWriter					= GUID {0F3C633A2H, 046C8H, 0498eH, {08FH,0BBH,0CCH,06FH,072H,01BH,0BCH,0DEH}};
+	CLSID_WICApp0MetadataReader					= GUID {043324B33H, 0A78FH, 0480fH, {091H,011H,096H,038H,0AAH,0CCH,0C8H,032H}};
+	CLSID_WICApp1MetadataWriter					= GUID {0ee366069H, 01832H, 0420fH, {0b3H,081H,004H,079H,0adH,006H,06fH,019H}};
+	CLSID_WICApp1MetadataReader					= GUID {0dde33513H, 0774eH, 04bcdH, {0aeH,079H,002H,0f4H,0adH,0feH,062H,0fcH}};
+	CLSID_WICApp13MetadataWriter				= GUID {07B19A919H, 0A9D6H, 049E5H, {0BDH,045H,002H,0C3H,04EH,04EH,04CH,0D5H}};
+	CLSID_WICApp13MetadataReader				= GUID {0AA7E3C50H, 0864CH, 04604H, {0BCH,004H,08BH,00BH,076H,0E6H,037H,0F6H}};
+	CLSID_WICIfdMetadataReader					= GUID {08f914656H, 09d0aH, 04eb2H, {090H,019H,00bH,0f9H,06dH,08aH,09eH,0e6H}};
+	CLSID_WICIfdMetadataWriter					= GUID {0b1ebfc28H, 0c9bdH, 047a2H, {08dH,033H,0b9H,048H,076H,097H,077H,0a7H}};
+	CLSID_WICSubIfdMetadataReader				= GUID {050D42F09H, 0ECD1H, 04B41H, {0B6H,05DH,0DAH,01FH,0DAH,0A7H,056H,063H}};
+	CLSID_WICSubIfdMetadataWriter				= GUID {08ADE5386H, 08E9BH, 04F4CH, {0ACH,0F2H,0F0H,000H,087H,006H,0B2H,038H}};
+	CLSID_WICExifMetadataReader					= GUID {0d9403860H, 0297fH, 04a49H, {0bfH,09bH,077H,089H,081H,050H,0a4H,042H}};
+	CLSID_WICExifMetadataWriter					= GUID {0c9a14cdaH, 0c339H, 0460bH, {090H,078H,0d4H,0deH,0bcH,0faH,0beH,091H}};
+	CLSID_WICGpsMetadataReader					= GUID {03697790BH, 0223BH, 0484EH, {099H,025H,0C4H,086H,092H,018H,0F1H,07AH}};
+	CLSID_WICGpsMetadataWriter					= GUID {0CB8C13E4H, 062B5H, 04C96H, {0A4H,08BH,06BH,0A6H,0ACH,0E3H,09CH,076H}};
+	CLSID_WICInteropMetadataReader				= GUID {0B5C8B898H, 00074H, 0459FH, {0B7H,000H,086H,00DH,046H,051H,0EAH,014H}};
+	CLSID_WICInteropMetadataWriter				= GUID {0122EC645H, 0CD7EH, 044D8H, {0B1H,086H,02CH,08CH,020H,0C3H,0B5H,00FH}};
+	CLSID_WICThumbnailMetadataReader			= GUID {0fb012959H, 0f4f6H, 044d7H, {09dH,009H,0daH,0a0H,087H,0a9H,0dbH,057H}};
+	CLSID_WICThumbnailMetadataWriter			= GUID {0d049b20cH, 05dd0H, 044feH, {0b0H,0b3H,08fH,092H,0c8H,0e6H,0d0H,080H}};
+	CLSID_WICIPTCMetadataReader					= GUID {003012959H, 0f4f6H, 044d7H, {09dH,009H,0daH,0a0H,087H,0a9H,0dbH,057H}};
+	CLSID_WICIPTCMetadataWriter					= GUID {01249b20cH, 05dd0H, 044feH, {0b0H,0b3H,08fH,092H,0c8H,0e6H,0d0H,080H}};
+	CLSID_WICIRBMetadataReader					= GUID {0D4DCD3D7H, 0B4C2H, 047D9H, {0A6H,0BFH,0B8H,09BH,0A3H,096H,0A4H,0A3H}};
+	CLSID_WICIRBMetadataWriter					= GUID {05C5C1935H, 00235H, 04434H, {080H,0BCH,025H,01BH,0C1H,0ECH,039H,0C6H}};
+	CLSID_WIC8BIMIPTCMetadataReader				= GUID {00010668cH, 00801H, 04da6H, {0a4H,0a4H,082H,065H,022H,0b6H,0d2H,08fH}};
+	CLSID_WIC8BIMIPTCMetadataWriter				= GUID {000108226H, 0ee41H, 044a2H, {09eH,09cH,04bH,0e4H,0d5H,0b1H,0d2H,0cdH}};
+	CLSID_WIC8BIMResolutionInfoMetadataReader	= GUID {05805137AH, 0E348H, 04F7CH, {0B3H,0CCH,06DH,0B9H,096H,05AH,005H,099H}};
+	CLSID_WIC8BIMResolutionInfoMetadataWriter	= GUID {04ff2fe0eH, 0e74aH, 04b71H, {098H,0c4H,0abH,07dH,0c1H,067H,007H,0baH}};
+	CLSID_WIC8BIMIPTCDigestMetadataReader		= GUID {002805F1EH, 0D5AAH, 0415bH, {082H,0C5H,061H,0C0H,033H,0A9H,088H,0A6H}};
+	CLSID_WIC8BIMIPTCDigestMetadataWriter		= GUID {02DB5E62BH, 00D67H, 0495fH, {08FH,09DH,0C2H,0F0H,018H,086H,047H,0ACH}};
+	CLSID_WICPngTextMetadataReader				= GUID {04b59afccH, 0b8c3H, 0408aH, {0b6H,070H,089H,0e5H,0faH,0b6H,0fdH,0a7H}};
+	CLSID_WICPngTextMetadataWriter				= GUID {0b5ebafb9H, 0253eH, 04a72H, {0a7H,044H,007H,062H,0d2H,068H,056H,083H}};
+	CLSID_WICXMPMetadataReader					= GUID {072B624DFH, 0AE11H, 04948H, {0A6H,05CH,035H,01EH,0B0H,082H,094H,019H}};
+	CLSID_WICXMPMetadataWriter					= GUID {01765E14EH, 01BD4H, 0462EH, {0B6H,0B1H,059H,00BH,0F1H,026H,02AH,0C6H}};
+	CLSID_WICXMPStructMetadataReader			= GUID {001B90D9AH, 08209H, 047F7H, {09CH,052H,0E1H,024H,04BH,0F5H,00CH,0EDH}};
+	CLSID_WICXMPStructMetadataWriter			= GUID {022C21F93H, 07DDBH, 0411CH, {09BH,017H,0C5H,0B7H,0BDH,006H,04AH,0BCH}};
+	CLSID_WICXMPBagMetadataReader				= GUID {0E7E79A30H, 04F2CH, 04FABH, {08DH,000H,039H,04FH,02DH,06BH,0BEH,0BEH}};
+	CLSID_WICXMPBagMetadataWriter				= GUID {0ED822C8CH, 0D6BEH, 04301H, {0A6H,031H,00EH,014H,016H,0BAH,0D2H,08FH}};
+	CLSID_WICXMPSeqMetadataReader				= GUID {07F12E753H, 0FC71H, 043D7H, {0A5H,01DH,092H,0F3H,059H,077H,0ABH,0B5H}};
+	CLSID_WICXMPSeqMetadataWriter				= GUID {06D68D1DEH, 0D432H, 04B0FH, {092H,03AH,009H,011H,083H,0A9H,0BDH,0A7H}};
+	CLSID_WICXMPAltMetadataReader				= GUID {0AA94DCC2H, 0B8B0H, 04898H, {0B8H,035H,000H,00AH,0ABH,0D7H,043H,093H}};
+	CLSID_WICXMPAltMetadataWriter				= GUID {0076C2A6CH, 0F78FH, 04C46H, {0A7H,023H,035H,083H,0E7H,008H,076H,0EAH}};
+	CLSID_WICLSDMetadataReader					= GUID {041070793H, 059E4H, 0479AH, {0A1H,0F7H,095H,04AH,0DCH,02EH,0F5H,0FCH}};
+	CLSID_WICLSDMetadataWriter					= GUID {073C037E7H, 0E5D9H, 04954H, {087H,06AH,06DH,0A8H,01DH,06EH,057H,068H}};
+	CLSID_WICGCEMetadataReader					= GUID {0B92E345DH, 0F52DH, 041F3H, {0B5H,062H,008H,01BH,0C7H,072H,0E3H,0B9H}};
+	CLSID_WICGCEMetadataWriter					= GUID {0AF95DC76H, 016B2H, 047F4H, {0B3H,0EAH,03CH,031H,079H,066H,093H,0E7H}};
+	CLSID_WICIMDMetadataReader					= GUID {07447A267H, 00015H, 042C8H, {0A8H,0F1H,0FBH,03BH,094H,0C6H,083H,061H}};
+	CLSID_WICIMDMetadataWriter					= GUID {08C89071FH, 0452EH, 04E95H, {096H,082H,09DH,010H,024H,062H,071H,072H}};
+	CLSID_WICAPEMetadataReader					= GUID {01767B93AH, 0B021H, 044EAH, {092H,00FH,086H,03CH,011H,0F4H,0F7H,068H}};
+	CLSID_WICAPEMetadataWriter					= GUID {0BD6EDFCAH, 02890H, 0482FH, {0B2H,033H,08DH,073H,039H,0A1H,0CFH,08DH}};
+	CLSID_WICJpegChrominanceMetadataReader		= GUID {050B1904BH, 0F28FH, 04574H, {093H,0F4H,00BH,0ADH,0E8H,02CH,069H,0E9H}};
+	CLSID_WICJpegChrominanceMetadataWriter		= GUID {03FF566F0H, 06E6BH, 049D4H, {096H,0E6H,0B7H,088H,086H,069H,02CH,062H}};
+	CLSID_WICJpegLuminanceMetadataReader		= GUID {0356F2F88H, 005A6H, 04728H, {0B9H,0A4H,01BH,0FBH,0CEH,004H,0D8H,038H}};
+	CLSID_WICJpegLuminanceMetadataWriter		= GUID {01D583ABCH, 08A0EH, 04657H, {099H,082H,0A3H,080H,0CAH,058H,0FBH,04BH}};
+	CLSID_WICJpegCommentMetadataReader			= GUID {09f66347CH, 060C4H, 04C4DH, {0ABH,058H,0D2H,035H,086H,085H,0f6H,007H}};
+	CLSID_WICJpegCommentMetadataWriter			= GUID {0E573236FH, 055B1H, 04EDAH, {081H,0EAH,09FH,065H,0DBH,002H,090H,0D3H}};
+	CLSID_WICGifCommentMetadataReader			= GUID {032557D3BH, 069DCH, 04F95H, {083H,06EH,0F5H,097H,02BH,02FH,061H,059H}};
+	CLSID_WICGifCommentMetadataWriter			= GUID {0A02797fCH, 0C4AEH, 0418CH, {0AFH,095H,0E6H,037H,0C7H,0EAH,0D2H,0A1H}};
+	CLSID_WICPngGamaMetadataReader				= GUID {03692CA39H, 0E082H, 04350H, {09EH,01FH,037H,004H,0CBH,008H,03CH,0D5H}};
+	CLSID_WICPngGamaMetadataWriter				= GUID {0FF036D13H, 05D4BH, 046DDH, {0B1H,00FH,010H,066H,093H,0D9H,0FEH,04FH}};
+	CLSID_WICPngBkgdMetadataReader				= GUID {00CE7A4A6H, 003E8H, 04A60H, {09DH,015H,028H,02EH,0F3H,02EH,0E7H,0DAH}};
+	CLSID_WICPngBkgdMetadataWriter				= GUID {068E3F2FDH, 031AEH, 04441H, {0BBH,06AH,0FDH,070H,047H,052H,05FH,090H}};
+	CLSID_WICPngItxtMetadataReader				= GUID {0AABFB2FAH, 03E1EH, 04A8FH, {089H,077H,055H,056H,0FBH,094H,0EAH,023H}};
+	CLSID_WICPngItxtMetadataWriter				= GUID {031879719H, 0E751H, 04DF8H, {098H,01DH,068H,0DFH,0F6H,077H,004H,0EDH}};
+	CLSID_WICPngChrmMetadataReader				= GUID {0F90B5F36H, 0367BH, 0402AH, {09DH,0D1H,0BCH,00FH,0D5H,09DH,08FH,062H}};
+	CLSID_WICPngChrmMetadataWriter				= GUID {0E23CE3EBH, 05608H, 04E83H, {0BCH,0EFH,027H,0B1H,098H,07EH,051H,0D7H}};
+	CLSID_WICPngHistMetadataReader				= GUID {0877A0BB7H, 0A313H, 04491H, {087H,0B5H,02EH,06DH,005H,094H,0F5H,020H}};
+	CLSID_WICPngHistMetadataWriter				= GUID {08A03E749H, 0672EH, 0446EH, {0BFH,01FH,02CH,011H,0D2H,033H,0B6H,0FFH}};
+	CLSID_WICPngIccpMetadataReader				= GUID {0F5D3E63BH, 0CB0FH, 04628H, {0A4H,078H,06DH,082H,044H,0BEH,036H,0B1H}};
+	CLSID_WICPngIccpMetadataWriter				= GUID {016671E5FH, 00CE6H, 04CC4H, {097H,068H,0E8H,09FH,0E5H,001H,08AH,0DEH}};
+	CLSID_WICPngSrgbMetadataReader				= GUID {0FB40360CH, 0547EH, 04956H, {0A3H,0B9H,0D4H,041H,088H,059H,0BAH,066H}};
+	CLSID_WICPngSrgbMetadataWriter				= GUID {0A6EE35C6H, 087ECH, 047DFH, {09FH,022H,01DH,05AH,0ADH,084H,00CH,082H}};
+	CLSID_WICPngTimeMetadataReader				= GUID {0D94EDF02H, 0EFE5H, 04F0DH, {085H,0C8H,0F5H,0A6H,08BH,030H,000H,0B1H}};
+	CLSID_WICPngTimeMetadataWriter				= GUID {01AB78400H, 0B5A3H, 04D91H, {08AH,0CEH,033H,0FCH,0D1H,049H,09BH,0E6H}};
+
+VAR
+	%IF IA32 %THEN
+		IID_IWICMetadataBlockReader	["_IID_IWICMetadataBlockReader"	EXTERNAL] : IID;
+		IID_IWICMetadataBlockWriter	["_IID_IWICMetadataBlockWriter"	EXTERNAL] : IID;
+		IID_IWICMetadataReader		["_IID_IWICMetadataReader"		EXTERNAL] : IID;
+		IID_IWICMetadataWriter		["_IID_IWICMetadataWriter"		EXTERNAL] : IID;
+		IID_IWICStreamProvider		["_IID_IWICStreamProvider"		EXTERNAL] : IID;
+		IID_IWICPersistStream		["_IID_IWICPersistStream"		EXTERNAL] : IID;
+		IID_IWICMetadataHandlerInfo	["_IID_IWICMetadataHandlerInfo"	EXTERNAL] : IID;
+		IID_IWICMetadataReaderInfo	["_IID_IWICMetadataReaderInfo"	EXTERNAL] : IID;
+		IID_IWICMetadataWriterInfo	["_IID_IWICMetadataWriterInfo"	EXTERNAL] : IID;
+		IID_IWICComponentFactory	["_IID_IWICComponentFactory"	EXTERNAL] : IID;
+	%ELSE
+		IID_IWICMetadataBlockReader	["IID_IWICMetadataBlockReader"	EXTERNAL] : IID;
+		IID_IWICMetadataBlockWriter	["IID_IWICMetadataBlockWriter"	EXTERNAL] : IID;
+		IID_IWICMetadataReader		["IID_IWICMetadataReader"		EXTERNAL] : IID;
+		IID_IWICMetadataWriter		["IID_IWICMetadataWriter"		EXTERNAL] : IID;
+		IID_IWICStreamProvider		["IID_IWICStreamProvider"		EXTERNAL] : IID;
+		IID_IWICPersistStream		["IID_IWICPersistStream"		EXTERNAL] : IID;
+		IID_IWICMetadataHandlerInfo	["IID_IWICMetadataHandlerInfo"	EXTERNAL] : IID;
+		IID_IWICMetadataReaderInfo	["IID_IWICMetadataReaderInfo"	EXTERNAL] : IID;
+		IID_IWICMetadataWriterInfo	["IID_IWICMetadataWriterInfo"	EXTERNAL] : IID;
+		IID_IWICComponentFactory	["IID_IWICComponentFactory"		EXTERNAL] : IID;
+	%END
+
+TYPE
+	WICMetadataCreationOptions =
+		(
+			WICMetadataCreationDefault		= 0,
+			WICMetadataCreationAllowUnknown	= WICMetadataCreationDefault,
+			WICMetadataCreationFailUnknown	= 10000H,
+			WICMetadataCreationMask			= 0ffff0000H
+		);
+
+	WICPersistOptions =
+		(
+			WICPersistOptionDefault			= 0,
+			WICPersistOptionLittleEndian	= 0,
+			WICPersistOptionBigEndian		= 1,
+			WICPersistOptionStrictFormat	= 2,
+			WICPersistOptionNoCacheStream	= 4,
+			WICPersistOptionPreferUTF8		= 8,
+			WICPersistOptionMask			= 0ffffH
+		);
+
+ABSTRACT CLASS IWICMetadataReader; FORWARD;
+ABSTRACT CLASS IWICMetadataWriter; FORWARD;
+ABSTRACT CLASS IWICMetadataHandlerInfo; FORWARD;
+
+ABSTRACT CLASS IWICMetadataBlockReader;
+INHERIT IUnknown;
+REVEAL GetContainerFormat, GetCount, GetReaderByIndex, GetEnumerator;
+	ABSTRACT PROCEDURE GetContainerFormat (VAR pguidContainerFormat : GUID) : HRESULT;
+    ABSTRACT PROCEDURE GetCount (VAR pcCount : UINT) : HRESULT;
+    ABSTRACT PROCEDURE GetReaderByIndex (nIndex : UINT; VAR ppIMetadatReader : IWICMetadataReader) : HRESULT;
+    ABSTRACT PROCEDURE GetEnumerator (VAR ppIEnumMetadata : IEnumUnknown) : HRESULT;
+END IWICMetadataBlockReader;
+
+ABSTRACT CLASS IWICMetadataBlockWriter;
+INHERIT IWICMetadataBlockReader;
+REVEAL InitializeFromBlockReader, GetWriterByIndex, AddWriter, SetWriterByIndex, RemoveWriterByIndex;
+    ABSTRACT PROCEDURE InitializeFromBlockReader (pIMDBlockreader : IWICMetadataBlockReader) : HRESULT;
+    ABSTRACT PROCEDURE GetWriterByIndex (nIndex : UINT; VAR ppIMetadataWriter : IWICMetadataWriter) : HRESULT;
+    ABSTRACT PROCEDURE AddWriter (pIMetadataWriter : IWICMetadataWriter) : HRESULT;
+    ABSTRACT PROCEDURE SetWriterByIndex (nIndex : UINT; pIMetadataWriter : IWICMetadataWriter) : HRESULT;
+    ABSTRACT PROCEDURE RemoveWriterByIndex (nIndex : UINT) : HRESULT;
+END IWICMetadataBlockWriter;
+
+ABSTRACT CLASS IWICMetadataReader;
+INHERIT IUnknown;
+REVEAL GetMetadataFormat, GetMetadataHandlerInfo, GetCount, GetValueByIndex, GetValue, GetEnumerator;
+    ABSTRACT PROCEDURE GetMetadataFormat (VAR pguidMetadataFormat : GUID) : HRESULT;
+    ABSTRACT PROCEDURE GetMetadataHandlerInfo (VAR ppIHandler : IWICMetadataHandlerInfo) : HRESULT;
+    ABSTRACT PROCEDURE GetCount (VAR pcCount : UINT) : HRESULT;
+    ABSTRACT PROCEDURE GetValueByIndex (nIndex : UINT;
+		VAR pvarSchema : PROPVARIANT; VAR pvarId : PROPVARIANT; VAR pvarValue : PROPVARIANT) : HRESULT;
+    ABSTRACT PROCEDURE GetValue (pvarSchema : PROPVARIANT; pvarId : PROPVARIANT; VAR pvarValue : PROPVARIANT) : HRESULT;
+    ABSTRACT PROCEDURE GetEnumerator (VAR ppEnumMetadata : IWICEnumMetadataItem) : HRESULT;
+END IWICMetadataReader;
+
+ABSTRACT CLASS IWICMetadataWriter;
+INHERIT IWICMetadataReader;
+REVEAL SetValue, SetValueByIndex, RemoveValue, RemoveValueByIndex;
+    ABSTRACT PROCEDURE SetValue (pvarSchema : PROPVARIANT; pvarId : PROPVARIANT; pvarValue : PROPVARIANT) : HRESULT;
+    ABSTRACT PROCEDURE SetValueByIndex (nIndex : UINT; pvarSchema : PROPVARIANT; pvarId : PROPVARIANT; pvarValue : PROPVARIANT)
+	: HRESULT;
+    ABSTRACT PROCEDURE RemoveValue (pvarSchema : PROPVARIANT; pvarId : PROPVARIANT) : HRESULT;
+    ABSTRACT PROCEDURE RemoveValueByIndex (nIndex : UINT) : HRESULT;
+END IWICMetadataWriter;
+
+ABSTRACT CLASS IWICStreamProvider;
+INHERIT IUnknown;
+REVEAL GetStream, GetPersistOptions, GetPreferredVendorGUID, RefreshStream;
+    ABSTRACT PROCEDURE GetStream (VAR ppIstream : IStream) : HRESULT;
+    ABSTRACT PROCEDURE GetPersistOptions (VAR pdwPersistOptions : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE GetPreferredVendorGUID (VAR pguidPreferredVendor : GUID) : HRESULT;
+    ABSTRACT PROCEDURE RefreshStream () : HRESULT;
+END IWICStreamProvider;
+
+ABSTRACT CLASS IWICPersistStream;
+INHERIT IPersistStream;
+REVEAL LoadEx, SaveEx;
+    ABSTRACT PROCEDURE LoadEx (pIStream : IStream; pguidPrefferedVendor : REFGUID; dwPersistOptions : DWORD) : HRESULT;
+    ABSTRACT PROCEDURE SaveEx (pIStream : IStream; dwPersistOptions : DWORD; fClearDirty : BOOL) : HRESULT;
+END IWICPersistStream;
+
+ABSTRACT CLASS IWICMetadataHandlerInfo;
+INHERIT IWICComponentInfo;
+REVEAL
+	GetMetadataFormat, GetContainerFormats, GetDeviceManufacturer, GetDeviceModels,
+	DoesRequireFullStream, DoesSupportPadding, DoesRequireFixedSize;
+    ABSTRACT PROCEDURE GetMetadataFormat (VAR pguidMetadataFormat : GUID) : HRESULT;
+    ABSTRACT PROCEDURE GetContainerFormats (
+		cContainerFormats : UINT; VAR pguidContainerFormats : ARRAY OF GUID; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetDeviceManufacturer (
+		cchDeviceManufacturer : UINT; VAR wzDeviceManufacturer : ARRAY OF UCHAR; VAR pcchActual : UINT) : HRESULT;
+	ABSTRACT PROCEDURE GetDeviceModels (cchDeviceModels : UINT; VAR wzdeviceModels : ARRAY OF UCHAR; VAR pcchActual : UINT) :
+	HRESULT;
+    ABSTRACT PROCEDURE DoesRequireFullStream (VAR pfRequiresFulStream : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE DoesSupportPadding (VAR pfSupportsPadding : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE DoesRequireFixedSize (VAR pfFixedSize : BOOL) : HRESULT;
+END IWICMetadataHandlerInfo;
+
+TYPE
+	WICMetadataPattern =
+		RECORD
+			Position	: ULARGE_INTEGER;
+			Length		: ULONG;
+			Pattern		: ADDRESS;
+			Mask		: ADDRESS;
+			DataOffset	: ULARGE_INTEGER;
+		END;
+	WICMetadataPatternArray = POINTER TO ARRAY [0..0] OF WICMetadataPattern;
+
+ABSTRACT CLASS IWICMetadataReaderInfo;
+INHERIT IWICMetadataHandlerInfo;
+REVEAL GetPatterns, MatchesPattern, CreateInstance;
+    ABSTRACT PROCEDURE GetPatterns (guidContainerFormat : GUID;
+		cbSize : UINT; pPattern : WICMetadataPatternArray; VAR pcCount : UINT; VAR pcbActual : UINT) : HRESULT;
+    ABSTRACT PROCEDURE MatchesPattern (guidContainerFormat : GUID; pIStream : IStream; VAR pfMatches : BOOL) : HRESULT;
+    ABSTRACT PROCEDURE CreateInstance (VAR ppIReader : IWICMetadataReader) : HRESULT;
+END IWICMetadataReaderInfo;
+
+TYPE
+	WICMetadataHeader =
+		RECORD
+			Position	: ULARGE_INTEGER;
+			Length		: ULONG;
+			Header		: ADDRESS;
+			DataOffset	: ULARGE_INTEGER;
+		END;
+
+ABSTRACT CLASS IWICMetadataWriterInfo;
+INHERIT IWICMetadataHandlerInfo;
+REVEAL GetHeader, CreateInstance;
+    ABSTRACT PROCEDURE GetHeader (guidContainerFormat : GUID;
+		cbSize : UINT; VAR pHeader : WICMetadataHeader; VAR pcbActual : UINT) : HRESULT;
+    ABSTRACT PROCEDURE CreateInstance (VAR ppIWriter : IWICMetadataWriter) : HRESULT;
+END IWICMetadataWriterInfo;
+
+ABSTRACT CLASS IWICComponentFactory;
+INHERIT IWICImagingFactory;
+REVEAL
+	CreateMetadataReader, CreateMetadataReaderFromContainer, CreateMetadataWriter, CreateMetadataWriterFromReader,
+	CreateQueryReaderFromBlockReader, CreateQueryWriterFromBlockWriter, CreateEncoderPropertyBag;
+	ABSTRACT PROCEDURE CreateMetadataReader (
+		guidMetadataFormat : GUID; pguidVendor : GUID; dwOptions : DWORD; pIStream : IStream;
+		VAR ppIReader : IWICMetadataReader) : HRESULT;
+	ABSTRACT PROCEDURE CreateMetadataReaderFromContainer (
+		guidContainerFormat : GUID; pguidVendor : GUID; dwOptions : DWORD; pIStream : IStream;
+		VAR ppIReader : IWICMetadataReader) : HRESULT;
+	ABSTRACT PROCEDURE CreateMetadataWriter (guidMetadataFormat : GUID; pguidVendor : GUID; dwMetadataOptions : DWORD;
+		VAR ppIWriter : IWICMetadataWriter) : HRESULT;
+	ABSTRACT PROCEDURE CreateMetadataWriterFromReader (pIReader : IWICMetadataReader; pguidVendor : GUID;
+		VAR ppIWriter : IWICMetadataWriter) : HRESULT;
+	ABSTRACT PROCEDURE CreateQueryReaderFromBlockReader (pIBlockReader : IWICMetadataBlockReader;
+		VAR ppIQueryReader : IWICMetadataQueryReader) : HRESULT;
+	ABSTRACT PROCEDURE CreateQueryWriterFromBlockWriter (pIBlockWriter : IWICMetadataBlockWriter;
+		VAR ppIQueryWriter : IWICMetadataQueryWriter) : HRESULT;
+    ABSTRACT PROCEDURE CreateEncoderPropertyBag (ppropOptions : ADDRESS; cCount : UINT; VAR ppIPropertyBag : IPropertyBag2) :
+	HRESULT;
+END IWICComponentFactory;
+
+PROCEDURE WICMatchMetadataContent (guidContainerFormat : GUID; pguidVendor : GUID; pIstream : IStream;
+	VAR pguidMetadataFormat : GUID) : HRESULT;
+
+PROCEDURE WICSerializeMetadataContent (guidContainerFormat : GUID; pIWriter : IWICMetadataWriter; dwPersistOptions : DWORD;
+    pIStream : IStream) : HRESULT;
+
+PROCEDURE WICGetMetadataContentSize (guidContainerFormat : GUID; pIWriter : IWICMetadataWriter; VAR pcbSize : ULARGE_INTEGER) :
+HRESULT;
+
+END WinCodecSDK.

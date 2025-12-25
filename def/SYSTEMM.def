@@ -1,0 +1,209 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMM;
+<*/NOPACK*>
+
+FROM SYSTEM IMPORT
+    ADRCARD, ADDRESS;
+
+FROM SYSTEMTM IMPORT
+    TermProcType;
+
+TYPE
+    AllocDeallocProc = PROCEDURE (VAR ADDRESS, CARDINAL);
+%IF IA32 %OR AMD64 %THEN
+	CPUVendorType = (UnknownVendor, Intel, AMD);
+%END
+
+VAR
+    ENV                 : ADDRESS;
+    CMD                 : ADDRESS;
+%IF UNIX %THEN
+    CMD_COUNT           : CARDINAL;
+%END
+
+    IsThread            : BOOLEAN;
+    IsInit              : BOOLEAN;
+
+    DLL                 : BOOLEAN;
+    CPUCOUNT            : CARDINAL;
+    CPU_HYPERTHREAD     : BOOLEAN;
+    EXITCODE            : CARDINAL;
+
+    DebuggerPresent     : BOOLEAN = FALSE;
+%IF IA32 %THEN
+	MFENCE				: PROC;
+%END
+%IF IA32 %OR AMD64 %THEN
+	CPUVendor : CPUVendorType = UnknownVendor;
+	CPUVendorString : ARRAY [0..11] OF ACHAR = "";
+	CPUFamily, CPUModel, CPUStepping : CARDINAL8;
+%END
+
+%IF UNIX %THEN
+PROCEDURE _start ["_start"]();
+PROCEDURE _fini ["_fini"] ();
+%END
+
+PROCEDURE Start;
+
+%IF WINDOWS %THEN
+PROCEDURE Start_DLL;
+%ELSIF UNIX %THEN
+PROCEDURE Start_DLL;
+%END
+
+PROCEDURE Start_Cmain(retAddr : ADDRESS; argc : CARDINAL; argv : ADDRESS) [RightToLeft, LEAVES];
+
+PROCEDURE HALTPROC(halter : TermProcType) : TermProcType;
+
+PROCEDURE SYSHALT(exitval : CARDINAL);
+
+PROCEDURE USERHALT ["SYSTEMM_HALT"] (exitval : CARDINAL);
+
+%IF WINDOWS %THEN
+PROCEDURE EmptyThread ["SYSTEMM_EmptyThread"] (param : ADDRESS) : CARDINAL32 [Windows];
+%END
+
+PROCEDURE REPEATBLOCK(addr : ADDRESS; size, count : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX,DX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE LENGTH(str : ARRAY OF ACHAR) : CARDINAL
+											%IF IA32 %THEN
+											[Pass(DX,DI),Alters(AX,CX,DX,DI),Returns(DX),Invariant];
+											%ELSIF AMD64 %THEN
+											[Pass(DI,DX),Alters(AX,CX,DX,DI),Returns(DX),Invariant];
+											%END
+
+PROCEDURE ULENGTH(str : ARRAY OF UCHAR) : CARDINAL
+											%IF IA32 %THEN
+											[Pass(DX,DI),Alters(AX,CX,DX,DI),Returns(DX),Invariant];
+											%ELSIF AMD64 %THEN
+											[Pass(DI,DX),Alters(AX,CX,DX,DI),Returns(DX),Invariant];
+											%END
+
+PROCEDURE CAP(ch : ACHAR) : ACHAR [Invariant];
+
+PROCEDURE UCAP(ch : UCHAR) : UCHAR [Invariant];
+
+PROCEDURE SETOR(SET1, SET2, RESULTSET : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETAND(SET1, SET2, RESULTSET : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETXOR(SET1, SET2, RESULTSET : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETANDNOT(SET1, SET2, RESULTSET : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+
+PROCEDURE SETGEQ(LSET, RSET : ADDRESS; LEN : CARDINAL) : BOOLEAN
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETEQL(LSET, RSET : ADDRESS; LEN : CARDINAL) : BOOLEAN
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETSHIFT(SRC : ADDRESS; shift : INTEGER; RESULT : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETROTATE(SRC : ADDRESS; shift : INTEGER; RESULT : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE SETBITS(BIT1, BIT2 : CARDINAL; RESULT : ADDRESS; LEN : CARDINAL)
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE REGSETBITS(BIT1, BIT2 : CARDINAL) : ADRCARD
+                                            %IF IA32 %THEN
+                                            [ALTERS(AX)];
+                                            %ELSIF AMD64 %THEN
+                                            [LeftToRight];
+                                            %END
+
+PROCEDURE ASSERT(stringAdr : ADDRESS; lineNum : CARDINAL) [LeftToRight];
+
+PROCEDURE ISASSERT() : BOOLEAN;
+
+PROCEDURE SWAPARRAY(addr : ADDRESS; count : CARDINAL; elementSize : CARDINAL) [LeftToRight];
+
+PROCEDURE INITCLASS(vmt : ADDRESS) [LeftToRight];
+
+PROCEDURE CONSTRUCTCLASS(object : ADDRESS; vmt : ADDRESS) [LeftToRight];
+
+PROCEDURE CONSTRUCTCLASSALL(VAR OUT object : ADDRESS; vmt : ADDRESS; allocProc : AllocDeallocProc) [LeftToRight];
+
+PROCEDURE DESTRUCTCLASS(object : ADDRESS) [LeftToRight];
+
+PROCEDURE DESTRUCTCLASSALL(VAR INOUT object : ADDRESS; deallocProc : AllocDeallocProc) [LeftToRight];
+
+PROCEDURE CLONEOBJECT(destObj, srcObj : ADDRESS) [LeftToRight];
+
+PROCEDURE CLONEOBJECTALL(VAR OUT destObj : ADDRESS; srcObj : ADDRESS; allocProc : AllocDeallocProc) [LeftToRight];
+
+PROCEDURE ISMEMBERL(object : ADDRESS; vmt : ADDRESS) : BOOLEAN [LeftToRight];
+
+PROCEDURE ISMEMBERR(vmt : ADDRESS; object : ADDRESS) : BOOLEAN [LeftToRight];
+
+PROCEDURE ISMEMBERLR(objectL, objectR : ADDRESS) : BOOLEAN [LeftToRight];
+
+PROCEDURE AbstractMethod;
+
+PROCEDURE SLVM ["SB_SYSTEM@SLVM_EXCLUDED"] ();
+
+PROCEDURE OutputDebugMessage(str : ARRAY OF CHAR);
+
+%IF IA32 %OR AMD64 %THEN
+PROCEDURE GUARDBRANCH(object, table : ADDRESS) [PASS(DX, AX), ALTERS(DX, AX)];
+%END
+
+PROCEDURE GetRtlInit() : BOOLEAN;
+
+END SYSTEMM.

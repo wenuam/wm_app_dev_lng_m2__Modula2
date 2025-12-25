@@ -1,0 +1,140 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Money;
+(* implements an integer fixed point numeric type suitable for currency computations.
+   this type has more precision and accuracy than a double precision LONGREAL type.
+*)
+
+CONST
+    DecPlaces   = 4;
+    Scale       = 10000;
+
+TYPE
+    Money       = INTEGER64;
+    Fraction    = [0..Scale-1];
+(*
+    the whole number range is ~15 decimal digits.
+        14 full range (+- 14 9 digits). 15 almost full range (92%).
+    the fractional range is 4 decimal digits.
+
+    the actual numerical range is
+    -922,337,203,685,477.5808 to 922,337,203,685,477.5807
+
+    if the unit of measurement is dollars, then this type can represent
+    1/10000th of a dollar, or 1/100th of a penny.
+    the dollar range is 15 decimal places.
+
+    if the unit of measurement is a penny then you can represent 1/10000th of a penny.
+    the dollar range is 13 decimal places.
+*)
+
+CONST
+    Half        = Scale / 2;
+
+PROCEDURE IntToMoney(intVal : INTEGER) : Money; MACRO;
+BEGIN
+    RETURN VAL(Money, intVal) * Scale;
+END IntToMoney;
+
+PROCEDURE Int64ToMoney(intVal : INTEGER64) : Money; MACRO;
+BEGIN
+    RETURN intVal * Scale;
+END Int64ToMoney;
+
+PROCEDURE MoneyToInt(num : Money) : INTEGER; MACRO;
+BEGIN
+    RETURN num / Scale;
+END MoneyToInt;
+
+PROCEDURE MoneyToInt64(num : Money) : INTEGER64; MACRO;
+BEGIN
+    RETURN num / Scale;
+END MoneyToInt64;
+
+PROCEDURE MakeFraction(fract : Fraction) : Money; MACRO;
+BEGIN
+    RETURN VAL(Money, fract);
+END MakeFraction;
+
+PROCEDURE GetFraction(num : Money) : Fraction; MACRO;
+BEGIN
+    RETURN ABS(num) REM Scale;
+END GetFraction;
+
+PROCEDURE MakeMoney(whole : INTEGER64; fract : Fraction) : Money; MACRO;
+BEGIN
+    RETURN Int64ToMoney(whole) + MakeFraction(fract);
+END MakeMoney;
+
+PROCEDURE RealToMoney(fltVal : LONGREAL) : Money; MACRO;
+BEGIN
+    RETURN VAL(Money, fltVal * LFLOAT(Scale));
+END RealToMoney;
+
+PROCEDURE MoneyToReal(num : Money) : LONGREAL; MACRO;
+BEGIN
+    RETURN LFLOAT(num) / LFLOAT(Scale);
+END MoneyToReal;
+
+PROCEDURE Add(a, b : Money) : Money; MACRO;
+BEGIN
+    RETURN a + b;
+END Add;
+
+PROCEDURE AddInt(a : Money; intVal : INTEGER) : Money; MACRO;
+BEGIN
+    RETURN Add(a, IntToMoney(intVal));
+END AddInt;
+
+PROCEDURE Sub(a, b : Money) : Money; MACRO;
+BEGIN
+    RETURN a - b;
+END Sub;
+
+PROCEDURE SubInt(a : Money; intVal : INTEGER) : Money; MACRO;
+BEGIN
+    RETURN Sub(a, IntToMoney(intVal));
+END SubInt;
+
+PROCEDURE Mul(a, b : Money) : Money;
+
+PROCEDURE MulInt(a : Money; intVal : INTEGER) : Money;
+
+PROCEDURE Div(a, b : Money) : Money;
+
+PROCEDURE DivInt(a : Money; intVal : INTEGER) : Money;
+
+PROCEDURE Neg(a : Money) : Money; MACRO;
+BEGIN
+    RETURN -a;
+END Neg;
+
+PROCEDURE Abs(a : Money) : Money; MACRO;
+BEGIN
+    RETURN ABS(a);
+END Abs;
+
+PROCEDURE Percent(m : Money; fract : Fraction) : Money;
+(* implemented as
+    RETURN Mul(m, MakeFraction(fract));
+
+    percentages are represented as integers less than Scale.
+        .25% = .0025 = 25
+        7% = .07 = 700
+        10% = .10 = 1000
+        and so on.
+*)
+
+PROCEDURE MoneyToString(num : Money;
+                        places : CARDINAL;
+                        VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+
+PROCEDURE StringToMoney(str : ARRAY OF CHAR; VAR OUT num : Money) : BOOLEAN;
+
+END Money.

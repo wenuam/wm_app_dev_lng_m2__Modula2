@@ -1,0 +1,152 @@
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+=========================================== *)
+DEFINITION MODULE Strings;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL*>
+%END
+<*/COPYATTRIBUTES*>
+
+TYPE
+    String1 = ARRAY [0..0] OF CHAR;
+
+PROCEDURE Length(stringVal : ARRAY OF CHAR) : CARDINAL [Invariant];
+
+(* the following seven procedures construct a string value, and attempt *)
+(* to assign it to a variable parameter. The all have the property that *)
+(* if the length of the constructed string value exceeds the capacity *)
+(* of the variable parameter, a truncated value is assigned, while *)
+(* if the length of the constructed string value is less than the capacity *)
+(* of the variable parameter, a string terminator is appended before *)
+(* assignment is performed. *)
+
+PROCEDURE Assign(source : ARRAY OF CHAR; VAR OUT destination : ARRAY OF CHAR);
+(* copies source to destination *)
+
+PROCEDURE Extract(source : ARRAY OF CHAR;
+                  startIndex, numberToExtract : CARDINAL;
+                  VAR OUT destination : ARRAY OF CHAR);
+(* copies at most numberToExtract characters from source to destination, *)
+(* starting at position startIndex in source *)
+
+PROCEDURE Delete(VAR INOUT stringVar : ARRAY OF CHAR;
+                 startIndex, numberToDelete: CARDINAL);
+(* deletes at most numberToDelete characters from stringVar, starting at *)
+(* position startIndex *)
+
+PROCEDURE Insert(source : ARRAY OF CHAR;
+                 startIndex : CARDINAL;
+                 VAR INOUT destination : ARRAY OF CHAR);
+(* inserts source into destination at position startIndex *)
+
+PROCEDURE Replace(source : ARRAY OF CHAR;
+                  startIndex : CARDINAL;
+                  VAR INOUT destination : ARRAY OF CHAR);
+(* copies source into destination, starting at position startIndex. *)
+(* Copying stops when all of source has been copied, or when the last *)
+(* character of the string in destination has been replaced. *)
+
+PROCEDURE Append(source : ARRAY OF CHAR; VAR INOUT destination : ARRAY OF CHAR);
+(* appends source to destination *)
+
+PROCEDURE Concat(source1, source2 : ARRAY OF CHAR;
+                 VAR OUT destination : ARRAY OF CHAR);
+(* concatenates source2 to source1 and copies the result into destination *)
+
+(* the following predicates provide for pre-testing of the *)
+(* operation-completion conditions for the procedures above. *)
+
+PROCEDURE CanAssignAll(sourceLength : CARDINAL;
+                       VAR OUT destination : ARRAY OF CHAR) : BOOLEAN;
+(* retuns TRUE if a number of characters, indicated by sourceLength, *)
+(* will fit into destination; otherwise returns FALSE *)
+
+PROCEDURE CanExtractAll(sourceLength, startIndex, numberToExtract : CARDINAL;
+                        VAR OUT destination : ARRAY OF CHAR) : BOOLEAN;
+(* returns TRUE if there are numberToExtract characters starting at *)
+(* startIndex and within the sourceLength of some string, and if the *)
+(* capacity of destination is sufficient to hold numberToExtract characters; *)
+(* otherwise returns FALSE *)
+
+PROCEDURE CanDeleteAll(stringLength,
+                       startIndex,
+                       numberToDelete : CARDINAL) : BOOLEAN;
+(* returns TRUE if there are numberToDelete characters starting at *)
+(* startIndex and within the stringLength of some string; *)
+(* otherwise returns FALSE *)
+
+PROCEDURE CanInsertAll(sourceLength, startIndex : CARDINAL;
+                       VAR INOUT destination : ARRAY OF CHAR) : BOOLEAN;
+(* returns TRUE if there is room for insertion of sourceLength *)
+(* characters from some string into destination starting at startIndex; *)
+(* otherwise returns FALSE *)
+
+PROCEDURE CanReplaceAll(sourceLength, startIndex : CARDINAL;
+                        VAR INOUT destination : ARRAY OF CHAR) : BOOLEAN;
+(* returns TRUE if there is room for the replacement of sourecLength *)
+(* characters in destination starting at startIndex; *)
+(* otherwise returns FALSE *)
+
+PROCEDURE CanAppendAll(sourceLength : CARDINAL;
+                       VAR INOUT destination : ARRAY OF CHAR) : BOOLEAN;
+(* returns TRUE if there is sufficient room in destination to append *)
+(* a string of length sourceLength to the string in destination; *)
+(* otherwise returns FALSE *)
+
+PROCEDURE CanConcatAll(source1Length, source2Length : CARDINAL;
+                       VAR OUT destination: ARRAY OF CHAR) : BOOLEAN;
+(* returns TRUE if there is sufficient room in destination for two strings *)
+(* of length source1Length and source2Length; otherwise returns FALSE *)
+
+TYPE
+    CompareResults = (less, equal, greater);
+
+PROCEDURE Compare(stringVal1, stringVal2 : ARRAY OF CHAR)
+                                        : CompareResults [Invariant];
+(* returns less, equal or greater accordinly if stringVal1 is lexically *)
+(* less than, equal to, or greater than stringVal2 *)
+
+PROCEDURE Equal(stringVal1, stringVal2 : ARRAY OF CHAR)
+                                        : BOOLEAN [Invariant];
+(* returns Compare(stringVal1, stringVal2) = equal *)
+
+PROCEDURE FindNext(pattern, stringToSearch : ARRAY OF CHAR;
+                   startIndex : CARDINAL;
+                   VAR OUT patternFound : BOOLEAN;
+                   VAR OUT posOfPattern : CARDINAL);
+(* looks forward for the next occurance of pattern in stringToSearch, *)
+(* starting the search at position startIndex. *)
+(* If startIndex < LENGTH(stringToSearch) and pattern is found, patternFound *)
+(* is returned as TRUE, and posOfPattern contains the start position in *)
+(* stringToSearch of pattern. Otherwise patternFound is returned as FALSE, *)
+(* and posOfPattern is unchanged. *)
+
+PROCEDURE FindPrev(pattern, stringToSearch : ARRAY OF CHAR;
+                   startIndex : CARDINAL;
+                   VAR OUT patternFound : BOOLEAN;
+                   VAR OUT posOfPattern : CARDINAL);
+(* looks backward for the previous occurence of pattern in stringToSearch *)
+(* and returns the position of the first character of the pattern if found. *)
+(* The search for the pattern begins at startIndex. If pattern is found, *)
+(* patternFound is returned as TRUE, and posOfPattern contains the start *)
+(* position in stringToSearch of pattern in the range [0..startIndex]. *)
+(* otherwise patternFound is returned FALSE, and posOfPattern is unchanged. *)
+
+PROCEDURE FindDiff(stringVal1, stringVal2 : ARRAY OF CHAR;
+                   VAR OUT differenceFound : BOOLEAN;
+                   VAR OUT posOfDifference : CARDINAL);
+(* compares the string values in stringVal1 and stringVal2 for differences. *)
+(* If they are equal, differenceFound is returned as FALSE, and TRUE *)
+(* otherwise. If differenceFound is TRUE, posOfDifference is set to the *)
+(* position of the first difference; otherwise posOfDifference is unchanged. *)
+
+PROCEDURE Capitalize(VAR INOUT stringVar : ARRAY OF CHAR);
+(* applies the function CAP to each character of the string in stringVar *)
+
+END Strings.

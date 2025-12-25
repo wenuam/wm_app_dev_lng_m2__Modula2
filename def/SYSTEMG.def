@@ -1,0 +1,20 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMG;
+
+PROCEDURE IsCollectionEnabled ["GARBAGECOLLECTION_IsCollectionEnabled"]
+                    () : BOOLEAN;
+
+PROCEDURE SetCollectionEnable ["GARBAGECOLLECTION_SetCollectionEnable"]
+                    (on : BOOLEAN);
+
+PROCEDURE ForceCollection ["GARBAGECOLLECTION_ForceCollection"];
+
+END SYSTEMG.

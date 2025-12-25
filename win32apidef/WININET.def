@@ -1,0 +1,49 @@
+DEFINITION MODULE WININET;
+(*++
+ *Copyright (c) Microsoft Corporation. All rights reserved.
+
+Module Name:
+
+    WinInet.h
+
+Abstract:
+
+    Contains manifests, macros, types and prototypes for Microsoft Windows
+    Internet Extensions
+--*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2011, ADW Software. All rights reserved. *)
+
+(* Module is very incomplete, to be replenished *)
+
+(*
+ * Set up Structure Packing to be 4 bytes for all winhttp structures
+ *)
+
+FROM WIN32 IMPORT DWORD, BOOL;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+%IF AMD64 %THEN
+<*/ALIGN:8/NOPACK*>
+%ELSE
+<*/ALIGN:4/NOPACK*>
+%END
+
+PROCEDURE InternetGetConnectedState (VAR lpdwFlags : DWORD; dwReserved : DWORD) : BOOL;
+
+PROCEDURE DeleteUrlCacheEntryA (lpszUrlName : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE DeleteUrlCacheEntryW (lpszUrlName : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+
+PROCEDURE DeleteUrlCacheEntry = DeleteUrlCacheEntryW;
+
+%ELSE
+
+PROCEDURE DeleteUrlCacheEntry = DeleteUrlCacheEntryA;
+
+%END
+
+END WININET.

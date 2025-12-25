@@ -1,0 +1,1536 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE DlgShell;
+(* This module provides an encapsulation of the interface to
+   underlying operating system dialog boxes.
+   This module interface is operating system independent.
+*)
+
+(* supported implementations
+   Win32
+   GTK+ 2.x
+   Macintosh Carbon on OSX
+*)
+
+(* about threads
+   Win32 - you may use the GUI features in a fully multi threaded manner.
+
+   GTK - Only one thread, the main thread, may use the GUI features.
+
+   Mac - Currently only one thread, the main thread, may use the GUI features.
+*)
+
+(* about resources
+   Win32 - normal Win32 dialog box resources are used
+   GTK+ - Glade XML files. (.glade)
+              dialogs in the glade file should not be marked as visible.
+              some depreciated widgets still used by this module.
+              GtkCList is used. eventually to be replaced by GtkTreeView.
+              GtkCombo and GtkOptionMenu are used. GTK >= 2.4 has GtkComboBox which will replace both.
+   Mac - Classic DLOG resources. Will change to only Interface builder in the future.
+             We suggest you use the Resorcerer program for creating and editing
+             your Mac resources. www.mathemaesthetics.com
+             You should have a dlgx resource matching your DLOG resource.
+             You should specify the theme controls, theme background and
+             embeding hierarchy options in the dlgx resource.
+             The items in the dialog MUST be control (CNTL) type resources. Classic
+             dialogs can have dialog items which are not controls.
+             The control id number is placed in the control reference value (RefCon).
+             The id number of the dialog CNTL item does not matter and is not used
+             by this module so just let the resoruce editor choose a unique value.
+         Interface builder nib.
+             Not yet supported.
+
+*)
+
+<*/NOPACK*>
+
+FROM SYSTEM IMPORT
+    ADDRESS, ADRCARD, CAST, MACHINEWORD;
+
+FROM WinShell IMPORT
+    Window, COORDINATE, StringData, BitmapHandle;
+IMPORT WinShell;
+
+CONST
+    CurrentAsParent     = CAST(Window, 1);
+    (* Use this to specify the current dialog
+      as the parent of the new dialog
+      this is only used when one dialog creates another dialog. *)
+
+VAR
+<*IF MAC THEN*>
+    DlgError            : CARDINAL; (* operating system specific value *)
+<*ELSE*>
+    DlgError            : INTEGER; (* operating system specific value *)
+<*END*>
+
+TYPE
+    (* various types of dialog controls supported by this module *)
+    ControlType = (
+                   StaticText,
+                   StaticTextAttrib,
+                   CheckBox,
+                   RadioGroup,
+                   LineEdit,
+                   NumberEdit,
+                   SpinButton,
+                   MultiLineEdit,
+                   EditTextFile,
+                   ListBox,
+                   ColumnListBox,
+                   DropDownList,
+                   ComboBox,
+                   ColorDropDownList,
+                   DisplayBitmap,
+                   PushButton,
+
+                   DefaultButton,
+                   Timer,
+                   DialogTitle,
+                   UserData
+                  );
+(*
+
+    ======= ControlType =======
+
+    Most fields set the initial value of the control as well as holding
+    the return value.
+
+    PushButton
+        Win32 - push button
+        Gtk - GtkButton
+        Mac classic - standard push button. not "old" push button.
+                      to specify the default button in the resource file
+                      use a negative id number in the RefCon field.
+
+
+        b_type = the type of button
+            CloseButton    - the dialog is closed and data validation occurs.
+            CancelButton   - the dialog is closed and data validation does not occur.
+                             this button is the button selected when the user
+                             presses the Escape (Esc) key in the dialog.
+                             Windows - on Windows only the control with the id value of 2 can be the cancel control.
+                                     therefore for portability always use the id of 2 for your cancel button.
+            HelpButton     - the Pressed notification is sent and data validation does not occur.
+            NotifyButton   - the Pressed notification is sent and data validation occurs.
+            CancelNotifyButton - the Pressed notification is sent and data does not validation occur.
+                                 this button is the button selected when the user
+                                 presses the Escape (Esc) key in the dialog.
+                                 you use this when your cancel need to take some
+                                 action before the dialog is closed.
+                                 Windows - on Windows only the control with the id value of 2 can be the cancel control.
+                                         therefore for portability always use the id of 2 for your cancel button.
+            NotifyButtonNV - the Pressed notification is sent and data validation does not occur.
+
+        b_return = for CloseButton and CancelButton the value to be returned by the dialog.
+
+    DefaultButton
+        default_button = the DlgShell control identifier of the default button
+
+        designates which button is the default.
+        this is not necessary if the operating system resource defines
+        which button is the default.
+
+    CheckBox
+        Win32 - check box
+        Gtk - GtkCheckButton
+        Mac classic - Check Box
+
+        chk_on      = The state of the checkbox (checked is TRUE).
+                      On entry sets box state and upon return contains the box state.
+
+    RadioGroup
+        Win32 - radio button
+        Gtk - GtkRadioButton
+        Mac classic - radio button
+
+        r_first = The id of the first radio button in the button group.
+        r_last  = The id of the last radio button in the button group.
+
+        All items in the group must have consecutive id numbers from first to last.
+
+        On entry id contains the initial item to check in the radio group.
+        On return id contains the item in the group that is currently checked.
+        This value is zero based from the first item in the group
+
+    StaticText  = The text to display in the field. Can be NIL on init.
+        Win32 - static text
+        Gtk - GtkLabel
+        Mac classic - Static text control.
+                      If you will not be altering the text you can use a static text
+                      dialog item in the resource. You do not need to list such an
+                      item in the control list.
+                      Otherwise...
+                      The text you place "in" the control in the resrouce editor is not
+                      displayed in the control. That text is the control title and the
+                      static text control does not display a title.
+                      To have the text listed in the control resource be displayed you
+                      must list the static text control in the control list given to
+                      DlgShell. This module reads the control title and sets the text of
+                      the control to the title text.
+
+        sta_text        = text to display in the control instead of the text that is
+                          listed in the control resource.
+
+    StaticTextAttrib    = The text to display in the field. Can be NIL.
+        Win32 - static text
+        Gtk - GtkLabel inside a GtkEventBox.
+              You should place a label inside and event box for this
+              control. A GtkLabel does not control its background color
+              so you need the EventBox to be able to set the background
+              color. If an event box is not the "parent" of this label,
+              then the background color will not be set but the foreground
+              and font attributes will still work.
+        Mac classic - Static text control.
+
+        sta_fore = the foreground color to display the text in.
+        sta_back = the background color to display the text in.
+        sta_font = the font to used to display the text in. (Can be NIL)
+
+    LineEdit
+        Win32 - edit
+        Gtk - GtkEntry
+        Mac classic - EditText
+
+        le_text = Pointer to a null terminated string which holds the
+                  edit field contents. Can be NIL. In this case
+                  you will need to use the GetText procedure to fetch the
+                  text from the control.
+                  On entry the edit field is initialized with the text in
+                  this string, and upon return the user entered text is
+                  contained within this string.
+        le_max  = The maximum number of characters allowed in the edit field.
+                  The le_text buffer, if present, should be one character bigger
+                  than the maximum allowable character count. This allows for
+                  a null terminator.
+
+    MultiLineEdit
+        Win32 - edit with multi line option
+        Gtk - GtkTextView
+        Mac classic - EditText
+
+        mle_text = Pointer to a null terminated string which holds the
+                   edit field contents. Can be NIL. To enter/retrieve text
+                   you can use the supplied line read/write APIs.
+                   If not NIL, on entry the edit field is initialized with the
+                   text from this string.
+        mle_max = The maximum number of characters allowed in the edit field.
+                  mle_max can be zero which means that the edit file has not limit
+                  other than that implied by the system.
+                  The mle_text buffer, if present, should be one character bigger
+                  than the maximum allowable character count. This allows for
+                  a null terminator.
+
+                  IF (mle_max <> 0) AND (mle_text <> NIL) THEN
+                  mle_text will contain the value of the edit field upon return.
+                  The buffer should be one character bigger than the maximum to
+                  allow for a null terminator character.
+
+    EditTextFile
+        etf_name = Pointer to a NULL terminated string which holds the
+                   file name of the file to be edited.
+                   the file will be saved when the dialog is closed if the user alters
+                   the file in any way. if the dialog is "canceled" then
+                   the file will not be saved.
+                   This control is compatible with the MultiLineEdit control.
+
+    NumberEdit
+        Win32 - edit
+        Gtk - GtkEntry
+        Mac classic - EditText
+
+        number_Val =  the initial and return value
+        number_Min = the minimum value of the valid number range.
+        number_Max = the maximum value of the valid number range.
+        number_Hex = the number will be displayed in hexadecimal format
+                     the user will be allowed to enter a number in hex
+                     or decimal format
+        number_msg = the string id number of the message displayed when
+                     an invalid or out of range number is entered.
+                     if 0, then a default message is displayed.
+
+    SpinButton
+        Win32 - a composite of two resource controls.
+          1) UpDown control
+          2) edit control. the auto buddy of the UpDown control must be
+                           this edit control.
+        Gtk - GtkSpinButton
+        Mac classic - a composite of two resource controls.
+          1) little arrows control.
+          2) edit text control. the RefCon field should have the
+                                negative value of the control.
+
+        spin_Val = the numeric value.
+        spin_Min = the minimum value of the valid number range.
+        spin_Max = the maximum value of the valid number range.
+
+    ListBox
+        Win32 - list box, single or multiple selection
+        Gtk - GtkCList (1 column), browse/single or multiple selection
+        Mac classic - ListBox with 1 column.
+                      the classic resource does not allow specifying if
+                      a list box is single or multiple selection.
+                      if the RefCon field is positive the list is single
+                      selection.
+                      if the RefCon field is negative the list is
+                      multiple selection.
+
+        lb_text
+                = Pointer to an array of null terminated strings terminated
+                  by a null, meaning the end of the string has a double null.
+                  See the ConvertToNulls and ConvertFromNulls procedures in
+                  this module for a simple method maintaining such strings.
+        lb_selStr
+                = Pointer to a string to hold the result as well as the
+                  initial selection. This value can be NIL if you want to
+                  set and receive the selection by index. The strings are
+                  not case sensitive.
+                  On termination this string has the users selection if it
+                  does not have NIL.
+                  selStr MUST be big enough to hold any string in the
+                  list box.
+                  For multiple selection, this is the last item selected by the
+                  user.
+        lb_selIndex
+                = if selStr is NIL on entry, this has the initial selection
+                  index. On termination this always has the users selection
+                  by index regardless of if selStr <> NIL.
+                  For sorted, this is the index of the order data was
+                  added to the list box, not how it was displayed.
+                  The index is zero based, and MAX(CARDINAL) signifies no
+                  selection.
+                  For multiple selection, this is the last item selected by the
+                  user.
+
+    ColumnListBox
+        The list box has 2 or more columns.
+
+        Win32 - ListView in report mode, single or multiple selection
+        Gtk - GtkCList, browse/single or multiple selection
+        Mac classic - this is a Data browser control. Unforntunately a
+                      classic resource cannot specify a data browser control.
+                      therefore in the dialog resource simply define a ListBox
+                      control and this module will replace that with a
+                      data browser control.
+
+        clb_columns = The number of columns, 2 or more
+
+        clb_columnInfo =
+                = Pointer to and array of CARDINAL values with the column
+                  widths in screen pixels. Must have clb_columns number of
+                  elements.
+                  The first element is for column zero, and so on...
+
+                  width = the column width in pixels. Can be zero if you are
+                          going to set the column size via APIs
+                  align = The alignment of the text in the column.
+                  header = the header text. Can be NIL, which means the
+                           header, if shown, with not have a title.
+        clb_selStr
+                = Pointer to a string to hold the result.
+                  This value can be NIL if you want to receive the selection
+                  by index.
+                  On termination this string has the users selection if it
+                  does not contain NIL.
+                  selStr MUST be big enough to hold any string in the
+                  list box.
+                  selStr contains the text of all columns separated by null characters.
+                  For multiple selection, this is the last item selected by the
+                  user.
+        clb_selIndex
+                = On termination this always has the users selection.
+                  The index is zero based, and MAX(CARDINAL) signifies no
+                  selection.
+                  For multiple selection, this is the last item selected by the
+                  user.
+
+    DropDownList
+        Win32 - combo box with drop down list attribute
+        Gtk - GtkOptionMenu, or GtkCombo(not editable)
+            OptionMenu is the ideal widget but if you have a large
+            number of items in the list then OptionMenu does not work
+            well, if at all. In these cases use a GtkCombo with the
+            edit field marked as not editable.
+        Mac classic - popup menu button.
+                    the menu id of the control should be -12345,
+                    since this module will be replacing the menu
+                    with the items you specify.
+
+        ddl_text = Pointer to an array of null terminated strings terminated
+                  by a null, meaning the end of the string has a double null.
+        ddl_selIndex
+                = this has the initial selection index.
+                  On termination this always has the users selection.
+                  The index is zero based, and MAX(CARDINAL) signifies no
+                  selection.
+
+    ColorDropDownList
+        this control displays a selection of colors for the user to choose from.
+
+        Win32 - combo box with drop down list attribute
+        Gtk - GtkOptionMenu
+        Mac classic. not yet supported.
+
+        cddl_colorData = pointer to an array of color values
+        cddl_colorCount = number of items in the color array
+        cddl_selIndex
+                = this has the initial selection index.
+                  On termination this always has the users selection.
+                  The index is zero based, and MAX(CARDINAL) signifies no
+                  selection.
+
+    ComboBox
+        Win32 - ComboBox (simple or drop down)
+        Gtk - GtkCombo
+        Mac classic - The Mac does not have a control of this type.
+                    this module synthesizes it via a composite of
+                    multiple controls.
+                    you need to define two controls in your dialog
+                    resource.
+                    1) disclousure button.
+                    2) EditText. the RefCon field should have the
+                       negative value of the control.
+
+        cb_text = Pointer to an array of null terminated strings terminated
+                  by a null, meaning the end of the string has a double null.
+        cb_max  = Maximum number of characters that edit portion will accept.
+                  The cb_text buffer, if present, should be one character bigger
+                  than the maximum allowable character count. This allows for
+                  a null terminator.
+        cb_selStr
+                = Pointer to a string to hold the result as well as the
+                  initial selection. The strings are not case sensitive.
+                  On termination this string has the users selection.
+
+    UserData
+        allows you to have some data attached to a dialog box for access by
+        the notify procedure
+
+    Timer
+        the notify procedure will be called when the timerInterval for this time
+        has elapsed.
+
+        id = A unique number to identify the timer.
+        timerInterval = the timer interval in milliseconds. A value of
+                        zero means the timer is not activated.
+*)
+
+    NotifyType   = (
+                    InitDialog, (* only dialogs *)
+                    DestroyDialog, (* only dialogs *)
+                    ValueChanged, (* all that accept user input *)
+                    LoseFocus, (* all *)
+                    GainFocus, (* all *)
+                    Validate, (* all that accept user input *)
+                    SelectionChanged, (* all ListBoxes, DropDownLists, ComboBox *)
+                    DoubleClicked, (* all ListBoxes *)
+                    Pressed,  (* NotifyButton,
+                                 CheckBox,
+                                 RadioGroup *)
+                    TimerElapsed, (* Timer *)
+                    DialogModified, (* only dialogs *)
+                    PageActivate,    (* only tabbed dialogs *)
+                    PageDeactivate,  (* only tabbed dialogs *)
+                    PageCancel,       (* only tabbed dialogs *)
+                    ContextHelp(* all *)
+                   );
+
+(*
+    ======= NotifyType =======
+
+    InitDialog
+        The dialog is Initing and about to be displayed.
+
+    DestroyDialog
+        The dialog is terminated. Do not access anything. Use this to
+        free any memory or resources you may have allocated for the dialog.
+
+    ValueChanged
+        The text in a control has been changed.
+
+    LoseFocus
+        Input focus has been lost.
+        On the Mac very few controls can actually accept input focus. Typically
+        only controls that accept user data input and list boxes.
+
+    GainFocus
+        Input focus is now on the specified control.
+        On the Mac very few controls can actually accept input focus. Typically
+        only controls that accept user data input and list boxes.
+
+    Validate
+        The user is/has moved the input focus from one control to another.
+        You can use this notification of validate the input of the current control.
+        You can fail the validation and the input focus will be remain on
+        the current control.
+
+    SelectionChanged
+        The selected item in a control has been changed.
+
+    DoubleClicked
+        An item in a control was double clicked.
+
+    Pressed
+        The button was pressed.
+
+    TimerElapsed
+        Self explanatory
+
+    DialogModified
+        Lets you know that the current dialog has been modified in some way.
+        Very useful with tabbed dialogs. For tabbed dialogs each page will
+        receive this message if something on that page has been altered.
+        The dialog as a whole is considered altered if any single page has
+        been altered.
+
+    PageActivate
+        For tabbed dialogs. Notifies you that the page is being activated.
+
+    PageDeactivate
+        For tabbed dialogs. Notifies you that the page is being deactivated.
+        If you return ContinueDialog from this message the page will be
+        allowed to deactivate. If you return DisallowPageDeactivate the
+        page will remain the active page. For example you may want to
+        validate some entry fields and disable switching/closing the current
+        page until proper data has been entered.
+
+    PageCancel
+        For tabbed dialogs. The user has pressed the "cancel" button.
+        All pages will receive this message when a tabbed dialog is being
+        canceled. This will allow you to perform any necessary processing
+        to satisfy "cancelling" the users modifications.
+
+    ContextHelp
+        Sent when context help was selected for the control but the control
+        helpId value was 0.
+*)
+
+    StockButtonType = (StockOk, StockCancel);
+
+    PushButtonType = (
+                      CloseButton,
+                      CancelButton,
+                      HelpButton,
+                      NotifyButton,
+                      CancelNotifyButton,
+                      NotifyButtonNV
+                     );
+
+    NotifyResult = (
+                    ContinueDialog, (* means continue normally *)
+                    TerminateDialog,(* the dialog is closed *)
+                                    (* data fields will be validated *)
+                                    (* this is considered a successfull *)
+                                    (* dialog exit return *)
+                    CancelDialog,(* the dialog is closed *)
+                                 (* data fields will NOT be validated.
+                                    this is considered a failed return.
+                                 *)
+                    DisallowPageDeactivate, (* use with tabbed dialogs *)
+                    FailedValidation(*used with the Validate notify message*)
+                   );
+
+    NotifyProc  = PROCEDURE(
+                            NotifyType, (* what happened *)
+                            VAR INOUT CARDINAL
+                                            (* on entry identifies the control
+                                               associated with this notification.
+                                               MAX(CARDINAL) signifies the
+                                               entire dialog as the "control".
+
+                                               See SetControlIdMode for a full
+                                               description of how controls are
+                                               identified.
+
+                                               If you return TerminateDialog or
+                                               CancelDialog,
+                                               then assign the value you want the
+                                               dialog call to return to this
+                                               parameter. This only has
+                                               meaning for modal dialogs.
+                                            *)
+                           ) : NotifyResult;
+
+    DialogPositions     = (
+                           NormalPosition, (* dialog resource position *)
+                           CenterOnParent, (* center on parent window *)
+                           CenterOnScreen  (* center on physical screen *)
+                          );
+
+    ColorValue  = WinShell.ColorValue;
+    FontInfo    = WinShell.FontInfo;
+    ControlColumnInfo = WinShell.ControlColumnInfo;
+    TextAlignment = WinShell.TextAlignment;
+
+    FontInfoPointer = POINTER TO FontInfo;
+
+    CONTROL     =
+        RECORD
+			id              : CARDINAL; (* the control identifier number *)
+										(* For RadioGroup and Timer
+										   See the description of the control *)
+										(* For DialogTitle and UserData this field
+										   has no meaning so just set it to zero *)
+			helpId          : CARDINAL; (* context help id.
+										   this is the id number of a string resource entry.
+										   Use 0 for no help. In this case the Contexthelp
+										   notification is sent.
+
+										   A user gets help by clicking the "help" button
+										   and then clicking the control in which they
+										   want help for. A popup help window is shown with
+										   the help string. The help string can have multiple
+										   lines.
+
+										   As a convenience on the following controls
+
+										   RadioGroup,
+										   LineEdit, MultiLineEdit, NumberEdit,
+										   ListBox, ColumnListBox
+										   ComboBox, DropDownList, ColorDropDownList
+
+										   the id number 1 less than the control(s) id
+										   is assumed to be a label/frame for the control,
+										   *unless* a specific control exists with that
+										   id number in the control array.
+										   This "label" will also get the help text
+										   of the control if the user asks for context
+										   help on this item.
+
+										   Win32
+											   the standard dialog box context help
+											   mechanism is used. Your resource should have
+											   this dialog style.
+
+										   Gtk and Mac
+											   no such mechanism exists so this module
+											   simulates it.
+
+											   For normal dialogs you should define a button
+											   with an id of 911 in the dialog. this module
+											   will treat that button as the initiator of the
+											   context help sequence. This button should NOT
+											   be listed in the control array.
+
+											   Tabbed dialogs simply look at the various
+											   controls in the dialog tabs and if any one of
+											   them has a non zero help id number then a
+											   context help button is added to the dialog.
+											   You do not need, and should not have,
+											   a 911 button defined in the dialog resource(s).
+										   *)
+
+		CASE ct : ControlType OF
+		PushButton:
+			b_type              : PushButtonType;
+			b_return            : CARDINAL;
+		|
+		DefaultButton:
+			default_button      : CARDINAL;
+		|
+		RadioGroup:
+			r_first             : CARDINAL;
+			r_last              : CARDINAL;
+		|
+		CheckBox:
+			chk_on              : BOOLEAN;
+		|
+		LineEdit:
+			le_text             : StringData;
+			le_max              : CARDINAL;
+		|
+		MultiLineEdit:
+			mle_text            : StringData;
+			mle_max             : CARDINAL;
+		|
+		EditTextFile:
+			etf_name            : StringData;
+			etf_altered         : BOOLEAN;
+		|
+		StaticText:
+			st_text             : StringData;
+		|
+		StaticTextAttrib:
+			sta_text            : StringData;
+			sta_fore            : ColorValue;
+			sta_back            : ColorValue;
+			sta_font            : FontInfoPointer;
+		|
+		ListBox:
+			lb_text             : StringData;
+			lb_selStr           : StringData;
+			lb_selIndex         : CARDINAL;
+		|
+		ColumnListBox:
+			clb_columns         : CARDINAL;
+			<*IF MAC THEN*>
+			clb_columnInfo      : POINTER TO ARRAY [0..31] OF ControlColumnInfo;
+			<*ELSE*>
+			clb_columnInfo      : POINTER TO ARRAY [0..0] OF ControlColumnInfo;
+			<*END*>
+			clb_selStr          : StringData;
+			clb_selIndex        : CARDINAL;
+		|
+		DropDownList:
+			ddl_text            : StringData;
+			ddl_selIndex        : CARDINAL;
+		|
+		ColorDropDownList:
+			<*IF MAC THEN*>
+			cddl_colorData      : POINTER TO ARRAY [0..127] OF ColorValue;
+			<*ELSE*>
+			cddl_colorData      : POINTER TO ARRAY [0..0] OF ColorValue;
+			<*END*>
+			cddl_colorCount     : CARDINAL;
+			cddl_selIndex       : CARDINAL;
+		|
+		ComboBox:
+			cb_text             : StringData;
+			cb_selStr           : StringData;
+			cb_max              : CARDINAL;
+		|
+		SpinButton:
+			spin_Val            : INTEGER;
+			spin_Min            : INTEGER;
+			spin_Max            : INTEGER;
+		|
+		NumberEdit:
+			number_Val          : INTEGER;
+			number_Min          : INTEGER;
+			number_Max          : INTEGER;
+			number_Msg          : CARDINAL;
+			number_Hex          : BOOLEAN;
+		|
+		Timer:
+			timerInterval       : CARDINAL;
+		|
+		DisplayBitmap:
+			db_bitmap           : BitmapHandle;
+		|
+		DialogTitle:
+			dlgTitle            : StringData;
+		|
+		UserData:
+			userData            : ADDRESS;
+		ELSE
+		END;
+    END;
+
+    <*IF MAC THEN*>
+    ControlsPointer     = POINTER TO ARRAY [0..127] OF CONTROL;
+    <*ELSE*>
+    ControlsPointer     = POINTER TO ARRAY [0..0] OF CONTROL;
+    <*END*>
+    PAGE =
+        RECORD
+			controls        : ControlsPointer;
+			numControls     : CARDINAL;
+			notify          : NotifyProc;
+			name            : StringData;(*dialog resource*)
+			title           : StringData;(*tab text, NIL to use the dialog resource
+										   title.
+										 *)
+        END;
+
+    DialogSizes = (NormalDialog, LargeDialog, ExtraLargeDialog);
+    (* Win32
+       this changes the size of the font used in a dialog. on Win32 this effectively
+       makes the controls and thus the dialog larger. rememeber that dialog sizes are
+       based on dialog units, which are based on the font used for a dialog.
+       Large = +2 points, ExtraLarge = +4 points
+       if the dialog resource used an 8pt font then, Large=10, ExtraLarge=12.
+
+       GTK
+       currently ignored.
+    *)
+
+    ControlIdModes = (ControlSubscript, ControlId);
+
+VAR
+    DialogSize  : DialogSizes;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE GetDialogParent() : Window;
+(* a utility function to return the current foreground window, or
+   the current modal dialog for use as a parent for a dialog.
+   If the current foreground window is NIL then the value
+   of WinShell.MainWindow is used.
+*)
+
+PROCEDURE SetControlIdMode(mode : ControlIdModes);
+PROCEDURE GetControlIdMode() : ControlIdModes;
+(*
+  set how this module identifies individual controls.
+  ControlIdSubscript
+      Controls are identiifed by their control array subscript position, zero based.
+      This is the original DlgShell mode and is the default mode at startup.
+  ControlId
+      Controls are identified by their id value.
+      RadioGroups are identified by the id number, r_first.
+      If you are using symbolic constants for your control ids then this
+      mode is probably preferable.
+*)
+
+PROCEDURE CallDialog(parent : Window;
+                     name : ARRAY OF CHAR;
+                     VAR INOUT ctrls : ARRAY OF CONTROL;
+                     notify : NotifyProc;
+                     position : DialogPositions) : CARDINAL;
+(*
+   opens a modal dialog.
+   The dialog is a named resource and the name is specified in the name parameter.
+
+       Gtk - The dialog window should not have the visible attribute. This
+             module will show the dialog once the controls and dialog are
+             fully initialized.
+
+   parent = the parent window of the dialog.
+   ctrls = the controls in the dialog. This need not be all of the controls
+           in the dialog resource but those controls that you need to
+           perform some processing action with. For example a dialog may
+           have many static text controls and if you have no need to change
+           the text of these controls you need NOT specify them in the
+           controls array.
+           How controls are identified in the Notify procedure and in the API calls
+           of this module depends on the control id mode.
+           See SetControlIdMode.
+   notify = the call back procedure. Pass NIL_NOTIFY if you have no
+            need for a call back procedure. This is quite common.
+            You generally only need a notification procedure if you need to
+            validate data or perform other processing. You do not need
+            a notification procedure to initialize the controls with
+            information or to retrieve the information the user has entered.
+            Mechanisms are in place to handle this without a call back
+            notification procedure. However many times it is easier to fill
+            a list box without generating the data structure to automatically
+            fill the list and in this case you would "initialize" the
+            list with NIL and then use API calls to add items to the list.
+            Multi line edit controls are also probably easier to deal with
+            using API calls rather than the control data structures. These
+            are two examples of choices you will need to make in developing
+            your dialog boxes.
+   position = Allows you to specify where on the screen the dialog is displayed.
+*)
+
+PROCEDURE ModelessDialog(parent : Window;
+                         name : ARRAY OF CHAR;
+                         VAR INOUT ctrls : ARRAY OF CONTROL;
+                         notify : NotifyProc;
+                         position : DialogPositions) : CARDINAL;
+(*
+   opens a modeless dialog. The dialog is a named resource and the name
+   is specified in the name parameter.
+   The return value identifies the dialog for use in the various
+   API calls provided in this module. Many times you may not need to save
+   this value since while processing a notify message you are the current
+   dialog, and if the modeless dialog terminates itself then you do not need
+   the value to close the dialog.
+   See CallDialog
+*)
+
+PROCEDURE CallTabbedDialog(parent : Window;
+                           title : ARRAY OF CHAR;
+                           VAR INOUT pages : ARRAY OF PAGE;
+                           position : DialogPositions) : CARDINAL;
+(*
+   opens a modal "tabbed" dialog.
+   Win32 - A property sheet is created.
+   Gtk - a Window with a notebook widget is created.
+
+   title = the dialog title. Null terminated
+   pages = the list of "sub dialogs"/pages/tabs.
+
+    controls = this is the same as the ARRAY OF CONTROL parameter
+               in CallDialogByName.
+    numControls = the number of controls in the controls array.
+    notify = Same as the notify parameter in CallDialogByName
+    name  = specifies the name of the dialog resource for this
+            page of the tabbed dialog.
+    title = the text of the tab. NIL if you want ot use the dialog resource
+            title (the caption text of the source).
+
+    Win32.
+        Dialog resources should be marked with the PropertySheet and Child
+        attributes.
+    Gtk
+        Dialog resources should be windows without the visible attribute.
+        The container in the dialog must be named "mainbox". It does not
+        matter what type of container it is. This module extracts the
+        container from the dialog window and places it into the notebook
+        page(s).
+
+    You can use the same notify procedure for all pages in the dialog.
+    If this is the case you may need to inquire about the current page.
+
+   See CallDialog
+*)
+
+(*  --------------------------------------------------------------------*)
+(*  --------------------------------------------------------------------*)
+(*  --------------------------------------------------------------------*)
+
+(*
+   most of the following API procedures have two versions of the same
+   procedure. One procedure explicitly takes the dialog number and the
+   other assumes the current dialog.
+
+   When you receive a notify message your dialog is the current dialog and you
+   can use those API procedures assuming the current dialog.
+   This is true for modal and modeless dialogs.
+
+   To access a modeless dialog, outside of a notification you will need to use
+   the dialog number APIs.
+
+   For modal dialogs you NEVER know what the dialog number is unless you
+   call GetDialogNumber() while you are the current dialog, and why bother
+   doing such a thing.
+*)
+
+PROCEDURE ShowDialog(dlgNum : ADRCARD; yes : BOOLEAN);
+(*
+   If yes = TRUE then the dialog will be visible, otherwise the dialog
+   will be invisible. This makes no sense for modal dialogs.
+*)
+
+PROCEDURE EnableDialog(dlgNum : ADRCARD; yes : BOOLEAN);
+(*
+   If yes = TRUE then the dialog will be enabled, otherwise the dialog
+   will be disabled. This makes no sense for modal dialogs.
+   A disabled dialog will not accept mouse or keyboard input.
+*)
+
+PROCEDURE CloseDialog(dlgNum : ADRCARD; cancel : BOOLEAN);
+(*
+   close the dialog specified by dlgNum. Only use this with modeless dialogs
+   remember that a dialog can terminate itself by simply returning
+   TerminateDialog or CancelDialog from its notify procedure
+*)
+
+PROCEDURE GetDialogNumber() : CARDINAL;
+(*   get the dialog number for the current dialog
+*)
+
+PROCEDURE GetActivePage() : CARDINAL;
+(*
+   For tabbed dialogs only
+   get the currently active page number for the currently active dialog
+   page numbers are zero based.
+*)
+
+PROCEDURE SetActivePage(page : CARDINAL);
+(*
+   For tabbed dialogs only
+   set the active page of the current dialog
+*)
+
+PROCEDURE IsDialogValidDlg(dlgNum : CARDINAL) : BOOLEAN;
+PROCEDURE IsDialogValid() : BOOLEAN;
+(* does the specified dialog exist *)
+
+PROCEDURE GetUserDataDlg(dlgNum : ADRCARD) : ADDRESS;
+PROCEDURE GetUserData() : ADDRESS;
+(*
+   dlgNum specifies the dialog
+   get the user data attached to the dialog.
+   for tabbed dialogs operates on the current page only
+*)
+
+PROCEDURE PositionDialogDlg(dlgNum : ADRCARD; pos : DialogPositions);
+PROCEDURE PositionDialog(pos : DialogPositions);
+(*
+   dlgNum specifies the dialog
+   reposition the dialog on the screen using the pos parameter
+*)
+
+PROCEDURE GetDialogSizeDlg(dlgNum : ADRCARD; VAR OUT x, y : COORDINATE);
+PROCEDURE GetDialogSize(VAR OUT x, y : COORDINATE);
+(*
+   dlgNum specifies the dialog
+   get the size of the dialog in screen pixels
+   x = width, y = height
+*)
+
+PROCEDURE GetDefaultButtonDlg(dlgNum : ADRCARD) : CARDINAL;
+PROCEDURE GetDefaultButton() : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   get the button control that is the current default button
+*)
+
+PROCEDURE SetDefaultButtonDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE SetDefaultButton(control : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   set the default button to the control.
+*)
+
+PROCEDURE SetPaintDlg(dlgNum : ADRCARD; control : ADRCARD; on : BOOLEAN);
+PROCEDURE SetPaint(control : CARDINAL; on : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   If on = TRUE then the control will repaint itself
+   when necessary, otherwise it will not repaint itself until paint is
+   turned on for this control. An example of using this would be loading
+   a listbox control. It is senseless to have a list box repaint itself
+   after each item you add until you have added all items to the list box.
+*)
+
+PROCEDURE SetEnableDlg(dlgNum : ADRCARD; control : ADRCARD; enabled : BOOLEAN);
+PROCEDURE SetEnable(control : CARDINAL; enabled : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   If enabled = TRUE the control will be enabled thus
+   allowing the user to interact with the control, otherwise the control
+   will be disabled or "grayed out"
+   If this is used on a RadioGroup all radio buttons in the group will be
+   disabled.
+*)
+
+PROCEDURE SetEnableRangeDlg(dlgNum : CARDINAL; first, last : CARDINAL; enabled : BOOLEAN);
+PROCEDURE SetEnableRange(first, last : CARDINAL; enabled : BOOLEAN);
+(*
+  as SetEnable, except all controls from first..last are acted upon
+*)
+
+PROCEDURE SetEnableRadioDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL; enabled : BOOLEAN);
+PROCEDURE SetEnableRadio(control, item : CARDINAL; enabled : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   If enabled = TRUE the radio group i'th item identified
+   by item will be enabled thus allowing the user to interact with the control,
+   otherwise the item will be disabled or "grayed out"
+*)
+
+PROCEDURE SetVisibleDlg(dlgNum : ADRCARD; control : ADRCARD; visible : BOOLEAN);
+PROCEDURE SetVisible(control : CARDINAL; visible : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   If visible = TRUE the control will be visible thus
+   allowing the user to interact with the control, otherwise the control
+   will not be visible and thus not available to the user
+   If this is used on a RadioGroup all radio buttons in the group will be
+   invisible.
+*)
+
+PROCEDURE SetVisibleRadioDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL; visible : BOOLEAN);
+PROCEDURE SetVisibleRadio(control, item : CARDINAL; visible : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   If visible = TRUE the radio group i'th item identified by item will be visible thus
+   allowing the user to interact with the control,
+   otherwise the item will be invisible.
+*)
+
+PROCEDURE SetColorAndFontDlg(dlgNum : ADRCARD; control : ADRCARD; fore, back : ColorValue; font : FontInfoPointer);
+PROCEDURE SetColorAndFont(control : CARDINAL; fore, back : ColorValue; font : FontInfoPointer);
+(*
+   dlgNum specifies the dialog
+   set the color and font of the control.
+   font can be NIL if you do not want to set the font.
+
+   currently can only be used with StaticTextAttrib controls
+*)
+
+PROCEDURE SetInputFocusToDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE SetInputFocusTo(control : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   set the keyboard input focus to the specified control.
+*)
+
+PROCEDURE GetInputFocusControlDlg(dlgNum : ADRCARD) : CARDINAL;
+PROCEDURE GetInputFocusControl() : CARDINAL;
+(*
+  return the control that currently has the input focus.
+*)
+
+PROCEDURE SetupStringMatchDlg(dlgNum : ADRCARD; control : ADRCARD; startPos : CARDINAL; column : CARDINAL);
+PROCEDURE SetupStringMatch(control : CARDINAL; startPos : CARDINAL; column : CARDINAL);
+(*
+   For ListBox, ColumnListBox.
+   this sets up the ability of the list box to perform a full text
+   search. The list box will automatically select the first item in the
+   list that matches the text entered. The match string is cleared when a certain
+   time has elapsed in between successive keystrokes.
+
+   startPos = the string character position to start the comparison.
+   column = if ColumnListBox, the column to compare.
+*)
+
+PROCEDURE ClearMatchBufferDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE ClearMatchBuffer(control : CARDINAL);
+(*
+   clear the match buffer. This is the keystrokes that the user may have
+   entered during ASCII matching. You could use this after reloading a list box
+   with new data, so the match is not in the middle of some previous match search.
+*)
+
+PROCEDURE SetCheckBoxDlg(dlgNum : ADRCARD; control : ADRCARD; on : BOOLEAN);
+PROCEDURE SetCheckBox(control : CARDINAL; on : BOOLEAN);
+(*
+   dlgNum specifies the dialog
+   set the check box state of the check box control.
+   on = TRUE = the check box will be "checked"
+*)
+
+PROCEDURE GetCheckBoxDlg(dlgNum : ADRCARD; control : ADRCARD) : BOOLEAN;
+PROCEDURE GetCheckBox(control : CARDINAL) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   get the check box state of the check box control.
+   returns TRUE when the check box is "checked"
+*)
+
+PROCEDURE SetRadioGroupDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL);
+PROCEDURE SetRadioGroup(control, item : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   set the selected/checked radio group item identified by item in the
+   radio group control.
+   The item will become the checked radio group item. If another item in the
+   group is currently checked, it will be unchecked in favor of the new item
+*)
+
+PROCEDURE GetRadioGroupDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE GetRadioGroup(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   get the checked item in the radio group.
+*)
+
+PROCEDURE SetRadioTextDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL; text : ARRAY OF CHAR);
+PROCEDURE SetRadioText(control, item : CARDINAL; text : ARRAY OF CHAR);
+(*
+   dlgNum specifies the dialog
+   set the text of a radio group item identified by item with the
+   new text in the parameter text (null terminated).
+*)
+
+PROCEDURE GetRadioTextDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+PROCEDURE GetRadioText(control, item : CARDINAL; VAR OUT text : ARRAY OF CHAR);
+(*
+   dlgNum specifies the dialog
+   get the text of a radio group item identified by item
+   return the text in the text parameter
+*)
+
+PROCEDURE SetStockButtonDlg(dlgNum : ADRCARD; control : CARDINAL; typ : StockButtonType);
+PROCEDURE SetStockButton(control : CARDINAL; typ : StockButtonType);
+(*
+   dlgNum specifies the dialog
+   set the stock button type for a PushButton control.
+   a stock button might has an icon image in addition to a text label. The exact structure varies by system.
+*)
+
+PROCEDURE SetTimerIntervalDlg(dlgNum : ADRCARD; control : ADRCARD; time : CARDINAL);
+PROCEDURE SetTimerInterval(control : CARDINAL; time : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   set the interval of the timer notifications in time. time is specified
+   in milliseconds. The interval notifications are only approximate.
+   If a value of zero is passed for the interval, the timer is disabled and
+   you will receive no further timer notifications until the timer is again
+   activated
+*)
+
+PROCEDURE SetTextDlg(dlgNum : ADRCARD; control : ADRCARD; text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE SetText(control : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   set the text of the control.
+   the text parameter must be null terminated.
+   the following controls have a special meaning for SetText
+   RadioGroup use SetRadioText
+   ListBox the effect is to select the list box item that matches the text parameter.
+   ColumnListBox, the same effect as ListBox, the match is done to column 0.
+
+   for TermButton, NotifyButton, CheckBox you can apply an accelerator
+   in the label text. the underscore character '_' signifies that the
+   following chracter should be an accelerator key for the button.
+
+   returns TRUE is successful
+*)
+
+PROCEDURE GetTextDlg(dlgNum : ADRCARD; control : ADRCARD; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE GetText(control : CARDINAL; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   get the text of the control.
+   RadioGroup use GetRadioText
+   ListBox the effect is to fetch the text of the selected item in the list box.
+   ColumnListBox as ListBox. Column 0 is used.
+   returns TRUE is successful
+*)
+
+PROCEDURE SetNumericValueDlg(dlgNum : ADRCARD; control : ADRCARD; value : INTEGER) : BOOLEAN;
+PROCEDURE SetNumericValue(control : CARDINAL; value : INTEGER) : BOOLEAN;
+(* see the text of the control to the string representation of
+   the passed numeric value.
+   Any control that displays text can use this call.
+   Also sets SpinButton controls.
+*)
+
+PROCEDURE GetSpinButtonValueDlg(dlgNum : ADRCARD; control : ADRCARD) : INTEGER;
+PROCEDURE GetSpinButtonValue(control : CARDINAL) : INTEGER;
+(*
+   dlgNum specifies the dialog
+   get the numeric value of the SpinButton control.
+   if the control is not an SpinButton control MIN(INTEGER) is returned.
+*)
+
+PROCEDURE SetSpinButtonRangeDlg(dlgNum : ADRCARD; control : ADRCARD; min, max : INTEGER);
+PROCEDURE SetSpinButtonRange(control : CARDINAL; min, max : INTEGER);
+(*
+   dlgNum specifies the dialog
+   set the numeric range of the SpinButton control.
+*)
+
+PROCEDURE SetItemTextDlg(dlgNum : ADRCARD; control : ADRCARD; item, column : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE SetItemText(control, item, column : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+(*
+  set the text of the specific item in the list of items.
+   column is the column number to set the text
+  for ListBox(s) and ComboBox and DropDownList.
+  column is ignored for all controls except ColumnListBox
+*)
+
+PROCEDURE GetItemTextDlg(dlgNum : ADRCARD; control : ADRCARD; item, column : CARDINAL; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE GetItemText(control, item, column : CARDINAL; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+(*
+  get the text of the specific item in the list of items.
+   column is the column number to set the text
+  for ListBox(s) and ComboBox and DropDownList.
+  column is ignored for all controls except ColumnListBox
+*)
+
+PROCEDURE SetTextSelectionDlg(dlgNum : ADRCARD; control : ADRCARD; startPos, endPos : CARDINAL) : BOOLEAN;
+PROCEDURE SetTextSelection(control : CARDINAL; startPos, endPos : CARDINAL) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   set the text selection in a LineEdit, MultiLineEdit or ComboBox control.
+   startPos and endPos are zero based and specify the starting and
+   ending character position to the selection.
+   use MAX(CARDINAL) for endPos to select all text from startPos
+   to the end of the buffer.
+*)
+
+PROCEDURE ClearTextSelectionDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE ClearTextSelection(control : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   clear any text section in a LineEdit, MultiLineEdit or ComboBox control.
+*)
+
+PROCEDURE SetTextCaretPosDlg(dlgNum : ADRCARD; control : ADRCARD; pos : INTEGER);
+PROCEDURE SetTextCaretPos(control : CARDINAL; pos : INTEGER);
+(*
+   dlgNum specifies the dialog
+   set the text caret in a LineEdit, MultiLineEdit or ComboBox control.
+   -1 = the end of the text.
+*)
+
+PROCEDURE GetItemCountDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE GetItemCount(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For all ListBox(s) and DropDownList(s) and ComboBox(s)
+   returns the number of items in the list
+   this result can be zero
+*)
+
+PROCEDURE GetSelectedDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE GetSelected(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For all ListBox(s), DropDownList(s) and ComboBox(s)
+   returns the number of the selected item in the list.
+   MAX(CARDINAL) signifies no selection.
+*)
+
+PROCEDURE SetSelectedDlg(dlgNum : ADRCARD; control : ADRCARD;  sel : CARDINAL) : BOOLEAN;
+PROCEDURE SetSelected(control : CARDINAL; sel : CARDINAL) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   For all ListBox(s), DropDownList(s), ComboBox(s)
+   set the selected item in the control.
+   MAX(CARDINAL) signifies no selection.
+   returns TRUE if successful
+*)
+
+
+PROCEDURE GetSelectedItemsCountDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE GetSelectedItemsCount(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For multiple selection ListBox(s).
+   returns the number of selected items in the list.
+*)
+
+PROCEDURE GetSelectedItemsDlg(dlgNum : ADRCARD; control : ADRCARD; VAR OUT items : ARRAY OF CARDINAL) : CARDINAL;
+PROCEDURE GetSelectedItems(control : CARDINAL; VAR OUT items : ARRAY OF CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For multiple selection ListBox(s).
+   returns the number of selected items in the list.
+   the items array contains the index of each selected item.
+*)
+
+PROCEDURE AppendItemDlg(dlgNum : ADRCARD; control : ADRCARD; str : ARRAY OF CHAR) : INTEGER;
+PROCEDURE AppendItem(control : CARDINAL; str : ARRAY OF CHAR) : INTEGER;
+(*
+   dlgNum specifies the dialog
+   For ListBox, DropDownList and ComboBox
+   add a new item at the end of the list of items in the control.
+   returns the item number if successful, otherwise -1
+   NOTE: If the control is an operating system sorted control then
+   you do not know where in the list (ordinal position) the item exists
+   after you add or delete another item. See SetItemData
+*)
+
+PROCEDURE RemoveItemDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL);
+PROCEDURE RemoveItem(control : CARDINAL; item : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   For ListBox, DropDownList, and ComboBox
+   remove a specific item in the list identified by item
+   items after this one in the list will of course be identified differently
+   after this call
+*)
+
+PROCEDURE RemoveAllItemsDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE RemoveAllItems(control : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   For all ListBox(s), DropDownList(s) and ComboBox(s)
+   remove all items in the list leaving an empty list
+*)
+
+PROCEDURE SetItemDataDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL; data : MACHINEWORD);
+PROCEDURE SetItemData(control : CARDINAL; item : CARDINAL; data : MACHINEWORD);
+PROCEDURE SetItemDataNumDlg(dlgNum : CARDINAL; control : CARDINAL; item : CARDINAL; data : INTEGER);
+PROCEDURE SetItemDataNum(control : CARDINAL; item : CARDINAL; data : INTEGER);
+(*
+   dlgNum specifies the dialog
+   item identifies an already existing list item
+   For all ListBox, ColumnListBox.
+   You can attach a specific piece of data to each list item
+   you might use this to identify a list item which you will need
+   if the control is sorted
+*)
+
+PROCEDURE GetItemDataDlg(dlgNum : ADRCARD; control : ADRCARD; item : CARDINAL) : MACHINEWORD;
+PROCEDURE GetItemData(control : CARDINAL; item : CARDINAL) : MACHINEWORD;
+PROCEDURE GetItemDataNumDlg(dlgNum : CARDINAL; control : CARDINAL; item : CARDINAL) : INTEGER;
+PROCEDURE GetItemDataNum(control : CARDINAL; item : CARDINAL) : INTEGER;
+(*
+   dlgNum specifies the dialog
+   item identifies an already existing list item
+   For all ListBox, ColumnListBox
+   get the user data associated with the list item
+*)
+
+PROCEDURE AppendItemColumnsDlg(dlgNum : ADRCARD; control : ADRCARD; strs : ARRAY OF StringData) : INTEGER;
+PROCEDURE AppendItemColumns(control : CARDINAL; strs : ARRAY OF StringData) : INTEGER;
+(*
+   dlgNum specifies the dialog
+   For ColumnListBox
+   add a new list item at the end of the list
+   strs must have the same number of elements are there are columns in
+   the control.
+
+   returns the item number if successful, otherwise -1
+*)
+
+PROCEDURE GetColumnWidthDlg(dlgNum : ADRCARD; control : ADRCARD; column : CARDINAL) : CARDINAL;
+PROCEDURE GetColumnWidth(control : CARDINAL; column : CARDINAL) : CARDINAL;
+(*
+  For ColumnListBox
+  return the current width, in pixels, of the specified column
+*)
+
+PROCEDURE GetOptimalColumnWidthDlg(dlgNum : ADRCARD; control : ADRCARD; column : CARDINAL) : CARDINAL;
+PROCEDURE GetOptimalColumnWidth(control : CARDINAL; column : CARDINAL) : CARDINAL;
+(*
+  For ColumnListBox
+  return the optimal width, in pixels, of the specified column.
+  the optimial width is usch that the column width is enough to display
+  the longest string in the column. The column header, if any, is also
+  considered in the computation.
+*)
+
+PROCEDURE SetColumnWidthDlg(dlgNum : ADRCARD; control : ADRCARD; column : INTEGER; width : CARDINAL);
+PROCEDURE SetColumnWidth(control : CARDINAL; column : INTEGER; width : CARDINAL);
+(*
+  For ColumnListBox
+  set the width, in pixels, for the specified column
+  if column is < 0, the all columns get the specified width.
+  if width < 0, the the column width is optimally set for the column based upon
+  the existing text in the column and header.
+*)
+
+PROCEDURE MleGetCharCountDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE MleGetCharCount(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   get the number of characters contained in the edit control. This includes
+   any carriage returns, line feed pairs
+   the lines in the edit control text are delimited by these characters
+*)
+
+PROCEDURE MleAppendDlg(dlgNum : ADRCARD; control : ADRCARD; text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE MleAppend(control : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   append text to the end of the text in the edit control
+   text must be null terminated
+   RETURNs TRUE is successful
+*)
+
+PROCEDURE MleAppendLineDlg(dlgNum : CARDINAL; control : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE MleAppendLine(control : CARDINAL; text : ARRAY OF CHAR) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   like MlAppendDlg but also appends a line terminator in addition
+   to the text
+   text must be null terminated
+   RETURNs TRUE is successful
+*)
+
+PROCEDURE MleGetLineCountDlg(dlgNum : ADRCARD; control : ADRCARD) : CARDINAL;
+PROCEDURE MleGetLineCount(control : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   get the count of the number of lines of text in the edit control
+*)
+
+PROCEDURE MleGetLineLengthDlg(dlgNum : ADRCARD; control : ADRCARD; line : CARDINAL) : CARDINAL;
+PROCEDURE MleGetLineLength(control : CARDINAL; line : CARDINAL) : CARDINAL;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   get the length of the line identified by line.
+   line is 1 based.
+   a line can have a zero length
+*)
+
+PROCEDURE MleGetLineDlg(dlgNum : ADRCARD; control : ADRCARD; line : CARDINAL; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+PROCEDURE MleGetLine(control : CARDINAL; line : CARDINAL; VAR OUT text : ARRAY OF CHAR) : BOOLEAN;
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   fetch the text of the line identified by line into text
+   line is 1 based.
+   returns TRUE if successful
+*)
+
+PROCEDURE MleRemoveLineDlg(dlgNum : ADRCARD; control : ADRCARD; line : CARDINAL);
+PROCEDURE MleRemoveLine(control : CARDINAL; line : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   delete all of the text and line terminator of the line
+   identified by line.
+   line is 1 based.
+*)
+
+PROCEDURE MleAppendToLineDlg(dlgNum : ADRCARD; control : ADRCARD; line : CARDINAL; text : ARRAY OF CHAR);
+PROCEDURE MleAppendToLine(control : CARDINAL; line : CARDINAL; text : ARRAY OF CHAR);
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   append the text in text to the end of the line identified by line.
+   line is 1 based.
+*)
+
+PROCEDURE MlePositionCaretDlg(dlgNum : ADRCARD; control : ADRCARD; line, column : CARDINAL);
+PROCEDURE MlePositionCaret(control : CARDINAL; line, column : CARDINAL);
+(*
+   dlgNum specifies the dialog
+   For MultiLineEdit controls
+   position the text caret location to be visible at the given line and column.
+   line is 1 based.
+   if line = MAX(CARDINAL) then the position is the end of the text in the control.
+*)
+
+PROCEDURE SaveTextFileDlg(dlgNum : ADRCARD; control : ADRCARD);
+PROCEDURE SaveTextFile(control : CARDINAL);
+(*
+  For ExitTextFile
+  Save the text file to disk
+*)
+
+PROCEDURE NIL_NOTIFY(n : NotifyType; VAR INOUT item : CARDINAL) : NotifyResult;
+(*   dummy notify procedure *)
+
+(*
+   The following two procedures are useful for maintaining lists of items
+   for DropDownLists, combo boxes and list boxes.
+   You use a special character to separate
+   the list items from each other and before assigning the string to
+   the dialog control call ConvertToNulls to change the special character
+   to a null character. As long as the string parameter passed is already
+   null terminated you then have a proper "list" to assigning to list boxes
+   a combo boxes for automatic initialization by DlgShell
+   ConvertFromNulls can revert your string back its previous state if
+   this is necessary.
+*)
+
+PROCEDURE ConvertToNulls(ch : CHAR; VAR INOUT str : ARRAY OF CHAR);
+
+PROCEDURE ConvertFromNulls(ch : CHAR; VAR INOUT str : ARRAY OF CHAR);
+
+PROCEDURE GetNthString(list : ARRAY OF CHAR; listSep : CHAR; VAR OUT str : ARRAY OF CHAR; n : CARDINAL);
+(*
+   use this procedure to fetch the i'th string from the list
+   list = the list of items
+   sep = the character that separates the list items
+   str = the returned string. Will be "" if not i'th item does not exist
+   n = the item to fetch
+   items are numbered starting at zero
+*)
+
+PROCEDURE GetNthFromList(list : ARRAY OF CHAR; listSep : CHAR; str : ARRAY OF CHAR; VAR OUT n : CARDINAL);
+(*
+   use this procedure to find the number position of the item in the list
+   items are numbered starting at zero
+   list = the list of items
+   sep = the character that separates the list items
+   str = the string to match in list. The match is not case sensitive
+   n = the returned item number. MAX(CARDINAL) = not found
+*)
+
+PROCEDURE GetDlgWindowDlg(dlgNum : CARDINAL) : ADDRESS;
+PROCEDURE GetDlgWindow() : ADDRESS;
+(*
+   dlgNum specifies the dialog
+   returns the dialog box operating system specific window handle.
+   Win32 - a window handle. HWND
+   GTK - a Widget handle. pGtkWidget (specifically pGtkWindow)
+   Mac - a window handle. WindowRef.
+*)
+
+PROCEDURE GetControlHandleDlg(dlgNum : ADRCARD; control : ADRCARD) : ADDRESS;
+PROCEDURE GetControlHandle(control : CARDINAL) : ADDRESS;
+(*
+   dlgNum specifies the dialog
+   returns the operating system specific window handle for the control.
+   Win32 - a window handle. HWND
+   GTK - a Widget handle. pGtkWidget
+   Mac - a control handle. ControlRef.
+*)
+
+END DlgShell.

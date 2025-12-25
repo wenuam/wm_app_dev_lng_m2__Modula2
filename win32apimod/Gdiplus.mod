@@ -1,0 +1,4 @@
+IMPLEMENTATION MODULE Gdiplus;
+<*/NOWARN:I*>
+
+END Gdiplus.

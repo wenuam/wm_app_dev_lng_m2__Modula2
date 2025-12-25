@@ -1,0 +1,110 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                            by ADW Software                              *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Pipes;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+TYPE
+    PipeTypes   = (MessagePipe, BytePipe);
+
+TYPE Pipe;
+
+(*
+ the pipes in this module can only be used to communicate between
+ threads within a process
+
+ two types of Pipes are supported; MessagePipe, BytePipe
+ BytePipes are simply a block of memory used like a "normal" system pipe.
+ You read and write X number of bytes of data
+ For MessagePipes, each write is assumed to be a unique data entity X bytes
+ in size. you read and write these entities. nothing less, nothing more.
+ each message entity can be a different size.
+*)
+
+PROCEDURE CreatePipe(VAR OUT p : Pipe;
+                     pipeType : PipeTypes;
+                     bufferSize : CARDINAL) : BOOLEAN;
+(*
+ creates a new pipe
+ pipeType = the type of pipe created
+ bufferSize = the size in bytes of the buffer used by the pipe.
+              For MessagesPipes, a message can be larger than the size of
+              the buffer. Obviously in this situation performance is reduced.
+ returns TRUE if successfull
+*)
+
+PROCEDURE ClosePipe(VAR INOUT p : Pipe) : BOOLEAN;
+(* reverses CreatePipe *)
+
+PROCEDURE WritePipe(p : Pipe; addr : ADDRESS; amount : CARDINAL) : CARDINAL;
+(*
+ amount = number of bytes to write
+ the return value is the number of bytes actually written.
+
+ the procedure will not return until all bytes have been written
+ or there is an error of some kind. therefore an error is indicated when
+ all bytes were not written.
+*)
+
+PROCEDURE ReadPipe(p : Pipe; addr : ADDRESS; amount : CARDINAL) : CARDINAL;
+(*
+ amount = number of bytes to read
+ the return value is the number of bytes actually read.
+
+ for BytePipes...
+ if you request more data than exists in the pipe, the read will read the bytes
+ available and return.
+
+ for MessagePipes...
+ if you request a read amount less than the message size, the remainder of the
+ message is not lost. the remainder will be read on the next read.
+ this condition is indicated by a return value of (amount+1).
+ the pipe remains read locked to the calling thread until the entire message
+ is read by the calling thread.
+*)
+
+PROCEDURE PeekPipe(p : Pipe; addr : ADDRESS; amount : CARDINAL) : CARDINAL;
+(*
+  as ReadPipe except the data is not actually removed from the pipe.
+
+  for MessagePipes...
+  if you peek an amount less that the message size, then the pipe will not
+  remain read locked as is the case for ReadPipe. this is because the message
+  remains intact in the pipe buffer.
+*)
+
+PROCEDURE PipeMessageSize(p : Pipe) : CARDINAL;
+(*
+ returns 0 for BytePipes
+ returns the message size for message pipes, or 0 if no message is in the pipe.
+ in a multiple reader situation you will need to use the ReadLockPipe procedure to
+ gaurantee that the message read is the same one for which you requested the size.
+*)
+
+PROCEDURE WriteLockPipe(p : Pipe);
+PROCEDURE UnLockPipe(p : Pipe);
+(*
+    The write lock allows you to issue multiple writes without intervention
+    by any other writer.
+
+    Unlock reverses a previous lock.
+*)
+
+PROCEDURE PipeIsEmpty(p : Pipe) : BOOLEAN;
+(* returns TRUE is the pipe contains no data *)
+
+PROCEDURE EmptyPipeContents(p : Pipe);
+(* clear/delete the pipe of all contents *)
+
+END Pipes.

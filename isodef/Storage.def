@@ -1,0 +1,52 @@
+DEFINITION MODULE Storage;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+
+===========================================*)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* Facilities for dynamically allocating and deallocating storage *)
+
+IMPORT SYSTEM;
+
+TYPE
+    StorageExceptions   =
+                          (
+                           nilDeallocation,
+                           pointerToUnallocatedStorage,
+                           wrongStorageToUnallocate
+                          );
+
+PROCEDURE ALLOCATE(VAR addr : SYSTEM.ADDRESS; amount : SYSTEM.ADRCARD);
+(* Allocates storage for a variable of size amount and assigns the
+   address of this variable to addr. If there is insufficient unallocated
+   storage to do this, the value NIL is assigned to addr.
+*)
+
+PROCEDURE DEALLOCATE(VAR addr : SYSTEM.ADDRESS; amount : SYSTEM.ADRCARD);
+(* Deallocates the amount locations allocated by ALLOCATE for the storage
+   of the variable addressed by addr and assigns the value NIL to addr
+*)
+
+PROCEDURE StorageException() : StorageExceptions;
+(* Returns TRUE if the current coroutine is in the exceptional execution
+   state because of the raising of an exception from StorageExceptions;
+   otherwise returns FALSE.
+*)
+
+PROCEDURE IsStorageException() : BOOLEAN;
+(* IF the current coroutine is in the exceptional execution state because
+   of the raising of an exception from StorageExceptions, returns the
+   corresponding enumeration value, and otherwise raises an exception.
+*)
+
+END Storage.
+

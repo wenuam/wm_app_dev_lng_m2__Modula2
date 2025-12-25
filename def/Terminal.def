@@ -1,0 +1,66 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                           All rights reserved.                          *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Terminal;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* a simple text output *)
+(* the size of the display is generally 80x25, but may be different *)
+
+CONST
+    (* these character codes are used for some non ASCII characters *)
+    (* supported by this terminal module *)
+
+    CursorUp    = CHR(1);
+    CursorDown  = CHR(2);
+    PageUp      = CHR(3);
+    PageDown    = CHR(4);
+    CursorLeft  = CHR(5);
+    CursorRight = CHR(6);
+
+    Escape      = CHR(27);
+    Tab         = CHR(9);
+    BackSpace   = CHR(8);
+    Bell        = CHR(7);
+    Enter       = CHR(13);
+    LineFeed    = CHR(10);
+
+PROCEDURE Write(ch : CHAR);
+(* write a single character to the currsor cursor position *)
+
+PROCEDURE WriteString(str : ARRAY OF CHAR);
+(* write a string to the cursor position *)
+
+PROCEDURE WriteLn;
+(* set the cursor X position to 0, far left *)
+(* and increment the Y positon, down *)
+(* if the Y position is greater that the terminal window size *)
+(* then the terminal window data is scrolled and a blank line *)
+(* is displayed at the bottom of the terminal window *)
+(* and the Y position of the cursor is at the bottom of the terminal *)
+(* window *)
+
+PROCEDURE Position(X, Y : CARDINAL);
+(* set the cursor position *)
+
+PROCEDURE CharAvail() : BOOLEAN;
+(* is there a character keystroke available for input *)
+
+PROCEDURE Read(VAR OUT ch : CHAR);
+(* read a character keystroke *)
+
+PROCEDURE ReadChar() : CHAR;
+(* same as Read, but in function form *)
+
+PROCEDURE Reset;
+(* clears the screen and places the cursor at 0,0 *)
+
+END Terminal.

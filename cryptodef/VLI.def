@@ -1,0 +1,410 @@
+(*
+Name:     VLI
+Creation: 08-02-2001
+LastEdit: 22-02-2001
+Author:   Egbert J. van der Haring
+System:   Stony Brook MODULA-2
+Remarks:  very large integer in CARDINAL digit system.
+*)
+(* adapted and performance tweaked by Stony Brook Software 2002 *)
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE VLI;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+TYPE
+%IF Bits32 %THEN
+    Digit       = CARDINAL32;
+    DigitS      = INTEGER32;(*same size as digit but signed*)
+%ELSE
+    (*???RSG*)
+    Digit       = CARDINAL32;
+    DigitS      = INTEGER32;(*same size as digit but signed*)
+%END
+
+    VLI;
+
+PROCEDURE Create() : VLI;
+(* returns vli = 0 *)
+
+PROCEDURE Copy(vli : VLI) : VLI;
+(* returns copy of vli *)
+
+PROCEDURE Dispose(VAR INOUT vli : VLI);
+(* disposes of vli, vli = NIL after this call *)
+
+PROCEDURE Assign(vliSrc : VLI; VAR INOUT vliDst : VLI);
+(* assign src to dst *)
+
+PROCEDURE SwapVLI(VAR INOUT vliA, vliB : VLI); MACRO;
+VAR
+    t   : VLI;
+BEGIN
+    t := vliA;
+    vliA := vliB;
+    vliB := t;
+END SwapVLI;
+
+PROCEDURE IsZero(vli : VLI) : BOOLEAN;
+(* returns TRUE when vli = 0 *)
+
+PROCEDURE IsNegative(vli : VLI) : BOOLEAN;
+(* returns TRUE when vli < 0 *)
+
+PROCEDURE IsOdd(vli : VLI) : BOOLEAN;
+(* returns TRUE when vli is odd *)
+
+PROCEDURE SetZero(vli : VLI);
+(* sets vli = 0 *)
+
+PROCEDURE SetValue(vli : VLI; value : INTEGER64);
+(* a simple way to load a "small" integer value *)
+
+PROCEDURE Abs(vli : VLI);
+(* sets vli > 0 *)
+
+PROCEDURE ToggleSign(vli : VLI);
+(* toggles sign *)
+
+PROCEDURE Add(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* adds A + B.
+   result cannot be the same parameter as vliA or vliB.
+*)
+
+PROCEDURE Subtract(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* subtracts A - B.
+   result cannot be the same parameter as vliA or vliB.
+*)
+
+PROCEDURE Multiply(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* multiplies A * B.
+   result cannot be the same parameter as vliA or vliB.
+*)
+
+PROCEDURE Divide(vliA, vliB : VLI;
+                 VAR INOUT result : VLI;
+                 VAR INOUT remainder : VLI);
+(* divides A / B.
+   result, remainder cannot be the same parameter as vliA or vliB.
+
+   the division of this module is consistent with the Modula-2 / and REM operators.
+   these operators are consistent with the division instructions implemented is
+   CPUs.
+   this means integer division is performed with round towards zero.
+   a negative divisor is allowed.
+
+   some algorithms refer to the "modulus".
+       (some public/private key encryption algorithms)
+   for positive numbers the division of this module is compatible with this form
+   of integer division.
+   integer division with modulus does not allow a negative divisor.
+   integer division with modulus rounds to a smaller number.
+   the Modula-2 DIV and MOD operators are integer division with modulus.
+*)
+
+PROCEDURE Div(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* divides A / B
+   result cannot be the same parameter as vliA.
+   see Divide for information about the division operation of the module.
+*)
+
+PROCEDURE Rem(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* returns A REM B
+   result cannot be the same parameter as vliA.
+   see Divide for information about the division operation of the module.
+*)
+
+PROCEDURE Inc(VAR INOUT vli : VLI; increment : Digit);
+(* increments vli *)
+
+PROCEDURE Dec(VAR INOUT vli : VLI; decrement : Digit);
+(* decrements vli *)
+
+PROCEDURE AddInt(vliA : VLI; B : DigitS; VAR INOUT result : VLI);
+(* adds A + B *)
+
+PROCEDURE SubInt(vliA : VLI; B : DigitS; VAR INOUT result : VLI);
+(* subtracts A - B *)
+
+PROCEDURE MulInt(vliA : VLI; B : DigitS; VAR INOUT result : VLI);
+(* multiplies A * B
+   result cannot be the same parameter as vliA.
+*)
+
+PROCEDURE DivideInt(vliA : VLI; B : DigitS;
+                    VAR INOUT result : VLI;
+                    VAR INOUT remainder : VLI);
+PROCEDURE DivideInt2(vliA : VLI; B : DigitS;
+                     VAR INOUT result : VLI;
+                     VAR OUT remainder : DigitS);
+(* divides A / B.
+   result, remainder cannot be the same parameter as vliA.
+   see Divide for information about the division operation of the module.
+*)
+
+PROCEDURE DivInt(vliA : VLI; B : DigitS; VAR INOUT result : VLI);
+(* returns A / B
+   result cannot be the same parameter as vliA.
+   see Divide for information about the division operation of the module.
+*)
+
+PROCEDURE RemInt(vliA : VLI; B : DigitS; VAR INOUT remainder : VLI);
+PROCEDURE RemInt2(vliA : VLI; B : DigitS) : DigitS;
+(* returns A REM B
+   see Divide for information about the division operation of the module.
+*)
+
+(*-------------- comparison functions --------------------*)
+
+TYPE
+    CompareResults      = (Less, Equal, Greater);
+
+PROCEDURE Compare(left, right : VLI) : CompareResults;
+PROCEDURE CompareDigit(left : VLI; right : DigitS) : CompareResults;
+(* compare left with right.
+   returns Less if left < right.
+*)
+
+(*-------------- misc math functions --------------------*)
+
+PROCEDURE GCD(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* returns greatest common divisor of two numbers *)
+
+PROCEDURE GCDeq1(vliA, vliB : VLI) : BOOLEAN;
+(* returns TRUE if GCD(a, b) = 1 *)
+
+PROCEDURE LCM(vliA, vliB : VLI; VAR INOUT result : VLI);
+(* returns least common multiple of two numbers.
+   lcm = a / GCD(a,b) * b
+*)
+
+(*-------------- modular math --------------------*)
+
+(* when computing a modular expression only the last operator needs to
+   take the modulus. for example,  h := (m1 - m2) * u MOD n;
+   Subtract(m1, m2, t);
+   MultiplyMod(t, u, n, h);
+*)
+
+PROCEDURE ModularInverse(vliA, vliN : VLI; VAR INOUT result : VLI) : BOOLEAN;
+(* returns TRUE if a modular inverse exists, otherwise FALSE.
+       GCD(a, n) = 1 when a modular inverse exists.
+
+   vliN is the modulus.
+   vliA is the value you want the inverse of with respect to the modulus vliN.
+   result will always be a positive number.
+*)
+
+PROCEDURE AddMod(vliA, vliB, vliN : VLI; VAR INOUT result : VLI);
+(* result = (A + B) MOD N.
+   N is a positive number.
+*)
+
+PROCEDURE SubMod(vliA, vliB, vliN : VLI; VAR INOUT result : VLI);
+(* result = (A - B) MOD N.
+   N is a positive number.
+*)
+
+PROCEDURE MultiplyMod(vliA, vliB, vliN : VLI; VAR INOUT result : VLI);
+(* result = (A * B) MOD N.
+   N is a positive number.
+*)
+
+PROCEDURE DivideMod(vliA, vliB, vliN : VLI; VAR INOUT result : VLI);
+(* result = (A / B) MOD N.
+   N is a positive number.
+*)
+
+PROCEDURE PowerMod(vliA, vliB, vliN : VLI; VAR INOUT result : VLI);
+(* result = (A ^ B) MOD N.
+   N is a positive number.
+   A and B are positive numbers.
+
+   A may be the same parameter as result.
+   B and N cannot be the same parameter as result.
+*)
+
+TYPE
+    PowerModExInfo;
+
+PROCEDURE PowerModEx(vliA, vliB : VLI;
+                     exInfo : PowerModExInfo;
+                     VAR INOUT result : VLI);
+PROCEDURE CreatePowerModExInfo(vliN : VLI) : PowerModExInfo;
+PROCEDURE DisposePowerModExInfo(VAR INOUT info : PowerModExInfo);
+(* just as PowerMod, except this version uses precomputed infomation
+   based on the modulus.
+   if the modulus is not ODD then using this call saves nothing in performance.
+   also, this call is only useful of you are doing a lot of operations with
+   the same modulus.
+
+   A may be the same parameter as result.
+   B cannot be the same parameter as result.
+*)
+
+(*-------------- random number generation --------------------*)
+
+PROCEDURE SetRandomSeed(seed : CARDINAL);
+(* initialize the random number generator with the given seed value.
+   for a given seed value the random number sequence will be identical.
+   use a value of zero, for a random seed value.
+*)
+
+PROCEDURE GetRandom(bits : CARDINAL; VAR INOUT result : VLI);
+(* returns random vli with cBits size *)
+
+PROCEDURE GetRandomSmaller(vliA : VLI; VAR INOUT result : VLI);
+(* returns random vli smaller than vliA *)
+
+(*-------------- prime number generation --------------------*)
+
+(* about the number of prime tests.
+   the prime test algorithm used is Miller-Rabin.
+
+   if tests = 0, then a reasonable default value is used.
+   the default value chosen varies depending on the size of the prime.
+
+   for large primes, getting and/or testing a prime can be a
+   very ****long**** calculation. probably best put into a thread.
+*)
+
+PROCEDURE IsPrime(vli : VLI; tests : CARDINAL) : BOOLEAN;
+(* returns TRUE when vli is prime *)
+
+PROCEDURE GetPrime(bits, tests : CARDINAL;
+                   pm1RelativeTo : Digit;
+                   VAR INOUT result : VLI);
+(* generates a *random* positive prime number of the specified number of bits.
+
+   the range of the prime number is compatible with the RSA key generation algorithm.
+     (2^(bits-1)) + 1 <= result <= (2^bits) - 1
+
+   if pm1RelativeTo <> 0, pm1RelativeTo must be a prime.
+       then ((result-1) REM pm1RelativeTo) <> 0.
+       this parameter is useful in RSA encryption key generation.
+       this value is "e", in the typical RSA terminology.
+       pm1RelativeTo is usually a Fermat number F0...F4. (3,17,257,4097,65537)
+       since pm1RelativeTo is a prime, no GCD operation is necessary.
+       the REM will do nicely at greater performance.
+
+   if pm1RelativeTo = 0, the parameter is ignored.
+*)
+
+PROCEDURE GetPrimeSmaller(vliA : VLI; tests : CARDINAL; VAR INOUT result : VLI);
+(* generates a *random* positive prime number that is less than Abs(vliA). *)
+
+PROCEDURE GetNextPrime(vliA : VLI; tests : CARDINAL; VAR INOUT result : VLI);
+(* generates the *next* positive prime number larger than Abs(vliA). *)
+
+(*-------------- info functions --------------------*)
+
+PROCEDURE GetDigitCount(vli : VLI) : CARDINAL;
+(* the number of digits in the vli number. *)
+
+PROCEDURE GetByteCount(vli : VLI) : CARDINAL;
+(* returns the number of significant bytes in the number. *)
+
+PROCEDURE GetBitCount(vli : VLI) : CARDINAL;
+(* returns the number of significant bits in the number. *)
+
+(*-------------- string functions --------------------*)
+
+PROCEDURE ToHexString(vli : VLI; VAR OUT text : ARRAY OF CHAR);
+(* converts a vli number to a string in hexadecimal format.
+   the size of the string necessary for a vli is (GetByteCount(vli) * 2)
+*)
+
+PROCEDURE FromHexString(text : ARRAY OF CHAR; VAR INOUT vli : VLI) : BOOLEAN;
+(* converts a hexadecimal string to a vli number. *)
+
+PROCEDURE ToDecimalString(vli : VLI; VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* converts a vli number to a string in decimal format.
+   returns FALSE if the string was not large enough for the number,
+   otherwise TRUE.
+*)
+
+PROCEDURE FromDecimalString(str : ARRAY OF CHAR; VAR INOUT vli : VLI) : BOOLEAN;
+(* converts a decimal string to a vli number. *)
+
+(*-------------- raw data functions --------------------*)
+
+PROCEDURE GetDigits(vli : VLI;
+                    digits : ADDRESS(*ARRAY OF Digit*);
+                    VAR INOUT amount : CARDINAL;
+                    VAR OUT negative : BOOLEAN) : BOOLEAN;
+(* digits[0] is the least significant digit.
+
+   on entry amount = the size in Digits of the 'digits' buffer.
+   on return amount = the number of Digits placed into the buffer.
+
+   return TRUE if successful
+   returns FALSE if the digits buffer is not large enough.
+*)
+
+PROCEDURE SetDigits(VAR INOUT vli : VLI;
+                    digits : ADDRESS(*ARRAY OF Digit*);
+                    count : CARDINAL;
+                    negative : BOOLEAN);
+(* digits[0] is the least significant digit.
+   count = the number of digits to take from the digits array.
+*)
+
+PROCEDURE GetBytesLSB(vli : VLI;
+                      bytes : ADDRESS;
+                      VAR INOUT amount : CARDINAL;
+                      VAR OUT negative : BOOLEAN) : BOOLEAN;
+(* bytes[0] is the least significant byte.
+
+   on entry amount = the size in bytes of the 'bytes' buffer.
+   on return amount = the number of bytes placed into the buffer.
+
+   returns TRUE if successful
+   returns FALSE if the bytes buffer is not large enough.
+*)
+
+PROCEDURE SetBytesLSB(VAR INOUT vli : VLI;
+                      bytes : ADDRESS;
+                      count : CARDINAL;
+                      negative : BOOLEAN);
+(* bytes[0] is the least significant byte.
+   count = the number of bytes to take from the bytes array.
+   the number of bytes input does NOT have to be an even multiple of the
+   size of a Digit.
+*)
+
+PROCEDURE GetBytesMSB(vli : VLI;
+                      bytes : ADDRESS;
+                      VAR INOUT amount : CARDINAL;
+                      VAR OUT negative : BOOLEAN) : BOOLEAN;
+(* bytes[0] is the most significant byte.
+
+   on entry amount = the size in bytes of the 'bytes' buffer.
+   on return amount = the number of bytes placed into the buffer.
+
+   returns TRUE if successful
+   returns FALSE if the bytes buffer is not large enough.
+*)
+
+PROCEDURE SetBytesMSB(VAR INOUT vli : VLI;
+                      bytes : ADDRESS;
+                      count : CARDINAL;
+                      negative : BOOLEAN);
+(* bytes[0] is the most significant byte.
+   count = the number of bytes to take from the bytes array.
+   the number of bytes input does NOT have to be an even multiple of the
+   size of a Digit.
+*)
+
+END VLI.

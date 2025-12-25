@@ -1,0 +1,208 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(*   Extended and partially rewritten on Assembler by A. Mutylin  May 2013 *)
+(***************************************************************************)
+DEFINITION MODULE MemUtils;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    ADDRESS, ADRCARD, BYTE, WORD, DWORD %IF AMD64 %THEN , QWORD %END;
+
+%IF IA32 %OR AMD64 %THEN
+
+PROCEDURE FillMemBYTE(dest : ADDRESS; numBytes : ADRCARD; db : BYTE) [Pass(DI,CX,AX),ALTERS(DI,CX)];
+(* fill the memory location specified in dest *)
+(* BYTE = 8-bits *)
+(* numBytes is the number of bytes to fill *)
+(* db is the byte to use to fill dest *)
+
+PROCEDURE FillMemWORD(dest : ADDRESS; numWords : ADRCARD; dw : WORD) [Pass(DI,CX,AX),ALTERS(DI,CX)];
+(* fill the memory location specified in dest *)
+(* WORD = 16-bits *)
+(* numWords is the number of words to fill *)
+(* dw is the word to use to fill dest *)
+
+PROCEDURE FillMemDWORD(dest : ADDRESS; numDwords : ADRCARD; dd : DWORD) [Pass(DI,CX,AX),ALTERS(DI,CX)];
+(* fill the memory location specified in dest *)
+(* DWORD = 32-bits *)
+(* numDwords is the number of dwords to fill *)
+(* dd is the dword to use to fill dest *)
+
+%IF AMD64 %THEN
+PROCEDURE FillMemQWORD (dest : ADDRESS; numQwords : CARDINAL64; dq : DWORD) [Pass(DI,CX,AX),ALTERS(DI,CX)];
+(* fill the memory location specified in dest *)
+(* QWORD = 64-bits *)
+(* numQwords is the number of qwords to fill *)
+(* dq is the qword to use to fill dest *)
+%END
+
+PROCEDURE ScanMemBYTE (dest : ADDRESS; numBytes : ADRCARD; db : BYTE) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* scan the memory location specified in dest *)
+(* BYTE = 8-bits *)
+(* numBytes is the number of bytes at most to scan *)
+(* db is the byte to use to scan dest *)
+(* the return value will be the first location where the byte db *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numBytes will be returned *)
+
+PROCEDURE ScanMemNeBYTE (dest : ADDRESS; numBytes : ADRCARD; db : BYTE) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* like ScanMemBYTE but looks for the first location not equal to db *)
+
+PROCEDURE ScanMemWORD (dest : ADDRESS; numWords : ADRCARD; dw : WORD) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* scan the memory location specified in dest *)
+(* WORD = 16-bits *)
+(* numWords is the number of words at most to scan *)
+(* dw is the word to use to scan dest *)
+(* the return value will be the first location where the word dw *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numWords will be returned *)
+
+PROCEDURE ScanMemNeWORD (dest : ADDRESS; numWords : ADRCARD; dw : WORD) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* like ScanMemWORD but looks for the first location not equal to dw *)
+
+PROCEDURE ScanMemDWORD (dest : ADDRESS; numDwords : ADRCARD; dd : DWORD) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* scan the memory location specified in dest *)
+(* DWORD = 32-bits *)
+(* numDwords is the number of dwords at most to scan *)
+(* dd is the dword to use to scan dest *)
+(* the return value will be the first location where the dword dd *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numDwords will be returned *)
+
+PROCEDURE ScanMemNeDWORD (dest : ADDRESS; numDwords : ADRCARD; dd : DWORD) : ADRCARD
+[Pass(DI,CX,AX), %IF IA32 %THEN Alters(DI,CX,AX) %ELSE Alters(DI,CX,DX),Returns(DX) %END];
+(* like ScanMemDWORD but looks for the first location not equal to dd *)
+
+%IF AMD64 %THEN
+
+PROCEDURE ScanMemQWORD (dest : ADDRESS; numDwords : CARDINAL64; dq : QWORD) : CARDINAL64
+[Pass(DI,CX,AX),Alters(DI,CX,DX),Returns(DX)];
+(* scan the memory location specified in dest *)
+(* QWORD = 64-bits *)
+(* numQwords is the number of qwords at most to scan *)
+(* dq is the qword to use to scan dest *)
+(* the return value will be the first location where the qword dq *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numQwords will be returned *)
+
+PROCEDURE ScanMemNeQWORD (dest : ADDRESS; numQwords : CARDINAL64; dq : QWORD) : CARDINAL64
+[Pass(DI,CX,AX),Alters(DI,CX,DX),Returns(DX)];
+(* like ScanMemQWORD but looks for the first location not equal to dq *)
+
+%END
+
+(* Next three procedures should not be called directly *)
+PROCEDURE ZeroMemERMSB (dest : ADDRESS; numBytes : ADRCARD) [Pass(DI,CX),Alters(DI,CX,AX)];
+PROCEDURE MoveMemForwardERMSB (dest, src : ADDRESS; numBytes : ADRCARD) [Pass(DI,SI,CX),Alters(DI,SI,CX)];
+PROCEDURE MoveMemERMSB (dest, src : ADDRESS; amount : ADRCARD) [Pass(DI,SI,CX),Alters(DI,SI,CX,AX)];
+
+PROCEDURE CompMem (dest, src : ADDRESS; numBytes : ADRCARD) : ADRCARD [Pass(DI,SI,CX),Alters(DI,SI,CX,AX)];
+(* compare two memory locations dest and src *)
+(* numBytes is the number of bytes at most to compare *)
+(* the return value will be an index of the first differing byte. *)
+(* If the memory locations are equal then numBytes will be returned *)
+
+VAR
+	ZeroMem : PROCEDURE ((*dest*) ADDRESS, (*numBytes*) ADRCARD) [Pass(DI,CX),Alters(DI,CX,AX)] = ZeroMemERMSB;
+	(* fill the memory location specified in dest by zeros *)
+	(* numBytes is the number of bytes to fill *)
+
+	MoveMemForward : PROCEDURE ((*dest*) ADDRESS, (*src*) ADDRESS, (*numBytes*) ADRCARD) [Pass(DI,SI,CX),Alters(DI,SI,CX)]
+		= MoveMemForwardERMSB;
+	(* this procedure may be called when regions do not overlap or dest <= src *)
+	(* numBytes is the number of bytes to move *)
+
+PROCEDURE MoveMemBackward (dest, src : ADDRESS; numBytes : ADRCARD) [Pass(DI,SI,CX),Alters(DI,SI,CX,AX)];
+(* this procedure may be called when regions do not overlap or dest >= src *)
+(* numBytes is the number of bytes to move *)
+
+VAR
+	MoveMem : PROCEDURE ((*dest*) ADDRESS, (*src*) ADDRESS, (*numBytes*) ADRCARD) [Pass(DI,SI,CX),ALTERS(DI,SI,CX,AX)]
+		= MoveMemERMSB;
+	(* this procedure correctly handles overlapping memory regions *)
+	(* by performing the memory move top down when necessary *)
+	(* numBytes is the number of bytes to move *)
+
+PROCEDURE Init;
+
+%ELSE
+
+PROCEDURE FillMemBYTE(dest : ADDRESS; numBytes : CARDINAL; db : BYTE);
+(* fill the memory location specified in dest *)
+(* BYTE = 8-bits *)
+(* numBytes is the number of bytes to fill *)
+(* db is the byte to use to fill dest *)
+
+PROCEDURE FillMemWORD(dest : ADDRESS; numWords : CARDINAL; dw : WORD);
+(* fill the memory location specified in dest *)
+(* WORD = 16-bits *)
+(* numWords is the number of words to fill *)
+(* dw is the word to use to fill dest *)
+
+PROCEDURE FillMemDWORD(dest : ADDRESS; numDwords : CARDINAL; dd : DWORD);
+(* fill the memory location specified in dest *)
+(* DWORD = 32-bits *)
+(* numDwords is the number of dwords to fill *)
+(* dd is the dword to use to fill dest *)
+
+PROCEDURE ZeroMem (dest : ADDRESS; numBytes : CARDINAL);
+(* fill the memory location specified in dest by zeros *)
+(* numBytes is the number of bytes to fill *)
+
+PROCEDURE ScanMemBYTE(dest : ADDRESS; numBytes : CARDINAL; db : BYTE) : CARDINAL;
+(* scan the memory location specified in dest *)
+(* BYTE = 8-bits *)
+(* numBytes is the number of bytes at most to scan *)
+(* db is the byte to use to scan dest *)
+(* the return value will be the first location where the byte db *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numBytes will be returned *)
+
+PROCEDURE ScanMemNeBYTE(dest : ADDRESS; numBytes : CARDINAL; db : BYTE) : CARDINAL;
+(* like ScanMemBYTE but looks for the first location not equal to db *)
+
+PROCEDURE ScanMemWORD(dest : ADDRESS; numWords : CARDINAL; dw : WORD) : CARDINAL;
+(* scan the memory location specified in dest *)
+(* WORD = 16-bits *)
+(* numWords is the number of words at most to scan *)
+(* dw is the word to use to scan dest *)
+(* the return value will be the first location where the word dw *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numWords will be returned *)
+
+PROCEDURE ScanMemNeWORD(dest : ADDRESS; numWords : CARDINAL; dw : WORD) : CARDINAL;
+(* like ScanMemWORD but looks for the first location not equal to dw *)
+
+PROCEDURE ScanMemDWORD(dest : ADDRESS; numDwords : CARDINAL; dd : DWORD) : CARDINAL;
+(* scan the memory location specified in dest *)
+(* DWORD = 32-bits *)
+(* numDwords is the number of dwords at most to scan *)
+(* dd is the dword to use to scan dest *)
+(* the return value will be the first location where the dword dd *)
+(* was found while scanning. If the first location matches a value of zero *)
+(* is returned. If the value was not found then numDwords will be returned *)
+
+PROCEDURE ScanMemNeDWORD(dest : ADDRESS; numDwords : CARDINAL; dd : DWORD) : CARDINAL;
+(* like ScanMemDWORD but looks for the first location not equal to dd *)
+
+PROCEDURE MoveMem(dest, src : ADDRESS; numBytes : CARDINAL);
+(* this procedure correctly handles overlapping memory regions *)
+(* by performing the memory move top down when necessary *)
+(* numBytes is the number of bytes to move *)
+
+%END
+
+END MemUtils.

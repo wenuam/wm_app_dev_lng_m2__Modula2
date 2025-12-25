@@ -1,0 +1,947 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WINNLS;
+
+FROM WIN32 IMPORT
+    DWORD, UINT, BOOL, LPSTR, LPWSTR, LCID, SYSTEMTIME, LANGID, WORD,
+    BYTE, WINT, MAX_PATH, WCHAR;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    MAX_LEADBYTES        = 12;
+    MAX_DEFAULTCHAR      = 2;
+    MB_PRECOMPOSED       = 000000001h;
+    MB_COMPOSITE         = 000000002h;
+    MB_USEGLYPHCHARS     = 000000004h;
+    MB_ERR_INVALID_CHARS = 000000008h;
+
+    WC_DEFAULTCHECK      = 000000100h;
+    WC_COMPOSITECHECK    = 000000200h;
+    WC_DISCARDNS         = 000000010h;
+    WC_SEPCHARS          = 000000020h;
+    WC_DEFAULTCHAR       = 000000040h;
+
+    WC_NO_BEST_FIT_CHARS = 00000400h;
+
+    CT_CTYPE1            = 000000001h;
+    CT_CTYPE2            = 000000002h;
+    CT_CTYPE3            = 000000004h;
+    C1_UPPER             = 00001h;
+    C1_LOWER             = 00002h;
+    C1_DIGIT             = 00004h;
+    C1_SPACE             = 00008h;
+    C1_PUNCT             = 00010h;
+    C1_CNTRL             = 00020h;
+    C1_BLANK             = 00040h;
+    C1_XDIGIT            = 00080h;
+    C1_ALPHA             = 00100h;
+    C2_LEFTTORIGHT       = 00001h;
+    C2_RIGHTTOLEFT       = 00002h;
+    C2_EUROPENUMBER      = 00003h;
+    C2_EUROPESEPARATOR   = 00004h;
+    C2_EUROPETERMINATOR  = 00005h;
+    C2_ARABICNUMBER      = 00006h;
+    C2_COMMONSEPARATOR   = 00007h;
+    C2_BLOCKSEPARATOR    = 00008h;
+    C2_SEGMENTSEPARATOR  = 00009h;
+    C2_WHITESPACE        = 0000Ah;
+    C2_OTHERNEUTRAL      = 0000Bh;
+
+    C2_NOTAPPLICABLE     = 0000h;
+    C3_NONSPACING        = 0001h;
+    C3_DIACRITIC         = 0002h;
+    C3_VOWELMARK         = 0004h;
+    C3_SYMBOL            = 0008h;
+    C3_KATAKANA          = 0010h;
+    C3_HIRAGANA          = 0020h;
+    C3_HALFWIDTH         = 0040h;
+    C3_FULLWIDTH         = 0080h;
+    C3_IDEOGRAPH         = 0100h;
+    C3_KASHIDA           = 0200h;
+    C3_LEXICAL           = 0400h;
+
+    C3_ALPHA             = 8000h;
+
+    C3_NOTAPPLICABLE     = 00000h;
+    NORM_IGNORECASE      = 000000001h;
+    NORM_IGNORENONSPACE  = 000000002h;
+    NORM_IGNORESYMBOLS   = 000000004h;
+    NORM_IGNOREKANATYPE  = 000010000h;
+    NORM_IGNOREWIDTH     = 000020000h;
+
+    MAP_FOLDCZONE        = 000000010h;
+    MAP_PRECOMPOSED      = 000000020h;
+    MAP_COMPOSITE        = 000000040h;
+    MAP_FOLDDIGITS       = 000000080h;
+    MAP_EXPAND_LIGATURES = 00002000h;(* expand all ligatures*)
+
+    LCMAP_LOWERCASE      = 000000100h;
+    LCMAP_UPPERCASE      = 000000200h;
+    LCMAP_SORTKEY        = 000000400h;
+    LCMAP_BYTEREV        = 000000800h;
+    LCMAP_HIRAGANA       = 000100000h;
+    LCMAP_KATAKANA       = 000200000h;
+    LCMAP_HALFWIDTH      = 000400000h;
+    LCMAP_FULLWIDTH      = 000800000h;
+
+    LCMAP_LINGUISTIC_CASING   = 01000000h;(* use linguistic rules for casing*)
+    LCMAP_SIMPLIFIED_CHINESE  = 02000000h;(* map traditional chinese to simplified chinese*)
+    LCMAP_TRADITIONAL_CHINESE = 04000000h;(* map simplified chinese to traditional chinese*)
+
+    LCID_INSTALLED       = 1;
+    LCID_SUPPORTED       = 2;
+    LCID_ALTERNATE_SORTS = 00000004h;(* alternate sort locale ids *)
+
+    CP_INSTALLED         = 1;
+    CP_SUPPORTED         = 2;
+
+
+    SORT_STRINGSORT      = 000001000h;
+
+(* Compare String Return Values. *)
+    CSTR_LESS_THAN            =1;(* string 1 less than string 2 *)
+    CSTR_EQUAL                =2;(* string 1 equal to string 2 *)
+    CSTR_GREATER_THAN         =3;(*string 1 greater than string 2 *)
+
+    CP_ACP               = 0;
+    CP_OEMCP             = 1;
+    CP_MACCP             = 2;
+
+    CP_THREAD_ACP        = 3; (* current thread's ANSI code page *)
+    CP_SYMBOL            = 42; (* SYMBOL translations *)
+
+    CP_UTF7              = 65000; (* UTF-7 translation *)
+    CP_UTF8              = 65001; (* UTF-8 translation *)
+
+(*Country Codes. *)
+    CTRY_DEFAULT              =0;
+
+    CTRY_ALBANIA              =355;         (* Albania *)
+    CTRY_ALGERIA              =213;         (* Algeria *)
+    CTRY_ARGENTINA            =54;          (* Argentina *)
+    CTRY_AUSTRALIA            =61;          (* Australia *)
+    CTRY_AUSTRIA              =43;          (* Austria *)
+    CTRY_BAHRAIN              =973;         (* Bahrain *)
+    CTRY_BELARUS              =375;         (* Belarus *)
+    CTRY_BELGIUM              =32;          (* Belgium *)
+    CTRY_BELIZE               =501;         (* Belize *)
+    CTRY_BOLIVIA              =591;         (* Bolivia *)
+    CTRY_BRAZIL               =55;          (* Brazil *)
+    CTRY_BRUNEI_DARUSSALAM    =673;         (* Brunei Darussalam *)
+    CTRY_BULGARIA             =359;         (* Bulgaria *)
+    CTRY_CANADA               =2;           (* Canada *)
+    CTRY_CARIBBEAN            =1;           (* Caribbean *)
+    CTRY_CHILE                =56;          (* Chile *)
+    CTRY_COLOMBIA             =57;          (* Colombia *)
+    CTRY_COSTA_RICA           =506;         (* Costa Rica *)
+    CTRY_CROATIA              =385;         (* Croatia *)
+    CTRY_CZECH                =420;         (* Czech Republic *)
+    CTRY_DENMARK              =45;          (* Denmark *)
+    CTRY_DOMINICAN_REPUBLIC   =1;           (* Dominican Republic *)
+    CTRY_ECUADOR              =593;         (* Ecuador *)
+    CTRY_EGYPT                =20;          (* Egypt *)
+    CTRY_EL_SALVADOR          =503;         (* El Salvador *)
+    CTRY_ESTONIA              =372;         (* Estonia *)
+    CTRY_FAEROE_ISLANDS       =298;         (* Faeroe Islands *)
+    CTRY_FINLAND              =358;         (* Finland *)
+    CTRY_FRANCE               =33;          (* France *)
+    CTRY_GERMANY              =49;          (* Germany *)
+    CTRY_GREECE               =30;          (* Greece *)
+    CTRY_GUATEMALA            =502;         (* Guatemala *)
+    CTRY_HONDURAS             =504;         (* Honduras *)
+    CTRY_HONG_KONG            =852;         (* Hong Kong *)
+    CTRY_HUNGARY              =36;          (* Hungary *)
+    CTRY_ICELAND              =354;         (* Iceland *)
+    CTRY_INDIA                =91;          (* India *)
+    CTRY_INDONESIA            =62;          (* Indonesia *)
+    CTRY_IRAN                 =981;         (* Iran *)
+    CTRY_IRAQ                 =964;         (* Iraq *)
+    CTRY_IRELAND              =353;         (* Ireland *)
+    CTRY_ISRAEL               =972;         (* Israel *)
+    CTRY_ITALY                =39;          (* Italy *)
+    CTRY_JAMAICA              =1;           (* Jamaica *)
+    CTRY_JAPAN                =81;          (* Japan *)
+    CTRY_JORDAN               =962;         (* Jordan *)
+    CTRY_KENYA                =254;         (* Kenya *)
+    CTRY_KUWAIT               =965;         (* Kuwait *)
+    CTRY_LATVIA               =371;         (* Latvia *)
+    CTRY_LEBANON              =961;         (* Lebanon *)
+    CTRY_LIBYA                =218;         (* Libya *)
+    CTRY_LIECHTENSTEIN        =41;          (* Liechtenstein *)
+    CTRY_LITHUANIA            =370;         (* Lithuania *)
+    CTRY_LUXEMBOURG           =352;         (* Luxembourg *)
+    CTRY_MACAU                =853;         (* Macau *)
+    CTRY_MACEDONIA            =389;         (* Republic of Macedonia *)
+    CTRY_MALAYSIA             =60;          (* Malaysia *)
+    CTRY_MEXICO               =52;          (* Mexico *)
+    CTRY_MONACO               =33;          (* Principality of Monaco *)
+    CTRY_MOROCCO              =212;         (* Morocco *)
+    CTRY_NETHERLANDS          =31;          (* Netherlands *)
+    CTRY_NEW_ZEALAND          =64;          (* New Zealand *)
+    CTRY_NICARAGUA            =505;         (* Nicaragua *)
+    CTRY_NORWAY               =47;          (* Norway *)
+    CTRY_OMAN                 =968;         (* Oman *)
+    CTRY_PAKISTAN             =92;          (* Islamic Republic of Pakistan *)
+    CTRY_PANAMA               =507;         (* Panama *)
+    CTRY_PARAGUAY             =595;         (* Paraguay *)
+    CTRY_PERU                 =51;          (* Peru *)
+    CTRY_PHILIPPINES          =63;          (* Republic of the Philippines *)
+    CTRY_POLAND               =48;          (* Poland *)
+    CTRY_PORTUGAL             =351;         (* Portugal *)
+    CTRY_PRCHINA              =86;          (* People's Republic of China *)
+    CTRY_PUERTO_RICO          =1;          (* Puerto Rico *)
+    CTRY_QATAR                =974;         (* Qatar *)
+    CTRY_ROMANIA              =40;          (* Romania *)
+    CTRY_RUSSIA               =7;           (* Russia *)
+    CTRY_SAUDI_ARABIA         =966;         (* Saudi Arabia *)
+    CTRY_SERBIA               =381;         (* Serbia *)
+    CTRY_SINGAPORE            =65;          (* Singapore *)
+    CTRY_SLOVAK               =421;         (* Slovak Republic *)
+    CTRY_SLOVENIA             =386;         (* Slovenia *)
+    CTRY_SOUTH_AFRICA         =27;          (* South Africa *)
+    CTRY_SOUTH_KOREA          =82;          (* South Korea *)
+    CTRY_SPAIN                =34;          (* Spain *)
+    CTRY_SWEDEN               =46;          (* Sweden *)
+    CTRY_SWITZERLAND          =41;          (* Switzerland *)
+    CTRY_SYRIA                =963;         (* Syria *)
+    CTRY_TAIWAN               =886;         (* Taiwan Region *)
+    CTRY_THAILAND             =66;          (* Thailand *)
+    CTRY_TRINIDAD_Y_TOBAGO    =1;           (* Trinidad y Tobago *)
+    CTRY_TUNISIA              =216;         (* Tunisia *)
+    CTRY_TURKEY               =90;          (* Turkey *)
+    CTRY_UAE                  =971;         (* U.A.E. *)
+    CTRY_UKRAINE              =380;         (* Ukraine *)
+    CTRY_UNITED_KINGDOM       =44;          (* United Kingdom *)
+    CTRY_UNITED_STATES        =1;           (* United States *)
+    CTRY_URUGUAY              =598;         (* Uruguay *)
+    CTRY_VENEZUELA            =58;          (* Venezuela *)
+    CTRY_VIET_NAM             =84;          (* Viet Nam *)
+    CTRY_YEMEN                =967;         (* Yemen *)
+    CTRY_ZIMBABWE             =263;         (* Zimbabwe *)
+
+    LOCALE_NOUSEROVERRIDE= 080000000h;
+    LOCALE_USE_CP_ACP    = 040000000h;
+    LOCALE_RETURN_NUMBER = 20000000h;(*/ return number instead of string*)
+    LOCALE_ILANGUAGE     = 000000001h;
+    LOCALE_SLANGUAGE     = 000000002h;
+    LOCALE_SENGLANGUAGE  = 000001001h;
+    LOCALE_SABBREVLANGNAME= 000000003h;
+    LOCALE_SNATIVELANGNAME= 000000004h;
+    LOCALE_ICOUNTRY      = 000000005h;
+    LOCALE_SCOUNTRY      = 000000006h;
+    LOCALE_SENGCOUNTRY   = 000001002h;
+    LOCALE_SABBREVCTRYNAME= 000000007h;
+    LOCALE_SNATIVECTRYNAME= 000000008h;
+    LOCALE_IDEFAULTLANGUAGE= 000000009h;
+    LOCALE_IDEFAULTCOUNTRY= 00000000Ah;
+    LOCALE_IDEFAULTCODEPAGE= 00000000Bh;
+    LOCALE_IDEFAULTANSICODEPAGE = 00001004h;
+    LOCALE_IDEFAULTMACCODEPAGE  = 00001011h;(* default mac code page*)
+    LOCALE_SLIST         = 00000000Ch;
+    LOCALE_IMEASURE      = 00000000Dh;
+    LOCALE_SDECIMAL      = 00000000Eh;
+    LOCALE_STHOUSAND     = 00000000Fh;
+    LOCALE_SGROUPING     = 000000010h;
+    LOCALE_IDIGITS       = 000000011h;
+    LOCALE_ILZERO        = 000000012h;
+    LOCALE_INEGNUMBER    = 000001010h;
+    LOCALE_SNATIVEDIGITS = 000000013h;
+    LOCALE_SCURRENCY     = 000000014h;
+    LOCALE_SINTLSYMBOL   = 000000015h;
+    LOCALE_SMONDECIMALSEP= 000000016h;
+    LOCALE_SMONTHOUSANDSEP= 000000017h;
+    LOCALE_SMONGROUPING  = 000000018h;
+    LOCALE_ICURRDIGITS   = 000000019h;
+    LOCALE_IINTLCURRDIGITS= 00000001Ah;
+    LOCALE_ICURRENCY     = 00000001Bh;
+    LOCALE_INEGCURR      = 00000001Ch;
+    LOCALE_SDATE         = 00000001Dh;
+    LOCALE_STIME         = 00000001Eh;
+    LOCALE_SSHORTDATE    = 00000001Fh;
+    LOCALE_SLONGDATE     = 000000020h;
+    LOCALE_STIMEFORMAT   = 000001003h;
+    LOCALE_IDATE         = 000000021h;
+    LOCALE_ILDATE        = 000000022h;
+    LOCALE_ITIME         = 000000023h;
+    LOCALE_ITIMEMARKPOSN = 000001005h;
+    LOCALE_ICENTURY      = 000000024h;
+    LOCALE_ITLZERO       = 000000025h;
+    LOCALE_IDAYLZERO     = 000000026h;
+    LOCALE_IMONLZERO     = 000000027h;
+    LOCALE_S1159         = 000000028h;
+    LOCALE_S2359         = 000000029h;
+
+    LOCALE_ICALENDARTYPE        = 000001009h;
+    LOCALE_IOPTIONALCALENDAR    = 00000100Bh;
+    LOCALE_IFIRSTDAYOFWEEK      = 00000100Ch;
+    LOCALE_IFIRSTWEEKOFYEAR     = 00000100Dh;
+
+    LOCALE_SDAYNAME1     = 00000002Ah;
+    LOCALE_SDAYNAME2     = 00000002Bh;
+    LOCALE_SDAYNAME3     = 00000002Ch;
+    LOCALE_SDAYNAME4     = 00000002Dh;
+    LOCALE_SDAYNAME5     = 00000002Eh;
+    LOCALE_SDAYNAME6     = 00000002Fh;
+    LOCALE_SDAYNAME7     = 000000030h;
+    LOCALE_SABBREVDAYNAME1= 000000031h;
+    LOCALE_SABBREVDAYNAME2= 000000032h;
+    LOCALE_SABBREVDAYNAME3= 000000033h;
+    LOCALE_SABBREVDAYNAME4= 000000034h;
+    LOCALE_SABBREVDAYNAME5= 000000035h;
+    LOCALE_SABBREVDAYNAME6= 000000036h;
+    LOCALE_SABBREVDAYNAME7= 000000037h;
+    LOCALE_SMONTHNAME1   = 000000038h;
+    LOCALE_SMONTHNAME2   = 000000039h;
+    LOCALE_SMONTHNAME3   = 00000003Ah;
+    LOCALE_SMONTHNAME4   = 00000003Bh;
+    LOCALE_SMONTHNAME5   = 00000003Ch;
+    LOCALE_SMONTHNAME6   = 00000003Dh;
+    LOCALE_SMONTHNAME7   = 00000003Eh;
+    LOCALE_SMONTHNAME8   = 00000003Fh;
+    LOCALE_SMONTHNAME9   = 000000040h;
+    LOCALE_SMONTHNAME10  = 000000041h;
+    LOCALE_SMONTHNAME11  = 000000042h;
+    LOCALE_SMONTHNAME12  = 000000043h;
+    LOCALE_SMONTHNAME13  = 00000100eh;
+    LOCALE_SABBREVMONTHNAME1= 000000044h;
+    LOCALE_SABBREVMONTHNAME2= 000000045h;
+    LOCALE_SABBREVMONTHNAME3= 000000046h;
+    LOCALE_SABBREVMONTHNAME4= 000000047h;
+    LOCALE_SABBREVMONTHNAME5= 000000048h;
+    LOCALE_SABBREVMONTHNAME6= 000000049h;
+    LOCALE_SABBREVMONTHNAME7= 00000004Ah;
+    LOCALE_SABBREVMONTHNAME8= 00000004Bh;
+    LOCALE_SABBREVMONTHNAME9= 00000004Ch;
+    LOCALE_SABBREVMONTHNAME10= 00000004Dh;
+    LOCALE_SABBREVMONTHNAME11= 00000004Eh;
+    LOCALE_SABBREVMONTHNAME12= 00000004Fh;
+    LOCALE_SABBREVMONTHNAME13= 00000100fh;
+    LOCALE_SPOSITIVESIGN = 000000050h;
+    LOCALE_SNEGATIVESIGN = 000000051h;
+    LOCALE_IPOSSIGNPOSN  = 000000052h;
+    LOCALE_INEGSIGNPOSN  = 000000053h;
+    LOCALE_IPOSSYMPRECEDES= 000000054h;
+    LOCALE_IPOSSEPBYSPACE= 000000055h;
+    LOCALE_INEGSYMPRECEDES= 000000056h;
+    LOCALE_INEGSEPBYSPACE= 000000057h;
+    TIME_NOMINUTESORSECONDS= 000000001h;
+    TIME_NOSECONDS       = 000000002h;
+    TIME_NOTIMEMARKER    = 000000004h;
+    TIME_FORCE24HOURFORMAT= 000000008h;
+    DATE_SHORTDATE       = 000000001h;
+    DATE_LONGDATE        = 000000002h;
+
+TYPE
+    (*95*)
+    CALID               = DWORD;
+    (*95*)
+    CALTYPE             = DWORD;
+
+    LCTYPE               = DWORD;
+    CPINFO = RECORD
+          MaxCharSize    : UINT;
+          DefaultChar    : ARRAY [0..MAX_DEFAULTCHAR - 1] OF BYTE;
+          LeadByte       : ARRAY [0..MAX_LEADBYTES - 1] OF BYTE;
+    END;
+    LPCPINFO             = POINTER TO CPINFO;
+
+    CPINFOEXA = RECORD
+    MaxCharSize         : UINT; (* max length (in bytes) of a char *)
+    DefaultChar         : ARRAY [0..MAX_DEFAULTCHAR-1] OF BYTE;(* default character (MB)*)
+    LeadByte            : ARRAY [0..MAX_LEADBYTES-1] OF BYTE;(* lead byte ranges*)
+    UnicodeDefaultChar  : WCHAR;(* default character (Unicode)*)
+    CodePage            : UINT;(* code page id*)
+    CodePageName        : ARRAY [0..MAX_PATH-1] OF ACHAR;(* code page name (Unicode)*)
+    END;
+    LPCPINFOEXA = POINTER TO CPINFOEXA;
+
+    CPINFOEXW = RECORD
+    MaxCharSize         : UINT; (* max length (in bytes) of a char *)
+    DefaultChar         : ARRAY [0..MAX_DEFAULTCHAR-1] OF BYTE;(* default character (MB)*)
+    LeadByte            : ARRAY [0..MAX_LEADBYTES-1] OF BYTE;(* lead byte ranges*)
+    UnicodeDefaultChar  : WCHAR;(* default character (Unicode)*)
+    CodePage            : UINT;(* code page id*)
+    CodePageName        : ARRAY [0..MAX_PATH-1] OF WCHAR;(* code page name (Unicode)*)
+    END;
+    LPCPINFOEXW = POINTER TO CPINFOEXW;
+
+    %IF UNICODE %THEN
+    CPINFOEX    = CPINFOEXW;
+    LPCPINFOEX  = LPCPINFOEXW;
+    %ELSE
+    CPINFOEX    = CPINFOEXA;
+    LPCPINFOEX  = LPCPINFOEXA;
+    %END
+
+
+CONST
+    LOCALE_FONTSIGNATURE = 000000058h;
+    LOCALE_SISO639LANGNAME = 00000059h;   (* ISO abbreviated language name*)
+    LOCALE_SISO3166CTRYNAME = 0000005Ah;  (* ISO abbreviated country name*)
+
+    LOCALE_IDEFAULTEBCDICCODEPAGE = 00001012h;   (* default ebcdic code page*)
+    LOCALE_IPAPERSIZE             = 0000100Ah;   (* 0 = letter, 1 = a4, 2 = legal, 3 = a3*)
+    LOCALE_SENGCURRNAME           = 00001007h;   (* english name of currency*)
+    LOCALE_SNATIVECURRNAME        = 00001008h;   (* native name of currency*)
+    LOCALE_SYEARMONTH             = 00001006h;   (* year month format string*)
+    LOCALE_SSORTNAME              = 00001013h;   (* sort name*)
+    LOCALE_IDIGITSUBSTITUTION     = 00001014h;   (* 0 = none, 1 = context, 2 = native digit*)
+
+    DATE_USE_ALT_CALENDAR= 000000004h;
+    DATE_YEARMONTH           = 00000008h;  (* use year month picture *)
+    DATE_LTRREADING          = 00000010h;  (* add marks for left to right reading order layout*)
+    DATE_RTLREADING          = 00000020h;  (* add marks for right to left reading order layout*)
+
+    CAL_ICALINTVALUE     = 000000001h;
+    CAL_SCALNAME         = 000000002h;
+    CAL_IYEAROFFSETRANGE = 000000003h;
+    CAL_SERASTRING       = 000000004h;
+    CAL_SSHORTDATE       = 000000005h;
+    CAL_SLONGDATE        = 000000006h;
+    CAL_SDAYNAME1        = 000000007h;
+    CAL_SDAYNAME2        = 000000008h;
+    CAL_SDAYNAME3        = 000000009h;
+    CAL_SDAYNAME4        = 00000000ah;
+    CAL_SDAYNAME5        = 00000000bh;
+    CAL_SDAYNAME6        = 00000000ch;
+    CAL_SDAYNAME7        = 00000000dh;
+    CAL_SABBREVDAYNAME1  = 00000000eh;
+    CAL_SABBREVDAYNAME2  = 00000000fh;
+    CAL_SABBREVDAYNAME3  = 000000010h;
+    CAL_SABBREVDAYNAME4  = 000000011h;
+    CAL_SABBREVDAYNAME5  = 000000012h;
+    CAL_SABBREVDAYNAME6  = 000000013h;
+    CAL_SABBREVDAYNAME7  = 000000014h;
+    CAL_SMONTHNAME1      = 000000015h;
+    CAL_SMONTHNAME2      = 000000016h;
+    CAL_SMONTHNAME3      = 000000017h;
+    CAL_SMONTHNAME4      = 000000018h;
+    CAL_SMONTHNAME5      = 000000019h;
+    CAL_SMONTHNAME6      = 00000001ah;
+    CAL_SMONTHNAME7      = 00000001bh;
+    CAL_SMONTHNAME8      = 00000001ch;
+    CAL_SMONTHNAME9      = 00000001dh;
+    CAL_SMONTHNAME10     = 00000001eh;
+    CAL_SMONTHNAME11     = 00000001fh;
+    CAL_SMONTHNAME12     = 000000020h;
+    CAL_SMONTHNAME13     = 000000021h;
+    CAL_SABBREVMONTHNAME1= 000000022h;
+    CAL_SABBREVMONTHNAME2= 000000023h;
+    CAL_SABBREVMONTHNAME3= 000000024h;
+    CAL_SABBREVMONTHNAME4= 000000025h;
+    CAL_SABBREVMONTHNAME5= 000000026h;
+    CAL_SABBREVMONTHNAME6= 000000027h;
+    CAL_SABBREVMONTHNAME7= 000000028h;
+    CAL_SABBREVMONTHNAME8= 000000029h;
+    CAL_SABBREVMONTHNAME9= 00000002ah;
+    CAL_SABBREVMONTHNAME10= 00000002bh;
+    CAL_SABBREVMONTHNAME11= 00000002ch;
+    CAL_SABBREVMONTHNAME12= 00000002dh;
+    CAL_SABBREVMONTHNAME13= 00000002eh;
+
+    CAL_SYEARMONTH        = 0000002fh; (* year month format string*)
+
+    ENUM_ALL_CALENDARS   = 0ffffffffh;
+
+    CAL_GREGORIAN        = 1;
+    CAL_GREGORIAN_US     = 2;
+    CAL_JAPAN            = 3;
+    CAL_TAIWAN           = 4;
+    CAL_KOREA            = 5;
+    CAL_HIJRI                      =6;      (* Hijri (Arabic Lunar) calendar*)
+    CAL_THAI                       =7;      (* Thai calendar*)
+    CAL_HEBREW                     =8;      (* Hebrew (Lunar) calendar*)
+    CAL_GREGORIAN_ME_FRENCH        =9;      (* Gregorian Middle East French calendar*)
+    CAL_GREGORIAN_ARABIC           =10;     (* Gregorian Arabic calendar*)
+    CAL_GREGORIAN_XLIT_ENGLISH     =11;     (* Gregorian Transliterated English calendar*)
+    CAL_GREGORIAN_XLIT_FRENCH      =12;     (*Gregorian Transliterated French calendar*)
+
+TYPE
+
+    NUMBERFMTA = RECORD
+          NumDigits      : UINT;
+          LeadingZero    : UINT;
+          Grouping       : UINT;
+          lpDecimalSep   : LPSTR;
+          lpThousandSep  : LPSTR;
+          NegativeOrder  : UINT;
+    END;
+    LPNUMBERFMTA         = POINTER TO NUMBERFMTA;
+
+    NUMBERFMTW = RECORD
+          NumDigits      : UINT;
+          LeadingZero    : UINT;
+          Grouping       : UINT;
+          lpDecimalSep   : LPWSTR;
+          lpThousandSep  : LPWSTR;
+          NegativeOrder  : UINT;
+    END;
+    LPNUMBERFMTW         = POINTER TO NUMBERFMTW;
+
+%IF UNICODE %THEN
+    NUMBERFMT            = NUMBERFMTW;
+    LPNUMBERFMT          = LPNUMBERFMTW;
+%ELSE
+    NUMBERFMT            = NUMBERFMTA;
+    LPNUMBERFMT          = LPNUMBERFMTA;
+%END
+
+    CURRENCYFMTA = RECORD
+          NumDigits      : UINT;
+          LeadingZero    : UINT;
+          Grouping       : UINT;
+          lpDecimalSep   : LPSTR;
+          lpThousandSep  : LPSTR;
+          NegativeOrder  : UINT;
+          PositiveOrder  : UINT;
+          lpCurrencySymbol: LPSTR;
+    END;
+    LPCURRENCYFMTA       = POINTER TO CURRENCYFMTA;
+
+    CURRENCYFMTW = RECORD
+          NumDigits      : UINT;
+          LeadingZero    : UINT;
+          Grouping       : UINT;
+          lpDecimalSep   : LPWSTR;
+          lpThousandSep  : LPWSTR;
+          NegativeOrder  : UINT;
+          PositiveOrder  : UINT;
+          lpCurrencySymbol: LPWSTR;
+    END;
+    LPCURRENCYFMTW       = POINTER TO CURRENCYFMTW;
+
+%IF UNICODE %THEN
+    CURRENCYFMT          = CURRENCYFMTW;
+    LPCURRENCYFMT        = LPCURRENCYFMTW;
+%ELSE
+    CURRENCYFMT          = CURRENCYFMTA;
+    LPCURRENCYFMT        = LPCURRENCYFMTA;
+%END
+
+TYPE
+    LOCALE_ENUMPROCA     = PROCEDURE (VAR ARRAY OF ACHAR):BOOL;
+    CODEPAGE_ENUMPROCA   = PROCEDURE (VAR ARRAY OF ACHAR):BOOL;
+    DATEFMT_ENUMPROCA    = PROCEDURE (VAR ARRAY OF ACHAR):BOOL;
+    DATEFMT_ENUMPROCEXA  = PROCEDURE (VAR ARRAY OF ACHAR, CALID):BOOL;
+    TIMEFMT_ENUMPROCA    = PROCEDURE (VAR ARRAY OF ACHAR):BOOL;
+    CALINFO_ENUMPROCA    = PROCEDURE (VAR ARRAY OF ACHAR):BOOL;
+    CALINFO_ENUMPROCEXA  = PROCEDURE (VAR ARRAY OF ACHAR, CALID):BOOL;
+
+    LOCALE_ENUMPROCW     = PROCEDURE (VAR ARRAY OF WCHAR):BOOL;
+    CODEPAGE_ENUMPROCW   = PROCEDURE (VAR ARRAY OF WCHAR):BOOL;
+    DATEFMT_ENUMPROCW    = PROCEDURE (VAR ARRAY OF WCHAR):BOOL;
+    DATEFMT_ENUMPROCEXW  = PROCEDURE (VAR ARRAY OF WCHAR, CALID):BOOL;
+    TIMEFMT_ENUMPROCW    = PROCEDURE (VAR ARRAY OF WCHAR):BOOL;
+    CALINFO_ENUMPROCW    = PROCEDURE (VAR ARRAY OF WCHAR):BOOL;
+    CALINFO_ENUMPROCEXW  = PROCEDURE (VAR ARRAY OF WCHAR, CALID):BOOL;
+
+%IF UNICODE %THEN
+    LOCALE_ENUMPROC     = LOCALE_ENUMPROCW;
+    CODEPAGE_ENUMPROC   = CODEPAGE_ENUMPROCW;
+    DATEFMT_ENUMPROC    = DATEFMT_ENUMPROCW;
+    DATEFMT_ENUMPROCEX    = DATEFMT_ENUMPROCEXW;
+    TIMEFMT_ENUMPROC    = TIMEFMT_ENUMPROCW;
+    CALINFO_ENUMPROC    = CALINFO_ENUMPROCW;
+    CALINFO_ENUMPROCEX    = CALINFO_ENUMPROCEXW;
+%ELSE
+    LOCALE_ENUMPROC     = LOCALE_ENUMPROCA;
+    CODEPAGE_ENUMPROC   = CODEPAGE_ENUMPROCA;
+    DATEFMT_ENUMPROC    = DATEFMT_ENUMPROCA;
+    DATEFMT_ENUMPROCEX    = DATEFMT_ENUMPROCEXA;
+    TIMEFMT_ENUMPROC    = TIMEFMT_ENUMPROCA;
+    CALINFO_ENUMPROC    = CALINFO_ENUMPROCA;
+    CALINFO_ENUMPROCEX    = CALINFO_ENUMPROCEXA;
+%END
+
+
+PROCEDURE IsValidCodePage(CodePage : UINT) : BOOL;
+
+PROCEDURE GetACP() : UINT;
+
+PROCEDURE GetOEMCP() : UINT;
+
+PROCEDURE GetCPInfo(CodePage : UINT;
+                    VAR lpCPInfo : CPINFO) : BOOL;
+
+
+PROCEDURE GetCPInfoExA(CodePage : UINT;
+                       dwFlags : DWORD;
+                       VAR lpCPInfoEx : CPINFOEXA) : BOOL;
+
+PROCEDURE GetCPInfoExW(CodePage : UINT;
+                       dwFlags : DWORD;
+                       VAR lpCPInfoEx : CPINFOEXW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetCPInfoEx = GetCPInfoExW;
+%ELSE
+PROCEDURE GetCPInfoEx = GetCPInfoExA;
+%END
+
+PROCEDURE IsDBCSLeadByte(TestChar : BYTE) : BOOL;
+
+PROCEDURE IsDBCSLeadByteEx(CodePage : UINT; TestChar : BYTE) : BOOL;
+
+PROCEDURE MultiByteToWideChar(CodePage : UINT;
+                              dwFlags : DWORD;
+                              lpMultiByteStr : ARRAY OF ACHAR;
+                              cchMultiByte : INTEGER;
+                              VAR lpWideCharStr : ARRAY OF UCHAR;
+                              cchWideChar : INTEGER) : INTEGER;
+
+PROCEDURE WideCharToMultiByte(CodePage : UINT;
+                              dwFlags : DWORD;
+                              lpWideCharStr : ARRAY OF UCHAR;
+                              cchWideChar : INTEGER;
+                              VAR lpMultiByteStr : ARRAY OF ACHAR;
+                              cchMultiByte : INTEGER;
+                              lpDefaultChar : ARRAY OF ACHAR;
+                              VAR lpUsedDefaultChar : BOOL) : INTEGER;
+
+PROCEDURE CompareStringA(Locale : LCID;
+                         dwCmpFlags : DWORD;
+                         lpString1 : ARRAY OF ACHAR;
+                         cchCount1 : INTEGER;
+                         lpString2 : ARRAY OF ACHAR;
+                         cchCount2 : INTEGER) : INTEGER;
+
+PROCEDURE CompareStringW(Locale : LCID;
+                         dwCmpFlags : DWORD;
+                         lpString1 : ARRAY OF UCHAR;
+                         cchCount1 : INTEGER;
+                         lpString2 : ARRAY OF UCHAR;
+                         cchCount2 : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE CompareString = CompareStringW;
+%ELSE
+PROCEDURE CompareString = CompareStringA;
+%END
+
+PROCEDURE LCMapStringA(Locale : LCID;
+                       dwMapFlags : DWORD;
+                       lpSrcStr : ARRAY OF ACHAR;
+                       cchSrc : INTEGER;
+                       VAR lpDestStr : ARRAY OF ACHAR;
+                       cchDest : INTEGER) : INTEGER;
+
+PROCEDURE LCMapStringW(Locale : LCID;
+                       dwMapFlags : DWORD;
+                       lpSrcStr : ARRAY OF UCHAR;
+                       cchSrc : INTEGER;
+                       VAR lpDestStr : ARRAY OF UCHAR;
+                       cchDest : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE LCMapString = LCMapStringW;
+%ELSE
+PROCEDURE LCMapString = LCMapStringA;
+%END
+
+PROCEDURE GetLocaleInfoA(Locale : LCID;
+                         LCType : LCTYPE;
+                         VAR lpLCData : ARRAY OF ACHAR;
+                         cchData : INTEGER) : INTEGER;
+
+PROCEDURE GetLocaleInfoW(Locale : LCID;
+                         LCType : LCTYPE;
+                         VAR lpLCData : ARRAY OF UCHAR;
+                         cchData : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE GetLocaleInfo = GetLocaleInfoW;
+%ELSE
+PROCEDURE GetLocaleInfo = GetLocaleInfoA;
+%END
+
+PROCEDURE SetLocaleInfoA(Locale : LCID;
+                         LCType : LCTYPE;
+                         CONST lpLCData : ARRAY OF ACHAR) : BOOL;
+
+PROCEDURE SetLocaleInfoW(Locale : LCID;
+                         LCType : LCTYPE;
+                         CONST lpLCData : ARRAY OF UCHAR) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE SetLocaleInfo = SetLocaleInfoW;
+%ELSE
+PROCEDURE SetLocaleInfo = SetLocaleInfoA;
+%END
+
+PROCEDURE GetTimeFormatA(Locale : LCID;
+                         dwFlags : DWORD;
+                         VAR lpTime : SYSTEMTIME;
+                         lpFormat : ARRAY OF ACHAR;
+                         VAR lpTimeStr : ARRAY OF ACHAR;
+                         cchTime : INTEGER) : INTEGER;
+
+PROCEDURE GetTimeFormatW(Locale : LCID;
+                         dwFlags : DWORD;
+                         VAR lpTime : SYSTEMTIME;
+                         lpFormat : ARRAY OF UCHAR;
+                         VAR lpTimeStr : ARRAY OF UCHAR;
+                         cchTime : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE GetTimeFormat = GetTimeFormatW;
+%ELSE
+PROCEDURE GetTimeFormat = GetTimeFormatA;
+%END
+
+PROCEDURE GetDateFormatA(Locale : LCID;
+                         dwFlags : DWORD;
+                         VAR lpDate : SYSTEMTIME;
+                         lpFormat : ARRAY OF ACHAR;
+                         VAR lpDateStr : ARRAY OF ACHAR;
+                         cchDate : INTEGER) : INTEGER;
+
+PROCEDURE GetDateFormatW(Locale : LCID;
+                         dwFlags : DWORD;
+                         VAR lpDate : SYSTEMTIME;
+                         lpFormat : ARRAY OF UCHAR;
+                         VAR lpDateStr : ARRAY OF UCHAR;
+                         cchDate : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE GetDateFormat = GetDateFormatW;
+%ELSE
+PROCEDURE GetDateFormat = GetDateFormatA;
+%END
+
+PROCEDURE GetNumberFormatA(
+                Locale : LCID;
+                dwFlags : DWORD;
+                lpValue : ARRAY OF ACHAR;
+                VAR lpFormat : NUMBERFMTA;
+                VAR lpNumberStr : ARRAY OF ACHAR;
+                cchNumber : WINT) : WINT;
+
+PROCEDURE GetNumberFormatW(
+                Locale : LCID;
+                dwFlags : DWORD;
+                lpValue : ARRAY OF UCHAR;
+                VAR lpFormat : NUMBERFMTW;
+                VAR lpNumberStr : ARRAY OF UCHAR;
+                cchNumber : WINT) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE GetNumberFormat = GetNumberFormatW;
+%ELSE
+PROCEDURE GetNumberFormat = GetNumberFormatA;
+%END
+
+PROCEDURE GetCurrencyFormatA(
+                Locale : LCID;
+                dwFlags : DWORD;
+                lpValue : ARRAY OF ACHAR;
+                VAR lpFormat : CURRENCYFMTA;
+                VAR lpCurrencyStr : ARRAY OF ACHAR;
+                cchCurrency : WINT) : WINT;
+
+PROCEDURE GetCurrencyFormatW(
+                Locale : LCID;
+                dwFlags : DWORD;
+                lpValue : ARRAY OF UCHAR;
+                VAR lpFormat : CURRENCYFMTW;
+                VAR lpCurrencyStr : ARRAY OF UCHAR;
+                cchCurrency : WINT) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE GetCurrencyFormat = GetCurrencyFormatW;
+%ELSE
+PROCEDURE GetCurrencyFormat = GetCurrencyFormatA;
+%END
+
+PROCEDURE EnumCalendarInfoA(
+            lpCalInfoEnumProc : CALINFO_ENUMPROCA;
+            Locale : LCID;
+            Calendar : CALID;
+            CalType : CALTYPE) : BOOL;
+
+PROCEDURE EnumCalendarInfoW(
+            lpCalInfoEnumProc : CALINFO_ENUMPROCW;
+            Locale : LCID;
+            Calendar : CALID;
+            CalType : CALTYPE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumCalendarInfo = EnumCalendarInfoW;
+%ELSE
+PROCEDURE EnumCalendarInfo = EnumCalendarInfoA;
+%END
+
+PROCEDURE EnumCalendarInfoExA(
+            lpCalInfoEnumProcEx : CALINFO_ENUMPROCEXA;
+            Locale : LCID;
+            Calendar : CALID;
+            CalType : CALTYPE) : BOOL;
+
+PROCEDURE EnumCalendarInfoExW(
+            lpCalInfoEnumProcEx : CALINFO_ENUMPROCEXW;
+            Locale : LCID;
+            Calendar : CALID;
+            CalType : CALTYPE) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumCalendarInfoEx = EnumCalendarInfoExW;
+%ELSE
+PROCEDURE EnumCalendarInfoEx = EnumCalendarInfoExA;
+%END
+
+PROCEDURE EnumTimeFormatsA(
+    lpTimeFmtEnumProc : TIMEFMT_ENUMPROCA;
+    Locale : LCID;
+    dwFlags : DWORD) : BOOL;
+
+PROCEDURE EnumTimeFormatsW(
+    lpTimeFmtEnumProc : TIMEFMT_ENUMPROCW;
+    Locale : LCID;
+    dwFlags : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumTimeFormats = EnumTimeFormatsW;
+%ELSE
+PROCEDURE EnumTimeFormats = EnumTimeFormatsA;
+%END
+
+PROCEDURE EnumDateFormatsA(
+    lpDateFmtEnumProc : DATEFMT_ENUMPROCA;
+    Locale : LCID;
+    dwFlags :  DWORD) : BOOL;
+
+PROCEDURE EnumDateFormatsW(
+    lpDateFmtEnumProc : DATEFMT_ENUMPROCW;
+    Locale : LCID;
+    dwFlags :  DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumDateFormats = EnumDateFormatsW;
+%ELSE
+PROCEDURE EnumDateFormats = EnumDateFormatsA;
+%END
+
+PROCEDURE EnumDateFormatsExA(
+    lpDateFmtEnumProc : DATEFMT_ENUMPROCEXA;
+    Locale : LCID;
+    dwFlags :  DWORD) : BOOL;
+
+PROCEDURE EnumDateFormatsExW(
+    lpDateFmtEnumProc : DATEFMT_ENUMPROCEXW;
+    Locale : LCID;
+    dwFlags :  DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumDateFormatsEx = EnumDateFormatsExW;
+%ELSE
+PROCEDURE EnumDateFormatsEx = EnumDateFormatsExA;
+%END
+
+PROCEDURE IsValidLocale(Locale : LCID; dwFlags : DWORD) : BOOL;
+
+PROCEDURE ConvertDefaultLocale(Locale : LCID) : LCID;
+
+
+PROCEDURE GetThreadLocale() : LCID;
+
+PROCEDURE SetThreadLocale(Locale : LCID) : BOOL;
+
+PROCEDURE GetSystemDefaultLangID() : LANGID;
+
+PROCEDURE GetUserDefaultLangID() : LANGID;
+
+PROCEDURE GetSystemDefaultLCID() : LCID;
+
+PROCEDURE GetUserDefaultLCID() : LCID;
+
+PROCEDURE GetSystemDefaultUILanguage() : LANGID;
+
+PROCEDURE GetUserDefaultUILanguage() : LANGID;
+
+
+PROCEDURE GetStringTypeA(
+    Locale : LCID;
+    dwInfoType : DWORD;
+    lpSrcStr : ARRAY OF ACHAR;
+    cchSrc : WINT;
+    VAR lpCharType : WORD) : BOOL;
+
+PROCEDURE GetStringTypeW(dwInfoType : DWORD;
+                         lpSrcStr : ARRAY OF UCHAR;
+                         cchSrc : INTEGER;
+                         VAR lpCharType : WORD) : BOOL;
+
+PROCEDURE GetStringTypeExA(
+    Locale : LCID;
+    dwInfoType : DWORD;
+    lpSrcStr : ARRAY OF ACHAR;
+    cchSrc : WINT;
+    VAR lpCharType : WORD) : BOOL;
+
+PROCEDURE GetStringTypeExW(
+    Locale : LCID;
+    dwInfoType : DWORD;
+    lpSrcStr : ARRAY OF UCHAR;
+    cchSrc : WINT;
+    VAR lpCharType : WORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetStringTypeEx = GetStringTypeExW;
+%ELSE
+PROCEDURE GetStringTypeEx = GetStringTypeExA;
+%END
+
+PROCEDURE FoldStringW(dwMapFlags : DWORD;
+                      lpSrcStr : ARRAY OF UCHAR;
+                      cchSrc : INTEGER;
+                      VAR lpDestStr : ARRAY OF UCHAR;
+                      cchDest : INTEGER) : INTEGER;
+
+
+PROCEDURE FoldStringA(dwMapFlags : DWORD;
+                      lpSrcStr : ARRAY OF ACHAR;
+                      cchSrc : INTEGER;
+                      VAR lpDestStr : ARRAY OF ACHAR;
+                      cchDest : INTEGER) : INTEGER;
+
+%IF UNICODE %THEN
+PROCEDURE FoldString = FoldStringW;
+%ELSE
+PROCEDURE FoldString = FoldStringA;
+%END
+
+PROCEDURE EnumSystemLocalesA(
+    lpLocaleEnumProc : LOCALE_ENUMPROCA;
+    dwFlags : DWORD) : BOOL;
+
+PROCEDURE EnumSystemLocalesW(
+    lpLocaleEnumProc : LOCALE_ENUMPROCW;
+    dwFlags : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumSystemLocales = EnumSystemLocalesW;
+%ELSE
+PROCEDURE EnumSystemLocales = EnumSystemLocalesA;
+%END
+
+PROCEDURE EnumSystemCodePagesA(
+    lpCodePageEnumProc : CODEPAGE_ENUMPROCA;
+    dwFlags : DWORD) : BOOL;
+
+PROCEDURE EnumSystemCodePagesW(
+    lpCodePageEnumProc : CODEPAGE_ENUMPROCW;
+    dwFlags : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE EnumSystemCodePages = EnumSystemCodePagesW;
+%ELSE
+PROCEDURE EnumSystemCodePages = EnumSystemCodePagesA;
+%END
+
+END WINNLS.

@@ -1,0 +1,63 @@
+(*
+Name:     IFontDisp
+Creation: 29-02-2000
+LastEdit: 29-02-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  interface to IFontDisp objects.
+          use the Init method to set iDispatch for this object.
+*)
+
+UNSAFEGUARDED DEFINITION MODULE IFontDisp;
+
+IMPORT WIN32;
+IMPORT Ole2;
+IMPORT Bstr;
+
+<*/CALLS:WIN32SYSTEM*>
+<*/NOHIGH*>
+<*/ALIGN:8*>
+<*/NOPACK*>
+CLASS C;
+  REVEAL Init,
+         READONLY iDispatch,
+         get_Name,
+         put_Name,
+         get_Size,
+         put_Size,
+         get_Bold,
+         put_Bold,
+         get_Italic,
+         put_Italic,
+         get_Underline,
+         put_Underline,
+         get_Strikethrough,
+         put_Strikethrough,
+         get_Weight,
+         put_Weight,
+         get_Charset,
+         put_Charset;
+
+  PROCEDURE Init(iDispatch: Ole2.IDispatch);
+  PROCEDURE get_Name(VAR bstr: Bstr.T): WIN32.HRESULT;
+  PROCEDURE put_Name(bstr: Bstr.T): WIN32.HRESULT;
+  PROCEDURE get_Size(VAR cySize: Ole2.CY): WIN32.HRESULT;
+  PROCEDURE put_Size(cySize: Ole2.CY): WIN32.HRESULT;
+  PROCEDURE get_Bold(VAR bBold: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE put_Bold(bBold: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE get_Italic(VAR bItalic: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE put_Italic(bItalic: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE get_Underline(VAR bUnderline: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE put_Underline(bUnderline: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE get_Strikethrough(VAR bStrikethrough: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE put_Strikethrough(bStrikethrough: Ole2.VARIANT_BOOL): WIN32.HRESULT;
+  PROCEDURE get_Weight(VAR nWeight: WIN32.SHORT): WIN32.HRESULT;
+  PROCEDURE put_Weight(nWeight: WIN32.SHORT): WIN32.HRESULT;
+  PROCEDURE get_Charset(VAR nCharset: WIN32.SHORT): WIN32.HRESULT;
+  PROCEDURE put_Charset(nCharset: WIN32.SHORT): WIN32.HRESULT;
+
+  VAR iDispatch: Ole2.IDispatch;
+END C;
+
+
+END IFontDisp.

@@ -1,0 +1,3347 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE MMSYSTEM;
+
+FROM SYSTEM IMPORT
+    CAST;
+
+FROM WIN32 IMPORT
+    UINT, DWORD, LPSTR, LPWSTR, LPCSTR, LPCWSTR, HANDLE, LONG, LRESULT,
+    LPARAM, HMODULE, BOOL, WORD, WCHAR, LPWORD, HWND, RECT, HDC, PUINT,
+    BYTE, LPVOID, HTASK, UINT_PTR, DWORD_PTR;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    MAXPNAMELEN                 = 32;
+    MAXERRORLENGTH              = 256;
+    MAX_JOYSTICKOEMVXDNAME      = 260;
+
+
+TYPE
+    MMVERSION            = UINT;
+    MMRESULT             = UINT;
+    MCIERROR             = DWORD;
+    smpte =
+		RECORD
+			hour           : BYTE;
+			min            : BYTE;
+			sec            : BYTE;
+			frame          : BYTE;
+			fps            : BYTE;
+			dummy          : BYTE;
+		%IF Windows %THEN
+			pad            : ARRAY [0..2-1] OF BYTE;
+		%END
+		END;
+
+    midi =
+		RECORD
+        	songptrpos     : DWORD;
+    	END;
+
+    MMTIME =
+		RECORD
+        	wType          : UINT;
+            CASE : CARDINAL OF
+                0 : ms         : DWORD;
+            |
+                1 : sample     : DWORD;
+            |
+                2 : cb         : DWORD;
+            |
+                3 : ticks      : DWORD;
+            |
+                4 : smpte      : smpte;
+            |
+                5 : midi       : midi;
+            ELSE
+            END;
+    	END;
+
+    PMMTIME              = POINTER TO MMTIME;
+    LPMMTIME             = POINTER TO MMTIME;
+
+CONST
+    TIME_MS              = 00001h;
+    TIME_SAMPLES         = 00002h;
+    TIME_BYTES           = 00004h;
+    TIME_SMPTE           = 00008h;
+    TIME_MIDI            = 00010h;
+    TIME_TICKS           = 00020h;
+
+    MM_JOY1MOVE          = 03A0h;
+    MM_JOY2MOVE          = 03A1h;
+    MM_JOY1ZMOVE         = 03A2h;
+    MM_JOY2ZMOVE         = 03A3h;
+    MM_JOY1BUTTONDOWN    = 03B5h;
+    MM_JOY2BUTTONDOWN    = 03B6h;
+    MM_JOY1BUTTONUP      = 03B7h;
+    MM_JOY2BUTTONUP      = 03B8h;
+    MM_MCINOTIFY         = 03B9h;
+    MM_MCISYSTEM_STRING  = 03CAh;
+
+    MM_WOM_OPEN          = 03BBh;
+    MM_WOM_CLOSE         = 03BCh;
+    MM_WOM_DONE          = 03BDh;
+
+    MM_WIM_OPEN          = 03BEh;
+    MM_WIM_CLOSE         = 03BFh;
+    MM_WIM_DATA          = 03C0h;
+
+    MM_MIM_OPEN          = 03C1h;
+    MM_MIM_CLOSE         = 03C2h;
+    MM_MIM_DATA          = 03C3h;
+    MM_MIM_LONGDATA      = 03C4h;
+    MM_MIM_ERROR         = 03C5h;
+    MM_MIM_LONGERROR     = 03C6h;
+
+    MM_MOM_OPEN          = 03C7h;
+    MM_MOM_CLOSE         = 03C8h;
+    MM_MOM_DONE          = 03C9h;
+
+
+    MM_DRVM_OPEN       = 3D0h;
+    MM_DRVM_CLOSE      = 3D1h;
+    MM_DRVM_DATA       = 3D2h;
+    MM_DRVM_ERROR      = 3D3h;
+
+    MM_STREAM_OPEN          = 3D4h;
+    MM_STREAM_CLOSE         = 3D5h;
+    MM_STREAM_DONE          = 3D6h;
+    MM_STREAM_ERROR         = 3D7h;
+
+    MM_MOM_POSITIONCB       = 3CAh;
+
+    MM_MCISIGNAL            = 3CBh;
+
+    MM_MIM_MOREDATA         = 3CCh;
+
+    MM_MIXM_LINE_CHANGE     = 3D0h;
+    MM_MIXM_CONTROL_CHANGE  = 3D1h;
+
+
+    MMSYSERR_BASE        = 0;
+    WAVERR_BASE          = 32;
+    MIDIERR_BASE         = 64;
+    TIMERR_BASE          = 96;
+    JOYERR_BASE          = 160;
+    MCIERR_BASE          = 256;
+    MIXERR_BASE          = 1024;(*95*)
+
+    MCI_STRING_OFFSET    = 512;
+    MCI_VD_OFFSET        = 1024;
+    MCI_CD_OFFSET        = 1088;
+    MCI_WAVE_OFFSET      = 1152;
+    MCI_SEQ_OFFSET       = 1216;
+    MMSYSERR_NOERROR     = 0;
+    MMSYSERR_ERROR       = ( MMSYSERR_BASE + 1 );
+    MMSYSERR_BADDEVICEID = ( MMSYSERR_BASE + 2 );
+    MMSYSERR_NOTENABLED  = ( MMSYSERR_BASE + 3 );
+    MMSYSERR_ALLOCATED   = ( MMSYSERR_BASE + 4 );
+    MMSYSERR_INVALHANDLE = ( MMSYSERR_BASE + 5 );
+    MMSYSERR_NODRIVER    = ( MMSYSERR_BASE + 6 );
+    MMSYSERR_NOMEM       = ( MMSYSERR_BASE + 7 );
+    MMSYSERR_NOTSUPPORTED= ( MMSYSERR_BASE + 8 );
+    MMSYSERR_BADERRNUM   = ( MMSYSERR_BASE + 9 );
+    MMSYSERR_INVALFLAG   = ( MMSYSERR_BASE + 10 );
+    MMSYSERR_INVALPARAM  = ( MMSYSERR_BASE + 11 );
+    MMSYSERR_HANDLEBUSY  = ( MMSYSERR_BASE + 12 );
+    MMSYSERR_INVALIDALIAS= ( MMSYSERR_BASE + 13 );
+
+    MMSYSERR_BADDB       = (MMSYSERR_BASE + 14);
+    MMSYSERR_KEYNOTFOUND = (MMSYSERR_BASE + 15);
+    MMSYSERR_READERROR   = (MMSYSERR_BASE + 16);
+    MMSYSERR_WRITEERROR  = (MMSYSERR_BASE + 17);
+    MMSYSERR_DELETEERROR = (MMSYSERR_BASE + 18);
+    MMSYSERR_VALNOTFOUND = (MMSYSERR_BASE + 19);
+    MMSYSERR_NODRIVERCB  = (MMSYSERR_BASE + 20);
+    MMSYSERR_LASTERROR   = (MMSYSERR_BASE + 20);
+
+
+TYPE
+    DRVCONFIGINFOEX =
+		RECORD
+			dwDCISize           : DWORD;
+			lpszDCISectionName  : LPCWSTR;
+			lpszDCIAliasName    : LPCWSTR;
+			dnDevNode           : DWORD;
+		END;
+    PDRVCONFIGINFOEX = POINTER TO DRVCONFIGINFOEX;
+    LPDRVCONFIGINFOEX = PDRVCONFIGINFOEX;
+
+    HDRVR                = POINTER TO RECORD END;
+
+CONST
+    DRV_LOAD             = 00001h;
+    DRV_ENABLE           = 00002h;
+    DRV_OPEN             = 00003h;
+    DRV_CLOSE            = 00004h;
+    DRV_DISABLE          = 00005h;
+    DRV_FREE             = 00006h;
+    DRV_CONFIGURE        = 00007h;
+    DRV_QUERYCONFIGURE   = 00008h;
+    DRV_INSTALL          = 00009h;
+    DRV_REMOVE           = 0000Ah;
+    DRV_EXITSESSION      = 0000Bh;
+    DRV_POWER            = 0000Fh;
+    DRV_RESERVED         = 00800h;
+    DRV_USER             = 04000h;
+
+TYPE
+    DRVCONFIGINFO =
+		RECORD
+			dwDCISize      : DWORD;
+			lpszDCISectionName: LPCWSTR;
+			lpszDCIAliasName: LPCWSTR;
+		END;
+
+    PDRVCONFIGINFO       = POINTER TO DRVCONFIGINFO;
+    LPDRVCONFIGINFO      = POINTER TO DRVCONFIGINFO;
+
+CONST
+    DRVCNF_CANCEL        = 00000h;
+    DRVCNF_OK            = 00001h;
+    DRVCNF_RESTART       = 00002h;
+
+TYPE
+    DRIVERPROC  = PROCEDURE (DWORD_PTR, HDRVR, UINT, LPARAM, LPARAM) : LRESULT;
+
+    PROCEDURE CloseDriver(hDriver : HDRVR;
+                          lParam1 : LPARAM;
+                          lParam2 : LPARAM) : LRESULT;
+
+    PROCEDURE OpenDriver(szDriverName : ARRAY OF UCHAR;
+                         szSectionName : ARRAY OF UCHAR;
+                         lParam2 : LPARAM) : HDRVR;
+
+    PROCEDURE SendDriverMessage(hDriver : HDRVR;
+                                message : UINT;
+                                lParam1 : LPARAM;
+                                lParam2 : LPARAM) : LRESULT;
+
+    PROCEDURE DrvGetModuleHandle(hDriver : HDRVR) : HMODULE;
+
+    PROCEDURE GetDriverModuleHandle(hDriver : HDRVR) : HMODULE;
+
+    PROCEDURE DefDriverProc(dwDriverIdentifier : DWORD_PTR;
+                            hdrvr : HDRVR;
+                            uMsg : UINT;
+                            lParam1 : LPARAM;
+                            lParam2 : LPARAM) : LRESULT;
+
+CONST
+    DRV_CANCEL           = DRVCNF_CANCEL;
+    DRV_OK               = DRVCNF_OK;
+    DRV_RESTART          = DRVCNF_RESTART;
+
+    DRV_MCI_FIRST        = DRV_RESERVED;
+    DRV_MCI_LAST         = DRV_RESERVED + 0FFFH;
+
+    CALLBACK_TYPEMASK    = 000070000h;
+    CALLBACK_NULL        = 000000000h;
+    CALLBACK_WINDOW      = 000010000h;
+    CALLBACK_TASK        = 000020000h;
+    CALLBACK_FUNCTION    = 000030000h;
+    CALLBACK_THREAD      = CALLBACK_TASK;
+    CALLBACK_EVENT       = 000050000h;
+
+TYPE
+    DRVCALLBACK          = PROCEDURE(HDRVR,
+                                     UINT,
+                                     DWORD_PTR,
+                                     DWORD_PTR,
+                                     DWORD_PTR) [EXPORT];
+    PDRVCALLBACK         = POINTER TO DRVCALLBACK;
+    LPDRVCALLBACK        = POINTER TO DRVCALLBACK;
+
+CONST
+    MM_MICROSOFT         = 1;
+    MM_MIDI_MAPPER       = 1;
+    MM_WAVE_MAPPER       = 2;
+    MM_SNDBLST_MIDIOUT   = 3;
+    MM_SNDBLST_MIDIIN    = 4;
+    MM_SNDBLST_SYNTH     = 5;
+    MM_SNDBLST_WAVEOUT   = 6;
+    MM_SNDBLST_WAVEIN    = 7;
+    MM_ADLIB             = 9;
+    MM_MPU401_MIDIOUT    = 10;
+    MM_MPU401_MIDIIN     = 11;
+    MM_PC_JOYSTICK       = 12;
+
+PROCEDURE mmsystemGetVersion() : UINT;
+
+PROCEDURE OutputDebugStr(a : ARRAY OF ACHAR);
+
+PROCEDURE sndPlaySoundA(lpszSoundName : ARRAY OF ACHAR;
+                        uFlags : UINT) : BOOL;
+
+PROCEDURE sndPlaySoundW(lpszSoundName : ARRAY OF UCHAR;
+                        uFlags : UINT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE sndPlaySound = sndPlaySoundW;
+%ELSE
+PROCEDURE sndPlaySound = sndPlaySoundA;
+%END
+
+CONST
+    SND_SYNC             = 000000000h;
+    SND_ASYNC            = 000000001h;
+    SND_NODEFAULT        = 000000002h;
+    SND_MEMORY           = 000000004h;
+    SND_ALIAS            = 000010000h;
+    SND_FILENAME         = 000020000h;
+    SND_RESOURCE         = 000040004h;
+
+    SND_PURGE            = 0040h;(*95*)
+    SND_APPLICATION      = 0080h;(*95*)
+
+    SND_ALIAS_ID         = 000110000h;
+    SND_ALIAS_START      = 0;
+    SND_LOOP             = 000000008h;
+    SND_NOSTOP           = 000000010h;
+    SND_VALID            = 00000001Fh;
+    SND_NOWAIT           = 000002000h;
+    SND_VALIDFLAGS       = 00017201Fh;
+    SND_RESERVED         = 0FF000000h;
+    SND_TYPE_MASK        = 000170007h;
+
+PROCEDURE PlaySoundA(lpszName : ARRAY OF ACHAR;
+                     hModule : HANDLE;
+                     dwFlags : DWORD) : BOOL;
+
+PROCEDURE PlaySoundW(lpszName : ARRAY OF UCHAR;
+                     hModule : HANDLE;
+                     dwFlags : DWORD) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE PlaySound = PlaySoundW;
+%ELSE
+PROCEDURE PlaySound = PlaySoundA;
+%END
+
+CONST
+    WAVERR_BADFORMAT     = ( WAVERR_BASE + 0 );
+    WAVERR_STILLPLAYING  = ( WAVERR_BASE + 1 );
+    WAVERR_UNPREPARED    = ( WAVERR_BASE + 2 );
+    WAVERR_SYNC          = ( WAVERR_BASE + 3 );
+    WAVERR_LASTERROR     = ( WAVERR_BASE + 3 );
+
+TYPE
+    HWAVE                = POINTER TO RECORD END;
+    HWAVEIN              = POINTER TO RECORD END;
+    HWAVEOUT             = POINTER TO RECORD END;
+    LPHWAVEIN            = POINTER TO HWAVEIN;
+    LPHWAVEOUT           = POINTER TO HWAVEOUT;
+    WAVECALLBACK         = DRVCALLBACK;
+    LPWAVECALLBACK       = POINTER TO WAVECALLBACK;
+
+CONST
+    WOM_OPEN            = MM_WOM_OPEN;
+    WOM_CLOSE           = MM_WOM_CLOSE;
+    WOM_DONE            = MM_WOM_DONE;
+    WIM_OPEN            = MM_WIM_OPEN;
+    WIM_CLOSE           = MM_WIM_CLOSE;
+    WIM_DATA            = MM_WIM_DATA;
+
+    WAVE_MAPPER          = -1;
+    WAVE_FORMAT_QUERY    = 000000001h;
+    WAVE_ALLOWSYNC       = 000000002h;
+    WAVE_VALID           = 000000003h;
+
+    WAVE_MAPPED               = 0004h;
+    WAVE_FORMAT_DIRECT        = 0008h;
+    WAVE_FORMAT_DIRECT_QUERY  = (WAVE_FORMAT_QUERY BOR WAVE_FORMAT_DIRECT);
+
+
+TYPE
+    WAVEHDR =
+		RECORD
+			lpData         : LPSTR;
+			dwBufferLength : DWORD;
+			dwBytesRecorded: DWORD;
+			dwUser         : DWORD_PTR;
+			dwFlags        : DWORD;
+			dwLoops        : DWORD;
+			lpNext         : POINTER TO WAVEHDR;
+			reserved       : DWORD_PTR;
+		END;
+
+    PWAVEHDR             = POINTER TO WAVEHDR;
+    LPWAVEHDR            = POINTER TO WAVEHDR;
+
+CONST
+    WHDR_DONE            = 000000001h;
+    WHDR_PREPARED        = 000000002h;
+    WHDR_BEGINLOOP       = 000000004h;
+    WHDR_ENDLOOP         = 000000008h;
+    WHDR_INQUEUE         = 000000010h;
+    WHDR_VALID           = 00000001Fh;
+
+TYPE
+    WAVEOUTCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+			dwFormats      : DWORD;
+			wChannels      : WORD;
+			wReserved1     : WORD;
+			dwSupport      : DWORD;
+		END;
+    PWAVEOUTCAPSA        = POINTER TO WAVEOUTCAPSA;
+    LPWAVEOUTCAPSA       = PWAVEOUTCAPSA;
+
+    WAVEOUTCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+			dwFormats      : DWORD;
+			wChannels      : WORD;
+			wReserved1     : WORD;
+			dwSupport      : DWORD;
+		END;
+    PWAVEOUTCAPSW        = POINTER TO WAVEOUTCAPSW;
+    LPWAVEOUTCAPSW       = PWAVEOUTCAPSW;
+
+%IF UNICODE %THEN
+    WAVEOUTCAPS          = WAVEOUTCAPSW;
+    PWAVEOUTCAPS         = PWAVEOUTCAPSW;
+    LPWAVEOUTCAPS        = LPWAVEOUTCAPSW;
+%ELSE
+    WAVEOUTCAPS          = WAVEOUTCAPSA;
+    PWAVEOUTCAPS         = PWAVEOUTCAPSA;
+    LPWAVEOUTCAPS        = LPWAVEOUTCAPSA;
+%END
+
+
+CONST
+    WAVECAPS_PITCH       = 000000001h;
+    WAVECAPS_PLAYBACKRATE= 000000002h;
+    WAVECAPS_VOLUME      = 000000004h;
+    WAVECAPS_LRVOLUME    = 000000008h;
+    WAVECAPS_SYNC        = 000000010h;
+    WAVECAPS_SAMPLEACCURATE = 00020h;
+    WAVECAPS_DIRECTSOUND    = 00040h;
+
+TYPE
+    WAVEINCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+			dwFormats      : DWORD;
+			wChannels      : WORD;
+			wReserved1     : WORD;
+		END;
+    PWAVEINCAPSA         = POINTER TO WAVEINCAPSA;
+    LPWAVEINCAPSA        = PWAVEINCAPSA;
+
+    WAVEINCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+			dwFormats      : DWORD;
+			wChannels      : WORD;
+			wReserved1     : WORD;
+		END;
+    PWAVEINCAPSW         = POINTER TO WAVEINCAPSW;
+    LPWAVEINCAPSW        = PWAVEINCAPSW;
+
+%IF UNICODE %THEN
+    WAVEINCAPS           = WAVEINCAPSW;
+    PWAVEINCAPS          = PWAVEINCAPSW;
+    LPWAVEINCAPS         = LPWAVEINCAPSW;
+%ELSE
+    WAVEINCAPS           = WAVEINCAPSA;
+    PWAVEINCAPS          = PWAVEINCAPSA;
+    LPWAVEINCAPS         = LPWAVEINCAPSA;
+%END
+
+CONST
+    WAVE_INVALIDFORMAT   = 000000000h;
+    WAVE_FORMAT_1M08     = 000000001h;
+    WAVE_FORMAT_1S08     = 000000002h;
+    WAVE_FORMAT_1M16     = 000000004h;
+    WAVE_FORMAT_1S16     = 000000008h;
+    WAVE_FORMAT_2M08     = 000000010h;
+    WAVE_FORMAT_2S08     = 000000020h;
+    WAVE_FORMAT_2M16     = 000000040h;
+    WAVE_FORMAT_2S16     = 000000080h;
+    WAVE_FORMAT_4M08     = 000000100h;
+    WAVE_FORMAT_4S08     = 000000200h;
+    WAVE_FORMAT_4M16     = 000000400h;
+    WAVE_FORMAT_4S16     = 000000800h;
+    WAVE_FORMAT_PCM      = 1;
+
+TYPE
+    WAVEFORMAT =
+		RECORD
+			wFormatTag     : WORD;
+			nChannels      : WORD;
+			nSamplesPerSec : DWORD;
+			nAvgBytesPerSec: DWORD;
+			nBlockAlign    : WORD;
+		END;
+    PWAVEFORMAT          = POINTER TO WAVEFORMAT;
+    LPWAVEFORMAT         = PWAVEFORMAT;
+
+    PCMWAVEFORMAT =
+		RECORD
+			wf             : WAVEFORMAT;
+			wBitsPerSample : WORD;
+		END;
+    PPCMWAVEFORMAT       = POINTER TO PCMWAVEFORMAT;
+    LPPCMWAVEFORMAT      = PPCMWAVEFORMAT;
+
+    WAVEFORMATEX =
+		RECORD
+			wFormatTag      : WORD;
+			nChannels       : WORD;
+			nSamplesPerSec  : DWORD;
+			nAvgBytesPerSec : DWORD;
+			nBlockAlign     : WORD;
+			wBitsPerSample  : WORD;
+			cbSize          : WORD;
+		END;
+    PWAVEFORMATEX       = POINTER TO WAVEFORMATEX;
+    LPWAVEFORMATEX      = PWAVEFORMATEX;
+    LPCWAVEFORMATEX     = LPWAVEFORMATEX;
+
+PROCEDURE waveOutGetNumDevs() : UINT;
+
+PROCEDURE waveOutGetDevCapsA(uDeviceID : UINT_PTR;
+                             lpCaps : LPWAVEOUTCAPSA;
+                             uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutGetDevCapsW(uDeviceID : UINT_PTR;
+                             lpCaps : LPWAVEOUTCAPSW;
+                             uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE waveOutGetDevCaps = waveOutGetDevCapsW;
+%ELSE
+PROCEDURE waveOutGetDevCaps = waveOutGetDevCapsA;
+%END
+
+
+PROCEDURE waveOutGetVolume(hwo : HWAVEOUT;
+                           VAR lpdwVolume : DWORD) : MMRESULT;
+
+PROCEDURE waveOutSetVolume(hwo : HWAVEOUT;
+                           dwVolume : DWORD) : MMRESULT;
+
+
+PROCEDURE waveOutGetErrorTextA(err : MMRESULT;
+                               VAR lpText : ARRAY OF ACHAR;
+                               uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutGetErrorTextW(err : MMRESULT;
+                               VAR lpText : ARRAY OF UCHAR;
+                               uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE waveOutGetErrorText = waveOutGetErrorTextW;
+%ELSE
+PROCEDURE waveOutGetErrorText = waveOutGetErrorTextA;
+%END
+
+PROCEDURE waveOutOpen(lphWaveOut : LPHWAVEOUT;
+                      uDeviceID : UINT;
+                      lpFormat : LPWAVEFORMAT;
+                      dwCallback : DWORD_PTR;
+                      dwInstance : DWORD_PTR;
+                      dwFlags : DWORD) : MMRESULT;
+
+PROCEDURE waveOutClose(hWaveOut : HWAVEOUT) : MMRESULT;
+
+PROCEDURE waveOutPrepareHeader(hWaveOut : HWAVEOUT;
+                               lpWaveOutHdr : LPWAVEHDR;
+                               uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutUnprepareHeader(hWaveOut : HWAVEOUT;
+                                 lpWaveOutHdr : LPWAVEHDR;
+                                 uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutWrite(hWaveOut : HWAVEOUT;
+                       lpWaveOutHdr : LPWAVEHDR;
+                       uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutPause(hWaveOut : HWAVEOUT) : MMRESULT;
+
+PROCEDURE waveOutRestart(hWaveOut : HWAVEOUT) : MMRESULT;
+
+PROCEDURE waveOutReset(hWaveOut : HWAVEOUT) : MMRESULT;
+
+PROCEDURE waveOutBreakLoop(hWaveOut : HWAVEOUT) : MMRESULT;
+
+PROCEDURE waveOutGetPosition(hWaveOut : HWAVEOUT;
+                             lpInfo : LPMMTIME;
+                             uSize : UINT) : MMRESULT;
+
+PROCEDURE waveOutGetPitch(hWaveOut : HWAVEOUT;
+                          VAR lpdwPitch : DWORD) : MMRESULT;
+
+PROCEDURE waveOutSetPitch(hWaveOut : HWAVEOUT;
+                          dwPitch : DWORD) : MMRESULT;
+
+PROCEDURE waveOutGetPlaybackRate(hWaveOut : HWAVEOUT;
+                                 VAR lpdwRate : DWORD) : MMRESULT;
+
+PROCEDURE waveOutSetPlaybackRate(hWaveOut : HWAVEOUT;
+                                 dwRate : DWORD) : MMRESULT;
+
+PROCEDURE waveOutGetID(hWaveOut : HWAVEOUT;
+                       VAR lpuDeviceID : UINT) : MMRESULT;
+
+PROCEDURE waveOutMessage(hWaveOut : HWAVEOUT;
+                         msg : UINT;
+                         dw1 : DWORD_PTR;
+                         dw2 : DWORD_PTR) : MMRESULT;
+
+PROCEDURE waveInGetNumDevs() : UINT;
+
+PROCEDURE waveInGetDevCapsA(uDeviceID : UINT_PTR;
+                            lpCaps : LPWAVEINCAPSA;
+                            uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInGetDevCapsW(uDeviceID : UINT_PTR;
+                            lpCaps : LPWAVEINCAPSW;
+                            uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE waveInGetDevCaps = waveInGetDevCapsW;
+%ELSE
+PROCEDURE waveInGetDevCaps = waveInGetDevCapsA;
+%END
+
+PROCEDURE waveInGetErrorTextA(err : MMRESULT;
+                              VAR lpText : ARRAY OF ACHAR;
+                              uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInGetErrorTextW(err : MMRESULT;
+                              VAR lpText : ARRAY OF UCHAR;
+                              uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE waveInGetErrorText = waveInGetErrorTextW;
+%ELSE
+PROCEDURE waveInGetErrorText = waveInGetErrorTextA;
+%END
+
+PROCEDURE waveInOpen(lphWaveIn : LPHWAVEIN;
+                     uDeviceID : UINT;
+                     lpFormat : LPWAVEFORMAT;
+                     dwCallback : DWORD_PTR;
+                     dwInstance : DWORD_PTR;
+                     dwFlags : DWORD) : MMRESULT;
+
+PROCEDURE waveInClose(hWaveIn : HWAVEIN) : MMRESULT;
+
+PROCEDURE waveInPrepareHeader(hWaveIn : HWAVEIN;
+                              lpWaveInHdr : LPWAVEHDR;
+                              uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInUnprepareHeader(hWaveIn : HWAVEIN;
+                                lpWaveInHdr : LPWAVEHDR;
+                                uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInAddBuffer(hWaveIn : HWAVEIN;
+                          lpWaveInHdr : LPWAVEHDR;
+                          uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInStart(hWaveIn : HWAVEIN) : MMRESULT;
+
+PROCEDURE waveInStop(hWaveIn : HWAVEIN) : MMRESULT;
+
+PROCEDURE waveInReset(hWaveIn : HWAVEIN) : MMRESULT;
+
+PROCEDURE waveInGetPosition(hWaveIn : HWAVEIN;
+                            lpInfo : LPMMTIME;
+                            uSize : UINT) : MMRESULT;
+
+PROCEDURE waveInGetID(hWaveIn : HWAVEIN;
+                      VAR lpuDeviceID : UINT) : MMRESULT;
+
+PROCEDURE waveInMessage(hWaveIn : HWAVEIN;
+                        msg : UINT;
+                        dw1 : DWORD_PTR;
+                        dw2 : DWORD_PTR) : MMRESULT;
+
+
+CONST
+    MIDIERR_UNPREPARED   = MIDIERR_BASE+0;
+    MIDIERR_STILLPLAYING = MIDIERR_BASE+1;
+    MIDIERR_NOMAP        = MIDIERR_BASE+2;
+    MIDIERR_NOTREADY     = MIDIERR_BASE+3;
+    MIDIERR_NODEVICE     = MIDIERR_BASE+4;
+    MIDIERR_INVALIDSETUP = MIDIERR_BASE+5;
+    MIDIERR_LASTERROR    = MIDIERR_BASE+5;
+    MIDIERR_BADOPENMODE  = MIDIERR_BASE+6;
+    MIDIERR_DONT_CONTINUE= MIDIERR_BASE+7;
+
+TYPE
+    HMIDI                = POINTER TO RECORD END;
+    HMIDIIN              = POINTER TO RECORD END;
+    HMIDIOUT             = POINTER TO RECORD END;
+    HMIDISTRM            = POINTER TO RECORD END;(*95*)
+    LPHMIDI              = POINTER TO HMIDI;
+    LPHMIDIIN            = POINTER TO HMIDIIN;
+    LPHMIDIOUT           = POINTER TO HMIDIOUT;
+    LPHMIDISTRM          = POINTER TO HMIDISTRM;(*95*)
+    MIDICALLBACK         = DRVCALLBACK;
+    LPMIDICALLBACK       = POINTER TO MIDICALLBACK;
+
+CONST
+    MIDIPATCHSIZE        = 128;
+
+TYPE
+    PATCHARRAY           = ARRAY [0..MIDIPATCHSIZE - 1] OF WORD;
+    LPPATCHARRAY         = POINTER TO WORD;
+    KEYARRAY             = ARRAY [0..MIDIPATCHSIZE - 1] OF WORD;
+    LPKEYARRAY           = POINTER TO WORD;
+
+CONST
+
+    MIM_OPEN        = MM_MIM_OPEN;
+    MIM_CLOSE       = MM_MIM_CLOSE;
+    MIM_DATA        = MM_MIM_DATA;
+    MIM_LONGDATA    = MM_MIM_LONGDATA;
+    MIM_ERROR       = MM_MIM_ERROR;
+    MIM_LONGERROR   = MM_MIM_LONGERROR;
+    MOM_OPEN        = MM_MOM_OPEN;
+    MOM_CLOSE       = MM_MOM_CLOSE;
+    MOM_DONE        = MM_MOM_DONE;
+
+    MIM_MOREDATA      = MM_MIM_MOREDATA;
+    MOM_POSITIONCB    = MM_MOM_POSITIONCB;
+
+
+    MIDIMAPPER           = -1;
+    MIDI_MAPPER          = 0FFFFFFFFH;
+
+    MIDI_IO_STATUS       = 000000020H;(*95*)
+
+    MIDI_CACHE_ALL       = 1;
+    MIDI_CACHE_BESTFIT   = 2;
+    MIDI_CACHE_QUERY     = 3;
+    MIDI_UNCACHE         = 4;
+    MIDI_CACHE_VALID     = ( MIDI_CACHE_ALL BOR MIDI_CACHE_BESTFIT BOR MIDI_CACHE_QUERY BOR MIDI_UNCACHE );
+
+TYPE
+    MIDIOUTCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+			wTechnology    : WORD;
+			wVoices        : WORD;
+			wNotes         : WORD;
+			wChannelMask   : WORD;
+			dwSupport      : DWORD;
+		END;
+    PMIDIOUTCAPSA        = POINTER TO MIDIOUTCAPSA;
+    LPMIDIOUTCAPSA       = PMIDIOUTCAPSA;
+
+    MIDIOUTCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+			wTechnology    : WORD;
+			wVoices        : WORD;
+			wNotes         : WORD;
+			wChannelMask   : WORD;
+			dwSupport      : DWORD;
+		END;
+    PMIDIOUTCAPSW        = POINTER TO MIDIOUTCAPSW;
+    LPMIDIOUTCAPSW       = PMIDIOUTCAPSW;
+
+%IF UNICODE %THEN
+   MIDIOUTCAPS          = MIDIOUTCAPSW;
+    PMIDIOUTCAPS         = PMIDIOUTCAPSW;
+    LPMIDIOUTCAPS        = LPMIDIOUTCAPSW;
+%ELSE
+   MIDIOUTCAPS          = MIDIOUTCAPSA;
+    PMIDIOUTCAPS         = PMIDIOUTCAPSA;
+    LPMIDIOUTCAPS        = LPMIDIOUTCAPSA;
+%END
+
+CONST
+    MOD_MIDIPORT         = 1;
+    MOD_SYNTH            = 2;
+    MOD_SQSYNTH          = 3;
+    MOD_FMSYNTH          = 4;
+    MOD_MAPPER           = 5;
+    MIDICAPS_VOLUME      = 000000001h;
+    MIDICAPS_LRVOLUME    = 000000002h;
+    MIDICAPS_CACHE       = 000000004h;
+
+    MIDICAPS_STREAM      = 0008h;
+
+TYPE
+    MIDIINCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+
+			dwSupport       : DWORD;
+		END;
+    PMIDIINCAPSA         = POINTER TO MIDIINCAPSA;
+    LPMIDIINCAPSA        = PMIDIINCAPSA;
+
+    MIDIINCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+
+			dwSupport       : DWORD;
+		END;
+    PMIDIINCAPSW         = POINTER TO MIDIINCAPSW;
+    LPMIDIINCAPSW        = PMIDIINCAPSW;
+
+%IF UNICODE %THEN
+    MIDIINCAPS           = MIDIINCAPSW;
+    PMIDIINCAPS          = PMIDIINCAPSW;
+    LPMIDIINCAPS         = LPMIDIINCAPSW;
+%ELSE
+    MIDIINCAPS           = MIDIINCAPSA;
+    PMIDIINCAPS          = PMIDIINCAPSA;
+    LPMIDIINCAPS         = LPMIDIINCAPSA;
+%END
+
+    MIDIHDR =
+		RECORD
+			lpData         : LPSTR;
+			dwBufferLength : DWORD;
+			dwBytesRecorded: DWORD;
+			dwUser         : DWORD_PTR;
+			dwFlags        : DWORD;
+			lpNext         : POINTER TO MIDIHDR;
+			reserved       : DWORD_PTR;
+
+			dwOffset        : DWORD;
+			dwReserved      : ARRAY [0..8-1] OF DWORD_PTR;
+		END;
+    PMIDIHDR             = POINTER TO MIDIHDR;
+    LPMIDIHDR            = PMIDIHDR;
+
+
+    MIDIEVENT =
+		RECORD
+			dwDeltaTime     : DWORD;
+			dwStreamID      : DWORD;
+			dwEvent         : DWORD;
+			dwParms         : ARRAY [0..1-1] OF DWORD;
+		END;
+
+    MIDISTRMBUFFVER =
+		RECORD
+			dwVersion       : DWORD;
+			dwMid           : DWORD;
+			dwOEMVersion    : DWORD;
+		END;
+
+
+CONST
+    MHDR_DONE            = 000000001h;
+    MHDR_PREPARED        = 000000002h;
+    MHDR_INQUEUE         = 000000004h;
+    MHDR_VALID           = 000000007h;
+
+
+
+    MHDR_ISSTRM          = 000000008h;
+
+    MEVT_F_SHORT         = 00000000h;
+    MEVT_F_LONG          = 80000000h;
+    MEVT_F_CALLBACK      = 40000000h;
+
+
+    MEVT_SHORTMSG        = 0;
+    MEVT_TEMPO           = 1;
+    MEVT_NOP             = 2;
+
+
+    MEVT_LONGMSG         = 80h;
+    MEVT_COMMENT         = 82h;
+    MEVT_VERSION         = 84h;
+
+    MIDISTRM_ERROR       = -2;
+
+    MIDIPROP_SET        = 80000000h;
+    MIDIPROP_GET        = 40000000h;
+
+    MIDIPROP_TIMEDIV    = 00000001h;
+    MIDIPROP_TEMPO      = 00000002h;
+
+TYPE
+    MIDIPROPTIMEDIV =
+		RECORD
+			cbStruct        : DWORD;
+			dwTimeDiv       : DWORD;
+		END;
+    LPMIDIPROPTIMEDIV   = POINTER TO MIDIPROPTIMEDIV;
+
+    MIDIPROPTEMPO =
+		RECORD
+			cbStruct        : DWORD;
+			dwTimeDiv       : DWORD;
+		END;
+    LPMIDIPROPTEMPO     = POINTER TO MIDIPROPTEMPO;
+
+
+PROCEDURE midiOutGetNumDevs() : UINT;
+
+
+PROCEDURE midiStreamOpen(VAR phms : HMIDISTRM;
+                         VAR puDeviceID : UINT;
+                         cMidi : DWORD;
+                         dwCallback : DWORD_PTR;
+                         dwInstance :  DWORD_PTR;
+                         fdwOpen : DWORD) : MMRESULT;
+
+PROCEDURE midiStreamClose(hms : HMIDISTRM) : MMRESULT;
+
+PROCEDURE midiStreamProperty(hms : HMIDISTRM;
+                             VAR lppropdata : BYTE;
+                             dwProperty : DWORD) : MMRESULT;
+
+PROCEDURE midiStreamPosition(hms : HMIDISTRM;
+                             VAR lpmmt : MMTIME;
+                             cbmmt : UINT) : MMRESULT;
+
+PROCEDURE midiStreamOut(hms : HMIDISTRM;
+                        VAR pmh : MIDIHDR;
+                        cbmh : UINT) : MMRESULT;
+
+PROCEDURE midiStreamPause(hms : HMIDISTRM) : MMRESULT;
+
+PROCEDURE midiStreamRestart(hms : HMIDISTRM) : MMRESULT;
+
+PROCEDURE midiStreamStop(hms : HMIDISTRM) : MMRESULT;
+
+PROCEDURE midiConnect(hmi : HMIDI;
+                      hmo : HMIDIOUT;
+                      pReserved : LPVOID) : MMRESULT;
+
+PROCEDURE midiDisconnect(hmi : HMIDI;
+                         hmo : HMIDIOUT;
+                         pReserved : LPVOID) : MMRESULT;
+
+
+PROCEDURE midiOutGetDevCapsA(uDeviceID : UINT_PTR;
+                             lpCaps : LPMIDIOUTCAPSA;
+                             uSize : UINT) : MMRESULT;
+
+PROCEDURE midiOutGetDevCapsW(uDeviceID : UINT_PTR;
+                             lpCaps : LPMIDIOUTCAPSW;
+                             uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE midiOutGetDevCaps = midiOutGetDevCapsW;
+%ELSE
+PROCEDURE midiOutGetDevCaps = midiOutGetDevCapsA;
+%END
+
+
+PROCEDURE midiOutGetVolume(hmo : HMIDIOUT;
+                           VAR lpdwVolume : DWORD) : MMRESULT;
+
+PROCEDURE midiOutSetVolume(hmo : HMIDIOUT;
+                           dwVolume : DWORD) : MMRESULT;
+
+
+PROCEDURE midiOutGetErrorTextA(err : MMRESULT;
+                               VAR lpText : ARRAY OF ACHAR;
+                               uSize : UINT) : MMRESULT;
+
+PROCEDURE midiOutGetErrorTextW(err : MMRESULT;
+                               VAR lpText : ARRAY OF UCHAR;
+                               uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE midiOutGetErrorText = midiOutGetErrorTextW;
+%ELSE
+PROCEDURE midiOutGetErrorText = midiOutGetErrorTextA;
+%END
+
+PROCEDURE midiOutOpen(lphMidiOut : LPHMIDIOUT;
+                      uDeviceID : UINT;
+                      dwCallback : DWORD_PTR;
+                      dwInstance : DWORD_PTR;
+                      dwFlags : DWORD) : MMRESULT;
+
+PROCEDURE midiOutClose(hMidiOut : HMIDIOUT) : MMRESULT;
+
+PROCEDURE midiOutPrepareHeader(hMidiOut : HMIDIOUT;
+                               lpMidiOutHdr : LPMIDIHDR;
+                               uSize : UINT) : MMRESULT;
+
+PROCEDURE midiOutUnprepareHeader(hMidiOut : HMIDIOUT;
+                                 lpMidiOutHdr : LPMIDIHDR;
+                                 uSize : UINT) : MMRESULT;
+
+PROCEDURE midiOutShortMsg(hMidiOut : HMIDIOUT;
+                          dwMsg : DWORD) : MMRESULT;
+
+PROCEDURE midiOutLongMsg(hMidiOut : HMIDIOUT;
+                         lpMidiOutHdr : LPMIDIHDR;
+                         uSize : UINT) : MMRESULT;
+
+PROCEDURE midiOutReset(hMidiOut : HMIDIOUT) : MMRESULT;
+
+PROCEDURE midiOutCachePatches(hMidiOut : HMIDIOUT;
+                              uBank : UINT;
+                              lpPatchArray : LPWORD;
+                              uFlags : UINT) : MMRESULT;
+
+PROCEDURE midiOutCacheDrumPatches(hMidiOut : HMIDIOUT;
+                                  uPatch : UINT;
+                                  lpKeyArray : LPWORD;
+                                  uFlags : UINT) : MMRESULT;
+
+PROCEDURE midiOutGetID(hMidiOut : HMIDIOUT;
+                       VAR lpuDeviceID : UINT) : MMRESULT;
+
+PROCEDURE midiOutMessage(hMidiOut : HMIDIOUT;
+                         msg : UINT;
+                         dw1 : DWORD_PTR;
+                         dw2 : DWORD_PTR) : MMRESULT;
+
+PROCEDURE midiInGetNumDevs() : UINT;
+
+PROCEDURE midiInGetDevCapsA(uDeviceID : UINT_PTR;
+                            lpCaps : LPMIDIINCAPSA;
+                            uSize : UINT) : MMRESULT;
+
+PROCEDURE midiInGetDevCapsW(uDeviceID : UINT_PTR;
+                            lpCaps : LPMIDIINCAPSW;
+                            uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE midiInGetDevCaps = midiInGetDevCapsW;
+%ELSE
+PROCEDURE midiInGetDevCaps = midiInGetDevCapsA;
+%END
+
+PROCEDURE midiInGetErrorTextA(err : MMRESULT;
+                              VAR lpText : ARRAY OF ACHAR;
+                              uSize : UINT) : MMRESULT;
+
+PROCEDURE midiInGetErrorTextW(err : MMRESULT;
+                              VAR lpText : ARRAY OF UCHAR;
+                              uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE midiInGetErrorText = midiInGetErrorTextW;
+%ELSE
+PROCEDURE midiInGetErrorText = midiInGetErrorTextA;
+%END
+
+PROCEDURE midiInOpen(lphMidiIn : LPHMIDIIN;
+                     uDeviceID : UINT;
+                     dwCallback : DWORD_PTR;
+                     dwInstance : DWORD_PTR;
+                     dwFlags : DWORD) : MMRESULT;
+
+PROCEDURE midiInClose(hMidiIn : HMIDIIN) : MMRESULT;
+
+PROCEDURE midiInPrepareHeader(hMidiIn : HMIDIIN;
+                              lpMidiInHdr : LPMIDIHDR;
+                              uSize : UINT) : MMRESULT;
+
+PROCEDURE midiInUnprepareHeader(hMidiIn : HMIDIIN;
+                                lpMidiInHdr : LPMIDIHDR;
+                                uSize : UINT) : MMRESULT;
+
+PROCEDURE midiInAddBuffer(hMidiIn : HMIDIIN;
+                          lpMidiInHdr : LPMIDIHDR;
+                          uSize : UINT) : MMRESULT;
+
+PROCEDURE midiInStart(hMidiIn : HMIDIIN) : MMRESULT;
+
+PROCEDURE midiInStop(hMidiIn : HMIDIIN) : MMRESULT;
+
+PROCEDURE midiInReset(hMidiIn : HMIDIIN) : MMRESULT;
+
+PROCEDURE midiInGetID(hMidiIn : HMIDIIN;
+                      VAR lpuDeviceID : UINT) : MMRESULT;
+
+PROCEDURE midiInMessage(hMidiIn : HMIDIIN;
+                        msg : UINT;
+                        dw1 : DWORD_PTR;
+                        dw2 : DWORD_PTR) : MMRESULT;
+
+CONST
+    AUX_MAPPER   = 0FFFFFFFFH;
+
+TYPE
+    AUXCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+			wTechnology    : WORD;
+			wReserved1     : WORD;
+			dwSupport      : DWORD;
+		END;
+    PAUXCAPSA            = POINTER TO AUXCAPSA;
+    LPAUXCAPSA           = PAUXCAPSA;
+
+    AUXCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+			wTechnology    : WORD;
+			wReserved1     : WORD;
+			dwSupport      : DWORD;
+		END;
+    PAUXCAPSW            = POINTER TO AUXCAPSW;
+    LPAUXCAPSW           = PAUXCAPSW;
+
+%IF UNICODE %THEN
+    AUXCAPS              = AUXCAPSW;
+    PAUXCAPS             = PAUXCAPSW;
+    LPAUXCAPS            = LPAUXCAPSW;
+%ELSE
+    AUXCAPS              = AUXCAPSA;
+    PAUXCAPS             = PAUXCAPSA;
+    LPAUXCAPS            = LPAUXCAPSA;
+%END
+
+CONST
+    AUXCAPS_CDAUDIO      = 1;
+    AUXCAPS_AUXIN        = 2;
+    AUXCAPS_VOLUME       = 000000001h;
+    AUXCAPS_LRVOLUME     = 000000002h;
+
+PROCEDURE auxGetNumDevs() : UINT;
+
+PROCEDURE auxGetDevCapsA(uDeviceID : UINT_PTR;
+                         lpCaps : LPAUXCAPSA;
+                         uSize : UINT) : MMRESULT;
+
+PROCEDURE auxGetDevCapsW(uDeviceID : UINT_PTR;
+                         lpCaps : LPAUXCAPSW;
+                         uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE auxGetDevCaps = auxGetDevCapsW;
+%ELSE
+PROCEDURE auxGetDevCaps = auxGetDevCapsA;
+%END
+
+PROCEDURE auxSetVolume(uDeviceID : UINT;
+                       dwVolume : DWORD) : MMRESULT;
+
+PROCEDURE auxGetVolume(uDeviceID : UINT;
+                       VAR lpdwVolume : DWORD) : MMRESULT;
+
+PROCEDURE auxOutMessage(uDeviceID : UINT;
+                        msg : UINT;
+                        dw1 : DWORD_PTR;
+                        dw2 : DWORD_PTR) : MMRESULT;
+
+
+CONST
+    TIMERR_NOERROR       = ( 0 );
+    TIMERR_NOCANDO       = ( TIMERR_BASE + 1 );
+    TIMERR_STRUCT        = ( TIMERR_BASE + 33 );
+
+TYPE
+    TIMECALLBACK         = PROCEDURE(UINT,
+                                     UINT,
+                                     DWORD_PTR,
+                                     DWORD_PTR,
+                                     DWORD_PTR) [EXPORT];
+    LPTIMECALLBACK       = POINTER TO TIMECALLBACK;
+
+CONST
+    TIME_ONESHOT         = 0;
+    TIME_PERIODIC        = 1;
+    TIME_CALLBACK_FUNCTION      = 00000h;
+    TIME_CALLBACK_EVENT_SET     = 00010h;
+    TIME_CALLBACK_EVENT_PULSE   = 00020h;
+
+
+TYPE
+    TIMECAPS =
+		RECORD
+			wPeriodMin     : UINT;
+			wPeriodMax     : UINT;
+		END;
+
+    PTIMECAPS            = POINTER TO TIMECAPS;
+    LPTIMECAPS           = PTIMECAPS;
+
+PROCEDURE timeGetSystemTime(lpTime : LPMMTIME;
+                            uSize : UINT) : MMRESULT;
+
+PROCEDURE timeGetTime() : DWORD;
+
+PROCEDURE timeSetEvent(uDelay : UINT;
+                       uResolution : UINT;
+                       lpFunction : TIMECALLBACK;
+                       dwUser : DWORD_PTR;
+                       uFlags : UINT) : UINT;
+
+PROCEDURE timeKillEvent(uId : UINT) : MMRESULT;
+
+PROCEDURE timeGetDevCaps(VAR lpTimeCaps : TIMECAPS;
+                         uSize : UINT) : MMRESULT;
+
+PROCEDURE timeBeginPeriod(uPeriod : UINT) : MMRESULT;
+
+PROCEDURE timeEndPeriod(uPeriod : UINT) : MMRESULT;
+
+CONST
+    JOYERR_NOERROR       = ( 0 );
+    JOYERR_PARMS         = ( JOYERR_BASE + 5 );
+    JOYERR_NOCANDO       = ( JOYERR_BASE + 6 );
+    JOYERR_UNPLUGGED     = ( JOYERR_BASE + 7 );
+    JOY_BUTTON1          = 00001h;
+    JOY_BUTTON2          = 00002h;
+    JOY_BUTTON3          = 00004h;
+    JOY_BUTTON4          = 00008h;
+    JOY_BUTTON1CHG       = 00100h;
+    JOY_BUTTON2CHG       = 00200h;
+    JOY_BUTTON3CHG       = 00400h;
+    JOY_BUTTON4CHG       = 00800h;
+
+
+    JOY_BUTTON5         = 00000010h;
+    JOY_BUTTON6         = 00000020h;
+    JOY_BUTTON7         = 00000040h;
+    JOY_BUTTON8         = 00000080h;
+    JOY_BUTTON9         = 00000100h;
+    JOY_BUTTON10        = 00000200h;
+    JOY_BUTTON11        = 00000400h;
+    JOY_BUTTON12        = 00000800h;
+    JOY_BUTTON13        = 00001000h;
+    JOY_BUTTON14        = 00002000h;
+    JOY_BUTTON15        = 00004000h;
+    JOY_BUTTON16        = 00008000h;
+    JOY_BUTTON17        = 00010000h;
+    JOY_BUTTON18        = 00020000h;
+    JOY_BUTTON19        = 00040000h;
+    JOY_BUTTON20        = 00080000h;
+    JOY_BUTTON21        = 00100000h;
+    JOY_BUTTON22        = 00200000h;
+    JOY_BUTTON23        = 00400000h;
+    JOY_BUTTON24        = 00800000h;
+    JOY_BUTTON25        = 01000000h;
+    JOY_BUTTON26        = 02000000h;
+    JOY_BUTTON27        = 04000000h;
+    JOY_BUTTON28        = 08000000h;
+    JOY_BUTTON29        = 10000000h;
+    JOY_BUTTON30        = 20000000h;
+    JOY_BUTTON31        = 40000000h;
+    JOY_BUTTON32        = 80000000h;
+
+    JOY_POVCENTERED     = -1;
+    JOY_POVFORWARD      = 0;
+    JOY_POVRIGHT        = 9000;
+    JOY_POVBACKWARD     = 18000;
+    JOY_POVLEFT         = 27000;
+
+    JOY_RETURNX         = 00000001h;
+    JOY_RETURNY         = 00000002h;
+    JOY_RETURNZ         = 00000004h;
+    JOY_RETURNR         = 00000008h;
+    JOY_RETURNU         = 00000010h;
+    JOY_RETURNV         = 00000020h;
+    JOY_RETURNPOV       = 00000040h;
+    JOY_RETURNBUTTONS   = 00000080h;
+    JOY_RETURNRAWDATA   = 00000100h;
+    JOY_RETURNPOVCTS    = 00000200h;
+    JOY_RETURNCENTERED  = 00000400h;
+    JOY_USEDEADZONE     = 00000800h;
+    JOY_RETURNALL       =       (JOY_RETURNX BOR
+                                 JOY_RETURNY BOR
+                                 JOY_RETURNZ BOR
+                                 JOY_RETURNR BOR
+                                 JOY_RETURNU BOR
+                                 JOY_RETURNV BOR
+                                 JOY_RETURNPOV BOR
+                                 JOY_RETURNBUTTONS);
+    JOY_CAL_READALWAYS  = 00010000h;
+    JOY_CAL_READXYONLY  = 00020000h;
+    JOY_CAL_READ3       = 00040000h;
+    JOY_CAL_READ4       = 00080000h;
+    JOY_CAL_READXONLY   = 00100000h;
+    JOY_CAL_READYONLY   = 00200000h;
+    JOY_CAL_READ5       = 00400000h;
+    JOY_CAL_READ6       = 00800000h;
+    JOY_CAL_READZONLY   = 01000000h;
+    JOY_CAL_READRONLY   = 02000000h;
+    JOY_CAL_READUONLY   = 04000000h;
+    JOY_CAL_READVONLY   = 08000000h;
+
+    JOYSTICKID1                 = 0;
+    JOYSTICKID2                 = 1;
+
+    JOYCAPS_HASZ                = 0001h;
+    JOYCAPS_HASR                = 0002h;
+    JOYCAPS_HASU                = 0004h;
+    JOYCAPS_HASV                = 0008h;
+    JOYCAPS_HASPOV              = 0010h;
+    JOYCAPS_POV4DIR             = 0020h;
+    JOYCAPS_POVCTS              = 0040h;
+
+
+TYPE
+    JOYCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF ACHAR;
+			wXmin          : UINT;
+			wXmax          : UINT;
+			wYmin          : UINT;
+			wYmax          : UINT;
+			wZmin          : UINT;
+			wZmax          : UINT;
+			wNumButtons    : UINT;
+			wPeriodMin     : UINT;
+			wPeriodMax     : UINT;
+
+			wRmin          : UINT;
+			wRmax          : UINT;
+			wUmin          : UINT;
+			wUmax          : UINT;
+			wVmin          : UINT;
+			wVmax          : UINT;
+			wCaps          : UINT;
+			wMaxAxes       : UINT;
+			wNumAxes       : UINT;
+			wMaxButtons    : UINT;
+			szRegKey       : ARRAY [0..MAXPNAMELEN-1] OF ACHAR;
+			szOEMVxD       : ARRAY [0..MAX_JOYSTICKOEMVXDNAME-1] OF ACHAR;
+		END;
+    PJOYCAPSA            = POINTER TO JOYCAPSA;
+    LPJOYCAPSA           = PJOYCAPSA;
+
+    JOYCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			szPname        : ARRAY [0..MAXPNAMELEN - 1] OF WCHAR;
+			wXmin          : UINT;
+			wXmax          : UINT;
+			wYmin          : UINT;
+			wYmax          : UINT;
+			wZmin          : UINT;
+			wZmax          : UINT;
+			wNumButtons    : UINT;
+			wPeriodMin     : UINT;
+			wPeriodMax     : UINT;
+
+			wRmin          : UINT;
+			wRmax          : UINT;
+			wUmin          : UINT;
+			wUmax          : UINT;
+			wVmin          : UINT;
+			wVmax          : UINT;
+			wCaps          : UINT;
+			wMaxAxes       : UINT;
+			wNumAxes       : UINT;
+			wMaxButtons    : UINT;
+			szRegKey       : ARRAY [0..MAXPNAMELEN-1] OF ACHAR;
+			szOEMVxD       : ARRAY [0..MAX_JOYSTICKOEMVXDNAME-1] OF ACHAR;
+		END;
+    PJOYCAPSW            = POINTER TO JOYCAPSW;
+    LPJOYCAPSW           = PJOYCAPSW;
+
+%IF UNICODE %THEN
+    JOYCAPS              = JOYCAPSW;
+    PJOYCAPS             = PJOYCAPSW;
+    LPJOYCAPS            = LPJOYCAPSW;
+%ELSE
+    JOYCAPS              = JOYCAPSA;
+    PJOYCAPS             = PJOYCAPSA;
+    LPJOYCAPS            = LPJOYCAPSA;
+%END
+
+    JOYINFO =
+		RECORD
+			wXpos          : UINT;
+			wYpos          : UINT;
+			wZpos          : UINT;
+			wButtons       : UINT;
+		END;
+
+    PJOYINFO             = POINTER TO JOYINFO;
+    LPJOYINFO            = POINTER TO JOYINFO;
+
+
+    JOYINFOEX =
+		RECORD
+			dwSize  : DWORD;
+			dwFlags : DWORD;
+			dwXpos  : DWORD;
+			dwYpos  : DWORD;
+			dwZpos  : DWORD;
+			dwRpos  : DWORD;
+			dwUpos  : DWORD;
+			dwVpos  : DWORD;
+			dwButtons       : DWORD;
+			dwButtonNumber  : DWORD;
+			dwPOV           : DWORD;
+			dwReserved1     : DWORD;
+			dwReserved2     : DWORD;
+		END;
+
+    PJOYINFOEX  = POINTER TO JOYINFOEX;
+    LPJOYINFOEX = PJOYINFOEX;
+
+PROCEDURE joyGetDevCapsA(id : UINT_PTR;
+                         lpCaps : LPJOYCAPSA;
+                         uSize : UINT) : MMRESULT;
+
+PROCEDURE joyGetDevCapsW(id : UINT_PTR;
+                         lpCaps : LPJOYCAPSW;
+                         uSize : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE joyGetDevCaps = joyGetDevCapsW;
+%ELSE
+PROCEDURE joyGetDevCaps = joyGetDevCapsA;
+%END
+
+PROCEDURE joyGetNumDevs() : UINT;
+
+PROCEDURE joyGetPos(id : UINT;
+                    lpInfo : LPJOYINFO) : MMRESULT;
+
+(*95*)
+PROCEDURE joyGetPosEx(uJoyID : UINT; VAR pji : JOYINFOEX) : MMRESULT;
+
+
+PROCEDURE joyGetThreshold(id : UINT;
+                          VAR lpuThreshold : UINT) : MMRESULT;
+
+PROCEDURE joyReleaseCapture(id : UINT) : MMRESULT;
+
+PROCEDURE joySetCapture(hwnd : HWND;
+                        uId : UINT;
+                        uPeriod : UINT;
+                        bChanged : BOOL) : MMRESULT;
+
+PROCEDURE joySetThreshold(id : UINT;
+                          uThreshold : UINT) : MMRESULT;
+
+PROCEDURE joySetCalibration(id : UINT;
+                            pwXbase : PUINT;
+                            pwXdelta : PUINT;
+                            pwYbase : PUINT;
+                            pwYdelta : PUINT;
+                            pwZbase : PUINT;
+                            pwZdelta : PUINT) : UINT;
+
+
+CONST
+    MMIOERR_BASE         = 256;
+    MMIOERR_FILENOTFOUND = ( MMIOERR_BASE + 1 );
+    MMIOERR_OUTOFMEMORY  = ( MMIOERR_BASE + 2 );
+    MMIOERR_CANNOTOPEN   = ( MMIOERR_BASE + 3 );
+    MMIOERR_CANNOTCLOSE  = ( MMIOERR_BASE + 4 );
+    MMIOERR_CANNOTREAD   = ( MMIOERR_BASE + 5 );
+    MMIOERR_CANNOTWRITE  = ( MMIOERR_BASE + 6 );
+    MMIOERR_CANNOTSEEK   = ( MMIOERR_BASE + 7 );
+    MMIOERR_CANNOTEXPAND = ( MMIOERR_BASE + 8 );
+    MMIOERR_CHUNKNOTFOUND= ( MMIOERR_BASE + 9 );
+    MMIOERR_UNBUFFERED   = ( MMIOERR_BASE + 10 );
+
+    MMIOERR_PATHNOTFOUND        = (MMIOERR_BASE + 11);
+    MMIOERR_ACCESSDENIED        = (MMIOERR_BASE + 12);
+    MMIOERR_SHARINGVIOLATION    = (MMIOERR_BASE + 13);
+    MMIOERR_NETWORKERROR        = (MMIOERR_BASE + 14);
+    MMIOERR_TOOMANYOPENFILES    = (MMIOERR_BASE + 15);
+    MMIOERR_INVALIDFILE         = (MMIOERR_BASE + 16);
+
+
+    CFSEPCHAR             = '+';
+
+TYPE
+    FOURCC               = DWORD;
+    HMMIO                = HANDLE;
+    HPSTR                = LPSTR;
+
+    MMIOPROC             = PROCEDURE(LPSTR, UINT, LONG, LONG) : LRESULT;
+
+TYPE
+    LPMMIOPROC           = POINTER TO MMIOPROC;
+    LPCMMIOPROC          = LPMMIOPROC;
+    MMIOINFO =
+		RECORD
+			dwFlags        : DWORD;
+			fccIOProc      : FOURCC;
+			pIOProc        : LPMMIOPROC;
+			wErrorRet      : UINT;
+			htask          : HANDLE;
+			cchBuffer      : LONG;
+			pchBuffer      : LPSTR;
+			pchNext        : LPSTR;
+			pchEndRead     : LPSTR;
+			pchEndWrite    : LPSTR;
+			lBufOffset     : LONG;
+			lDiskOffset    : LONG;
+			adwInfo        : ARRAY [0..3 - 1] OF DWORD;
+			dwReserved1    : DWORD;
+			dwReserved2    : DWORD;
+			hmmio          : HMMIO;
+		END;
+    PMMIOINFO            = POINTER TO MMIOINFO;
+    LPMMIOINFO           = PMMIOINFO;
+    LPCMMIOINFO          = LPMMIOINFO;
+
+    MMCKINFO =
+		RECORD
+			ckid           : FOURCC;
+			cksize         : DWORD;
+			fccType        : FOURCC;
+			dwDataOffset   : DWORD;
+			dwFlags        : DWORD;
+		END;
+    PMMCKINFO            = POINTER TO MMCKINFO;
+    LPMMCKINFO           = PMMCKINFO;
+    LPCMMCKINFO          = LPMMCKINFO;
+
+CONST
+    MMIO_RWMODE          = 000000003h;
+    MMIO_SHAREMODE       = 000000070h;
+    MMIO_CREATE          = 000001000h;
+    MMIO_PARSE           = 000000100h;
+    MMIO_DELETE          = 000000200h;
+    MMIO_EXIST           = 000004000h;
+    MMIO_ALLOCBUF        = 000010000h;
+    MMIO_GETTEMP         = 000020000h;
+    MMIO_DIRTY           = 010000000h;
+    MMIO_OPEN_VALID      = 00003FFFFh;
+    MMIO_READ            = 000000000h;
+    MMIO_WRITE           = 000000001h;
+    MMIO_READWRITE       = 000000002h;
+    MMIO_COMPAT          = 000000000h;
+    MMIO_EXCLUSIVE       = 000000010h;
+    MMIO_DENYWRITE       = 000000020h;
+    MMIO_DENYREAD        = 000000030h;
+    MMIO_DENYNONE        = 000000040h;
+    MMIO_FHOPEN          = 00010h;
+    MMIO_EMPTYBUF        = 00010h;
+    MMIO_TOUPPER         = 00010h;
+    MMIO_INSTALLPROC     = 000010000h;
+    MMIO_GLOBALPROC      = 010000000h;
+    MMIO_UNICODEPROC     = 001000000h;
+    MMIO_REMOVEPROC      = 000020000h;
+    MMIO_FINDPROC        = 000040000h;
+    MMIO_FINDCHUNK       = 00010h;
+    MMIO_FINDRIFF        = 00020h;
+    MMIO_FINDLIST        = 00040h;
+    MMIO_CREATERIFF      = 00020h;
+    MMIO_CREATELIST      = 00040h;
+    MMIO_VALIDPROC       = 011070000h;
+
+    MMIOM_READ           = MMIO_READ;
+    MMIOM_WRITE          = MMIO_WRITE;
+    MMIOM_SEEK           = 2;
+    MMIOM_OPEN           = 3;
+    MMIOM_CLOSE          = 4;
+    MMIOM_WRITEFLUSH     = 5;
+    MMIOM_RENAME         = 6;
+    MMIOM_USER           = 08000h;
+    SEEK_SET             = 0;
+    SEEK_CUR             = 1;
+    SEEK_END             = 2;
+    MMIO_DEFAULTBUFFER   = 8192;
+
+PROCEDURE mmioStringToFOURCCA(sz : ARRAY OF ACHAR;
+                              uFlags : UINT) : FOURCC;
+
+PROCEDURE mmioStringToFOURCCW(sz : ARRAY OF UCHAR;
+                              uFlags : UINT) : FOURCC;
+
+%IF UNICODE %THEN
+PROCEDURE mmioStringToFOURCC = mmioStringToFOURCCW;
+%ELSE
+PROCEDURE mmioStringToFOURCC = mmioStringToFOURCCA;
+%END
+
+PROCEDURE mmioInstallIOProcA(fccIOProc : FOURCC;
+                             pIOProc : LPMMIOPROC;
+                             dwFlags : DWORD) : LPMMIOPROC;
+
+PROCEDURE mmioInstallIOProcW(fccIOProc : FOURCC;
+                             pIOProc : LPMMIOPROC;
+                             dwFlags : DWORD) : LPMMIOPROC;
+
+%IF UNICODE %THEN
+PROCEDURE mmioInstallIOProc = mmioInstallIOProcW;
+%ELSE
+PROCEDURE mmioInstallIOProc = mmioInstallIOProcA;
+%END
+
+PROCEDURE mmioOpenA(szFileName : ARRAY OF ACHAR;
+                    lpmmioinfo : LPMMIOINFO;
+                    dwOpenFlags : DWORD) : HMMIO;
+
+PROCEDURE mmioOpenW(szFileName : ARRAY OF UCHAR;
+                    lpmmioinfo : LPMMIOINFO;
+                    dwOpenFlags : DWORD) : HMMIO;
+
+%IF UNICODE %THEN
+PROCEDURE mmioOpen = mmioOpenW;
+%ELSE
+PROCEDURE mmioOpen = mmioOpenA;
+%END
+
+PROCEDURE mmioRenameA(szFileName : ARRAY OF ACHAR;
+                      szNewFileName : ARRAY OF ACHAR;
+                      lpmmioinfo : LPMMIOINFO;
+                      dwRenameFlags : DWORD) : MMRESULT;
+
+PROCEDURE mmioRenameW(szFileName : ARRAY OF UCHAR;
+                      szNewFileName : ARRAY OF UCHAR;
+                      lpmmioinfo : LPMMIOINFO;
+                      dwRenameFlags : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE mmioRename = mmioRenameW;
+%ELSE
+PROCEDURE mmioRename = mmioRenameA;
+%END
+
+PROCEDURE mmioClose(hmmio : HMMIO;
+                    uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioRead(hmmio : HMMIO;
+                   VAR pch : ARRAY OF ACHAR;
+                   cch : LONG) : LRESULT;
+
+PROCEDURE mmioWrite(hmmio : HMMIO;
+                    pch : ARRAY OF ACHAR;
+                    cch : LONG) : LRESULT;
+
+PROCEDURE mmioSeek(hmmio : HMMIO;
+                   lOffset : LONG;
+                   iOrigin : CARDINAL) : LRESULT;
+
+PROCEDURE mmioGetInfo(hmmio : HMMIO;
+                      lpmmioinfo : LPMMIOINFO;
+                      uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioSetInfo(hmmio : HMMIO;
+                      lpmmioinfo : LPMMIOINFO;
+                      uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioSetBuffer(hmmio : HMMIO;
+                        VAR pchBuffer : ARRAY OF ACHAR;
+                        cchBuffer : LONG;
+                        uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioFlush(hmmio : HMMIO;
+                    uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioAdvance(hmmio : HMMIO;
+                      lpmmioinfo : LPMMIOINFO;
+                      uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioSendMessage(hmmio : HMMIO;
+                          uMsg : UINT;
+                          lParam1 : LONG;
+                          lParam2 : LONG) : LRESULT;
+
+PROCEDURE mmioDescend(hmmio : HMMIO;
+                      lpck : LPMMCKINFO;
+                      lpckParent : LPMMCKINFO;
+                      uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioAscend(hmmio : HMMIO;
+                     lpck : LPMMCKINFO;
+                     uFlags : UINT) : MMRESULT;
+
+PROCEDURE mmioCreateChunk(hmmio : HMMIO;
+                          lpck : LPMMCKINFO;
+                          uFlags : UINT) : MMRESULT;
+
+
+TYPE
+    MCIDEVICEID          = UINT;
+
+PROCEDURE mciSendCommandA(wDeviceID : MCIDEVICEID;
+                          uMessage : UINT;
+                          dwParam1 : DWORD_PTR;
+                          dwParam2 : DWORD_PTR) : MCIERROR;
+
+PROCEDURE mciSendCommandW(wDeviceID : MCIDEVICEID;
+                          uMessage : UINT;
+                          dwParam1 : DWORD_PTR;
+                          dwParam2 : DWORD_PTR) : MCIERROR;
+
+%IF UNICODE %THEN
+PROCEDURE mciSendCommand = mciSendCommandW;
+%ELSE
+PROCEDURE mciSendCommand = mciSendCommandA;
+%END
+
+PROCEDURE mciSendStringA(lpstrCommand : ARRAY OF ACHAR;
+                         VAR lpstrReturnString : ARRAY OF ACHAR;
+                         uReturnLength : UINT;
+                         hwndCallback : HANDLE) : MCIERROR;
+
+PROCEDURE mciSendStringW(lpstrCommand : ARRAY OF UCHAR;
+                         VAR lpstrReturnString : ARRAY OF ACHAR;
+                         uReturnLength : UINT;
+                         hwndCallback : HANDLE) : MCIERROR;
+
+%IF UNICODE %THEN
+PROCEDURE mciSendString = mciSendStringW;
+%ELSE
+PROCEDURE mciSendString = mciSendStringA;
+%END
+
+PROCEDURE mciGetCreatorTask(wDeviceID : MCIDEVICEID) : HTASK;
+
+PROCEDURE mciGetDeviceIDA(lpstrName : ARRAY OF ACHAR) : MCIDEVICEID;
+
+PROCEDURE mciGetDeviceIDW(lpstrName : ARRAY OF UCHAR) : MCIDEVICEID;
+
+%IF UNICODE %THEN
+PROCEDURE mciGetDeviceID = mciGetDeviceIDW;
+%ELSE
+PROCEDURE mciGetDeviceID = mciGetDeviceIDA;
+%END
+
+PROCEDURE mciGetDeviceIDFromElementIDA(dwElementID : DWORD;
+                                       lpstrType : ARRAY OF ACHAR) : MCIDEVICEID;
+
+PROCEDURE mciGetDeviceIDFromElementIDW(dwElementID : DWORD;
+                                       lpstrType : ARRAY OF UCHAR) : MCIDEVICEID;
+
+%IF UNICODE %THEN
+PROCEDURE mciGetDeviceIDFromElementID = mciGetDeviceIDFromElementIDW;
+%ELSE
+PROCEDURE mciGetDeviceIDFromElementID = mciGetDeviceIDFromElementIDA;
+%END
+
+PROCEDURE mciGetErrorStringA(dwError : DWORD;
+                             VAR lpstrBuffer : ARRAY OF ACHAR;
+                             uLength : UINT) : BOOL;
+
+PROCEDURE mciGetErrorStringW(dwError : DWORD;
+                             VAR lpstrBuffer : ARRAY OF UCHAR;
+                             uLength : UINT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE mciGetErrorString = mciGetErrorStringW;
+%ELSE
+PROCEDURE mciGetErrorString = mciGetErrorStringA;
+%END
+
+TYPE
+    YIELDPROC            = PROCEDURE (MCIDEVICEID, DWORD):UINT;
+
+PROCEDURE mciSetYieldProc(wDeviceID : MCIDEVICEID;
+                          fpYieldProc : YIELDPROC;
+                          dwYieldData : DWORD) : BOOL;
+
+PROCEDURE mciGetYieldProc(wDeviceID : MCIDEVICEID;
+                          VAR lpdwYieldData : DWORD) : YIELDPROC;
+
+PROCEDURE mciExecute(lpstrCommand : ARRAY OF ACHAR) : BOOL;
+
+
+CONST
+    MCIERR_INVALID_DEVICE_ID            = ( MCIERR_BASE + 1 );
+    MCIERR_UNRECOGNIZED_KEYWORD         = ( MCIERR_BASE + 3 );
+    MCIERR_UNRECOGNIZED_COMMAND         = ( MCIERR_BASE + 5 );
+    MCIERR_HARDWARE                     = ( MCIERR_BASE + 6 );
+    MCIERR_INVALID_DEVICE_NAME          = ( MCIERR_BASE + 7 );
+    MCIERR_OUT_OF_MEMORY                = ( MCIERR_BASE + 8 );
+    MCIERR_DEVICE_OPEN                  = ( MCIERR_BASE + 9 );
+    MCIERR_CANNOT_LOAD_DRIVER           = ( MCIERR_BASE + 10 );
+    MCIERR_MISSING_COMMAND_STRING       = ( MCIERR_BASE + 11 );
+    MCIERR_PARAM_OVERFLOW               = ( MCIERR_BASE + 12 );
+    MCIERR_MISSING_STRING_ARGUMENT      = ( MCIERR_BASE + 13 );
+    MCIERR_BAD_INTEGER                  = ( MCIERR_BASE + 14 );
+    MCIERR_PARSER_INTERNAL              = ( MCIERR_BASE + 15 );
+    MCIERR_DRIVER_INTERNAL              = ( MCIERR_BASE + 16 );
+    MCIERR_MISSING_PARAMETER            = ( MCIERR_BASE + 17 );
+    MCIERR_UNSUPPORTED_FUNCTION         = ( MCIERR_BASE + 18 );
+    MCIERR_FILE_NOT_FOUND               = ( MCIERR_BASE + 19 );
+    MCIERR_DEVICE_NOT_READY             = ( MCIERR_BASE + 20 );
+    MCIERR_INTERNAL                     = ( MCIERR_BASE + 21 );
+    MCIERR_DRIVER                       = ( MCIERR_BASE + 22 );
+    MCIERR_CANNOT_USE_ALL               = ( MCIERR_BASE + 23 );
+    MCIERR_MULTIPLE                     = ( MCIERR_BASE + 24 );
+    MCIERR_EXTENSION_NOT_FOUND          = ( MCIERR_BASE + 25 );
+    MCIERR_OUTOFRANGE                   = ( MCIERR_BASE + 26 );
+    MCIERR_FLAGS_NOT_COMPATIBLE         = ( MCIERR_BASE + 28 );
+    MCIERR_FILE_NOT_SAVED               = ( MCIERR_BASE + 30 );
+    MCIERR_DEVICE_TYPE_REQUIRED         = ( MCIERR_BASE + 31 );
+    MCIERR_DEVICE_LOCKED                = ( MCIERR_BASE + 32 );
+    MCIERR_DUPLICATE_ALIAS              = ( MCIERR_BASE + 33 );
+    MCIERR_BAD_CONSTANT                 = ( MCIERR_BASE + 34 );
+    MCIERR_MUST_USE_SHAREABLE           = ( MCIERR_BASE + 35 );
+    MCIERR_MISSING_DEVICE_NAME          = ( MCIERR_BASE + 36 );
+    MCIERR_BAD_TIME_FORMAT              = ( MCIERR_BASE + 37 );
+    MCIERR_NO_CLOSING_QUOTE             = ( MCIERR_BASE + 38 );
+    MCIERR_DUPLICATE_FLAGS              = ( MCIERR_BASE + 39 );
+    MCIERR_INVALID_FILE                 = ( MCIERR_BASE + 40 );
+    MCIERR_NULL_PARAMETER_BLOCK         = ( MCIERR_BASE + 41 );
+    MCIERR_UNNAMED_RESOURCE             = ( MCIERR_BASE + 42 );
+    MCIERR_NEW_REQUIRES_ALIAS           = ( MCIERR_BASE + 43 );
+    MCIERR_NOTIFY_ON_AUTO_OPEN          = ( MCIERR_BASE + 44 );
+    MCIERR_NO_ELEMENT_ALLOWED           = ( MCIERR_BASE + 45 );
+    MCIERR_NONAPPLICABLE_FUNCTION       = ( MCIERR_BASE + 46 );
+    MCIERR_ILLEGAL_FOR_AUTO_OPEN        = ( MCIERR_BASE + 47 );
+    MCIERR_FILENAME_REQUIRED            = ( MCIERR_BASE + 48 );
+    MCIERR_EXTRA_CHARACTERS             = ( MCIERR_BASE + 49 );
+    MCIERR_DEVICE_NOT_INSTALLED         = ( MCIERR_BASE + 50 );
+    MCIERR_GET_CD        = ( MCIERR_BASE + 51 );
+    MCIERR_SET_CD        = ( MCIERR_BASE + 52 );
+    MCIERR_SET_DRIVE     = ( MCIERR_BASE + 53 );
+    MCIERR_DEVICE_LENGTH = ( MCIERR_BASE + 54 );
+    MCIERR_DEVICE_ORD_LENGTH    = ( MCIERR_BASE + 55 );
+    MCIERR_NO_INTEGER           = ( MCIERR_BASE + 56 );
+    MCIERR_WAVE_OUTPUTSINUSE    = ( MCIERR_BASE + 64 );
+    MCIERR_WAVE_SETOUTPUTINUSE  = ( MCIERR_BASE + 65 );
+    MCIERR_WAVE_INPUTSINUSE     = ( MCIERR_BASE + 66 );
+    MCIERR_WAVE_SETINPUTINUSE   = ( MCIERR_BASE + 67 );
+    MCIERR_WAVE_OUTPUTUNSPECIFIED       = ( MCIERR_BASE + 68 );
+    MCIERR_WAVE_INPUTUNSPECIFIED        = ( MCIERR_BASE + 69 );
+    MCIERR_WAVE_OUTPUTSUNSUITABLE       = ( MCIERR_BASE + 70 );
+    MCIERR_WAVE_SETOUTPUTUNSUITABLE     = ( MCIERR_BASE + 71 );
+    MCIERR_WAVE_INPUTSUNSUITABLE        = ( MCIERR_BASE + 72 );
+    MCIERR_WAVE_SETINPUTUNSUITABLE      = ( MCIERR_BASE + 73 );
+    MCIERR_SEQ_DIV_INCOMPATIBLE         = ( MCIERR_BASE + 80 );
+    MCIERR_SEQ_PORT_INUSE               = ( MCIERR_BASE + 81 );
+    MCIERR_SEQ_PORT_NONEXISTENT         = ( MCIERR_BASE + 82 );
+    MCIERR_SEQ_PORT_MAPNODEVICE         = ( MCIERR_BASE + 83 );
+    MCIERR_SEQ_PORT_MISCERROR           = ( MCIERR_BASE + 84 );
+    MCIERR_SEQ_TIMER                    = ( MCIERR_BASE + 85 );
+    MCIERR_SEQ_PORTUNSPECIFIED          = ( MCIERR_BASE + 86 );
+    MCIERR_SEQ_NOMIDIPRESENT            = ( MCIERR_BASE + 87 );
+    MCIERR_NO_WINDOW                    = ( MCIERR_BASE + 90 );
+    MCIERR_CREATEWINDOW                 = ( MCIERR_BASE + 91 );
+    MCIERR_FILE_READ                    = ( MCIERR_BASE + 92 );
+    MCIERR_FILE_WRITE                   = ( MCIERR_BASE + 93 );
+    MCIERR_NO_IDENTITY                  = (MCIERR_BASE + 94);(*95*)
+    MCIERR_CUSTOM_DRIVER_BASE           = ( MCIERR_BASE + 256 );
+
+    MCI_FIRST            = DRV_MCI_FIRST;
+    MCI_OPEN             = 00803h;
+    MCI_CLOSE            = 00804h;
+    MCI_ESCAPE           = 00805h;
+    MCI_PLAY             = 00806h;
+    MCI_SEEK             = 00807h;
+    MCI_STOP             = 00808h;
+    MCI_PAUSE            = 00809h;
+    MCI_INFO             = 0080Ah;
+    MCI_GETDEVCAPS       = 0080Bh;
+    MCI_SPIN             = 0080Ch;
+    MCI_SET              = 0080Dh;
+    MCI_STEP             = 0080Eh;
+    MCI_RECORD           = 0080Fh;
+    MCI_SYSINFO          = 00810h;
+    MCI_BREAK            = 00811h;
+    MCI_SOUND            = 00812h;
+    MCI_SAVE             = 00813h;
+    MCI_STATUS           = 00814h;
+    MCI_CUE              = 00830h;
+    MCI_REALIZE          = 00840h;
+    MCI_WINDOW           = 00841h;
+    MCI_PUT              = 00842h;
+    MCI_WHERE            = 00843h;
+    MCI_FREEZE           = 00844h;
+    MCI_UNFREEZE         = 00845h;
+    MCI_LOAD             = 00850h;
+    MCI_CUT              = 00851h;
+    MCI_COPY             = 00852h;
+    MCI_PASTE            = 00853h;
+    MCI_UPDATE           = 00854h;
+    MCI_RESUME           = 00855h;
+    MCI_DELETE           = 00856h;
+
+    MCI_USER_MESSAGES    = ( 400h + DRV_MCI_FIRST );(*95 error was 400*)
+    MCI_LAST             = 00FFFh;
+
+    MCI_ALL_DEVICE_ID  = CAST(MCIDEVICEID, -1 (*0FFFFFFFFh*));
+
+    MCI_DEVTYPE_VCR      = 513;
+    MCI_DEVTYPE_VIDEODISC= 514;
+    MCI_DEVTYPE_OVERLAY  = 515;
+    MCI_DEVTYPE_CD_AUDIO = 516;
+    MCI_DEVTYPE_DAT      = 517;
+    MCI_DEVTYPE_SCANNER  = 518;
+    MCI_DEVTYPE_ANIMATION= 519;
+    MCI_DEVTYPE_DIGITAL_VIDEO   = 520;
+    MCI_DEVTYPE_OTHER           = 521;
+    MCI_DEVTYPE_WAVEFORM_AUDIO  = 522;
+    MCI_DEVTYPE_SEQUENCER       = 523;
+    MCI_DEVTYPE_FIRST           = MCI_DEVTYPE_VCR;
+    MCI_DEVTYPE_LAST            = MCI_DEVTYPE_SEQUENCER;
+
+    MCI_DEVTYPE_FIRST_USER= 01000h;
+    MCI_MODE_NOT_READY   = ( MCI_STRING_OFFSET + 12 );
+    MCI_MODE_STOP        = ( MCI_STRING_OFFSET + 13 );
+    MCI_MODE_PLAY        = ( MCI_STRING_OFFSET + 14 );
+    MCI_MODE_RECORD      = ( MCI_STRING_OFFSET + 15 );
+    MCI_MODE_SEEK        = ( MCI_STRING_OFFSET + 16 );
+    MCI_MODE_PAUSE       = ( MCI_STRING_OFFSET + 17 );
+    MCI_MODE_OPEN        = ( MCI_STRING_OFFSET + 18 );
+    MCI_FORMAT_MILLISECONDS= 0;
+    MCI_FORMAT_HMS       = 1;
+    MCI_FORMAT_MSF       = 2;
+    MCI_FORMAT_FRAMES    = 3;
+    MCI_FORMAT_SMPTE_24  = 4;
+    MCI_FORMAT_SMPTE_25  = 5;
+    MCI_FORMAT_SMPTE_30  = 6;
+    MCI_FORMAT_SMPTE_30DROP= 7;
+    MCI_FORMAT_BYTES     = 8;
+    MCI_FORMAT_SAMPLES   = 9;
+    MCI_FORMAT_TMSF      = 10;
+
+    MCI_NOTIFY_SUCCESSFUL= 00001h;
+    MCI_NOTIFY_SUPERSEDED= 00002h;
+    MCI_NOTIFY_ABORTED   = 00004h;
+    MCI_NOTIFY_FAILURE   = 00008h;
+
+    MCI_NOTIFY           = 000000001h;
+    MCI_WAIT             = 000000002h;
+    MCI_FROM             = 000000004h;
+    MCI_TO               = 000000008h;
+    MCI_TRACK            = 000000010h;
+
+    MCI_OPEN_SHAREABLE   = 000000100h;
+    MCI_OPEN_ELEMENT     = 000000200h;
+    MCI_OPEN_ALIAS       = 000000400h;
+    MCI_OPEN_ELEMENT_ID  = 000000800h;
+    MCI_OPEN_TYPE_ID     = 000001000h;
+    MCI_OPEN_TYPE        = 000002000h;
+
+    MCI_SEEK_TO_START    = 000000100h;
+    MCI_SEEK_TO_END      = 000000200h;
+
+    MCI_STATUS_ITEM      = 000000100h;
+    MCI_STATUS_START     = 000000200h;
+    MCI_STATUS_LENGTH    = 000000001h;
+    MCI_STATUS_POSITION  = 000000002h;
+    MCI_STATUS_NUMBER_OF_TRACKS = 000000003h;
+    MCI_STATUS_MODE             = 000000004h;
+    MCI_STATUS_MEDIA_PRESENT    = 000000005h;
+    MCI_STATUS_TIME_FORMAT      = 000000006h;
+    MCI_STATUS_READY            = 000000007h;
+    MCI_STATUS_CURRENT_TRACK    = 000000008h;
+    MCI_INFO_PRODUCT            = 000000100h;
+    MCI_INFO_FILE               = 000000200h;
+    MCI_INFO_MEDIA_UPC          = 000000400h;
+    MCI_INFO_MEDIA_IDENTITY     = 000000800h;
+    MCI_INFO_NAME               = 000001000h;
+    MCI_INFO_COPYRIGHT          = 000002000h;
+
+    MCI_GETDEVCAPS_ITEM         = 000000100h;
+    MCI_GETDEVCAPS_CAN_RECORD   = 000000001h;
+    MCI_GETDEVCAPS_HAS_AUDIO    = 000000002h;
+    MCI_GETDEVCAPS_HAS_VIDEO    = 000000003h;
+    MCI_GETDEVCAPS_DEVICE_TYPE  = 000000004h;
+    MCI_GETDEVCAPS_USES_FILES   = 000000005h;
+    MCI_GETDEVCAPS_COMPOUND_DEVICE = 000000006h;
+    MCI_GETDEVCAPS_CAN_EJECT    = 000000007h;
+    MCI_GETDEVCAPS_CAN_PLAY     = 000000008h;
+    MCI_GETDEVCAPS_CAN_SAVE     = 000000009h;
+    MCI_SYSINFO_QUANTITY        = 000000100h;
+    MCI_SYSINFO_OPEN            = 000000200h;
+    MCI_SYSINFO_NAME            = 000000400h;
+    MCI_SYSINFO_INSTALLNAME     = 000000800h;
+    MCI_SET_DOOR_OPEN           = 000000100h;
+    MCI_SET_DOOR_CLOSED         = 000000200h;
+    MCI_SET_TIME_FORMAT         = 000000400h;
+    MCI_SET_AUDIO        = 000000800h;
+    MCI_SET_VIDEO        = 000001000h;
+    MCI_SET_ON           = 000002000h;
+    MCI_SET_OFF          = 000004000h;
+    MCI_SET_AUDIO_ALL    = 000004001h;
+    MCI_SET_AUDIO_LEFT   = 000004002h;
+    MCI_SET_AUDIO_RIGHT  = 000004003h;
+    MCI_BREAK_KEY        = 000000100h;
+    MCI_BREAK_HWND       = 000000200h;
+    MCI_BREAK_OFF        = 000000400h;
+    MCI_RECORD_INSERT    = 000000100h;
+    MCI_RECORD_OVERWRITE = 000000200h;
+    MCI_SOUND_NAME       = 000000100h;
+    MCI_SAVE_FILE        = 000000100h;
+    MCI_LOAD_FILE        = 000000100h;
+
+TYPE
+    MCI_GENERIC_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+		END;
+    PMCI_GENERIC_PARMS   = POINTER TO MCI_GENERIC_PARMS;
+    LPMCI_GENERIC_PARMS  = PMCI_GENERIC_PARMS;
+
+    MCI_OPEN_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCSTR;
+			lpstrElementName: LPCSTR;
+			lpstrAlias     : LPCSTR;
+		END;
+    PMCI_OPEN_PARMSA     = POINTER TO MCI_OPEN_PARMSA;
+    LPMCI_OPEN_PARMSA    = PMCI_OPEN_PARMSA;
+
+    MCI_OPEN_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCWSTR;
+			lpstrElementName: LPCWSTR;
+			lpstrAlias     : LPCWSTR;
+		END;
+    PMCI_OPEN_PARMSW     = POINTER TO MCI_OPEN_PARMSW;
+    LPMCI_OPEN_PARMSW    = PMCI_OPEN_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_OPEN_PARMS       = MCI_OPEN_PARMSW;
+    PMCI_OPEN_PARMS      = PMCI_OPEN_PARMSW;
+    LPMCI_OPEN_PARMS     = PMCI_OPEN_PARMSW;
+%ELSE
+    MCI_OPEN_PARMS       = MCI_OPEN_PARMSA;
+    PMCI_OPEN_PARMS      = PMCI_OPEN_PARMSA;
+    LPMCI_OPEN_PARMS     = PMCI_OPEN_PARMSA;
+%END
+
+    MCI_PLAY_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrom         : DWORD;
+			dwTo           : DWORD;
+		END;
+    PMCI_PLAY_PARMS      = POINTER TO MCI_PLAY_PARMS;
+    LPMCI_PLAY_PARMS     = PMCI_PLAY_PARMS;
+
+    MCI_SEEK_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwTo           : DWORD;
+		END;
+    PMCI_SEEK_PARMS      = POINTER TO MCI_SEEK_PARMS;
+    LPMCI_SEEK_PARMS     = PMCI_SEEK_PARMS;
+
+    MCI_STATUS_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwReturn       : DWORD_PTR;
+			dwItem         : DWORD;
+			dwTrack        : DWORD;
+		END;
+    PMCI_STATUS_PARMS    = POINTER TO MCI_STATUS_PARMS;
+    LPMCI_STATUS_PARMS   = PMCI_STATUS_PARMS;
+
+    MCI_INFO_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrReturn    : LPSTR;
+			dwRetSize      : DWORD;
+		END;
+    PMCI_INFO_PARMSA     = POINTER TO MCI_INFO_PARMSA;
+    LPMCI_INFO_PARMSA    = PMCI_INFO_PARMSA;
+
+    MCI_INFO_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrReturn    : LPWSTR;
+			dwRetSize      : DWORD;
+		END;
+    PMCI_INFO_PARMSW     = POINTER TO MCI_INFO_PARMSW;
+    LPMCI_INFO_PARMSW    = PMCI_INFO_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_INFO_PARMS       = MCI_INFO_PARMSW;
+    PMCI_INFO_PARMS      = PMCI_INFO_PARMSW;
+    LPMCI_INFO_PARMS     = LPMCI_INFO_PARMSW;
+%ELSE
+    MCI_INFO_PARMS       = MCI_INFO_PARMSA;
+    PMCI_INFO_PARMS      = PMCI_INFO_PARMSA;
+    LPMCI_INFO_PARMS     = LPMCI_INFO_PARMSA;
+%END
+
+    MCI_GETDEVCAPS_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwReturn       : DWORD;
+			dwItem         : DWORD;
+		END;
+    PMCI_GETDEVCAPS_PARMS= POINTER TO MCI_GETDEVCAPS_PARMS;
+    LPMCI_GETDEVCAPS_PARMS= PMCI_GETDEVCAPS_PARMS;
+
+    MCI_SYSINFO_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrReturn    : LPSTR;
+			dwRetSize      : DWORD;
+			dwNumber       : DWORD;
+			wDeviceType    : UINT;
+		END;
+    PMCI_SYSINFO_PARMSA  = POINTER TO MCI_SYSINFO_PARMSA;
+    LPMCI_SYSINFO_PARMSA = PMCI_SYSINFO_PARMSA;
+
+    MCI_SYSINFO_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrReturn    : LPWSTR;
+			dwRetSize      : DWORD;
+			dwNumber       : DWORD;
+			wDeviceType    : UINT;
+		END;
+    PMCI_SYSINFO_PARMSW  = POINTER TO MCI_SYSINFO_PARMSW;
+    LPMCI_SYSINFO_PARMSW = PMCI_SYSINFO_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_SYSINFO_PARMS    = MCI_SYSINFO_PARMSW;
+    PMCI_SYSINFO_PARMS   = PMCI_SYSINFO_PARMSW;
+    LPMCI_SYSINFO_PARMS  = LPMCI_SYSINFO_PARMSW;
+%ELSE
+    MCI_SYSINFO_PARMS    = MCI_SYSINFO_PARMSA;
+    PMCI_SYSINFO_PARMS   = PMCI_SYSINFO_PARMSA;
+    LPMCI_SYSINFO_PARMS  = LPMCI_SYSINFO_PARMSA;
+%END
+
+    MCI_SET_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwTimeFormat   : DWORD;
+			dwAudio        : DWORD;
+		END;
+    PMCI_SET_PARMS       = POINTER TO MCI_SET_PARMS;
+    LPMCI_SET_PARMS      = PMCI_SET_PARMS;
+
+    MCI_BREAK_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			nVirtKey       : INTEGER;
+			hwndBreak      : HWND;
+		END;
+    PMCI_BREAK_PARMS     = POINTER TO MCI_BREAK_PARMS;
+    LPMCI_BREAK_PARMS    = PMCI_BREAK_PARMS;
+
+    MCI_SOUND_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrSoundName : LPCSTR;
+		END;
+    PMCI_SOUND_PARMSA    = POINTER TO MCI_SOUND_PARMSA;
+    LPMCI_SOUND_PARMSA   = PMCI_SOUND_PARMSA;
+
+    MCI_SOUND_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrSoundName : LPCWSTR;
+		END;
+    PMCI_SOUND_PARMSW    = POINTER TO MCI_SOUND_PARMSW;
+    LPMCI_SOUND_PARMSW   = PMCI_SOUND_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_SOUND_PARMS      = MCI_SOUND_PARMSW;
+    PMCI_SOUND_PARMS     = PMCI_SOUND_PARMSW;
+    LPMCI_SOUND_PARMS    = LPMCI_SOUND_PARMSW;
+%ELSE
+    MCI_SOUND_PARMS      = MCI_SOUND_PARMSA;
+    PMCI_SOUND_PARMS     = PMCI_SOUND_PARMSA;
+    LPMCI_SOUND_PARMS    = LPMCI_SOUND_PARMSA;
+%END
+
+    MCI_SAVE_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCSTR;
+		END;
+    PMCI_SAVE_PARMSA     = POINTER TO MCI_SAVE_PARMSA;
+    LPMCI_SAVE_PARMSA    = PMCI_SAVE_PARMSA;
+
+    MCI_SAVE_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCWSTR;
+		END;
+    PMCI_SAVE_PARMSW     = POINTER TO MCI_SAVE_PARMSW;
+    LPMCI_SAVE_PARMSW    = PMCI_SAVE_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_SAVE_PARMS       = MCI_SAVE_PARMSW;
+    PMCI_SAVE_PARMS      = PMCI_SAVE_PARMSW;
+    LPMCI_SAVE_PARMS     = LPMCI_SAVE_PARMSW;
+%ELSE
+    MCI_SAVE_PARMS       = MCI_SAVE_PARMSA;
+    PMCI_SAVE_PARMS      = PMCI_SAVE_PARMSA;
+    LPMCI_SAVE_PARMS     = LPMCI_SAVE_PARMSA;
+%END
+
+    MCI_LOAD_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCSTR;
+		END;
+    PMCI_LOAD_PARMSA     = POINTER TO MCI_LOAD_PARMSA;
+    LPMCI_LOAD_PARMSA    = PMCI_LOAD_PARMSA;
+
+    MCI_LOAD_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCWSTR;
+		END;
+    PMCI_LOAD_PARMSW     = POINTER TO MCI_LOAD_PARMSW;
+    LPMCI_LOAD_PARMSW    = PMCI_LOAD_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_LOAD_PARMS       = MCI_LOAD_PARMSW;
+    PMCI_LOAD_PARMS      = PMCI_LOAD_PARMSW;
+    LPMCI_LOAD_PARMS     = LPMCI_LOAD_PARMSW;
+%ELSE
+    MCI_LOAD_PARMS       = MCI_LOAD_PARMSA;
+    PMCI_LOAD_PARMS      = PMCI_LOAD_PARMSA;
+    LPMCI_LOAD_PARMS     = LPMCI_LOAD_PARMSA;
+%END
+
+    MCI_RECORD_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrom         : DWORD;
+			dwTo           : DWORD;
+		END;
+    PMCI_RECORD_PARMS    = POINTER TO MCI_RECORD_PARMS;
+    LPMCI_RECORD_PARMS   = PMCI_RECORD_PARMS;
+
+CONST
+    MCI_VD_MODE_PARK     = ( MCI_VD_OFFSET + 1 );
+    MCI_VD_MEDIA_CLV     = ( MCI_VD_OFFSET + 2 );
+    MCI_VD_MEDIA_CAV     = ( MCI_VD_OFFSET + 3 );
+    MCI_VD_MEDIA_OTHER   = ( MCI_VD_OFFSET + 4 );
+    MCI_VD_FORMAT_TRACK  = 04001h;
+    MCI_VD_PLAY_REVERSE  = 000010000h;
+    MCI_VD_PLAY_FAST     = 000020000h;
+    MCI_VD_PLAY_SPEED    = 000040000h;
+    MCI_VD_PLAY_SCAN     = 000080000h;
+    MCI_VD_PLAY_SLOW     = 000100000h;
+    MCI_VD_SEEK_REVERSE  = 000010000h;
+    MCI_VD_STATUS_SPEED  = 000004002h;
+    MCI_VD_STATUS_FORWARD= 000004003h;
+    MCI_VD_STATUS_MEDIA_TYPE= 000004004h;
+    MCI_VD_STATUS_SIDE   = 000004005h;
+    MCI_VD_STATUS_DISC_SIZE= 000004006h;
+    MCI_VD_GETDEVCAPS_CLV= 000010000h;
+    MCI_VD_GETDEVCAPS_CAV= 000020000h;
+    MCI_VD_SPIN_UP       = 000010000h;
+    MCI_VD_SPIN_DOWN     = 000020000h;
+    MCI_VD_GETDEVCAPS_CAN_REVERSE= 000004002h;
+    MCI_VD_GETDEVCAPS_FAST_RATE= 000004003h;
+    MCI_VD_GETDEVCAPS_SLOW_RATE= 000004004h;
+    MCI_VD_GETDEVCAPS_NORMAL_RATE= 000004005h;
+    MCI_VD_STEP_FRAMES   = 000010000h;
+    MCI_VD_STEP_REVERSE  = 000020000h;
+    MCI_VD_ESCAPE_STRING = 000000100h;
+
+TYPE
+    MCI_VD_PLAY_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrom         : DWORD;
+			dwTo           : DWORD;
+			dwSpeed        : DWORD;
+		END;
+    PMCI_VD_PLAY_PARMS   = POINTER TO MCI_VD_PLAY_PARMS;
+    LPMCI_VD_PLAY_PARMS  = PMCI_VD_PLAY_PARMS;
+
+    MCI_VD_STEP_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrames       : DWORD;
+		END;
+    PMCI_VD_STEP_PARMS   = POINTER TO MCI_VD_STEP_PARMS;
+    LPMCI_VD_STEP_PARMS  = PMCI_VD_STEP_PARMS;
+
+    MCI_VD_ESCAPE_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrCommand   : LPCSTR;
+		END;
+    PMCI_VD_ESCAPE_PARMSA= POINTER TO MCI_VD_ESCAPE_PARMSA;
+    LPMCI_VD_ESCAPE_PARMSA= PMCI_VD_ESCAPE_PARMSA;
+
+    MCI_VD_ESCAPE_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpstrCommand   : LPCWSTR;
+		END;
+    PMCI_VD_ESCAPE_PARMSW= POINTER TO MCI_VD_ESCAPE_PARMSW;
+    LPMCI_VD_ESCAPE_PARMSW= PMCI_VD_ESCAPE_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_VD_ESCAPE_PARMS  = MCI_VD_ESCAPE_PARMSW;
+    PMCI_VD_ESCAPE_PARMS = PMCI_VD_ESCAPE_PARMSW;
+    LPMCI_VD_ESCAPE_PARMS= LPMCI_VD_ESCAPE_PARMSW;
+%ELSE
+    MCI_VD_ESCAPE_PARMS  = MCI_VD_ESCAPE_PARMSA;
+    PMCI_VD_ESCAPE_PARMS = PMCI_VD_ESCAPE_PARMSA;
+    LPMCI_VD_ESCAPE_PARMS= LPMCI_VD_ESCAPE_PARMSA;
+%END
+
+CONST
+    MCI_CDA_STATUS_TYPE_TRACK       = 000004001h;
+    MCI_CDA_TRACK_AUDIO             = MCI_CD_OFFSET + 0h;
+    MCI_CDA_TRACK_OTHER             = MCI_CD_OFFSET + 1h;
+
+    MCI_WAVE_PCM         = ( MCI_WAVE_OFFSET + 0 );
+    MCI_WAVE_MAPPER      = ( MCI_WAVE_OFFSET + 1 );
+    MCI_WAVE_OPEN_BUFFER = 000010000h;
+    MCI_WAVE_SET_FORMATTAG      = 000010000h;
+    MCI_WAVE_SET_CHANNELS       = 000020000h;
+    MCI_WAVE_SET_SAMPLESPERSEC  = 000040000h;
+    MCI_WAVE_SET_AVGBYTESPERSEC = 000080000h;
+    MCI_WAVE_SET_BLOCKALIGN     = 000100000h;
+    MCI_WAVE_SET_BITSPERSAMPLE  = 000200000h;
+    MCI_WAVE_INPUT              = 000400000h;
+    MCI_WAVE_OUTPUT             = 000800000h;
+    MCI_WAVE_STATUS_FORMATTAG   = 000004001h;
+    MCI_WAVE_STATUS_CHANNELS    = 000004002h;
+    MCI_WAVE_STATUS_SAMPLESPERSEC= 000004003h;
+    MCI_WAVE_STATUS_AVGBYTESPERSEC= 000004004h;
+    MCI_WAVE_STATUS_BLOCKALIGN  = 000004005h;
+    MCI_WAVE_STATUS_BITSPERSAMPLE= 000004006h;
+    MCI_WAVE_STATUS_LEVEL       = 000004007h;
+    MCI_WAVE_SET_ANYINPUT       = 004000000h;
+    MCI_WAVE_SET_ANYOUTPUT      = 008000000h;
+    MCI_WAVE_GETDEVCAPS_INPUTS  = 000004001h;
+    MCI_WAVE_GETDEVCAPS_OUTPUTS = 000004002h;
+
+TYPE
+    MCI_WAVE_OPEN_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCSTR;
+			lpstrElementName: LPCSTR;
+			lpstrAlias     : LPCSTR;
+			dwBufferSeconds: DWORD;
+		END;
+    PMCI_WAVE_OPEN_PARMSA= POINTER TO MCI_WAVE_OPEN_PARMSA;
+    LPMCI_WAVE_OPEN_PARMSA= PMCI_WAVE_OPEN_PARMSA;
+
+    MCI_WAVE_OPEN_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCWSTR;
+			lpstrElementName: LPCWSTR;
+			lpstrAlias     : LPCWSTR;
+			dwBufferSeconds: DWORD;
+		END;
+    PMCI_WAVE_OPEN_PARMSW= POINTER TO MCI_WAVE_OPEN_PARMSW;
+    LPMCI_WAVE_OPEN_PARMSW= PMCI_WAVE_OPEN_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_WAVE_OPEN_PARMS  = MCI_WAVE_OPEN_PARMSW;
+    PMCI_WAVE_OPEN_PARMS = PMCI_WAVE_OPEN_PARMSW;
+    LPMCI_WAVE_OPEN_PARMS= LPMCI_WAVE_OPEN_PARMSW;
+%ELSE
+    MCI_WAVE_OPEN_PARMS  = MCI_WAVE_OPEN_PARMSA;
+    PMCI_WAVE_OPEN_PARMS = PMCI_WAVE_OPEN_PARMSA;
+    LPMCI_WAVE_OPEN_PARMS= LPMCI_WAVE_OPEN_PARMSA;
+%END
+
+    MCI_WAVE_DELETE_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrom         : DWORD;
+			dwTo           : DWORD;
+		END;
+    PMCI_WAVE_DELETE_PARMS= POINTER TO MCI_WAVE_DELETE_PARMS;
+    LPMCI_WAVE_DELETE_PARMS= PMCI_WAVE_DELETE_PARMS;
+
+    MCI_WAVE_SET_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwTimeFormat   : DWORD;
+			dwAudio        : DWORD;
+			wInput         : UINT;
+			wOutput        : UINT;
+			wFormatTag     : WORD;
+			wReserved2     : WORD;
+			nChannels      : WORD;
+			wReserved3     : WORD;
+			nSamplesPerSec : DWORD;
+			nAvgBytesPerSec: DWORD;
+			nBlockAlign    : WORD;
+			wReserved4     : WORD;
+			wBitsPerSample : WORD;
+			wReserved5     : WORD;
+		END;
+    PMCI_WAVE_SET_PARMS  = POINTER TO MCI_WAVE_SET_PARMS;
+    LPMCI_WAVE_SET_PARMS = PMCI_WAVE_SET_PARMS;
+
+CONST
+    MCI_SEQ_DIV_PPQN            = ( 0 + MCI_SEQ_OFFSET );
+    MCI_SEQ_DIV_SMPTE_24        = ( 1 + MCI_SEQ_OFFSET );
+    MCI_SEQ_DIV_SMPTE_25        = ( 2 + MCI_SEQ_OFFSET );
+    MCI_SEQ_DIV_SMPTE_30DROP    = ( 3 + MCI_SEQ_OFFSET );
+    MCI_SEQ_DIV_SMPTE_30        = ( 4 + MCI_SEQ_OFFSET );
+    MCI_SEQ_FORMAT_SONGPTR      = 04001h;
+    MCI_SEQ_FILE                = 04002h;
+    MCI_SEQ_MIDI                = 04003h;
+    MCI_SEQ_SMPTE               = 04004h;
+    MCI_SEQ_NONE                = 65533;
+    MCI_SEQ_MAPPER              = 65535;
+    MCI_SEQ_STATUS_TEMPO        = 000004002h;
+    MCI_SEQ_STATUS_PORT         = 000004003h;
+    MCI_SEQ_STATUS_SLAVE        = 000004007h;
+    MCI_SEQ_STATUS_MASTER       = 000004008h;
+    MCI_SEQ_STATUS_OFFSET       = 000004009h;
+    MCI_SEQ_STATUS_DIVTYPE      = 00000400Ah;
+    MCI_SEQ_STATUS_NAME         = 00000400Bh;
+    MCI_SEQ_STATUS_COPYRIGHT    = 00000400Ch;
+
+    MCI_SEQ_SET_TEMPO           = 000010000h;
+    MCI_SEQ_SET_PORT            = 000020000h;
+    MCI_SEQ_SET_SLAVE           = 000040000h;
+    MCI_SEQ_SET_MASTER          = 000080000h;
+    MCI_SEQ_SET_OFFSET          = 001000000h;
+
+TYPE
+    MCI_SEQ_SET_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwTimeFormat   : DWORD;
+			dwAudio        : DWORD;
+			dwTempo        : DWORD;
+			dwPort         : DWORD;
+			dwSlave        : DWORD;
+			dwMaster       : DWORD;
+			dwOffset       : DWORD;
+		END;
+    PMCI_SEQ_SET_PARMS   = POINTER TO MCI_SEQ_SET_PARMS;
+    LPMCI_SEQ_SET_PARMS  = PMCI_SEQ_SET_PARMS;
+
+CONST
+    MCI_ANIM_OPEN_WS     = 000010000h;
+    MCI_ANIM_OPEN_PARENT = 000020000h;
+    MCI_ANIM_OPEN_NOSTATIC= 000040000h;
+    MCI_ANIM_PLAY_SPEED  = 000010000h;
+    MCI_ANIM_PLAY_REVERSE= 000020000h;
+    MCI_ANIM_PLAY_FAST   = 000040000h;
+    MCI_ANIM_PLAY_SLOW   = 000080000h;
+    MCI_ANIM_PLAY_SCAN   = 000100000h;
+    MCI_ANIM_STEP_REVERSE= 000010000h;
+    MCI_ANIM_STEP_FRAMES = 000020000h;
+    MCI_ANIM_STATUS_SPEED= 000004001h;
+    MCI_ANIM_STATUS_FORWARD= 000004002h;
+    MCI_ANIM_STATUS_HWND = 000004003h;
+    MCI_ANIM_STATUS_HPAL = 000004004h;
+    MCI_ANIM_STATUS_STRETCH= 000004005h;
+    MCI_ANIM_INFO_TEXT   = 000010000h;
+    MCI_ANIM_GETDEVCAPS_CAN_REVERSE= 000004001h;
+    MCI_ANIM_GETDEVCAPS_FAST_RATE= 000004002h;
+    MCI_ANIM_GETDEVCAPS_SLOW_RATE= 000004003h;
+    MCI_ANIM_GETDEVCAPS_NORMAL_RATE= 000004004h;
+    MCI_ANIM_GETDEVCAPS_PALETTES= 000004006h;
+    MCI_ANIM_GETDEVCAPS_CAN_STRETCH= 000004007h;
+    MCI_ANIM_GETDEVCAPS_MAX_WINDOWS= 000004008h;
+    MCI_ANIM_REALIZE_NORM= 000010000h;
+    MCI_ANIM_REALIZE_BKGD= 000020000h;
+    MCI_ANIM_WINDOW_HWND = 000010000h;
+    MCI_ANIM_WINDOW_STATE= 000040000h;
+    MCI_ANIM_WINDOW_TEXT = 000080000h;
+    MCI_ANIM_WINDOW_ENABLE_STRETCH= 000100000h;
+    MCI_ANIM_WINDOW_DISABLE_STRETCH= 000200000h;
+    MCI_ANIM_WINDOW_DEFAULT= 000000000h;
+    MCI_ANIM_RECT        = 000010000h;
+    MCI_ANIM_PUT_SOURCE  = 000020000h;
+    MCI_ANIM_PUT_DESTINATION= 000040000h;
+    MCI_ANIM_WHERE_SOURCE= 000020000h;
+    MCI_ANIM_WHERE_DESTINATION= 000040000h;
+    MCI_ANIM_UPDATE_HDC  = 000020000h;
+
+TYPE
+    MCI_ANIM_OPEN_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCSTR;
+			lpstrElementName: LPCSTR;
+			lpstrAlias     : LPCSTR;
+			dwStyle        : DWORD;
+			hWndParent     : HWND;
+		END;
+    PMCI_ANIM_OPEN_PARMSA= POINTER TO MCI_ANIM_OPEN_PARMSA;
+    LPMCI_ANIM_OPEN_PARMSA= PMCI_ANIM_OPEN_PARMSA;
+
+    MCI_ANIM_OPEN_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCWSTR;
+			lpstrElementName: LPCWSTR;
+			lpstrAlias     : LPCWSTR;
+			dwStyle        : DWORD;
+			hWndParent     : HWND;
+		END;
+    PMCI_ANIM_OPEN_PARMSW= POINTER TO MCI_ANIM_OPEN_PARMSW;
+    LPMCI_ANIM_OPEN_PARMSW= PMCI_ANIM_OPEN_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_ANIM_OPEN_PARMS  = MCI_ANIM_OPEN_PARMSW;
+    PMCI_ANIM_OPEN_PARMS = PMCI_ANIM_OPEN_PARMSW;
+    LPMCI_ANIM_OPEN_PARMS= LPMCI_ANIM_OPEN_PARMSW;
+%ELSE
+    MCI_ANIM_OPEN_PARMS  = MCI_ANIM_OPEN_PARMSA;
+    PMCI_ANIM_OPEN_PARMS = PMCI_ANIM_OPEN_PARMSA;
+    LPMCI_ANIM_OPEN_PARMS= LPMCI_ANIM_OPEN_PARMSA;
+%END
+
+    MCI_ANIM_PLAY_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrom         : DWORD;
+			dwTo           : DWORD;
+			dwSpeed        : DWORD;
+		END;
+    PMCI_ANIM_PLAY_PARMS = POINTER TO MCI_ANIM_PLAY_PARMS;
+    LPMCI_ANIM_PLAY_PARMS= PMCI_ANIM_PLAY_PARMS;
+
+    MCI_ANIM_STEP_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			dwFrames       : DWORD;
+		END;
+    PMCI_ANIM_STEP_PARMS = POINTER TO MCI_ANIM_STEP_PARMS;
+    LPMCI_ANIM_STEP_PARMS= PMCI_ANIM_STEP_PARMS;
+
+    MCI_ANIM_WINDOW_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			hWnd           : HWND;
+			nCmdShow       : UINT;
+			lpstrText      : LPCSTR;
+		END;
+    PMCI_ANIM_WINDOW_PARMSA= POINTER TO MCI_ANIM_WINDOW_PARMSA;
+    LPMCI_ANIM_WINDOW_PARMSA= PMCI_ANIM_WINDOW_PARMSA;
+
+    MCI_ANIM_WINDOW_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			hWnd           : HWND;
+			nCmdShow       : UINT;
+			lpstrText      : LPCWSTR;
+		END;
+    PMCI_ANIM_WINDOW_PARMSW= POINTER TO MCI_ANIM_WINDOW_PARMSW;
+    LPMCI_ANIM_WINDOW_PARMSW= PMCI_ANIM_WINDOW_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_ANIM_WINDOW_PARMS= MCI_ANIM_WINDOW_PARMSW;
+    PMCI_ANIM_WINDOW_PARMS= PMCI_ANIM_WINDOW_PARMSW;
+    LPMCI_ANIM_WINDOW_PARMS= LPMCI_ANIM_WINDOW_PARMSW;
+%ELSE
+    MCI_ANIM_WINDOW_PARMS= MCI_ANIM_WINDOW_PARMSA;
+    PMCI_ANIM_WINDOW_PARMS= PMCI_ANIM_WINDOW_PARMSA;
+    LPMCI_ANIM_WINDOW_PARMS= LPMCI_ANIM_WINDOW_PARMSA;
+%END
+
+    MCI_ANIM_RECT_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			rc             : RECT;
+		END;
+    PMCI_ANIM_RECT_PARMS = POINTER TO MCI_ANIM_RECT_PARMS;
+    LPMCI_ANIM_RECT_PARMS= PMCI_ANIM_RECT_PARMS;
+
+    MCI_ANIM_UPDATE_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			rc             : RECT;
+			hDC            : HDC;
+		END;
+    PMCI_ANIM_UPDATE_PARMS= POINTER TO MCI_ANIM_UPDATE_PARMS;
+    LPMCI_ANIM_UPDATE_PARMS= PMCI_ANIM_UPDATE_PARMS;
+
+CONST
+    MCI_OVLY_OPEN_WS     = 000010000h;
+    MCI_OVLY_OPEN_PARENT = 000020000h;
+    MCI_OVLY_STATUS_HWND = 000004001h;
+    MCI_OVLY_STATUS_STRETCH= 000004002h;
+    MCI_OVLY_INFO_TEXT   = 000010000h;
+    MCI_OVLY_GETDEVCAPS_CAN_STRETCH= 000004001h;
+    MCI_OVLY_GETDEVCAPS_CAN_FREEZE= 000004002h;
+    MCI_OVLY_GETDEVCAPS_MAX_WINDOWS= 000004003h;
+    MCI_OVLY_WINDOW_HWND = 000010000h;
+    MCI_OVLY_WINDOW_STATE= 000040000h;
+    MCI_OVLY_WINDOW_TEXT = 000080000h;
+    MCI_OVLY_WINDOW_ENABLE_STRETCH= 000100000h;
+    MCI_OVLY_WINDOW_DISABLE_STRETCH= 000200000h;
+    MCI_OVLY_WINDOW_DEFAULT= 000000000h;
+    MCI_OVLY_RECT        = 000010000h;
+    MCI_OVLY_PUT_SOURCE  = 000020000h;
+    MCI_OVLY_PUT_DESTINATION= 000040000h;
+    MCI_OVLY_PUT_FRAME   = 000080000h;
+    MCI_OVLY_PUT_VIDEO   = 000100000h;
+    MCI_OVLY_WHERE_SOURCE= 000020000h;
+    MCI_OVLY_WHERE_DESTINATION= 000040000h;
+    MCI_OVLY_WHERE_FRAME = 000080000h;
+    MCI_OVLY_WHERE_VIDEO = 000100000h;
+
+TYPE
+    MCI_OVLY_OPEN_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCSTR;
+			lpstrElementName: LPCSTR;
+			lpstrAlias     : LPCSTR;
+			dwStyle        : DWORD;
+			hWndParent     : HWND;
+		END;
+    PMCI_OVLY_OPEN_PARMSA= POINTER TO MCI_OVLY_OPEN_PARMSA;
+    LPMCI_OVLY_OPEN_PARMSA= PMCI_OVLY_OPEN_PARMSA;
+
+    MCI_OVLY_OPEN_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			wDeviceID      : MCIDEVICEID;
+			lpstrDeviceType: LPCWSTR;
+			lpstrElementName: LPCWSTR;
+			lpstrAlias     : LPCWSTR;
+			dwStyle        : DWORD;
+			hWndParent     : HWND;
+		END;
+    PMCI_OVLY_OPEN_PARMSW= POINTER TO MCI_OVLY_OPEN_PARMSW;
+    LPMCI_OVLY_OPEN_PARMSW= PMCI_OVLY_OPEN_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_OVLY_OPEN_PARMS  = MCI_OVLY_OPEN_PARMSW;
+    PMCI_OVLY_OPEN_PARMS = PMCI_OVLY_OPEN_PARMSW;
+    LPMCI_OVLY_OPEN_PARMS= LPMCI_OVLY_OPEN_PARMSW;
+%ELSE
+    MCI_OVLY_OPEN_PARMS  = MCI_OVLY_OPEN_PARMSA;
+    PMCI_OVLY_OPEN_PARMS = PMCI_OVLY_OPEN_PARMSA;
+    LPMCI_OVLY_OPEN_PARMS= LPMCI_OVLY_OPEN_PARMSA;
+%END
+
+    MCI_OVLY_WINDOW_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			hWnd           : HWND;
+			nCmdShow       : UINT;
+			lpstrText      : LPCSTR;
+		END;
+    PMCI_OVLY_WINDOW_PARMSA= POINTER TO MCI_OVLY_WINDOW_PARMSA;
+    LPMCI_OVLY_WINDOW_PARMSA= PMCI_OVLY_WINDOW_PARMSA;
+
+    MCI_OVLY_WINDOW_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			hWnd           : HWND;
+			nCmdShow       : UINT;
+			lpstrText      : LPCWSTR;
+		END;
+    PMCI_OVLY_WINDOW_PARMSW= POINTER TO MCI_OVLY_WINDOW_PARMSW;
+    LPMCI_OVLY_WINDOW_PARMSW= PMCI_OVLY_WINDOW_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_OVLY_WINDOW_PARMS= MCI_OVLY_WINDOW_PARMSW;
+    PMCI_OVLY_WINDOW_PARMS= PMCI_OVLY_WINDOW_PARMSW;
+    LPMCI_OVLY_WINDOW_PARMS= LPMCI_OVLY_WINDOW_PARMSW;
+%ELSE
+    MCI_OVLY_WINDOW_PARMS= MCI_OVLY_WINDOW_PARMSA;
+    PMCI_OVLY_WINDOW_PARMS= PMCI_OVLY_WINDOW_PARMSA;
+    LPMCI_OVLY_WINDOW_PARMS= LPMCI_OVLY_WINDOW_PARMSA;
+%END
+
+
+    MCI_OVLY_RECT_PARMS =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			rc             : RECT;
+		END;
+    PMCI_OVLY_RECT_PARMS = POINTER TO MCI_OVLY_RECT_PARMS;
+    LPMCI_OVLY_RECT_PARMS= PMCI_OVLY_RECT_PARMS;
+
+    MCI_OVLY_SAVE_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCSTR;
+			rc             : RECT;
+		END;
+    PMCI_OVLY_SAVE_PARMSA= POINTER TO MCI_OVLY_SAVE_PARMSA;
+    LPMCI_OVLY_SAVE_PARMSA= PMCI_OVLY_SAVE_PARMSA;
+
+    MCI_OVLY_SAVE_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCWSTR;
+			rc             : RECT;
+		END;
+    PMCI_OVLY_SAVE_PARMSW= POINTER TO MCI_OVLY_SAVE_PARMSW;
+    LPMCI_OVLY_SAVE_PARMSW= PMCI_OVLY_SAVE_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_OVLY_SAVE_PARMS  = MCI_OVLY_SAVE_PARMSW;
+    PMCI_OVLY_SAVE_PARMS = PMCI_OVLY_SAVE_PARMSW;
+    LPMCI_OVLY_SAVE_PARMS= LPMCI_OVLY_SAVE_PARMSW;
+%ELSE
+    MCI_OVLY_SAVE_PARMS  = MCI_OVLY_SAVE_PARMSA;
+    PMCI_OVLY_SAVE_PARMS = PMCI_OVLY_SAVE_PARMSA;
+    LPMCI_OVLY_SAVE_PARMS= LPMCI_OVLY_SAVE_PARMSA;
+%END
+
+    MCI_OVLY_LOAD_PARMSA =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCSTR;
+			rc             : RECT;
+		END;
+    PMCI_OVLY_LOAD_PARMSA= POINTER TO MCI_OVLY_LOAD_PARMSA;
+    LPMCI_OVLY_LOAD_PARMSA= PMCI_OVLY_LOAD_PARMSA;
+
+    MCI_OVLY_LOAD_PARMSW =
+		RECORD
+			dwCallback     : DWORD_PTR;
+			lpfilename     : LPCWSTR;
+			rc             : RECT;
+		END;
+    PMCI_OVLY_LOAD_PARMSW= POINTER TO MCI_OVLY_LOAD_PARMSW;
+    LPMCI_OVLY_LOAD_PARMSW= PMCI_OVLY_LOAD_PARMSW;
+
+%IF UNICODE %THEN
+    MCI_OVLY_LOAD_PARMS  = MCI_OVLY_LOAD_PARMSW;
+    PMCI_OVLY_LOAD_PARMS = PMCI_OVLY_LOAD_PARMSW;
+    LPMCI_OVLY_LOAD_PARMS= LPMCI_OVLY_LOAD_PARMSW;
+%ELSE
+    MCI_OVLY_LOAD_PARMS  = MCI_OVLY_LOAD_PARMSA;
+    PMCI_OVLY_LOAD_PARMS = PMCI_OVLY_LOAD_PARMSA;
+    LPMCI_OVLY_LOAD_PARMS= LPMCI_OVLY_LOAD_PARMSA;
+%END
+
+CONST
+    CAPS1                = 94;
+    C1_TRANSPARENT       = 00001h;
+    NEWTRANSPARENT       = 3;
+    QUERYROPSUPPORT      = 40;
+    SELECTDIB            = 41;
+    SC_SCREENSAVE        = 0F140h;
+
+TYPE
+    HMIXEROBJ           = POINTER TO RECORD END;
+    LPHMIXEROBJ         = POINTER TO HMIXEROBJ;
+
+    HMIXER              = POINTER TO RECORD END;
+    LPHMIXER            = POINTER TO HMIXER;
+
+CONST
+    MIXER_SHORT_NAME_CHARS      = 16;
+    MIXER_LONG_NAME_CHARS       = 64;
+
+    MIXERR_INVALLINE            = MIXERR_BASE + 0;
+    MIXERR_INVALCONTROL         = MIXERR_BASE + 1;
+    MIXERR_INVALVALUE           = MIXERR_BASE + 2;
+    MIXERR_LASTERROR            = MIXERR_BASE + 2;
+
+    MIXER_OBJECTF_HANDLE        = 080000000h;
+    MIXER_OBJECTF_MIXER         = 000000000h;
+    MIXER_OBJECTF_HMIXER        = MIXER_OBJECTF_HANDLE BOR
+                                  MIXER_OBJECTF_MIXER;
+    MIXER_OBJECTF_WAVEOUT       = 010000000h;
+    MIXER_OBJECTF_HWAVEOUT      = MIXER_OBJECTF_HANDLE BOR
+                                  MIXER_OBJECTF_WAVEOUT;
+    MIXER_OBJECTF_WAVEIN        = 020000000h;
+    MIXER_OBJECTF_HWAVEIN       = MIXER_OBJECTF_HANDLE BOR
+                                  MIXER_OBJECTF_WAVEIN;
+    MIXER_OBJECTF_MIDIOUT       = 030000000h;
+    MIXER_OBJECTF_HMIDIOUT      = MIXER_OBJECTF_HANDLE BOR
+                                  MIXER_OBJECTF_MIDIOUT;
+    MIXER_OBJECTF_MIDIIN        = 040000000h;
+    MIXER_OBJECTF_HMIDIIN       = MIXER_OBJECTF_HANDLE BOR
+                                  MIXER_OBJECTF_MIDIIN;
+    MIXER_OBJECTF_AUX           = 050000000h;
+
+PROCEDURE mixerGetNumDevs() : UINT;
+
+
+TYPE
+    MIXERCAPSA =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN-1] OF ACHAR;
+			fdwSupport     : DWORD;
+			cDestinations  : DWORD;
+		END;
+    PMIXERCAPSA           = POINTER TO MIXERCAPSA;
+    LPMIXERCAPSA          = PMIXERCAPSA;
+
+    MIXERCAPSW =
+		RECORD
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN-1] OF UCHAR;
+			fdwSupport     : DWORD;
+			cDestinations  : DWORD;
+		END;
+    PMIXERCAPSW           = POINTER TO MIXERCAPSW;
+    LPMIXERCAPSW          = PMIXERCAPSW;
+
+%IF UNICODE %THEN
+    MIXERCAPS          = MIXERCAPSW;
+    PMIXERCAPS           = PMIXERCAPSW;
+    LPMIXERCAPS          = LPMIXERCAPSW;
+%ELSE
+    MIXERCAPS          = MIXERCAPSA;
+    PMIXERCAPS           = PMIXERCAPSA;
+    LPMIXERCAPS          = LPMIXERCAPSA;
+%END
+
+PROCEDURE mixerGetDevCapsA(uMxId : UINT_PTR;
+                          pmxcaps : LPMIXERCAPSA;
+                          cbmxcaps : UINT) : MMRESULT;
+
+PROCEDURE mixerGetDevCapsW(uMxId : UINT_PTR;
+                          pmxcaps : LPMIXERCAPSW;
+                          cbmxcaps : UINT) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE mixerGetDevCaps = mixerGetDevCapsW;
+%ELSE
+PROCEDURE mixerGetDevCaps = mixerGetDevCapsA;
+%END
+
+PROCEDURE mixerOpen(phmx : LPHMIXER;
+                    uMxId : UINT;
+                    dwCallback : DWORD_PTR;
+                    dwInstance : DWORD_PTR;
+                    fdwOpen : DWORD) : MMRESULT;
+
+PROCEDURE mixerClose(hmx : HMIXER) : MMRESULT;
+
+PROCEDURE mixerMessage(hmx : HMIXER;
+                       uMsg : UINT;
+                       dwParam1 : DWORD_PTR;
+                       dwParam2 : DWORD_PTR) : DWORD;
+
+
+TYPE
+    TargetStructA =
+		RECORD
+			dwType         : DWORD;
+			dwDeviceID     : DWORD;
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN-1] OF ACHAR;
+		END;
+
+    MIXERLINEA =
+		RECORD
+			cbStruct       : DWORD;
+			dwDestination  : DWORD;
+			dwSource       : DWORD;
+			dwLineID       : DWORD;
+			fdwLine        : DWORD;
+			dwUser         : DWORD_PTR;
+			dwComponentType: DWORD;
+			cChannels      : DWORD;
+			cConnections   : DWORD;
+			cControls      : DWORD;
+			szShortName    : ARRAY [0..MIXER_SHORT_NAME_CHARS - 1] OF ACHAR;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF ACHAR;
+			Target         : TargetStructA;
+		END;
+    PMIXERLINEA           = POINTER TO MIXERLINEA;
+    LPMIXERLINEA          = PMIXERLINEA;
+
+    TargetStructW =
+		RECORD
+			dwType         : DWORD;
+			dwDeviceID     : DWORD;
+			wMid           : WORD;
+			wPid           : WORD;
+			vDriverVersion : MMVERSION;
+			szPname        : ARRAY [0..MAXPNAMELEN-1] OF UCHAR;
+		END;
+
+    MIXERLINEW =
+		RECORD
+			cbStruct       : DWORD;
+			dwDestination  : DWORD;
+			dwSource       : DWORD;
+			dwLineID       : DWORD;
+			fdwLine        : DWORD;
+			dwUser         : DWORD_PTR;
+			dwComponentType: DWORD;
+			cChannels      : DWORD;
+			cConnections   : DWORD;
+			cControls      : DWORD;
+			szShortName    : ARRAY [0..MIXER_SHORT_NAME_CHARS - 1] OF UCHAR;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF UCHAR;
+			Target         : TargetStructW;
+		END;
+    PMIXERLINEW           = POINTER TO MIXERLINEW;
+    LPMIXERLINEW          = PMIXERLINEW;
+
+%IF UNICODE %THEN
+    MIXERLINE          = MIXERLINEW;
+    PMIXERLINE         = PMIXERLINEW;
+    LPMIXERLINE        = LPMIXERLINEW;
+%ELSE
+    MIXERLINE          = MIXERLINEA;
+    PMIXERLINE         = PMIXERLINEA;
+    LPMIXERLINE        = LPMIXERLINEA;
+%END
+
+
+CONST
+    MIXERLINE_LINEF_ACTIVE              = 000000001h;
+    MIXERLINE_LINEF_DISCONNECTED        = 000008000h;
+    MIXERLINE_LINEF_SOURCE              = 080000000h;
+    MIXERLINE_COMPONENTTYPE_DST_FIRST   = 000000000h;
+
+    MIXERLINE_COMPONENTTYPE_DST_UNDEFINED       = MIXERLINE_COMPONENTTYPE_DST_FIRST + 0;
+    MIXERLINE_COMPONENTTYPE_DST_DIGITAL         = MIXERLINE_COMPONENTTYPE_DST_FIRST + 1;
+    MIXERLINE_COMPONENTTYPE_DST_LINE            = MIXERLINE_COMPONENTTYPE_DST_FIRST + 2;
+    MIXERLINE_COMPONENTTYPE_DST_MONITOR         = MIXERLINE_COMPONENTTYPE_DST_FIRST + 3;
+    MIXERLINE_COMPONENTTYPE_DST_SPEAKERS        = MIXERLINE_COMPONENTTYPE_DST_FIRST + 4;
+    MIXERLINE_COMPONENTTYPE_DST_HEADPHONES      = MIXERLINE_COMPONENTTYPE_DST_FIRST + 5;
+    MIXERLINE_COMPONENTTYPE_DST_TELEPHONE       = MIXERLINE_COMPONENTTYPE_DST_FIRST + 6;
+    MIXERLINE_COMPONENTTYPE_DST_WAVEIN          = MIXERLINE_COMPONENTTYPE_DST_FIRST + 7;
+    MIXERLINE_COMPONENTTYPE_DST_VOICEIN         = MIXERLINE_COMPONENTTYPE_DST_FIRST + 8;
+    MIXERLINE_COMPONENTTYPE_DST_LAST            = MIXERLINE_COMPONENTTYPE_DST_FIRST + 8;
+    MIXERLINE_COMPONENTTYPE_SRC_FIRST           = 000001000h;
+    MIXERLINE_COMPONENTTYPE_SRC_UNDEFINED       = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 0;
+    MIXERLINE_COMPONENTTYPE_SRC_DIGITAL         = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 1;
+    MIXERLINE_COMPONENTTYPE_SRC_LINE            = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 2;
+    MIXERLINE_COMPONENTTYPE_SRC_MICROPHONE      = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 3;
+    MIXERLINE_COMPONENTTYPE_SRC_SYNTHESIZER     = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 4;
+    MIXERLINE_COMPONENTTYPE_SRC_COMPACTDISC     = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 5;
+    MIXERLINE_COMPONENTTYPE_SRC_TELEPHONE       = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 6;
+    MIXERLINE_COMPONENTTYPE_SRC_PCSPEAKER       = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 7;
+    MIXERLINE_COMPONENTTYPE_SRC_WAVEOUT         = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 8;
+    MIXERLINE_COMPONENTTYPE_SRC_AUXILIARY       = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 9;
+    MIXERLINE_COMPONENTTYPE_SRC_ANALOG          = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 10;
+    MIXERLINE_COMPONENTTYPE_SRC_LAST            = MIXERLINE_COMPONENTTYPE_SRC_FIRST + 10;
+    MIXERLINE_TARGETTYPE_UNDEFINED      = 0;
+    MIXERLINE_TARGETTYPE_WAVEOUT        = 1;
+    MIXERLINE_TARGETTYPE_WAVEIN         = 2;
+    MIXERLINE_TARGETTYPE_MIDIOUT        = 3;
+    MIXERLINE_TARGETTYPE_MIDIIN         = 4;
+    MIXERLINE_TARGETTYPE_AUX            = 5;
+
+PROCEDURE mixerGetLineInfoA(hmxobj : HMIXEROBJ;
+                           pmxl : LPMIXERLINEA;
+                           fdwInfo : DWORD) : MMRESULT;
+
+PROCEDURE mixerGetLineInfoW(hmxobj : HMIXEROBJ;
+                           pmxl : LPMIXERLINEW;
+                           fdwInfo : DWORD) : MMRESULT;
+%IF UNICODE %THEN
+PROCEDURE mixerGetLineInfo = mixerGetLineInfoW;
+%ELSE
+PROCEDURE mixerGetLineInfo = mixerGetLineInfoA;
+%END
+
+CONST
+    MIXER_GETLINEINFOF_DESTINATION      = 000000000h;
+    MIXER_GETLINEINFOF_SOURCE           = 000000001h;
+    MIXER_GETLINEINFOF_LINEID           = 000000002h;
+    MIXER_GETLINEINFOF_COMPONENTTYPE    = 000000003h;
+    MIXER_GETLINEINFOF_TARGETTYPE       = 000000004h;
+    MIXER_GETLINEINFOF_QUERYMASK        = 00000000Fh;
+
+PROCEDURE mixerGetID(hmxobj : HMIXEROBJ;
+                     VAR puMxId : UINT;
+                     fdwId : DWORD) : MMRESULT;
+
+TYPE
+    Bounds =
+		RECORD
+			CASE : CARDINAL OF
+			  0 :
+				  lMinimum       : LONG;
+				  lMaximum       : LONG;
+			|
+			  1 :
+				  dwMinimum      : DWORD;
+				  dwMaximum      : DWORD;
+			|
+			  2 : dwReserved : ARRAY [0..6 - 1] OF DWORD;
+			ELSE
+			END;
+		END;
+
+    Metrics =
+		RECORD
+			CASE : CARDINAL OF
+			  0 : cSteps     : DWORD;
+			|
+			  1 : cbCustomData: DWORD;
+			|
+			  2 : dwReserved : ARRAY [0..6 - 1] OF DWORD;
+			ELSE
+			END;
+		END;
+
+    MIXERCONTROLA =
+		RECORD
+			cbStruct       : DWORD;
+			dwControlID    : DWORD;
+			dwControlType  : DWORD;
+			fdwControl     : DWORD;
+			cMultipleItems : DWORD;
+			szShortName    : ARRAY [0..MIXER_SHORT_NAME_CHARS - 1] OF ACHAR;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF ACHAR;
+			a              : Bounds;
+			b              : Metrics;
+		END;
+    PMIXERCONTROLA        = POINTER TO MIXERCONTROLA;
+    LPMIXERCONTROLA       = PMIXERCONTROLA;
+
+    MIXERCONTROLW =
+		RECORD
+			cbStruct       : DWORD;
+			dwControlID    : DWORD;
+			dwControlType  : DWORD;
+			fdwControl     : DWORD;
+			cMultipleItems : DWORD;
+			szShortName    : ARRAY [0..MIXER_SHORT_NAME_CHARS - 1] OF UCHAR;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF UCHAR;
+			a              : Bounds;
+			b              : Metrics;
+		END;
+    PMIXERCONTROLW        = POINTER TO MIXERCONTROLW;
+    LPMIXERCONTROLW       = PMIXERCONTROLW;
+
+%IF UNICODE %THEN
+    MIXERCONTROL         = MIXERCONTROLW;
+    PMIXERCONTROL        = PMIXERCONTROLW;
+    LPMIXERCONTROL       = LPMIXERCONTROLW;
+%ELSE
+    MIXERCONTROL         = MIXERCONTROLA;
+    PMIXERCONTROL        = PMIXERCONTROLA;
+    LPMIXERCONTROL       = LPMIXERCONTROLA;
+%END
+
+CONST
+    MIXERCONTROL_CONTROLF_UNIFORM       = 000000001h;
+    MIXERCONTROL_CONTROLF_MULTIPLE      = 000000002h;
+    MIXERCONTROL_CONTROLF_DISABLED      = 080000000h;
+    MIXERCONTROL_CT_CLASS_MASK          = 0F0000000h;
+    MIXERCONTROL_CT_CLASS_CUSTOM        = 000000000h;
+    MIXERCONTROL_CT_CLASS_METER         = 010000000h;
+    MIXERCONTROL_CT_CLASS_SWITCH        = 020000000h;
+    MIXERCONTROL_CT_CLASS_NUMBER        = 030000000h;
+    MIXERCONTROL_CT_CLASS_SLIDER        = 040000000h;
+    MIXERCONTROL_CT_CLASS_FADER         = 050000000h;
+    MIXERCONTROL_CT_CLASS_TIME          = 060000000h;
+    MIXERCONTROL_CT_CLASS_LIST          = 070000000h;
+    MIXERCONTROL_CT_SUBCLASS_MASK       = 00F000000h;
+    MIXERCONTROL_CT_SC_SWITCH_BOOLEAN   = 000000000h;
+    MIXERCONTROL_CT_SC_SWITCH_BUTTON    = 001000000h;
+    MIXERCONTROL_CT_SC_METER_POLLED     = 000000000h;
+    MIXERCONTROL_CT_SC_TIME_MICROSECS   = 000000000h;
+    MIXERCONTROL_CT_SC_TIME_MILLISECS   = 001000000h;
+    MIXERCONTROL_CT_SC_LIST_SINGLE      = 000000000h;
+    MIXERCONTROL_CT_SC_LIST_MULTIPLE    = 001000000h;
+    MIXERCONTROL_CT_UNITS_MASK          = 000FF0000h;
+    MIXERCONTROL_CT_UNITS_CUSTOM        = 000000000h;
+    MIXERCONTROL_CT_UNITS_BOOLEAN       = 000010000h;
+    MIXERCONTROL_CT_UNITS_SIGNED        = 000020000h;
+    MIXERCONTROL_CT_UNITS_UNSIGNED      = 000030000h;
+    MIXERCONTROL_CT_UNITS_DECIBELS      = 000040000h;
+    MIXERCONTROL_CT_UNITS_PERCENT       = 000050000h;
+    MIXERCONTROL_CONTROLTYPE_CUSTOM             = MIXERCONTROL_CT_CLASS_CUSTOM BOR
+                                                  MIXERCONTROL_CT_UNITS_CUSTOM;
+    MIXERCONTROL_CONTROLTYPE_BOOLEANMETER       = MIXERCONTROL_CT_CLASS_METER BOR
+                                                  MIXERCONTROL_CT_SC_METER_POLLED BOR
+                                                  MIXERCONTROL_CT_UNITS_BOOLEAN;
+    MIXERCONTROL_CONTROLTYPE_SIGNEDMETER        = MIXERCONTROL_CT_CLASS_METER BOR
+                                                  MIXERCONTROL_CT_SC_METER_POLLED BOR
+                                                  MIXERCONTROL_CT_UNITS_SIGNED;
+    MIXERCONTROL_CONTROLTYPE_PEAKMETER          = MIXERCONTROL_CONTROLTYPE_SIGNEDMETER + 1;
+    MIXERCONTROL_CONTROLTYPE_UNSIGNEDMETER      = MIXERCONTROL_CT_CLASS_METER BOR
+                                                  MIXERCONTROL_CT_SC_METER_POLLED BOR
+                                                  MIXERCONTROL_CT_UNITS_UNSIGNED;
+    MIXERCONTROL_CONTROLTYPE_BOOLEAN            = MIXERCONTROL_CT_CLASS_SWITCH BOR
+                                                  MIXERCONTROL_CT_SC_SWITCH_BOOLEAN BOR
+                                                  MIXERCONTROL_CT_UNITS_BOOLEAN;
+    MIXERCONTROL_CONTROLTYPE_ONOFF              = MIXERCONTROL_CONTROLTYPE_BOOLEAN + 1;
+    MIXERCONTROL_CONTROLTYPE_MUTE               = MIXERCONTROL_CONTROLTYPE_BOOLEAN + 2;
+    MIXERCONTROL_CONTROLTYPE_MONO               = MIXERCONTROL_CONTROLTYPE_BOOLEAN + 3;
+    MIXERCONTROL_CONTROLTYPE_LOUDNESS           = MIXERCONTROL_CONTROLTYPE_BOOLEAN + 4;
+    MIXERCONTROL_CONTROLTYPE_STEREOENH          = MIXERCONTROL_CONTROLTYPE_BOOLEAN + 5;
+    MIXERCONTROL_CONTROLTYPE_BUTTON     = MIXERCONTROL_CT_CLASS_SWITCH BOR
+                                          MIXERCONTROL_CT_SC_SWITCH_BUTTON BOR
+                                          MIXERCONTROL_CT_UNITS_BOOLEAN;
+    MIXERCONTROL_CONTROLTYPE_DECIBELS   = MIXERCONTROL_CT_CLASS_NUMBER BOR
+                                          MIXERCONTROL_CT_UNITS_DECIBELS;
+    MIXERCONTROL_CONTROLTYPE_SIGNED     = MIXERCONTROL_CT_CLASS_NUMBER BOR
+                                          MIXERCONTROL_CT_UNITS_SIGNED;
+    MIXERCONTROL_CONTROLTYPE_UNSIGNED   = MIXERCONTROL_CT_CLASS_NUMBER BOR
+                                          MIXERCONTROL_CT_UNITS_UNSIGNED;
+    MIXERCONTROL_CONTROLTYPE_PERCENT    = MIXERCONTROL_CT_CLASS_NUMBER BOR
+                                          MIXERCONTROL_CT_UNITS_PERCENT;
+    MIXERCONTROL_CONTROLTYPE_SLIDER     = MIXERCONTROL_CT_CLASS_SLIDER BOR
+                                          MIXERCONTROL_CT_UNITS_SIGNED;
+    MIXERCONTROL_CONTROLTYPE_PAN        = MIXERCONTROL_CONTROLTYPE_SLIDER + 1;
+    MIXERCONTROL_CONTROLTYPE_QSOUNDPAN  = MIXERCONTROL_CONTROLTYPE_SLIDER + 2;
+    MIXERCONTROL_CONTROLTYPE_FADER      = MIXERCONTROL_CT_CLASS_FADER BOR
+                                          MIXERCONTROL_CT_UNITS_UNSIGNED;
+    MIXERCONTROL_CONTROLTYPE_VOLUME     = MIXERCONTROL_CONTROLTYPE_FADER + 1;
+    MIXERCONTROL_CONTROLTYPE_BASS       = MIXERCONTROL_CONTROLTYPE_FADER + 2;
+    MIXERCONTROL_CONTROLTYPE_TREBLE     = MIXERCONTROL_CONTROLTYPE_FADER + 3;
+    MIXERCONTROL_CONTROLTYPE_EQUALIZER  = MIXERCONTROL_CONTROLTYPE_FADER + 4;
+    MIXERCONTROL_CONTROLTYPE_SINGLESELECT= MIXERCONTROL_CT_CLASS_LIST BOR
+                                           MIXERCONTROL_CT_SC_LIST_SINGLE BOR
+                                           MIXERCONTROL_CT_UNITS_BOOLEAN;
+    MIXERCONTROL_CONTROLTYPE_MUX        = MIXERCONTROL_CONTROLTYPE_SINGLESELECT + 1;
+    MIXERCONTROL_CONTROLTYPE_MULTIPLESELECT= MIXERCONTROL_CT_CLASS_LIST BOR
+                                             MIXERCONTROL_CT_SC_LIST_MULTIPLE BOR
+                                             MIXERCONTROL_CT_UNITS_BOOLEAN;
+    MIXERCONTROL_CONTROLTYPE_MIXER      = MIXERCONTROL_CONTROLTYPE_MULTIPLESELECT + 1;
+    MIXERCONTROL_CONTROLTYPE_MICROTIME  = MIXERCONTROL_CT_CLASS_TIME BOR
+                                          MIXERCONTROL_CT_SC_TIME_MICROSECS BOR
+                                          MIXERCONTROL_CT_UNITS_UNSIGNED;
+    MIXERCONTROL_CONTROLTYPE_MILLITIME  = MIXERCONTROL_CT_CLASS_TIME BOR
+                                          MIXERCONTROL_CT_SC_TIME_MILLISECS BOR
+                                          MIXERCONTROL_CT_UNITS_UNSIGNED;
+
+TYPE
+    Z_AAAAF = RECORD  END;
+
+    MIXERLINECONTROLSA =
+		RECORD
+			cbStruct       : DWORD;
+			dwLineID       : DWORD;
+			CASE : CARDINAL OF
+			0 : dwControlID: DWORD;
+			|
+			1 : dwControlType: DWORD;
+			ELSE
+			END;
+			cControls      : DWORD;
+			cbmxctrl       : DWORD;
+			pamxctrl       : LPMIXERCONTROLA;
+		END;
+    PMIXERLINECONTROLSA   = POINTER TO MIXERLINECONTROLSA;
+    LPMIXERLINECONTROLSA  = PMIXERLINECONTROLSA;
+
+    MIXERLINECONTROLSW =
+		RECORD
+			cbStruct       : DWORD;
+			dwLineID       : DWORD;
+			CASE : CARDINAL OF
+			0 : dwControlID: DWORD;
+			|
+			1 : dwControlType: DWORD;
+			ELSE
+			END;
+			cControls      : DWORD;
+			cbmxctrl       : DWORD;
+			pamxctrl       : LPMIXERCONTROLW;
+		END;
+    PMIXERLINECONTROLSW   = POINTER TO MIXERLINECONTROLSW;
+    LPMIXERLINECONTROLSW  = PMIXERLINECONTROLSW;
+
+%IF UNICODE %THEN
+    MIXERLINECONTROLS   = MIXERLINECONTROLSW;
+    PMIXERLINECONTROLS  = PMIXERLINECONTROLSW;
+    LPMIXERLINECONTROLS = LPMIXERLINECONTROLSW;
+%ELSE
+    MIXERLINECONTROLS   = MIXERLINECONTROLSA;
+    PMIXERLINECONTROLS  = PMIXERLINECONTROLSA;
+    LPMIXERLINECONTROLS = LPMIXERLINECONTROLSA;
+%END
+
+PROCEDURE mixerGetLineControlsA(hmxobj : HMIXEROBJ;
+                               pmxlc : LPMIXERLINECONTROLSA;
+                               fdwControls : DWORD) : MMRESULT;
+
+PROCEDURE mixerGetLineControlsW(hmxobj : HMIXEROBJ;
+                               pmxlc : LPMIXERLINECONTROLSW;
+                               fdwControls : DWORD) : MMRESULT;
+%IF UNICODE %THEN
+PROCEDURE mixerGetLineControls = mixerGetLineControlsW;
+%ELSE
+PROCEDURE mixerGetLineControls = mixerGetLineControlsA;
+%END
+
+CONST
+    MIXER_GETLINECONTROLSF_ALL          = 000000000h;
+    MIXER_GETLINECONTROLSF_ONEBYID      = 000000001h;
+    MIXER_GETLINECONTROLSF_ONEBYTYPE    = 000000002h;
+    MIXER_GETLINECONTROLSF_QUERYMASK    = 00000000Fh;
+
+TYPE
+    Z_AAAAG = RECORD END;
+
+    MIXERCONTROLDETAILS =
+		RECORD
+			cbStruct       : DWORD;
+			dwControlID    : DWORD;
+			cChannels      : DWORD;
+			CASE : CARDINAL OF
+			0 : hwndOwner  : HWND;
+			|
+			1 : cMultipleItems: DWORD;
+			ELSE
+			END;
+			cbDetails      : DWORD;
+			paDetails      : LPVOID;
+		END;
+    PMIXERCONTROLDETAILS = POINTER TO MIXERCONTROLDETAILS;
+    LPMIXERCONTROLDETAILS= PMIXERCONTROLDETAILS;
+
+    MIXERCONTROLDETAILS_LISTTEXTA =
+		RECORD
+			dwParam1       : DWORD;
+			dwParam2       : DWORD;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF ACHAR;
+		END;
+    PMIXERCONTROLDETAILS_LISTTEXTA = POINTER TO MIXERCONTROLDETAILS_LISTTEXTA;
+    LPMIXERCONTROLDETAILS_LISTTEXTA= PMIXERCONTROLDETAILS_LISTTEXTA;
+
+    MIXERCONTROLDETAILS_LISTTEXTW =
+		RECORD
+			dwParam1       : DWORD;
+			dwParam2       : DWORD;
+			szName         : ARRAY [0..MIXER_LONG_NAME_CHARS - 1] OF UCHAR;
+		END;
+    PMIXERCONTROLDETAILS_LISTTEXTW = POINTER TO MIXERCONTROLDETAILS_LISTTEXTW;
+    LPMIXERCONTROLDETAILS_LISTTEXTW= PMIXERCONTROLDETAILS_LISTTEXTW;
+
+%IF UNICODE %THEN
+    MIXERCONTROLDETAILS_LISTTEXT        = MIXERCONTROLDETAILS_LISTTEXTW;
+    PMIXERCONTROLDETAILS_LISTTEXT       = PMIXERCONTROLDETAILS_LISTTEXTW;
+    LPMIXERCONTROLDETAILS_LISTTEXT      = LPMIXERCONTROLDETAILS_LISTTEXTW;
+%ELSE
+    MIXERCONTROLDETAILS_LISTTEXT        = MIXERCONTROLDETAILS_LISTTEXTA;
+    PMIXERCONTROLDETAILS_LISTTEXT       = PMIXERCONTROLDETAILS_LISTTEXTA;
+    LPMIXERCONTROLDETAILS_LISTTEXT      = LPMIXERCONTROLDETAILS_LISTTEXTA;
+%END
+
+    MIXERCONTROLDETAILS_BOOLEAN =
+		RECORD
+			fValue         : LONG;
+		END;
+    PMIXERCONTROLDETAILS_BOOLEAN = POINTER TO MIXERCONTROLDETAILS_BOOLEAN;
+    LPMIXERCONTROLDETAILS_BOOLEAN= PMIXERCONTROLDETAILS_BOOLEAN;
+
+    MIXERCONTROLDETAILS_SIGNED =
+		RECORD
+			lValue         : LONG;
+		END;
+    PMIXERCONTROLDETAILS_SIGNED = POINTER TO MIXERCONTROLDETAILS_SIGNED;
+    LPMIXERCONTROLDETAILS_SIGNED= PMIXERCONTROLDETAILS_SIGNED;
+
+    MIXERCONTROLDETAILS_UNSIGNED =
+		RECORD
+			dwValue        : DWORD;
+		END;
+    PMIXERCONTROLDETAILS_UNSIGNED = POINTER TO MIXERCONTROLDETAILS_UNSIGNED;
+    LPMIXERCONTROLDETAILS_UNSIGNED= PMIXERCONTROLDETAILS_UNSIGNED;
+
+
+PROCEDURE mixerGetControlDetailsA(hmxobj : HMIXEROBJ;
+                                 pmxcd : LPMIXERCONTROLDETAILS;
+                                 fdwDetails : DWORD) : MMRESULT;
+
+PROCEDURE mixerGetControlDetailsW(hmxobj : HMIXEROBJ;
+                                 pmxcd : LPMIXERCONTROLDETAILS;
+                                 fdwDetails : DWORD) : MMRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE mixerGetControlDetails = mixerGetControlDetailsW;
+%ELSE
+PROCEDURE mixerGetControlDetails = mixerGetControlDetailsA;
+%END
+
+CONST
+    MIXER_GETCONTROLDETAILSF_VALUE      = 000000000h;
+    MIXER_GETCONTROLDETAILSF_LISTTEXT   = 000000001h;
+    MIXER_GETCONTROLDETAILSF_QUERYMASK  = 00000000Fh;
+
+PROCEDURE mixerSetControlDetails(hmxobj : HMIXEROBJ;
+                                 pmxcd : LPMIXERCONTROLDETAILS;
+                                 fdwDetails : DWORD) : MMRESULT;
+
+CONST
+    MIXER_SETCONTROLDETAILSF_VALUE      = 000000000h;
+    MIXER_SETCONTROLDETAILSF_CUSTOM     = 000000001h;
+    MIXER_SETCONTROLDETAILSF_QUERYMASK  = 00000000Fh;
+
+
+<*/CALLS:StonyBrook*>
+PROCEDURE DIBINDEX(a : INTEGER): INTEGER;
+PROCEDURE MCI_MSF_MINUTE(msf : DWORD) : BYTE;
+PROCEDURE MCI_MSF_SECOND(msf : DWORD) : BYTE;
+PROCEDURE MCI_MSF_FRAME(msf : DWORD) : BYTE;
+PROCEDURE MCI_MAKE_MSF(m, s, f : INTEGER): DWORD;
+PROCEDURE MCI_TMSF_TRACK(tmsf : DWORD) : BYTE;
+PROCEDURE MCI_TMSF_MINUTE(tmsf : DWORD):BYTE;
+PROCEDURE MCI_TMSF_SECOND(tmsf : DWORD):BYTE;
+PROCEDURE MCI_TMSF_FRAME(tmsf : DWORD):BYTE;
+PROCEDURE MCI_MAKE_TMSF(t, m, s, f : INTEGER):DWORD;
+PROCEDURE MCI_HMS_HOUR(hms : DWORD):BYTE;
+PROCEDURE MCI_HMS_MINUTE(hms : DWORD):BYTE;
+PROCEDURE MCI_HMS_SECOND(hms : DWORD):BYTE;
+PROCEDURE MCI_MAKE_HMS(h, m, s : INTEGER):DWORD;
+
+CONST
+    FOURCC_RIFF         = 1179011410;
+    FOURCC_LIST         = 1414744396;
+    FOURCC_DOS          = 542330692;
+    FOURCC_MEM          = 541934925;
+
+PROCEDURE mmioFOURCC(c0, c1, c2, c3 : ACHAR) : DWORD;
+
+PROCEDURE MAKEFOURCC(c0, c1, c2, c3 : ACHAR) : DWORD;
+
+PROCEDURE sndAlias(c1, c2 : ACHAR) : DWORD;
+
+CONST
+    SND_ALIAS_SYSTEMASTERISK    = 10835;
+    SND_ALIAS_SYSTEMQUESTION    = 16211;
+    SND_ALIAS_SYSTEMHAND        = 18515;
+    SND_ALIAS_SYSTEMEXIT        = 17747;
+    SND_ALIAS_SYSTEMSTART       = 21331;
+    SND_ALIAS_SYSTEMWELCOME     = 22355;
+    SND_ALIAS_SYSTEMEXCLAMATION = 8531;
+    SND_ALIAS_SYSTEMDEFAULT     = 17491;
+
+
+PROCEDURE MEVT_EVENTTYPE(x : DWORD) : DWORD;
+
+PROCEDURE MEVT_EVENTPARM(x : DWORD) : DWORD;
+
+
+END MMSYSTEM.

@@ -1,0 +1,24 @@
+:TITLE Stony Brook Resource Editor Help
+:BASE resedit.hlp
+1 Stony Brook Resource Editor Help
+2 Stony Brook Resource Editor Help=IDH_1@resedit.hlp
+2 Resource Editor Help=Resource_Editor_Help@resedit.hlp
+2 Basics
+3 Basics=IDH_1@resedit.hlp
+3 Resource Editor Basics=Resource_Editor_Basics@resedit.hlp
+3 Dialog Editor Basics=Dialog_Editor_Basics@resedit.hlp
+3 Menu Editor Basics=Menu_Editor_Basics@resedit.hlp
+3 Accelerator Editor Basics=Accelerator_Editor_Basics@resedit.hlp
+3 String Editor Basics=String_Editor_Basics@resedit.hlp
+3 Bitmap Editor Basics=Bitmap_Editor_Basics@resedit.hlp
+3 Version Editor Basics=Version_Editor_Basics@resedit.hlp
+3 Keyboard Shortcuts=Keyboard_Shortcuts@resedit.hlp
+2 How To
+3 How To=IDH_1@resedit.hlp
+3 Quick Tips=Quick_Tips@resedit.hlp
+3 Using expressions in symbol files=Using_expressions_in_symbol_files@resedit.hlp
+3 Using number ranges for symbols=Using_number_ranges_for_symbols@resedit.hlp
+3 Using Help identifiers=Using_Help_identifiers@resedit.hlp
+2 Menus
+3 Menus=IDH_1@resedit.hlp
+3 Menus=Menus@resedit.hlp

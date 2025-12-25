@@ -1,0 +1,64 @@
+DEFINITION MODULE SHA256;
+(*
+  FIPS 180-2 SHA-256 secure hash algorithm
+*)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    HashLength  = 32;(*bytes, 256 bits*)
+
+    HashBlockSize   = 64;(*not useful information, exists here for the HMAC module*)
+
+TYPE
+    SHA256;
+
+PROCEDURE Create() : SHA256;
+(* create an SHA256 hash object.
+   the hash object is initialized when created.
+   only one thread at a time can use a hash object.
+*)
+
+PROCEDURE Destroy(VAR OUT hash : SHA256);
+(* destroys a previously created SHA256 hash object.
+   hash = NIL after this call.
+*)
+
+PROCEDURE Reset(hash : SHA256);
+(* resets and initializes the hash object.
+   after this you can hash a new data stream
+*)
+
+PROCEDURE HashBytes(hash : SHA256; data : ADDRESS; amount : CARDINAL);
+(* adds bytes to hash *)
+
+PROCEDURE Finalize(hash : SHA256);
+(* finalizes hash.
+   you cannot hash additional bytes after a hash has been finalized.
+*)
+
+PROCEDURE GetHash(hash : SHA256; VAR OUT data : ARRAY OF BYTE);
+(* a SHA256 hash is 32 bytes.
+   data is an open array so that you can implement a single buffer
+   large enough to hold different hashes, each of which is likely a different
+   size in bytes.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE GetString(hash : SHA256; VAR OUT str : ARRAY OF CHAR);
+(* the string returned is 64 characters long.
+   this call will Finalize the hash if it has not yet been finalized.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END SHA256.

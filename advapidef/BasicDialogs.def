@@ -1,0 +1,394 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE BasicDialogs;
+(* This module provides a host of basic dialogs common for various
+   simple tasks where it would be useful to have something that is
+   ready to go without the need for writing code.
+
+   The parent window of all dialogs is the value returned by
+   DlgShell.GetDialogParent()
+*)
+(* about threads
+   Win32 - you may use the GUI features in a fully multi threaded
+           manner.
+
+   Gtk - Only one thread, the main thread, may use the GUI features.
+*)
+<*/NOPACK*>
+
+FROM WinShell IMPORT
+    FontInfo, PrintDriverInfo;
+
+TYPE
+    MessageTypes        = (MsgInfo,
+                           MsgQuestion,
+                           MsgWarning,
+                           MsgError,(*user error*)
+                           MsgAppError,(*program error*)
+                           MsgException);
+
+    PromptListWidth     = (NormalListWidth, WideListWidth);
+
+VAR
+    MessageTitle        : ARRAY [0..79] OF CHAR;
+    (* The title bar for all basic dialogs not specifically specifying a title *)
+
+(* the parent of all basic dialogs is DlgShell.GetDialogParent() *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE MessageBox(mess : ARRAY OF CHAR; msgType : MessageTypes);
+(* displays mess in a system message box
+   the message box will have a single "ok" button
+   carriage return/line feeds are allowed in the string and are
+   correctly processed.
+   msgType determines what type of ICON and sound are used when the
+   message box is displayed.
+   The MsgException type also displays the exception address in the dialog.
+*)
+
+PROCEDURE MessageBoxId(mess : CARDINAL; msgType : MessageTypes);
+(* mess is a string resource identifier specifying the string
+   to load from the resource and display in the message box.
+   See MessageBox
+*)
+
+PROCEDURE YesNo(prompt : ARRAY OF CHAR; default : CHAR) : CHAR;
+(* displays the prompt in a message box
+   the message box will have a "yes" and "no" buttons
+   if default = "Y" then the yes button will be the default button when
+   the dialog opens otherwise the no button will be the default
+   upon return the function will return "Y" or "N"
+   "Y" is returned if the yes button is pressed
+   "N" is returned if the no button is pressed
+*)
+
+PROCEDURE YesNoId(prompt : CARDINAL; default : CHAR) : CHAR;
+(* prompt is a string resource identifier specifying the string
+   to load from the resource and display in the message box.
+   See YesNo
+*)
+
+PROCEDURE YesNoCancel(prompt : ARRAY OF CHAR; default : CHAR) : CHAR;
+(* displays the prompt in a message box
+   the message box will have a "yes", "no" and "cancel" buttons
+   if default = "Y" then the yes button will be the default button when
+   the dialog opens, if default = "N" then the no button will be the default
+   otherwise the cancel button will be the default button
+   upon return the function will return "Y", "N" or "C"
+   "Y" is returned if the yes button is pressed
+   "N" is returned if the no button is pressed
+   "C" is returned if the cancel button is pressed
+*)
+
+PROCEDURE YesNoCancelId(prompt : CARDINAL; default : CHAR) : CHAR;
+(* prompt is a string resource identifier specifying the string
+   to load from the resource and display in the message box.
+   See YesNoCancel
+*)
+
+PROCEDURE OkCancel(prompt : ARRAY OF CHAR; default : CHAR; msgType : MessageTypes) : CHAR;
+(* displays the prompt in a message box
+   the message box will have a "ok" and "cancel" buttons
+   if default = "O" then the ok button will be the default button when
+   the dialog opens otherwise the cancel button will be the default button
+   upon return the function will return "O" or "C"
+   "O" is returned if the ok button is pressed
+   "C" is returned if the cancel button is pressed
+   msgType determines what type of ICON and sound are used when the
+   message box is displayed.
+*)
+
+PROCEDURE OkCancelId(prompt : CARDINAL; default : CHAR; msgType : MessageTypes) : CHAR;
+(* prompt is a string resource identifier specifying the string
+   to load from the resource and display in the message box.
+   See OkCancel
+*)
+
+PROCEDURE OpenBusyBox(prompt : ARRAY OF CHAR) : BOOLEAN;
+(* opens a modeless dialog box.
+   A return value of FALSE signifies failure.
+   the dialog can display a single line of text, prompt, of a limited length.
+   this is generally used when your application is performing a lengthy
+   operation.
+*)
+
+PROCEDURE OpenBusyBoxId(prompt : CARDINAL) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See OpenBusyBox
+*)
+
+PROCEDURE CloseBusyBox;
+(* close a previously opened busy box dialog *)
+
+PROCEDURE PromptString(prompt : ARRAY OF CHAR; VAR INOUT response : ARRAY OF CHAR) : BOOLEAN;
+(* open a modal dialog with a single edit field and a text label
+   for the edit field contained in "prompt".
+   the string value in "response" will be preloaded into the edit field on entry.
+   RETURNs TRUE if the user clicked "OK" to close the dialog, ottherwise FALSE.
+   on return "response" contains the users entered text.
+*)
+
+PROCEDURE PromptStringId(prompt : CARDINAL; VAR INOUT response : ARRAY OF CHAR) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See PromptString
+*)
+
+PROCEDURE PromptPassword(prompt : ARRAY OF CHAR; VAR INOUT response : ARRAY OF CHAR) : BOOLEAN;
+(* same as the PromptString dialog except the text the user enters
+   will be "greeked" and not be visible to anyone to looking at the screen.
+   the string value in "response" will be preloaded into the edit field on entry.
+   RETURNs TRUE if the user clicked "OK" to close the dialog, ottherwise FALSE.
+*)
+
+PROCEDURE PromptPasswordId(prompt : CARDINAL; VAR INOUT response : ARRAY OF CHAR) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See PromptPassword
+*)
+
+PROCEDURE PromptCard(prompt : ARRAY OF CHAR;
+                     min, max : CARDINAL;
+                     allowZero : BOOLEAN;
+                     VAR INOUT response : CARDINAL) : BOOLEAN;
+(* open a modal dialog with a single edit field and a text label
+   for the edit field contained in "prompt".
+   returns TRUE if the user enters a valid number and presses OK
+   otherwise FALSE
+   the edit field is preloaded with the number in response on entry.
+   the number entered is contained in response on return of TRUE.
+   min and max provide range checking for the number entered.
+   if allowZero = TRUE then the number zero will be allowed even if outside
+   the allowed number range. This can be used to allow the user to enter a
+   "null" value.
+*)
+
+PROCEDURE PromptCardId(prompt : CARDINAL;
+                       min, max : CARDINAL;
+                       allowZero : BOOLEAN;
+                       VAR INOUT response : CARDINAL) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See PromptCard
+*)
+
+PROCEDURE PromptListStr(prompt : ARRAY OF CHAR;
+                        VAR INOUT list : ARRAY OF CHAR;
+                        listSep : CHAR;
+                        VAR INOUT selStr : ARRAY OF CHAR;
+                        listWidth : PromptListWidth) : BOOLEAN;
+(* open a modal dialog with a single list box and a text label
+   for the list field contained in prompt.
+   returns TRUE if the user selects an item in the list and presses OK,
+   or double clicks a list item.
+   otherwise FALSE is returned.
+   the item selected is contained in selStr. The value is the text of
+   the item in the list.
+   the list of items is contained in the parameter 'list'. Each item in the
+   list is separated by the character listSep. The parameter list must be
+   null terminated.
+   If on entry selStr contains a value that matches an item in the list
+   then that item will initially be selected, otherwise no item will be
+   initially selected.
+   listWidth specifies the size of the list box. Choose an appropriate size
+   depending on the length of the list item strings.
+   The list box will display a scroll bar when necessary.
+*)
+
+PROCEDURE PromptListStrId(prompt : CARDINAL;
+                          VAR INOUT list : ARRAY OF CHAR;
+                          listSep : CHAR;
+                          VAR INOUT selStr : ARRAY OF CHAR;
+                          listWidth : PromptListWidth) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See PromptListStr
+*)
+
+PROCEDURE PromptListIndex(prompt : ARRAY OF CHAR;
+                          VAR INOUT list : ARRAY OF CHAR;
+                          listSep : CHAR;
+                          VAR INOUT selIndex : CARDINAL;
+                          listWidth : PromptListWidth) : BOOLEAN;
+(* as PromptListStr except you specify the selection by position in the
+   list starting with the value zero. Therefore the first item in the
+   list has a value of zero and the second one, and so on.
+   MAX(CARDINAL) signifies no selection
+*)
+
+PROCEDURE PromptListIndexId(prompt : CARDINAL;
+                            VAR INOUT list : ARRAY OF CHAR;
+                            listSep : CHAR;
+                            VAR INOUT selIndex : CARDINAL;
+                            listWidth : PromptListWidth) : BOOLEAN;
+(* prompt identifies a string resource to retrieve the text to be
+   displayed in the dialog.
+   See PromptListIndex
+*)
+
+PROCEDURE PromptOpenFile(VAR INOUT name : ARRAY OF CHAR;
+                         filters : ARRAY OF CHAR;
+                         VAR INOUT defFilter : CARDINAL;
+                         defDir : ARRAY OF CHAR;
+                         defExt : ARRAY OF CHAR;
+                         title : ARRAY OF CHAR;
+                         createable : BOOLEAN) : BOOLEAN;
+(* Opens an operating system common dialog for opening  a file.
+   filters specifies a list of file extension filters.
+   The format for filters is as follows.
+
+   Title,null,filters,null {Title,null,filters,null} null
+
+   where filters can be one or more file filters each separated by semicolons.
+   Example...
+       assume the '|' character is the null character.
+       "Reports|*.rpt|Html|*.htm;*.html|All|*||"
+
+   defFilter = the filter to initially display, 1 based.
+               on return this is the index of the filter the user selected.
+
+   defDir = the default directory to start the dialog in
+       an empty string "" means use the current directory.
+       Mac - this parameter is not supported. the system remembers the last directory
+             used in an application.
+
+   defExt = the default file extension to use if the user does not
+       provide an extension. "" means no default extension.
+       the extension should *not* have a leading '.' character.
+
+   title = the caption text of the dialog. title can be empty "".
+       in this case the default operating system title is used.
+
+   If createable = TRUE then the file need not already exist, otherwise
+       the file must exist for the dialog to return successful.
+       Mac - this parameter is not supported. createable is always FALSE.
+             the file choosen must always exist.
+
+
+   RETURNs TRUE if successful and name will contain the file specification
+   for the file the user has given.
+*)
+
+<*IF MAC THEN*>
+PROCEDURE SetSaveFileCreatorAndType(fileCreator, fileType : ARRAY OF CHAR);
+(* The systeem File Save As common dialog wants the file type and creator
+   fields. use this API to set those values before calling PromptSaveAsFile *)
+<*END*>
+
+PROCEDURE PromptSaveAsFile(VAR INOUT name : ARRAY OF CHAR;
+                           filters : ARRAY OF CHAR;
+                           VAR INOUT defFilter : CARDINAL;
+                           defDir : ARRAY OF CHAR;
+                           defExt : ARRAY OF CHAR;
+                           title : ARRAY OF CHAR) : BOOLEAN;
+(* As PromptOpenFile except this dialog is for saving a file. *)
+
+TYPE
+    FontOptions = (FixedPitchOnly, ScalableOnly, NoStyle, NoSize);
+    FontOptionSet = PACKEDSET OF FontOptions;
+
+PROCEDURE PromptChooseFont(VAR INOUT font : FontInfo; opt : FontOptionSet) : BOOLEAN;
+(* opens an operating system common dialog for selecting a font.
+   RETURNs TRUE if successful and font will then contain the information
+   describing the font the user selected. otherwise returns FALSE
+   FixedPitchOnly if set will limit the font selections to fixed pitch
+   fonts.
+   ScalableOnly if set will limit the font selections to scalable fonts. No bitmap fonts.
+   NoStyle if set will not allow the user to select a font style
+   such as Bold, Italic, etc..
+   NoSize if set will not all the user to select a font point size
+*)
+
+TYPE
+    PrintInfo =
+        RECORD
+        fromPage        : CARDINAL; (* in out *)
+        toPage          : CARDINAL; (* in out *)
+        minPage         : CARDINAL; (* in *)
+        maxPage         : CARDINAL; (* in *)
+        copies          : CARDINAL; (* in out *)
+        selected        : BOOLEAN; (* in out *)
+        duplex          : BOOLEAN; (* out *)
+        collate         : BOOLEAN; (* in out *)
+        driverInfo      : PrintDriverInfo; (* in out *)
+        END;
+
+PROCEDURE PromptPrint(VAR INOUT info : PrintInfo) : BOOLEAN;
+(* opens an operating system common dialog for selecting a printer and
+   various printer options for a specific print job.
+   info contains the information to initialize the dialog fields
+   an to also return the user entered information.
+   Returns TRUE if the user does not cancel the dialog. In this case you
+   continue by performing the print action the user has specified.
+*)
+(*
+fromPage - initializes the dialog with the starting page to print, and upon
+           return contains the starting page to print entered by the user.
+           Normally initialized with 1. See toPage.
+toPage - initializes the dialog with the ending page to print, and upon
+         return contains the ending page to print entered by the user.
+         If this value is initialized with 0 then the user will not be allowed
+         to select a page range to print and no value is returned.
+minPage - Only valid if toPage is initialized with a non zero value.
+          The minimum page number the user will be allowed to enter in
+          fromPage and toPage.
+maxPage - Only valid if toPage is initialized with a non zero value.
+          The maximum page number the user will be allowed to enter in
+          fromPage and toPage.
+copies - The number of copies to be printed. Normally initialized with a value
+         of 1. Upon return the number of copies the user wants printed.
+         If the printer driver supports multiple copies you will never
+         reveive a value other than 1 upon return.
+selected - If TRUE the user will be allowed to select if the current
+           "selection" is to be printed, otherwise the entire document is
+           assumed. Upon return TRUE means that the user wants only the
+           selection to be printed.
+duplex - Upon return if TRUE the document is to be printed two sided. This
+         value can only be true if the printer supports duplex printing.
+collate - If initialized with TRUE then the user will be allowed to select
+          collated printing when printing multiple copies, otherwise they
+          will not be allowed to make such a selection. Upon return the
+          multiple copies of the document must be printed in a collated manner.
+          It is up to you to do this since the printer driver does not have
+          support doing this. If the printer driver supports collation you
+          will never receive a value of TRUE.
+driverInfo - This value may be initialized with NIL or a previously obtained
+             value from PromptPrintSetup or this procedure.
+             See PromptPrintSetup
+*)
+
+PROCEDURE PromptPrintSetup(VAR INOUT info : PrintDriverInfo) : BOOLEAN;
+(* opens an operating system common dialog for setting up a printer and
+   various custom printer options.
+   Normally you will have a global variable that is initialized with a value
+   of NIL and thereafter use that value. In this way your application will
+   remember settings the user has made and not force them to reenter them
+   every time they want to print.
+   This value is usually passed to PromptPrint, although the user generally
+   also has access to printer setup from the print dialog as well.
+*)
+
+PROCEDURE GetPrintDriverInfo(printerName : ARRAY OF CHAR; VAR OUT info : PrintInfo) : BOOLEAN;
+(* this procedure allows you to get print information if you know the
+   system information detailing a printer driver
+   this procedure exists for an application to support the operating system
+   Print and PrintTo shell commands (right click and drag and drop). These
+   commands are for files that are registered with the operating system.
+   The operating system provides the first three parameters to you
+   in the Print and PrintTo commands.
+   If printerName = "" then the information for the default printer
+   is returned.
+   The function returns TRUE is successful
+*)
+
+END BasicDialogs.

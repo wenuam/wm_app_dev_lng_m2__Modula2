@@ -1,0 +1,52 @@
+(*
+Name:     IPictureDisp
+Creation: 04-03-2000
+LastEdit: 04-03-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+UNSAFEGUARDED DEFINITION MODULE IPictureDisp;
+
+IMPORT WIN32;
+IMPORT Ole2;
+IMPORT OleC;
+
+<*/CALLS:WIN32SYSTEM*>
+<*/NOHIGH*>
+<*/ALIGN:8*>
+<*/NOPACK*>
+CLASS C;
+  REVEAL Init,
+         READONLY iDispatch,
+         get_Handle,
+         get_hPal,
+         get_Type,
+         get_Width,
+         get_Height,
+         Render;
+
+  PROCEDURE Init(iDispatch: Ole2.IDispatch);
+  PROCEDURE get_Handle(VAR handle: OleC.OLE_HANDLE): WIN32.HRESULT;
+  PROCEDURE get_hPal(VAR hPal: OleC.OLE_HANDLE): WIN32.HRESULT;
+  PROCEDURE set_hPal(hPal: OleC.OLE_HANDLE): WIN32.HRESULT;
+  PROCEDURE get_Type(VAR nType: WIN32.SHORT): WIN32.HRESULT;
+  PROCEDURE get_Width(VAR lWidth: OleC.OLE_XSIZE_HIMETRIC): WIN32.HRESULT;
+  PROCEDURE get_Height(VAR lHeight: OleC.OLE_YSIZE_HIMETRIC): WIN32.HRESULT;
+  PROCEDURE Render(hdc: WIN32.HDC;
+                   x:   WIN32.LONG;
+                   y:   WIN32.LONG;
+                   cx:  WIN32.LONG;
+                   cy:  WIN32.LONG;
+                   xSrc:  OleC.OLE_XPOS_HIMETRIC;
+                   ySrc:  OleC.OLE_YPOS_HIMETRIC;
+                   cxSrc: OleC.OLE_XSIZE_HIMETRIC;
+                   cySrc: OleC.OLE_YSIZE_HIMETRIC;
+                   rectBounds: WIN32.RECT): WIN32.HRESULT;
+
+  VAR iDispatch: Ole2.IDispatch;
+END C;
+
+
+END IPictureDisp.

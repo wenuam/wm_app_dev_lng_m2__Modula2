@@ -1,0 +1,47 @@
+(*
+Name:     ComRegister
+Creation: 16-12-98
+LastEdit: 16-12-98
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:
+*)
+
+DEFINITION MODULE ComRegister;
+
+PROCEDURE RegisterDLL(szServer:  ARRAY OF CHAR;
+                      szClass:   ARRAY OF CHAR;
+                      szVersion: ARRAY OF CHAR;
+                      szCLSID:   ARRAY OF CHAR): BOOLEAN;
+(* registers a DLL in the registry *)
+(* szServer is name of server, e.g. 'Server' *)
+(* szClass is name of class, e.g 'Example' *)
+(* szVersion is version of class, e.g. '1' *)
+(* szCLSID is GUID of class, e.g. '{2EEEB790-DC3C-11d1-BBC6-0020AFE0C0C7}' *)
+
+PROCEDURE UnRegisterDLL(szServer:  ARRAY OF CHAR;
+                        szClass:   ARRAY OF CHAR;
+                        szVersion: ARRAY OF CHAR;
+                        szCLSID:   ARRAY OF CHAR): BOOLEAN;
+(* un-registers a DLL from the registry *)
+
+PROCEDURE RegisterEXE(szServer:  ARRAY OF CHAR;
+                      szClass:   ARRAY OF CHAR;
+                      szVersion: ARRAY OF CHAR;
+                      szCLSID:   ARRAY OF CHAR): BOOLEAN;
+(* registers a EXE in the registry *)
+
+PROCEDURE UnRegisterEXE(szServer:  ARRAY OF CHAR;
+                        szClass:   ARRAY OF CHAR;
+                        szVersion: ARRAY OF CHAR;
+                        szCLSID:   ARRAY OF CHAR): BOOLEAN;
+(* un-registers a EXE from the registry *)
+
+PROCEDURE UnRegisterTypeLib(szTypeLib: ARRAY OF CHAR);
+(* un-registers typelib from registry *)
+
+PROCEDURE UnRegisterInterface(szGUID: ARRAY OF CHAR);
+(* un-registers interface *)
+
+
+END ComRegister.

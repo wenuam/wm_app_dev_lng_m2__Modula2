@@ -1,0 +1,1891 @@
+(*
+** Copyright 1991-1993, Silicon Graphics, Inc.
+** All Rights Reserved.
+**
+** This is UNPUBLISHED PROPRIETARY SOURCE CODE of Silicon Graphics, Inc.;
+** the contents of this file may not be disclosed to third parties, copied or
+** duplicated in any form, in whole or in part, without the prior written
+** permission of Silicon Graphics, Inc.
+**
+** RESTRICTED RIGHTS LEGEND:
+** Use, duplication or disclosure by the Government is subject to restrictions
+** as set forth in subdivision (c)(1)(ii) of the Rights in Technical Data
+** and Computer Software clause at DFARS 252.227-7013, and/or in similar or
+** successor clauses in the FAR, DOD or NASA FAR Supplement. Unpublished -
+** rights reserved under the Copyright Laws of the United States.
+*)
+(* Converted from Microsoft WIN32 SDK C source code to Modula-2 source code *)
+(* by Stony Brook Software *)
+
+DEFINITION MODULE GL;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    BYTE, WINT, SHORT, UINT, USHORT, LPVOID;
+
+<*/CALLS:WINDOWSCALL*>
+<*/NOHIGH/PACK*>
+
+<*/VERSION:GL_VERSION_1_1*>
+
+TYPE
+    GLenum               = UINT;
+    GLboolean            = BYTE;
+    GLbitfield           = UINT;
+    GLbyte               = BYTE;
+    GLshort              = SHORT;
+    GLint                = WINT;
+    GLsizei              = WINT;
+    GLubyte              = BYTE;
+    GLushort             = USHORT;
+    GLuint               = UINT;
+    GLfloat              = REAL;
+    GLclampf             = REAL;
+    GLdouble             = LONGREAL;
+    GLclampd             = LONGREAL;
+    PGLvoid              = LPVOID;
+    GLvoid               = LPVOID;
+    PGLubyte             = POINTER TO GLubyte;
+
+CONST
+    GL_ACCUM             = 00100h;
+    GL_LOAD              = 00101h;
+    GL_RETURN            = 00102h;
+    GL_MULT              = 00103h;
+    GL_ADD               = 00104h;
+
+    GL_NEVER             = 00200h;
+    GL_LESS              = 00201h;
+    GL_EQUAL             = 00202h;
+    GL_LEQUAL            = 00203h;
+    GL_GREATER           = 00204h;
+    GL_NOTEQUAL          = 00205h;
+    GL_GEQUAL            = 00206h;
+    GL_ALWAYS            = 00207h;
+
+    GL_CURRENT_BIT       = 000000001h;
+    GL_POINT_BIT         = 000000002h;
+    GL_LINE_BIT          = 000000004h;
+    GL_POLYGON_BIT       = 000000008h;
+    GL_POLYGON_STIPPLE_BIT= 000000010h;
+    GL_PIXEL_MODE_BIT    = 000000020h;
+    GL_LIGHTING_BIT      = 000000040h;
+    GL_FOG_BIT           = 000000080h;
+    GL_DEPTH_BUFFER_BIT  = 000000100h;
+    GL_ACCUM_BUFFER_BIT  = 000000200h;
+    GL_STENCIL_BUFFER_BIT= 000000400h;
+    GL_VIEWPORT_BIT      = 000000800h;
+    GL_TRANSFORM_BIT     = 000001000h;
+    GL_ENABLE_BIT        = 000002000h;
+    GL_COLOR_BUFFER_BIT  = 000004000h;
+    GL_HINT_BIT          = 000008000h;
+    GL_EVAL_BIT          = 000010000h;
+    GL_LIST_BIT          = 000020000h;
+    GL_TEXTURE_BIT       = 000040000h;
+    GL_SCISSOR_BIT       = 000080000h;
+    GL_ALL_ATTRIB_BITS   = 0000fffffh;
+
+    GL_POINTS            = 00000h;
+    GL_LINES             = 00001h;
+    GL_LINE_LOOP         = 00002h;
+    GL_LINE_STRIP        = 00003h;
+    GL_TRIANGLES         = 00004h;
+    GL_TRIANGLE_STRIP    = 00005h;
+    GL_TRIANGLE_FAN      = 00006h;
+    GL_QUADS             = 00007h;
+    GL_QUAD_STRIP        = 00008h;
+    GL_POLYGON           = 00009h;
+
+    GL_ZERO              = 0;
+    GL_ONE               = 1;
+
+    GL_SRC_COLOR         = 00300h;
+    GL_ONE_MINUS_SRC_COLOR= 00301h;
+    GL_SRC_ALPHA         = 00302h;
+    GL_ONE_MINUS_SRC_ALPHA= 00303h;
+    GL_DST_ALPHA         = 00304h;
+    GL_ONE_MINUS_DST_ALPHA= 00305h;
+    GL_DST_COLOR         = 00306h;
+    GL_ONE_MINUS_DST_COLOR= 00307h;
+    GL_SRC_ALPHA_SATURATE= 00308h;
+    GL_TRUE              = 1;
+    GL_FALSE             = 0;
+    GL_CLIP_PLANE0       = 03000h;
+    GL_CLIP_PLANE1       = 03001h;
+    GL_CLIP_PLANE2       = 03002h;
+    GL_CLIP_PLANE3       = 03003h;
+    GL_CLIP_PLANE4       = 03004h;
+    GL_CLIP_PLANE5       = 03005h;
+    GL_NONE              = 0;
+    GL_FRONT_LEFT        = 00400h;
+    GL_FRONT_RIGHT       = 00401h;
+    GL_BACK_LEFT         = 00402h;
+    GL_BACK_RIGHT        = 00403h;
+    GL_FRONT             = 00404h;
+    GL_BACK              = 00405h;
+    GL_LEFT              = 00406h;
+    GL_RIGHT             = 00407h;
+    GL_FRONT_AND_BACK    = 00408h;
+    GL_AUX0              = 00409h;
+    GL_AUX1              = 0040Ah;
+    GL_AUX2              = 0040Bh;
+    GL_AUX3              = 0040Ch;
+    GL_NO_ERROR          = 0;
+    GL_INVALID_ENUM      = 00500h;
+    GL_INVALID_VALUE     = 00501h;
+    GL_INVALID_OPERATION = 00502h;
+    GL_STACK_OVERFLOW    = 00503h;
+    GL_STACK_UNDERFLOW   = 00504h;
+    GL_OUT_OF_MEMORY     = 00505h;
+    GL_2D                = 00600h;
+    GL_3D                = 00601h;
+    GL_3D_COLOR          = 00602h;
+    GL_3D_COLOR_TEXTURE  = 00603h;
+    GL_4D_COLOR_TEXTURE  = 00604h;
+    GL_PASS_THROUGH_TOKEN= 00700h;
+    GL_POINT_TOKEN       = 00701h;
+    GL_LINE_TOKEN        = 00702h;
+    GL_POLYGON_TOKEN     = 00703h;
+    GL_BITMAP_TOKEN      = 00704h;
+    GL_DRAW_PIXEL_TOKEN  = 00705h;
+    GL_COPY_PIXEL_TOKEN  = 00706h;
+    GL_LINE_RESET_TOKEN  = 00707h;
+    GL_EXP               = 00800h;
+    GL_EXP2              = 00801h;
+    GL_CW                = 00900h;
+    GL_CCW               = 00901h;
+    GL_COEFF             = 00A00h;
+    GL_ORDER             = 00A01h;
+    GL_DOMAIN            = 00A02h;
+    GL_CURRENT_COLOR     = 00B00h;
+    GL_CURRENT_INDEX     = 00B01h;
+    GL_CURRENT_NORMAL    = 00B02h;
+    GL_CURRENT_TEXTURE_COORDS= 00B03h;
+    GL_CURRENT_RASTER_COLOR= 00B04h;
+    GL_CURRENT_RASTER_INDEX= 00B05h;
+    GL_CURRENT_RASTER_TEXTURE_COORDS= 00B06h;
+    GL_CURRENT_RASTER_POSITION= 00B07h;
+    GL_CURRENT_RASTER_POSITION_VALID= 00B08h;
+    GL_CURRENT_RASTER_DISTANCE= 00B09h;
+    GL_POINT_SMOOTH      = 00B10h;
+    GL_POINT_SIZE        = 00B11h;
+    GL_POINT_SIZE_RANGE  = 00B12h;
+    GL_POINT_SIZE_GRANULARITY= 00B13h;
+    GL_LINE_SMOOTH       = 00B20h;
+    GL_LINE_WIDTH        = 00B21h;
+    GL_LINE_WIDTH_RANGE  = 00B22h;
+    GL_LINE_WIDTH_GRANULARITY= 00B23h;
+    GL_LINE_STIPPLE      = 00B24h;
+    GL_LINE_STIPPLE_PATTERN= 00B25h;
+    GL_LINE_STIPPLE_REPEAT= 00B26h;
+    GL_LIST_MODE         = 00B30h;
+    GL_MAX_LIST_NESTING  = 00B31h;
+    GL_LIST_BASE         = 00B32h;
+    GL_LIST_INDEX        = 00B33h;
+    GL_POLYGON_MODE      = 00B40h;
+    GL_POLYGON_SMOOTH    = 00B41h;
+    GL_POLYGON_STIPPLE   = 00B42h;
+    GL_EDGE_FLAG         = 00B43h;
+    GL_CULL_FACE         = 00B44h;
+    GL_CULL_FACE_MODE    = 00B45h;
+    GL_FRONT_FACE        = 00B46h;
+    GL_LIGHTING          = 00B50h;
+    GL_LIGHT_MODEL_LOCAL_VIEWER= 00B51h;
+    GL_LIGHT_MODEL_TWO_SIDE= 00B52h;
+    GL_LIGHT_MODEL_AMBIENT= 00B53h;
+    GL_SHADE_MODEL       = 00B54h;
+    GL_COLOR_MATERIAL_FACE= 00B55h;
+    GL_COLOR_MATERIAL_PARAMETER= 00B56h;
+    GL_COLOR_MATERIAL    = 00B57h;
+    GL_FOG               = 00B60h;
+    GL_FOG_INDEX         = 00B61h;
+    GL_FOG_DENSITY       = 00B62h;
+    GL_FOG_START         = 00B63h;
+    GL_FOG_END           = 00B64h;
+    GL_FOG_MODE          = 00B65h;
+    GL_FOG_COLOR         = 00B66h;
+    GL_DEPTH_RANGE       = 00B70h;
+    GL_DEPTH_TEST        = 00B71h;
+    GL_DEPTH_WRITEMASK   = 00B72h;
+    GL_DEPTH_CLEAR_VALUE = 00B73h;
+    GL_DEPTH_FUNC        = 00B74h;
+    GL_ACCUM_CLEAR_VALUE = 00B80h;
+    GL_STENCIL_TEST      = 00B90h;
+    GL_STENCIL_CLEAR_VALUE= 00B91h;
+    GL_STENCIL_FUNC      = 00B92h;
+    GL_STENCIL_VALUE_MASK= 00B93h;
+    GL_STENCIL_FAIL      = 00B94h;
+    GL_STENCIL_PASS_DEPTH_FAIL= 00B95h;
+    GL_STENCIL_PASS_DEPTH_PASS= 00B96h;
+    GL_STENCIL_REF       = 00B97h;
+    GL_STENCIL_WRITEMASK = 00B98h;
+    GL_MATRIX_MODE       = 00BA0h;
+    GL_NORMALIZE         = 00BA1h;
+    GL_VIEWPORT          = 00BA2h;
+    GL_MODELVIEW_STACK_DEPTH= 00BA3h;
+    GL_PROJECTION_STACK_DEPTH= 00BA4h;
+    GL_TEXTURE_STACK_DEPTH= 00BA5h;
+    GL_MODELVIEW_MATRIX  = 00BA6h;
+    GL_PROJECTION_MATRIX = 00BA7h;
+    GL_TEXTURE_MATRIX    = 00BA8h;
+    GL_ATTRIB_STACK_DEPTH= 00BB0h;
+    GL_CLIENT_ATTRIB_STACK_DEPTH      = 00BB1h;
+    GL_ALPHA_TEST        = 00BC0h;
+    GL_ALPHA_TEST_FUNC   = 00BC1h;
+    GL_ALPHA_TEST_REF    = 00BC2h;
+    GL_DITHER            = 00BD0h;
+    GL_BLEND_DST         = 00BE0h;
+    GL_BLEND_SRC         = 00BE1h;
+    GL_BLEND             = 00BE2h;
+    GL_LOGIC_OP_MODE     = 00BF0h;
+    GL_INDEX_LOGIC_OP                 = 00BF1h;
+    GL_COLOR_LOGIC_OP                 = 00BF2h;
+    GL_AUX_BUFFERS       = 00C00h;
+    GL_DRAW_BUFFER       = 00C01h;
+    GL_READ_BUFFER       = 00C02h;
+    GL_SCISSOR_BOX       = 00C10h;
+    GL_SCISSOR_TEST      = 00C11h;
+    GL_INDEX_CLEAR_VALUE = 00C20h;
+    GL_INDEX_WRITEMASK   = 00C21h;
+    GL_COLOR_CLEAR_VALUE = 00C22h;
+    GL_COLOR_WRITEMASK   = 00C23h;
+    GL_INDEX_MODE        = 00C30h;
+    GL_RGBA_MODE         = 00C31h;
+    GL_DOUBLEBUFFER      = 00C32h;
+    GL_STEREO            = 00C33h;
+    GL_RENDER_MODE       = 00C40h;
+    GL_PERSPECTIVE_CORRECTION_HINT= 00C50h;
+    GL_POINT_SMOOTH_HINT = 00C51h;
+    GL_LINE_SMOOTH_HINT  = 00C52h;
+    GL_POLYGON_SMOOTH_HINT= 00C53h;
+    GL_FOG_HINT          = 00C54h;
+    GL_TEXTURE_GEN_S     = 00C60h;
+    GL_TEXTURE_GEN_T     = 00C61h;
+    GL_TEXTURE_GEN_R     = 00C62h;
+    GL_TEXTURE_GEN_Q     = 00C63h;
+    GL_PIXEL_MAP_I_TO_I  = 00C70h;
+    GL_PIXEL_MAP_S_TO_S  = 00C71h;
+    GL_PIXEL_MAP_I_TO_R  = 00C72h;
+    GL_PIXEL_MAP_I_TO_G  = 00C73h;
+    GL_PIXEL_MAP_I_TO_B  = 00C74h;
+    GL_PIXEL_MAP_I_TO_A  = 00C75h;
+    GL_PIXEL_MAP_R_TO_R  = 00C76h;
+    GL_PIXEL_MAP_G_TO_G  = 00C77h;
+    GL_PIXEL_MAP_B_TO_B  = 00C78h;
+    GL_PIXEL_MAP_A_TO_A  = 00C79h;
+    GL_PIXEL_MAP_I_TO_I_SIZE= 00CB0h;
+    GL_PIXEL_MAP_S_TO_S_SIZE= 00CB1h;
+    GL_PIXEL_MAP_I_TO_R_SIZE= 00CB2h;
+    GL_PIXEL_MAP_I_TO_G_SIZE= 00CB3h;
+    GL_PIXEL_MAP_I_TO_B_SIZE= 00CB4h;
+    GL_PIXEL_MAP_I_TO_A_SIZE= 00CB5h;
+    GL_PIXEL_MAP_R_TO_R_SIZE= 00CB6h;
+    GL_PIXEL_MAP_G_TO_G_SIZE= 00CB7h;
+    GL_PIXEL_MAP_B_TO_B_SIZE= 00CB8h;
+    GL_PIXEL_MAP_A_TO_A_SIZE= 00CB9h;
+    GL_UNPACK_SWAP_BYTES = 00CF0h;
+    GL_UNPACK_LSB_FIRST  = 00CF1h;
+    GL_UNPACK_ROW_LENGTH = 00CF2h;
+    GL_UNPACK_SKIP_ROWS  = 00CF3h;
+    GL_UNPACK_SKIP_PIXELS= 00CF4h;
+    GL_UNPACK_ALIGNMENT  = 00CF5h;
+    GL_PACK_SWAP_BYTES   = 00D00h;
+    GL_PACK_LSB_FIRST    = 00D01h;
+    GL_PACK_ROW_LENGTH   = 00D02h;
+    GL_PACK_SKIP_ROWS    = 00D03h;
+    GL_PACK_SKIP_PIXELS  = 00D04h;
+    GL_PACK_ALIGNMENT    = 00D05h;
+    GL_MAP_COLOR         = 00D10h;
+    GL_MAP_STENCIL       = 00D11h;
+    GL_INDEX_SHIFT       = 00D12h;
+    GL_INDEX_OFFSET      = 00D13h;
+    GL_RED_SCALE         = 00D14h;
+    GL_RED_BIAS          = 00D15h;
+    GL_ZOOM_X            = 00D16h;
+    GL_ZOOM_Y            = 00D17h;
+    GL_GREEN_SCALE       = 00D18h;
+    GL_GREEN_BIAS        = 00D19h;
+    GL_BLUE_SCALE        = 00D1Ah;
+    GL_BLUE_BIAS         = 00D1Bh;
+    GL_ALPHA_SCALE       = 00D1Ch;
+    GL_ALPHA_BIAS        = 00D1Dh;
+    GL_DEPTH_SCALE       = 00D1Eh;
+    GL_DEPTH_BIAS        = 00D1Fh;
+    GL_MAX_EVAL_ORDER    = 00D30h;
+    GL_MAX_LIGHTS        = 00D31h;
+    GL_MAX_CLIP_PLANES   = 00D32h;
+    GL_MAX_TEXTURE_SIZE  = 00D33h;
+    GL_MAX_PIXEL_MAP_TABLE= 00D34h;
+    GL_MAX_ATTRIB_STACK_DEPTH= 00D35h;
+    GL_MAX_MODELVIEW_STACK_DEPTH= 00D36h;
+    GL_MAX_NAME_STACK_DEPTH= 00D37h;
+    GL_MAX_PROJECTION_STACK_DEPTH= 00D38h;
+    GL_MAX_TEXTURE_STACK_DEPTH= 00D39h;
+    GL_MAX_VIEWPORT_DIMS = 00D3Ah;
+    GL_MAX_CLIENT_ATTRIB_STACK_DEPTH  = 00D3Bh;
+    GL_SUBPIXEL_BITS     = 00D50h;
+    GL_INDEX_BITS        = 00D51h;
+    GL_RED_BITS          = 00D52h;
+    GL_GREEN_BITS        = 00D53h;
+    GL_BLUE_BITS         = 00D54h;
+    GL_ALPHA_BITS        = 00D55h;
+    GL_DEPTH_BITS        = 00D56h;
+    GL_STENCIL_BITS      = 00D57h;
+    GL_ACCUM_RED_BITS    = 00D58h;
+    GL_ACCUM_GREEN_BITS  = 00D59h;
+    GL_ACCUM_BLUE_BITS   = 00D5Ah;
+    GL_ACCUM_ALPHA_BITS  = 00D5Bh;
+    GL_NAME_STACK_DEPTH  = 00D70h;
+    GL_AUTO_NORMAL       = 00D80h;
+    GL_MAP1_COLOR_4      = 00D90h;
+    GL_MAP1_INDEX        = 00D91h;
+    GL_MAP1_NORMAL       = 00D92h;
+    GL_MAP1_TEXTURE_COORD_1= 00D93h;
+    GL_MAP1_TEXTURE_COORD_2= 00D94h;
+    GL_MAP1_TEXTURE_COORD_3= 00D95h;
+    GL_MAP1_TEXTURE_COORD_4= 00D96h;
+    GL_MAP1_VERTEX_3     = 00D97h;
+    GL_MAP1_VERTEX_4     = 00D98h;
+    GL_MAP2_COLOR_4      = 00DB0h;
+    GL_MAP2_INDEX        = 00DB1h;
+    GL_MAP2_NORMAL       = 00DB2h;
+    GL_MAP2_TEXTURE_COORD_1= 00DB3h;
+    GL_MAP2_TEXTURE_COORD_2= 00DB4h;
+    GL_MAP2_TEXTURE_COORD_3= 00DB5h;
+    GL_MAP2_TEXTURE_COORD_4= 00DB6h;
+    GL_MAP2_VERTEX_3     = 00DB7h;
+    GL_MAP2_VERTEX_4     = 00DB8h;
+    GL_MAP1_GRID_DOMAIN  = 00DD0h;
+    GL_MAP1_GRID_SEGMENTS= 00DD1h;
+    GL_MAP2_GRID_DOMAIN  = 00DD2h;
+    GL_MAP2_GRID_SEGMENTS= 00DD3h;
+    GL_TEXTURE_1D        = 00DE0h;
+    GL_TEXTURE_2D        = 00DE1h;
+    GL_FEEDBACK_BUFFER_POINTER        = 00DF0h;
+    GL_FEEDBACK_BUFFER_SIZE           = 00DF1h;
+    GL_FEEDBACK_BUFFER_TYPE           = 00DF2h;
+    GL_SELECTION_BUFFER_POINTER       = 00DF3h;
+    GL_SELECTION_BUFFER_SIZE          = 00DF4h;
+    GL_TEXTURE_WIDTH     = 01000h;
+    GL_TEXTURE_HEIGHT    = 01001h;
+    GL_TEXTURE_INTERNAL_FORMAT        = 01003h;
+    GL_TEXTURE_BORDER_COLOR= 01004h;
+    GL_TEXTURE_BORDER    = 01005h;
+    GL_DONT_CARE         = 01100h;
+    GL_FASTEST           = 01101h;
+    GL_NICEST            = 01102h;
+    GL_LIGHT0            = 04000h;
+    GL_LIGHT1            = 04001h;
+    GL_LIGHT2            = 04002h;
+    GL_LIGHT3            = 04003h;
+    GL_LIGHT4            = 04004h;
+    GL_LIGHT5            = 04005h;
+    GL_LIGHT6            = 04006h;
+    GL_LIGHT7            = 04007h;
+    GL_AMBIENT           = 01200h;
+    GL_DIFFUSE           = 01201h;
+    GL_SPECULAR          = 01202h;
+    GL_POSITION          = 01203h;
+    GL_SPOT_DIRECTION    = 01204h;
+    GL_SPOT_EXPONENT     = 01205h;
+    GL_SPOT_CUTOFF       = 01206h;
+    GL_CONSTANT_ATTENUATION= 01207h;
+    GL_LINEAR_ATTENUATION= 01208h;
+    GL_QUADRATIC_ATTENUATION= 01209h;
+    GL_COMPILE           = 01300h;
+    GL_COMPILE_AND_EXECUTE= 01301h;
+    GL_BYTE              = 01400h;
+    GL_UNSIGNED_BYTE     = 01401h;
+    GL_SHORT             = 01402h;
+    GL_UNSIGNED_SHORT    = 01403h;
+    GL_INT               = 01404h;
+    GL_UNSIGNED_INT      = 01405h;
+    GL_FLOAT             = 01406h;
+    GL_2_BYTES           = 01407h;
+    GL_3_BYTES           = 01408h;
+    GL_4_BYTES           = 01409h;
+    GL_DOUBLE            = 0140Ah;
+    GL_DOUBLE_EXT        = 0140Ah;
+    GL_CLEAR             = 01500h;
+    GL_AND               = 01501h;
+    GL_AND_REVERSE       = 01502h;
+    GL_COPY              = 01503h;
+    GL_AND_INVERTED      = 01504h;
+    GL_NOOP              = 01505h;
+    GL_XOR               = 01506h;
+    GL_OR                = 01507h;
+    GL_NOR               = 01508h;
+    GL_EQUIV             = 01509h;
+    GL_INVERT            = 0150Ah;
+    GL_OR_REVERSE        = 0150Bh;
+    GL_COPY_INVERTED     = 0150Ch;
+    GL_OR_INVERTED       = 0150Dh;
+    GL_NAND              = 0150Eh;
+    GL_SET               = 0150Fh;
+    GL_EMISSION          = 01600h;
+    GL_SHININESS         = 01601h;
+    GL_AMBIENT_AND_DIFFUSE= 01602h;
+    GL_COLOR_INDEXES     = 01603h;
+    GL_MODELVIEW         = 01700h;
+    GL_PROJECTION        = 01701h;
+    GL_TEXTURE           = 01702h;
+    GL_COLOR             = 01800h;
+    GL_DEPTH             = 01801h;
+    GL_STENCIL           = 01802h;
+    GL_COLOR_INDEX       = 01900h;
+    GL_STENCIL_INDEX     = 01901h;
+    GL_DEPTH_COMPONENT   = 01902h;
+    GL_RED               = 01903h;
+    GL_GREEN             = 01904h;
+    GL_BLUE              = 01905h;
+    GL_ALPHA             = 01906h;
+    GL_RGB               = 01907h;
+    GL_RGBA              = 01908h;
+    GL_LUMINANCE         = 01909h;
+    GL_LUMINANCE_ALPHA   = 0190Ah;
+    GL_BITMAP            = 01A00h;
+    GL_POINT             = 01B00h;
+    GL_LINE              = 01B01h;
+    GL_FILL              = 01B02h;
+    GL_RENDER            = 01C00h;
+    GL_FEEDBACK          = 01C01h;
+    GL_SELECT            = 01C02h;
+    GL_FLAT              = 01D00h;
+    GL_SMOOTH            = 01D01h;
+    GL_KEEP              = 01E00h;
+    GL_REPLACE           = 01E01h;
+    GL_INCR              = 01E02h;
+    GL_DECR              = 01E03h;
+    GL_VENDOR            = 01F00h;
+    GL_RENDERER          = 01F01h;
+    GL_VERSION           = 01F02h;
+    GL_EXTENSIONS        = 01F03h;
+    GL_S                 = 02000h;
+    GL_T                 = 02001h;
+    GL_R                 = 02002h;
+    GL_Q                 = 02003h;
+    GL_MODULATE          = 02100h;
+    GL_DECAL             = 02101h;
+    GL_TEXTURE_ENV_MODE  = 02200h;
+    GL_TEXTURE_ENV_COLOR = 02201h;
+    GL_TEXTURE_ENV       = 02300h;
+    GL_EYE_LINEAR        = 02400h;
+    GL_OBJECT_LINEAR     = 02401h;
+    GL_SPHERE_MAP        = 02402h;
+    GL_TEXTURE_GEN_MODE  = 02500h;
+    GL_OBJECT_PLANE      = 02501h;
+    GL_EYE_PLANE         = 02502h;
+    GL_NEAREST           = 02600h;
+    GL_LINEAR            = 02601h;
+    GL_NEAREST_MIPMAP_NEAREST= 02700h;
+    GL_LINEAR_MIPMAP_NEAREST= 02701h;
+    GL_NEAREST_MIPMAP_LINEAR= 02702h;
+    GL_LINEAR_MIPMAP_LINEAR= 02703h;
+    GL_TEXTURE_MAG_FILTER= 02800h;
+    GL_TEXTURE_MIN_FILTER= 02801h;
+    GL_TEXTURE_WRAP_S    = 02802h;
+    GL_TEXTURE_WRAP_T    = 02803h;
+    GL_CLAMP             = 02900h;
+    GL_REPEAT            = 02901h;
+
+(* ClientAttribMask *)
+    GL_CLIENT_PIXEL_STORE_BIT         = 000000001h;
+    GL_CLIENT_VERTEX_ARRAY_BIT        = 000000002h;
+    GL_CLIENT_ALL_ATTRIB_BITS         = 0ffffffffh;
+
+(* polygon_offset *)
+    GL_POLYGON_OFFSET_FACTOR          = 08038h;
+    GL_POLYGON_OFFSET_UNITS           = 02A00h;
+    GL_POLYGON_OFFSET_POINT           = 02A01h;
+    GL_POLYGON_OFFSET_LINE            = 02A02h;
+    GL_POLYGON_OFFSET_FILL            = 08037h;
+
+(* texture *)
+    GL_ALPHA4                         = 0803Bh;
+    GL_ALPHA8                         = 0803Ch;
+    GL_ALPHA12                        = 0803Dh;
+    GL_ALPHA16                        = 0803Eh;
+    GL_LUMINANCE4                     = 0803Fh;
+    GL_LUMINANCE8                     = 08040h;
+    GL_LUMINANCE12                    = 08041h;
+    GL_LUMINANCE16                    = 08042h;
+    GL_LUMINANCE4_ALPHA4              = 08043h;
+    GL_LUMINANCE6_ALPHA2              = 08044h;
+    GL_LUMINANCE8_ALPHA8              = 08045h;
+    GL_LUMINANCE12_ALPHA4             = 08046h;
+    GL_LUMINANCE12_ALPHA12            = 08047h;
+    GL_LUMINANCE16_ALPHA16            = 08048h;
+    GL_INTENSITY                      = 08049h;
+    GL_INTENSITY4                     = 0804Ah;
+    GL_INTENSITY8                     = 0804Bh;
+    GL_INTENSITY12                    = 0804Ch;
+    GL_INTENSITY16                    = 0804Dh;
+    GL_R3_G3_B2                       = 02A10h;
+    GL_RGB4                           = 0804Fh;
+    GL_RGB5                           = 08050h;
+    GL_RGB8                           = 08051h;
+    GL_RGB10                          = 08052h;
+    GL_RGB12                          = 08053h;
+    GL_RGB16                          = 08054h;
+    GL_RGBA2                          = 08055h;
+    GL_RGBA4                          = 08056h;
+    GL_RGB5_A1                        = 08057h;
+    GL_RGBA8                          = 08058h;
+    GL_RGB10_A2                       = 08059h;
+    GL_RGBA12                         = 0805Ah;
+    GL_RGBA16                         = 0805Bh;
+    GL_TEXTURE_RED_SIZE               = 0805Ch;
+    GL_TEXTURE_GREEN_SIZE             = 0805Dh;
+    GL_TEXTURE_BLUE_SIZE              = 0805Eh;
+    GL_TEXTURE_ALPHA_SIZE             = 0805Fh;
+    GL_TEXTURE_LUMINANCE_SIZE         = 08060h;
+    GL_TEXTURE_INTENSITY_SIZE         = 08061h;
+    GL_PROXY_TEXTURE_1D               = 08063h;
+    GL_PROXY_TEXTURE_2D               = 08064h;
+
+(* texture_object *)
+    GL_TEXTURE_PRIORITY               = 08066h;
+    GL_TEXTURE_RESIDENT               = 08067h;
+    GL_TEXTURE_BINDING_1D             = 08068h;
+    GL_TEXTURE_BINDING_2D             = 08069h;
+
+(* vertex_array *)
+    GL_VERTEX_ARRAY                   = 08074h;
+    GL_NORMAL_ARRAY                   = 08075h;
+    GL_COLOR_ARRAY                    = 08076h;
+    GL_INDEX_ARRAY                    = 08077h;
+    GL_TEXTURE_COORD_ARRAY            = 08078h;
+    GL_EDGE_FLAG_ARRAY                = 08079h;
+    GL_VERTEX_ARRAY_SIZE              = 0807Ah;
+    GL_VERTEX_ARRAY_TYPE              = 0807Bh;
+    GL_VERTEX_ARRAY_STRIDE            = 0807Ch;
+    GL_NORMAL_ARRAY_TYPE              = 0807Eh;
+    GL_NORMAL_ARRAY_STRIDE            = 0807Fh;
+    GL_COLOR_ARRAY_SIZE               = 08081h;
+    GL_COLOR_ARRAY_TYPE               = 08082h;
+    GL_COLOR_ARRAY_STRIDE             = 08083h;
+    GL_INDEX_ARRAY_TYPE               = 08085h;
+    GL_INDEX_ARRAY_STRIDE             = 08086h;
+    GL_TEXTURE_COORD_ARRAY_SIZE       = 08088h;
+    GL_TEXTURE_COORD_ARRAY_TYPE       = 08089h;
+    GL_TEXTURE_COORD_ARRAY_STRIDE     = 0808Ah;
+    GL_EDGE_FLAG_ARRAY_STRIDE         = 0808Ch;
+    GL_VERTEX_ARRAY_POINTER           = 0808Eh;
+    GL_NORMAL_ARRAY_POINTER           = 0808Fh;
+    GL_COLOR_ARRAY_POINTER            = 08090h;
+    GL_INDEX_ARRAY_POINTER            = 08091h;
+    GL_TEXTURE_COORD_ARRAY_POINTER    = 08092h;
+    GL_EDGE_FLAG_ARRAY_POINTER        = 08093h;
+    GL_V2F                            = 02A20h;
+    GL_V3F                            = 02A21h;
+    GL_C4UB_V2F                       = 02A22h;
+    GL_C4UB_V3F                       = 02A23h;
+    GL_C3F_V3F                        = 02A24h;
+    GL_N3F_V3F                        = 02A25h;
+    GL_C4F_N3F_V3F                    = 02A26h;
+    GL_T2F_V3F                        = 02A27h;
+    GL_T4F_V4F                        = 02A28h;
+    GL_T2F_C4UB_V3F                   = 02A29h;
+    GL_T2F_C3F_V3F                    = 02A2Ah;
+    GL_T2F_N3F_V3F                    = 02A2Bh;
+    GL_T2F_C4F_N3F_V3F                = 02A2Ch;
+    GL_T4F_C4F_N3F_V4F                = 02A2Dh;
+
+(* Extensions *)
+    GL_EXT_vertex_array               = 1;
+    GL_EXT_bgra                       = 1;
+    GL_EXT_paletted_texture           = 1;
+    GL_WIN_swap_hint                  = 1;
+    GL_WIN_draw_range_elements        = 1;
+
+    GL_VERTEX_ARRAY_EXT  = 08074h;
+    GL_NORMAL_ARRAY_EXT  = 08075h;
+    GL_COLOR_ARRAY_EXT   = 08076h;
+    GL_INDEX_ARRAY_EXT   = 08077h;
+    GL_TEXTURE_COORD_ARRAY_EXT= 08078h;
+    GL_EDGE_FLAG_ARRAY_EXT= 08079h;
+    GL_VERTEX_ARRAY_SIZE_EXT= 0807Ah;
+    GL_VERTEX_ARRAY_TYPE_EXT= 0807Bh;
+    GL_VERTEX_ARRAY_STRIDE_EXT= 0807Ch;
+    GL_VERTEX_ARRAY_COUNT_EXT= 0807Dh;
+    GL_NORMAL_ARRAY_TYPE_EXT= 0807Eh;
+    GL_NORMAL_ARRAY_STRIDE_EXT= 0807Fh;
+    GL_NORMAL_ARRAY_COUNT_EXT= 08080h;
+    GL_COLOR_ARRAY_SIZE_EXT= 08081h;
+    GL_COLOR_ARRAY_TYPE_EXT= 08082h;
+    GL_COLOR_ARRAY_STRIDE_EXT= 08083h;
+    GL_COLOR_ARRAY_COUNT_EXT= 08084h;
+    GL_INDEX_ARRAY_TYPE_EXT= 08085h;
+    GL_INDEX_ARRAY_STRIDE_EXT= 08086h;
+    GL_INDEX_ARRAY_COUNT_EXT= 08087h;
+    GL_TEXTURE_COORD_ARRAY_SIZE_EXT= 08088h;
+    GL_TEXTURE_COORD_ARRAY_TYPE_EXT= 08089h;
+    GL_TEXTURE_COORD_ARRAY_STRIDE_EXT= 0808Ah;
+    GL_TEXTURE_COORD_ARRAY_COUNT_EXT= 0808Bh;
+    GL_EDGE_FLAG_ARRAY_STRIDE_EXT= 0808Ch;
+    GL_EDGE_FLAG_ARRAY_COUNT_EXT= 0808Dh;
+    GL_VERTEX_ARRAY_POINTER_EXT= 0808Eh;
+    GL_NORMAL_ARRAY_POINTER_EXT= 0808Fh;
+    GL_COLOR_ARRAY_POINTER_EXT= 08090h;
+    GL_INDEX_ARRAY_POINTER_EXT= 08091h;
+    GL_TEXTURE_COORD_ARRAY_POINTER_EXT= 08092h;
+    GL_EDGE_FLAG_ARRAY_POINTER_EXT= 08093h;
+
+(* EXT_bgra *)
+    GL_BGR_EXT                        = 080E0h;
+    GL_BGRA_EXT                       = 080E1h;
+
+(* EXT_paletted_texture *)
+
+(* These must match the GL_COLOR_TABLE_*_SGI enumerants *)
+    GL_COLOR_TABLE_FORMAT_EXT         = 080D8h;
+    GL_COLOR_TABLE_WIDTH_EXT          = 080D9h;
+    GL_COLOR_TABLE_RED_SIZE_EXT       = 080DAh;
+    GL_COLOR_TABLE_GREEN_SIZE_EXT     = 080DBh;
+    GL_COLOR_TABLE_BLUE_SIZE_EXT      = 080DCh;
+    GL_COLOR_TABLE_ALPHA_SIZE_EXT     = 080DDh;
+    GL_COLOR_TABLE_LUMINANCE_SIZE_EXT = 080DEh;
+    GL_COLOR_TABLE_INTENSITY_SIZE_EXT = 080DFh;
+
+    GL_COLOR_INDEX1_EXT               = 080E2h;
+    GL_COLOR_INDEX2_EXT               = 080E3h;
+    GL_COLOR_INDEX4_EXT               = 080E4h;
+    GL_COLOR_INDEX8_EXT               = 080E5h;
+    GL_COLOR_INDEX12_EXT              = 080E6h;
+    GL_COLOR_INDEX16_EXT              = 080E7h;
+
+(* WIN_draw_range_elements *)
+    GL_MAX_ELEMENTS_VERTICES_WIN      = 080E8h;
+    GL_MAX_ELEMENTS_INDICES_WIN       = 080E9h;
+
+(* WIN_phong_shading *)
+    GL_PHONG_WIN                      = 080EAh;
+    GL_PHONG_HINT_WIN                 = 080EBh;
+
+(* WIN_specular_fog *)
+    GL_FOG_SPECULAR_TEXTURE_WIN       = 080ECh;
+
+(* For compatibility with OpenGL v1.0 *)
+    GL_LOGIC_OP                       = GL_INDEX_LOGIC_OP;
+    GL_TEXTURE_COMPONENTS             = GL_TEXTURE_INTERNAL_FORMAT;
+
+(*
+ * OpenGL after 1.1. See http://www.opengl.org/registry/api/glext.h
+ *)
+
+    GL_SHADING_LANGUAGE_VERSION       = 08B8Ch;
+
+    (* Version 3.0 *)
+
+    GL_MAJOR_VERSION                  = 0821Bh;
+    GL_MINOR_VERSION                  = 0821Ch;
+    GL_NUM_EXTENSIONS                 = 0821Dh;
+
+
+PROCEDURE glAccum(op : GLenum;
+                  value : GLfloat);
+
+PROCEDURE glAlphaFunc(func : GLenum;
+                      ref : GLclampf);
+
+PROCEDURE glAreTexturesResident (n : GLsizei;
+                             textures : ARRAY OF GLuint;
+                             VAR OUT residences : ARRAY OF GLboolean) : GLboolean;
+
+PROCEDURE glArrayElement (i : GLint);
+
+PROCEDURE glBegin(mode : GLenum);
+
+PROCEDURE glBindTexture (target : GLenum; texture : GLuint);
+
+PROCEDURE glBitmap(width : GLsizei;
+                   height : GLsizei;
+                   xorig : GLfloat;
+                   yorig : GLfloat;
+                   xmove : GLfloat;
+                   ymove : GLfloat;
+                   bitmap : ARRAY OF GLubyte);
+
+PROCEDURE glBlendFunc(sfactor : GLenum;
+                      dfactor : GLenum);
+
+PROCEDURE glCallList(list : GLuint);
+
+PROCEDURE glCallLists(n : GLsizei;
+                      type : GLenum;
+                      lists : ARRAY OF LOC);
+
+PROCEDURE glClear(mask : GLbitfield);
+
+PROCEDURE glClearAccum(red : GLfloat;
+                       green : GLfloat;
+                       blue : GLfloat;
+                       alpha : GLfloat);
+
+PROCEDURE glClearColor(red : GLclampf;
+                       green : GLclampf;
+                       blue : GLclampf;
+                       alpha : GLclampf);
+
+PROCEDURE glClearDepth(depth : GLclampd);
+
+PROCEDURE glClearIndex(c : GLfloat);
+
+PROCEDURE glClearStencil(s : GLint);
+
+PROCEDURE glClipPlane(plane : GLenum;
+                      equation : ARRAY OF GLdouble);
+
+PROCEDURE glColor3b(red : GLbyte;
+                    green : GLbyte;
+                    blue : GLbyte);
+
+PROCEDURE glColor3bv(v : ARRAY OF GLbyte);
+
+PROCEDURE glColor3d(red : GLdouble;
+                    green : GLdouble;
+                    blue : GLdouble);
+
+PROCEDURE glColor3dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glColor3f(red : GLfloat;
+                    green : GLfloat;
+                    blue : GLfloat);
+
+PROCEDURE glColor3fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glColor3i(red : GLint;
+                    green : GLint;
+                    blue : GLint);
+
+PROCEDURE glColor3iv(v : ARRAY OF GLint);
+
+PROCEDURE glColor3s(red : GLshort;
+                    green : GLshort;
+                    blue : GLshort);
+
+PROCEDURE glColor3sv(v : ARRAY OF GLshort);
+
+PROCEDURE glColor3ub(red : GLubyte;
+                     green : GLubyte;
+                     blue : GLubyte);
+
+PROCEDURE glColor3ubv(v : ARRAY OF GLubyte);
+
+PROCEDURE glColor3ui(red : GLuint;
+                     green : GLuint;
+                     blue : GLuint);
+
+PROCEDURE glColor3uiv(v : ARRAY OF GLuint);
+
+PROCEDURE glColor3us(red : GLushort;
+                     green : GLushort;
+                     blue : GLushort);
+
+PROCEDURE glColor3usv(v : ARRAY OF GLushort);
+
+PROCEDURE glColor4b(red : GLbyte;
+                    green : GLbyte;
+                    blue : GLbyte;
+                    alpha : GLbyte);
+
+PROCEDURE glColor4bv(v : ARRAY OF GLbyte);
+
+PROCEDURE glColor4d(red : GLdouble;
+                    green : GLdouble;
+                    blue : GLdouble;
+                    alpha : GLdouble);
+
+PROCEDURE glColor4dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glColor4f(red : GLfloat;
+                    green : GLfloat;
+                    blue : GLfloat;
+                    alpha : GLfloat);
+
+PROCEDURE glColor4fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glColor4i(red : GLint;
+                    green : GLint;
+                    blue : GLint;
+                    alpha : GLint);
+
+PROCEDURE glColor4iv(v : ARRAY OF GLint);
+
+PROCEDURE glColor4s(red : GLshort;
+                    green : GLshort;
+                    blue : GLshort;
+                    alpha : GLshort);
+
+PROCEDURE glColor4sv(v : ARRAY OF GLshort);
+
+PROCEDURE glColor4ub(red : GLubyte;
+                     green : GLubyte;
+                     blue : GLubyte;
+                     alpha : GLubyte);
+
+PROCEDURE glColor4ubv(v : ARRAY OF GLubyte);
+
+PROCEDURE glColor4ui(red : GLuint;
+                     green : GLuint;
+                     blue : GLuint;
+                     alpha : GLuint);
+
+PROCEDURE glColor4uiv(v : ARRAY OF GLuint);
+
+PROCEDURE glColor4us(red : GLushort;
+                     green : GLushort;
+                     blue : GLushort;
+                     alpha : GLushort);
+
+PROCEDURE glColor4usv(v : ARRAY OF GLushort);
+
+PROCEDURE glColorMask(red : GLboolean;
+                      green : GLboolean;
+                      blue : GLboolean;
+                      alpha : GLboolean);
+
+PROCEDURE glColorMaterial(face : GLenum;
+                          mode : GLenum);
+
+PROCEDURE glColorPointer (size : GLuint;
+                          type : GLenum;
+                          stride : GLsizei;
+                          pointer : PGLvoid);
+
+PROCEDURE glCopyPixels(x : GLint;
+                       y : GLint;
+                       width : GLsizei;
+                       height : GLsizei;
+                       type : GLenum);
+
+PROCEDURE glCopyTexImage1D (target : GLenum;
+                            level : GLint;
+                            internalFormat : GLenum;
+                            x : GLint;
+                            y : GLint;
+                            width : GLsizei;
+                            border : GLint);
+
+PROCEDURE glCopyTexImage2D (target : GLenum;
+                            level : GLint;
+                            internalFormat : GLenum;
+                            x : GLint;
+                            y : GLint;
+                            width : GLsizei;
+                            height : GLsizei;
+                            border : GLint);
+
+PROCEDURE glCopyTexSubImage1D (target : GLenum;
+                               level : GLint;
+                               xoffset : GLint;
+                               x : GLint;
+                               y : GLint;
+                               width : GLsizei);
+
+PROCEDURE glCopyTexSubImage2D (target : GLenum;
+                               level : GLint;
+                               xoffset : GLint;
+                               yoffset : GLint;
+                               x : GLint;
+                               y : GLint;
+                               width : GLsizei;
+                               height : GLsizei);
+
+PROCEDURE glCullFace(mode : GLenum);
+
+PROCEDURE glDeleteLists(list : GLuint;
+                        range : GLsizei);
+
+PROCEDURE glDeleteTextures (n : GLsizei; textures : ARRAY OF GLuint);
+
+PROCEDURE glDepthFunc(func : GLenum);
+
+PROCEDURE glDepthMask(flag : GLboolean);
+
+PROCEDURE glDepthRange(zNear : GLclampd;
+                       zFar : GLclampd);
+
+PROCEDURE glDisable(cap : GLenum);
+
+PROCEDURE glDisableClientState (array : GLenum);
+
+PROCEDURE glDrawArrays (mode : GLenum; first : GLint; count : GLsizei);
+
+PROCEDURE glDrawBuffer(mode : GLenum);
+
+PROCEDURE glDrawElements (mode : GLsizei;
+                          count : GLsizei;
+                          type : GLsizei;
+                          indices : PGLvoid);
+
+PROCEDURE glDrawPixels(width : GLsizei;
+                       height : GLsizei;
+                       format : GLenum;
+                       type : GLenum;
+                       pixels : PGLvoid);
+
+PROCEDURE glEdgeFlag(flag : GLboolean);
+
+PROCEDURE glEdgeFlagPointer (stride : GLsizei;
+                             pointer : PGLvoid);
+
+PROCEDURE glEdgeFlagv(flag : ARRAY OF GLboolean);
+
+PROCEDURE glEnable(cap : GLenum);
+
+PROCEDURE glEnableClientState (array : GLenum);
+
+PROCEDURE glEnd();
+
+PROCEDURE glEndList();
+
+PROCEDURE glEvalCoord1d(u : GLdouble);
+
+PROCEDURE glEvalCoord1dv(u : ARRAY OF GLdouble);
+
+PROCEDURE glEvalCoord1f(u : GLfloat);
+
+PROCEDURE glEvalCoord1fv(u : ARRAY OF GLfloat);
+
+PROCEDURE glEvalCoord2d(u : GLdouble;
+                        v : GLdouble);
+
+PROCEDURE glEvalCoord2dv(u : ARRAY OF GLdouble);
+
+PROCEDURE glEvalCoord2f(u : GLfloat;
+                        v : GLfloat);
+
+PROCEDURE glEvalCoord2fv(u : ARRAY OF GLfloat);
+
+PROCEDURE glEvalMesh1(mode : GLenum;
+                      i1 : GLint;
+                      i2 : GLint);
+
+PROCEDURE glEvalMesh2(mode : GLenum;
+                      i1 : GLint;
+                      i2 : GLint;
+                      j1 : GLint;
+                      j2 : GLint);
+
+PROCEDURE glEvalPoint1(i : GLint);
+
+PROCEDURE glEvalPoint2(i : GLint;
+                       j : GLint);
+
+PROCEDURE glFeedbackBuffer(size : GLsizei;
+                           type : GLenum;
+                           VAR OUT buffer : ARRAY OF GLfloat);
+
+PROCEDURE glFinish();
+
+PROCEDURE glFlush();
+
+PROCEDURE glFogf(pname : GLenum;
+                 param : GLfloat);
+
+PROCEDURE glFogfv(pname : GLenum; params : ARRAY OF GLfloat);
+
+PROCEDURE glFogi(pname : GLenum;
+                 param : GLint);
+
+PROCEDURE glFogiv(pname : GLenum; params : ARRAY OF GLint);
+
+PROCEDURE glFrontFace(mode : GLenum);
+
+PROCEDURE glFrustum(left : GLdouble;
+                    right : GLdouble;
+                    bottom : GLdouble;
+                    top : GLdouble;
+                    zNear : GLdouble;
+                    zFar : GLdouble);
+
+PROCEDURE glGenLists(range : GLsizei) : GLuint;
+
+PROCEDURE glGenTextures (n : GLsizei; VAR OUT textures : ARRAY OF GLuint);
+
+PROCEDURE glGetBooleanv(pname : GLenum;
+                        VAR OUT params : ARRAY OF GLboolean);
+
+PROCEDURE glGetClipPlane(plane : GLenum;
+                         VAR OUT equation : ARRAY OF GLdouble);
+
+PROCEDURE glGetDoublev(pname : GLenum;
+                       VAR OUT params : ARRAY OF GLdouble);
+
+PROCEDURE glGetError() : GLenum;
+
+PROCEDURE glGetFloatv(pname : GLenum;
+                      VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetIntegerv(pname : GLenum;
+                        VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetLightfv(light : GLenum;
+                       pname : GLenum;
+                       VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetLightiv(light : GLenum;
+                       pname : GLenum;
+                       VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetMapdv(target : GLenum;
+                     query : GLenum;
+                     VAR OUT v : ARRAY OF GLdouble);
+
+PROCEDURE glGetMapfv(target : GLenum;
+                     query : GLenum;
+                     VAR OUT v : ARRAY OF GLfloat);
+
+PROCEDURE glGetMapiv(target : GLenum;
+                     query : GLenum;
+                     VAR OUT v : ARRAY OF GLint);
+
+PROCEDURE glGetMaterialfv(face : GLenum;
+                          pname : GLenum;
+                          VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetMaterialiv(face : GLenum;
+                          pname : GLenum;
+                          VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetPixelMapfv(map : GLenum;
+                          VAR OUT values : ARRAY OF GLfloat);
+
+PROCEDURE glGetPixelMapuiv(map : GLenum;
+                           VAR OUT values : ARRAY OF GLuint);
+
+PROCEDURE glGetPixelMapusv(map : GLenum;
+                           VAR OUT values : ARRAY OF GLushort);
+
+PROCEDURE glGetPointerv (pname : GLuint; VAR OUT params : PGLvoid);
+
+PROCEDURE glGetPolygonStipple(VAR OUT mask : ARRAY OF GLubyte);
+
+PROCEDURE glGetString(name : GLenum) : PGLubyte;
+
+PROCEDURE glGetTexEnvfv(target : GLenum;
+                        pname : GLenum;
+                        VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetTexEnviv(target : GLenum;
+                        pname : GLenum;
+                        VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetTexGendv(coord : GLenum;
+                        pname : GLenum;
+                        VAR OUT params : ARRAY OF GLdouble);
+
+PROCEDURE glGetTexGenfv(coord : GLenum;
+                        pname : GLenum;
+                        VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetTexGeniv(coord : GLenum;
+                        pname : GLenum;
+                        VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetTexImage(target : GLenum;
+                        level : GLint;
+                        format : GLenum;
+                        type : GLenum;
+                        VAR OUT pixels : ARRAY OF LOC);
+
+PROCEDURE glGetTexLevelParameterfv(target : GLenum;
+                                   level : GLint;
+                                   pname : GLenum;
+                                   VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetTexLevelParameteriv(target : GLenum;
+                                   level : GLint;
+                                   pname : GLenum;
+                                   VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glGetTexParameterfv(target : GLenum;
+                              pname : GLenum;
+                              VAR OUT params : ARRAY OF GLfloat);
+
+PROCEDURE glGetTexParameteriv(target : GLenum;
+                              pname : GLenum;
+                              VAR OUT params : ARRAY OF GLint);
+
+PROCEDURE glHint(target : GLenum;
+                 mode : GLenum);
+
+PROCEDURE glIndexMask(mask : GLuint);
+
+PROCEDURE glIndexPointer(type : GLenum;
+                         stride : GLsizei;
+                         VAR OUT pointer : PGLvoid);
+
+PROCEDURE glIndexd(c : GLdouble);
+
+PROCEDURE glIndexdv(c : ARRAY OF GLdouble);
+
+PROCEDURE glIndexf(c : GLfloat);
+
+PROCEDURE glIndexfv(c : ARRAY OF GLfloat);
+
+PROCEDURE glIndexi(c : GLint);
+
+PROCEDURE glIndexiv(c : ARRAY OF GLint);
+
+PROCEDURE glIndexs(c : GLshort);
+
+PROCEDURE glIndexsv(c : ARRAY OF GLshort);
+
+PROCEDURE glIndexub(c : GLubyte);
+
+PROCEDURE glIndexubv(c : ARRAY OF GLubyte);
+
+PROCEDURE glInitNames();
+
+PROCEDURE glInterleavedArrays(format : GLenum;
+                              stride : GLsizei;
+                              pointer : PGLvoid);
+
+PROCEDURE glIsEnabled(cap : GLenum) : GLboolean;
+
+PROCEDURE glIsList(list : GLuint) : GLboolean;
+
+PROCEDURE glIsTexture(texture : GLuint) : GLboolean;
+
+PROCEDURE glLightModelf(pname : GLenum;
+                        param : GLfloat);
+
+PROCEDURE glLightModelfv(pname : GLenum;
+                         params : ARRAY OF GLfloat);
+
+PROCEDURE glLightModeli(pname : GLenum;
+                        param : GLint);
+
+PROCEDURE glLightModeliv(pname : GLenum;
+                         params : ARRAY OF GLint);
+
+PROCEDURE glLightf(light : GLenum;
+                   pname : GLenum;
+                   param : GLfloat);
+
+PROCEDURE glLightfv(light : GLenum;
+                    pname : GLenum;
+                    params : ARRAY OF GLfloat);
+
+PROCEDURE glLighti(light : GLenum;
+                   pname : GLenum;
+                   param : GLint);
+
+PROCEDURE glLightiv(light : GLenum;
+                    pname : GLenum;
+                    params : ARRAY OF GLint);
+
+PROCEDURE glLineStipple(factor : GLint;
+                        pattern : GLushort);
+
+PROCEDURE glLineWidth(width : GLfloat);
+
+PROCEDURE glListBase(base : GLuint);
+
+PROCEDURE glLoadIdentity();
+
+PROCEDURE glLoadMatrixd(m : ARRAY OF GLdouble);
+
+PROCEDURE glLoadMatrixf(m : ARRAY OF GLfloat);
+
+PROCEDURE glLoadName(name : GLuint);
+
+PROCEDURE glLogicOp(opcode : GLenum);
+
+PROCEDURE glMap1d(target : GLenum;
+                  u1 : GLdouble;
+                  u2 : GLdouble;
+                  stride : GLint;
+                  order : GLint;
+                  points : ARRAY OF GLdouble);
+
+PROCEDURE glMap1f(target : GLenum;
+                  u1 : GLfloat;
+                  u2 : GLfloat;
+                  stride : GLint;
+                  order : GLint;
+                  points : ARRAY OF GLfloat);
+
+PROCEDURE glMap2d(target : GLenum;
+                  u1 : GLdouble;
+                  u2 : GLdouble;
+                  ustride : GLint;
+                  uorder : GLint;
+                  v1 : GLdouble;
+                  v2 : GLdouble;
+                  vstride : GLint;
+                  vorder : GLint;
+                  points : ARRAY OF GLdouble);
+
+PROCEDURE glMap2f(target : GLenum;
+                  u1 : GLfloat;
+                  u2 : GLfloat;
+                  ustride : GLint;
+                  uorder : GLint;
+                  v1 : GLfloat;
+                  v2 : GLfloat;
+                  vstride : GLint;
+                  vorder : GLint;
+                  points : ARRAY OF GLfloat);
+
+PROCEDURE glMapGrid1d(un : GLint;
+                      u1 : GLdouble;
+                      u2 : GLdouble);
+
+PROCEDURE glMapGrid1f(un : GLint;
+                      u1 : GLfloat;
+                      u2 : GLfloat);
+
+PROCEDURE glMapGrid2d(un : GLint;
+                      u1 : GLdouble;
+                      u2 : GLdouble;
+                      vn : GLint;
+                      v1 : GLdouble;
+                      v2 : GLdouble);
+
+PROCEDURE glMapGrid2f(un : GLint;
+                      u1 : GLfloat;
+                      u2 : GLfloat;
+                      vn : GLint;
+                      v1 : GLfloat;
+                      v2 : GLfloat);
+
+PROCEDURE glMaterialf(face : GLenum;
+                      pname : GLenum;
+                      param : GLfloat);
+
+PROCEDURE glMaterialfv(face : GLenum;
+                       pname : GLenum;
+                       params : ARRAY OF GLfloat);
+
+PROCEDURE glMateriali(face : GLenum;
+                      pname : GLenum;
+                      param : GLint);
+
+PROCEDURE glMaterialiv(face : GLenum;
+                       pname : GLenum;
+                       params : ARRAY OF GLint);
+
+PROCEDURE glMatrixMode(mode : GLenum);
+
+PROCEDURE glMultMatrixd(m : ARRAY OF GLdouble);
+
+PROCEDURE glMultMatrixf(m : ARRAY OF GLfloat);
+
+PROCEDURE glNewList(list : GLuint;
+                    mode : GLenum);
+
+PROCEDURE glNormal3b(nx : GLbyte;
+                     ny : GLbyte;
+                     nz : GLbyte);
+
+PROCEDURE glNormal3bv(v : ARRAY OF GLbyte);
+
+PROCEDURE glNormal3d(nx : GLdouble;
+                     ny : GLdouble;
+                     nz : GLdouble);
+
+PROCEDURE glNormal3dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glNormal3f(nx : GLfloat;
+                     ny : GLfloat;
+                     nz : GLfloat);
+
+PROCEDURE glNormal3fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glNormal3i(nx : GLint;
+                     ny : GLint;
+                     nz : GLint);
+
+PROCEDURE glNormal3iv(v : ARRAY OF GLint);
+
+PROCEDURE glNormal3s(nx : GLshort;
+                     ny : GLshort;
+                     nz : GLshort);
+
+PROCEDURE glNormal3sv(v : ARRAY OF GLshort);
+
+PROCEDURE glNormalPointer(type : GLenum;
+                          stride : GLsizei;
+                          pointer : PGLvoid);
+
+PROCEDURE glOrtho(left : GLdouble;
+                  right : GLdouble;
+                  bottom : GLdouble;
+                  top : GLdouble;
+                  zNear : GLdouble;
+                  zFar : GLdouble);
+
+PROCEDURE glPassThrough(token : GLfloat);
+
+PROCEDURE glPixelMapfv(map : GLenum;
+                       mapsize : GLsizei;
+                       values : ARRAY OF GLfloat);
+
+PROCEDURE glPixelMapuiv(map : GLenum;
+                        mapsize : GLsizei;
+                        values : ARRAY OF GLuint);
+
+PROCEDURE glPixelMapusv(map : GLenum;
+                        mapsize : GLsizei;
+                        values : ARRAY OF GLushort);
+
+PROCEDURE glPixelStoref(pname : GLenum;
+                        param : GLfloat);
+
+PROCEDURE glPixelStorei(pname : GLenum;
+                        param : GLint);
+
+PROCEDURE glPixelTransferf(pname : GLenum;
+                           param : GLfloat);
+
+PROCEDURE glPixelTransferi(pname : GLenum;
+                           param : GLint);
+
+PROCEDURE glPixelZoom(xfactor : GLfloat;
+                      yfactor : GLfloat);
+
+PROCEDURE glPointSize(size : GLfloat);
+
+PROCEDURE glPolygonMode(face : GLenum;
+                        mode : GLenum);
+
+PROCEDURE glPolygonOffset(factor : GLfloat; units : GLfloat);
+
+PROCEDURE glPolygonStipple(mask : ARRAY OF GLubyte);
+
+PROCEDURE glPopAttrib();
+
+PROCEDURE glPopClientAttrib();
+
+PROCEDURE glPopMatrix();
+
+PROCEDURE glPopName();
+
+PROCEDURE glPrioritizeTextures(n : GLsizei;
+                               textures : ARRAY OF GLuint;
+                               priorities : ARRAY OF GLclampf);
+
+PROCEDURE glPushAttrib(mask : GLbitfield);
+
+PROCEDURE glPushClientAttrib (mask : GLbitfield);
+
+PROCEDURE glPushMatrix();
+
+PROCEDURE glPushName(name : GLuint);
+
+PROCEDURE glRasterPos2d(x : GLdouble;
+                        y : GLdouble);
+
+PROCEDURE glRasterPos2dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glRasterPos2f(x : GLfloat;
+                        y : GLfloat);
+
+PROCEDURE glRasterPos2fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glRasterPos2i(x : GLint;
+                        y : GLint);
+
+PROCEDURE glRasterPos2iv(v : ARRAY OF GLint);
+
+PROCEDURE glRasterPos2s(x : GLshort;
+                        y : GLshort);
+
+PROCEDURE glRasterPos2sv(v : ARRAY OF GLshort);
+
+PROCEDURE glRasterPos3d(x : GLdouble;
+                        y : GLdouble;
+                        z : GLdouble);
+
+PROCEDURE glRasterPos3dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glRasterPos3f(x : GLfloat;
+                        y : GLfloat;
+                        z : GLfloat);
+
+PROCEDURE glRasterPos3fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glRasterPos3i(x : GLint;
+                        y : GLint;
+                        z : GLint);
+
+PROCEDURE glRasterPos3iv(v : ARRAY OF GLint);
+
+PROCEDURE glRasterPos3s(x : GLshort;
+                        y : GLshort;
+                        z : GLshort);
+
+PROCEDURE glRasterPos3sv(v : ARRAY OF GLshort);
+
+PROCEDURE glRasterPos4d(x : GLdouble;
+                        y : GLdouble;
+                        z : GLdouble;
+                        w : GLdouble);
+
+PROCEDURE glRasterPos4dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glRasterPos4f(x : GLfloat;
+                        y : GLfloat;
+                        z : GLfloat;
+                        w : GLfloat);
+
+PROCEDURE glRasterPos4fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glRasterPos4i(x : GLint;
+                        y : GLint;
+                        z : GLint;
+                        w : GLint);
+
+PROCEDURE glRasterPos4iv(v : ARRAY OF GLint);
+
+PROCEDURE glRasterPos4s(x : GLshort;
+                        y : GLshort;
+                        z : GLshort;
+                        w : GLshort);
+
+PROCEDURE glRasterPos4sv(v : ARRAY OF GLshort);
+
+PROCEDURE glReadBuffer(mode : GLenum);
+
+PROCEDURE glReadPixels(x : GLint;
+                       y : GLint;
+                       width : GLsizei;
+                       height : GLsizei;
+                       format : GLenum;
+                       type : GLenum;
+                       pixels : PGLvoid);
+
+PROCEDURE glRectd(x1 : GLdouble;
+                  y1 : GLdouble;
+                  x2 : GLdouble;
+                  y2 : GLdouble);
+
+PROCEDURE glRectdv(v1 : ARRAY OF GLdouble;
+                   v2 : ARRAY OF GLdouble);
+
+PROCEDURE glRectf(x1 : GLfloat;
+                  y1 : GLfloat;
+                  x2 : GLfloat;
+                  y2 : GLfloat);
+
+PROCEDURE glRectfv(v1 : ARRAY OF GLfloat;
+                   v2 : ARRAY OF GLfloat);
+
+PROCEDURE glRecti(x1 : GLint;
+                  y1 : GLint;
+                  x2 : GLint;
+                  y2 : GLint);
+
+PROCEDURE glRectiv(v1 : ARRAY OF GLint;
+                   v2 : ARRAY OF GLint);
+
+PROCEDURE glRects(x1 : GLshort;
+                  y1 : GLshort;
+                  x2 : GLshort;
+                  y2 : GLshort);
+
+PROCEDURE glRectsv(v1 : ARRAY OF GLshort;
+                   v2 : ARRAY OF GLshort);
+
+PROCEDURE glRenderMode(mode : GLenum) : GLint;
+
+PROCEDURE glRotated(angle : GLdouble;
+                    x : GLdouble;
+                    y : GLdouble;
+                    z : GLdouble);
+
+PROCEDURE glRotatef(angle : GLfloat;
+                    x : GLfloat;
+                    y : GLfloat;
+                    z : GLfloat);
+
+PROCEDURE glScaled(x : GLdouble;
+                   y : GLdouble;
+                   z : GLdouble);
+
+PROCEDURE glScalef(x : GLfloat;
+                   y : GLfloat;
+                   z : GLfloat);
+
+PROCEDURE glScissor(x : GLint;
+                    y : GLint;
+                    width : GLsizei;
+                    height : GLsizei);
+
+PROCEDURE glSelectBuffer(size : GLsizei;
+                         VAR OUT buffer : ARRAY OF GLuint);
+
+PROCEDURE glShadeModel(mode : GLenum);
+
+PROCEDURE glStencilFunc(func : GLenum;
+                        ref : GLint;
+                        mask : GLuint);
+
+PROCEDURE glStencilMask(mask : GLuint);
+
+PROCEDURE glStencilOp(fail : GLenum;
+                      zfail : GLenum;
+                      zpass : GLenum);
+
+PROCEDURE glTexCoord1d(s : GLdouble);
+
+PROCEDURE glTexCoord1dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glTexCoord1f(s : GLfloat);
+
+PROCEDURE glTexCoord1fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glTexCoord1i(s : GLint);
+
+PROCEDURE glTexCoord1iv(v : ARRAY OF GLint);
+
+PROCEDURE glTexCoord1s(s : GLshort);
+
+PROCEDURE glTexCoord1sv(v : ARRAY OF GLshort);
+
+PROCEDURE glTexCoord2d(s : GLdouble;
+                       t : GLdouble);
+
+PROCEDURE glTexCoord2dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glTexCoord2f(s : GLfloat;
+                       t : GLfloat);
+
+PROCEDURE glTexCoord2fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glTexCoord2i(s : GLint;
+                       t : GLint);
+
+PROCEDURE glTexCoord2iv(v : ARRAY OF GLint);
+
+PROCEDURE glTexCoord2s(s : GLshort;
+                       t : GLshort);
+
+PROCEDURE glTexCoord2sv(v : ARRAY OF GLshort);
+
+PROCEDURE glTexCoord3d(s : GLdouble;
+                       t : GLdouble;
+                       r : GLdouble);
+
+PROCEDURE glTexCoord3dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glTexCoord3f(s : GLfloat;
+                       t : GLfloat;
+                       r : GLfloat);
+
+PROCEDURE glTexCoord3fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glTexCoord3i(s : GLint;
+                       t : GLint;
+                       r : GLint);
+
+PROCEDURE glTexCoord3iv(v : ARRAY OF GLint);
+
+PROCEDURE glTexCoord3s(s : GLshort;
+                       t : GLshort;
+                       r : GLshort);
+
+PROCEDURE glTexCoord3sv(v : ARRAY OF GLshort);
+
+PROCEDURE glTexCoord4d(s : GLdouble;
+                       t : GLdouble;
+                       r : GLdouble;
+                       q : GLdouble);
+
+PROCEDURE glTexCoord4dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glTexCoord4f(s : GLfloat;
+                       t : GLfloat;
+                       r : GLfloat;
+                       q : GLfloat);
+
+PROCEDURE glTexCoord4fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glTexCoord4i(s : GLint;
+                       t : GLint;
+                       r : GLint;
+                       q : GLint);
+
+PROCEDURE glTexCoord4iv(v : ARRAY OF GLint);
+
+PROCEDURE glTexCoord4s(s : GLshort;
+                       t : GLshort;
+                       r : GLshort;
+                       q : GLshort);
+
+PROCEDURE glTexCoord4sv(v : ARRAY OF GLshort);
+
+PROCEDURE glTexCoordPointer(size : GLint;
+                            type : GLenum;
+                            stride : GLsizei;
+                            pointer : PGLvoid);
+
+PROCEDURE glTexEnvf(target : GLenum;
+                    pname : GLenum;
+                    param : GLfloat);
+
+PROCEDURE glTexEnvfv(target : GLenum;
+                     pname : GLenum;
+                     params : ARRAY OF GLfloat);
+
+PROCEDURE glTexEnvi(target : GLenum;
+                    pname : GLenum;
+                    param : GLint);
+
+PROCEDURE glTexEnviv(target : GLenum;
+                     pname : GLenum;
+                     params : ARRAY OF GLint);
+
+PROCEDURE glTexGend(coord : GLenum;
+                    pname : GLenum;
+                    param : GLdouble);
+
+PROCEDURE glTexGendv(coord : GLenum;
+                     pname : GLenum;
+                     params : ARRAY OF GLdouble);
+
+PROCEDURE glTexGenf(coord : GLenum;
+                    pname : GLenum;
+                    param : GLfloat);
+
+PROCEDURE glTexGenfv(coord : GLenum;
+                     pname : GLenum;
+                     params : ARRAY OF GLfloat);
+
+PROCEDURE glTexGeni(coord : GLenum;
+                    pname : GLenum;
+                    param : GLint);
+
+PROCEDURE glTexGeniv(coord : GLenum;
+                     pname : GLenum;
+                     params : ARRAY OF GLint);
+
+PROCEDURE glTexImage1D(target : GLenum;
+                       level : GLint;
+                       components : GLint;
+                       width : GLsizei;
+                       border : GLint;
+                       format : GLenum;
+                       type : GLenum;
+                       pixels : ARRAY OF LOC);
+
+PROCEDURE glTexImage2D(target : GLenum;
+                       level : GLint;
+                       components : GLint;
+                       width : GLsizei;
+                       height : GLsizei;
+                       border : GLint;
+                       format : GLenum;
+                       type : GLenum;
+                       pixels : ARRAY OF LOC);
+
+PROCEDURE glTexParameterf(target : GLenum;
+                          pname : GLenum;
+                          param : GLfloat);
+
+PROCEDURE glTexParameterfv(target : GLenum;
+                           pname : GLenum;
+                           params : ARRAY OF GLfloat);
+
+PROCEDURE glTexParameteri(target : GLenum;
+                          pname : GLenum;
+                          param : GLint);
+
+PROCEDURE glTexParameteriv(target : GLenum;
+                           pname : GLenum;
+                           params : ARRAY OF GLint);
+
+PROCEDURE glTexSubImage1D(target : GLenum;
+                          level : GLint;
+                          xoffset : GLint;
+                          width : GLsizei;
+                          format : GLenum;
+                          type : GLenum;
+                          pixels : ARRAY OF GLvoid);
+
+PROCEDURE glTexSubImage2D(target : GLenum;
+                          level : GLint;
+                          xoffset : GLint;
+                          yoffset : GLint;
+                          width : GLsizei;
+                          height : GLsizei;
+                          format : GLenum;
+                          type : GLenum;
+                          pixels : ARRAY OF GLvoid);
+
+PROCEDURE glTranslated(x : GLdouble;
+                       y : GLdouble;
+                       z : GLdouble);
+
+PROCEDURE glTranslatef(x : GLfloat;
+                       y : GLfloat;
+                       z : GLfloat);
+
+PROCEDURE glVertex2d(x : GLdouble;
+                     y : GLdouble);
+
+PROCEDURE glVertex2dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glVertex2f(x : GLfloat;
+                     y : GLfloat);
+
+PROCEDURE glVertex2fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glVertex2i(x : GLint;
+                     y : GLint);
+
+PROCEDURE glVertex2iv(v : ARRAY OF GLint);
+
+PROCEDURE glVertex2s(x : GLshort;
+                     y : GLshort);
+
+PROCEDURE glVertex2sv(v : ARRAY OF GLshort);
+
+PROCEDURE glVertex3d(x : GLdouble;
+                     y : GLdouble;
+                     z : GLdouble);
+
+PROCEDURE glVertex3dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glVertex3f(x : GLfloat;
+                     y : GLfloat;
+                     z : GLfloat);
+
+PROCEDURE glVertex3fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glVertex3i(x : GLint;
+                     y : GLint;
+                     z : GLint);
+
+PROCEDURE glVertex3iv(v : ARRAY OF GLint);
+
+PROCEDURE glVertex3s(x : GLshort;
+                     y : GLshort;
+                     z : GLshort);
+
+PROCEDURE glVertex3sv(v : ARRAY OF GLshort);
+
+PROCEDURE glVertex4d(x : GLdouble;
+                     y : GLdouble;
+                     z : GLdouble;
+                     w : GLdouble);
+
+PROCEDURE glVertex4dv(v : ARRAY OF GLdouble);
+
+PROCEDURE glVertex4f(x : GLfloat;
+                     y : GLfloat;
+                     z : GLfloat;
+                     w : GLfloat);
+
+PROCEDURE glVertex4fv(v : ARRAY OF GLfloat);
+
+PROCEDURE glVertex4i(x : GLint;
+                     y : GLint;
+                     z : GLint;
+                     w : GLint);
+
+PROCEDURE glVertex4iv(v : ARRAY OF GLint);
+
+PROCEDURE glVertex4s(x : GLshort;
+                     y : GLshort;
+                     z : GLshort;
+                     w : GLshort);
+
+PROCEDURE glVertex4sv(v : ARRAY OF GLshort);
+
+PROCEDURE glVertexPointer(size : GLint;
+                          type : GLenum;
+                          stride : GLsizei;
+                          pointer : PGLvoid);
+
+PROCEDURE glViewport(x : GLint;
+                     y : GLint;
+                     width : GLsizei;
+                     height : GLsizei);
+
+
+TYPE
+    PFNGLARRAYELEMENTEXTPROC    = PROCEDURE (GLint);
+    PFNGLDRAWARRAYSEXTPROC      = PROCEDURE (GLenum,
+                                             GLint,
+                                             GLsizei);
+    PFNGLVERTEXPOINTEREXTPROC   = PROCEDURE (GLint,
+                                             GLenum,
+                                             GLsizei,
+                                             GLsizei,
+                                             ARRAY OF LOC);
+    PFNGLNORMALPOINTEREXTPROC   = PROCEDURE (GLenum,
+                                            GLsizei,
+                                            GLsizei,
+                                            ARRAY OF LOC);
+    PFNGLCOLORPOINTEREXTPROC    = PROCEDURE (GLint,
+                                             GLenum,
+                                             GLsizei,
+                                             GLsizei,
+                                             ARRAY OF LOC);
+    PFNGLINDEXPOINTEREXTPROC    = PROCEDURE (GLenum,
+                                             GLsizei,
+                                             GLsizei,
+                                             ARRAY OF LOC);
+    PFNGLTEXCOORDPOINTEREXTPROC = PROCEDURE (GLint,
+                                             GLenum,
+                                             GLsizei,
+                                             GLsizei,
+                                             ARRAY OF LOC);
+    PFNGLEDGEFLAGPOINTEREXTPROC = PROCEDURE (GLsizei,
+                                             GLsizei,
+                                             VAR GLboolean);
+    PFNGLGETPOINTERVEXTPROC     = PROCEDURE (GLenum,
+                                             VAR PGLvoid);
+
+    PFNGLARRAYELEMENTARRAYEXTPROC = PROCEDURE (GLenum,
+                                               GLsizei,
+                                               VAR ARRAY OF LOC);
+    PFNGLADDSWAPHINTRECTWINPROC = PROCEDURE (GLint,
+                                             GLint,
+                                             GLsizei,
+                                             GLsizei);
+
+(* WIN_draw_range_elements *)
+    PFNGLDRAWRANGEELEMENTSWINPROC = PROCEDURE(GLenum,
+                                              GLuint,
+                                              GLuint,
+                                              GLsizei,
+                                              GLenum,
+                                              VAR GLvoid);
+
+(* EXT_paletted_texture *)
+
+    PFNGLCOLORTABLEEXTPROC = PROCEDURE(GLenum,
+                                       GLenum,
+                                       GLsizei,
+                                       GLenum,
+                                       GLenum,
+                                       VAR GLvoid);
+
+    PFNGLCOLORSUBTABLEEXTPROC = PROCEDURE(GLenum,
+                                          GLsizei,
+                                          GLsizei,
+                                          GLenum,
+                                          GLenum,
+                                          VAR GLvoid);
+
+    PFNGLGETCOLORTABLEEXTPROC = PROCEDURE(GLenum,
+                                          GLenum,
+                                          GLenum,
+                                          VAR GLvoid);
+
+    PFNGLGETCOLORTABLEPARAMETERIVEXTPROC = PROCEDURE(GLenum,
+                                                     GLenum,
+                                                     VAR ARRAY OF GLint);
+
+    PFNGLGETCOLORTABLEPARAMETERFVEXTPROC = PROCEDURE(GLenum,
+                                                     GLenum,
+                                                     VAR ARRAY OF GLfloat);
+
+END GL.

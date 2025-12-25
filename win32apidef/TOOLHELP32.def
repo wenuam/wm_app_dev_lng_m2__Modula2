@@ -1,0 +1,262 @@
+DEFINITION MODULE TOOLHELP32;
+
+(*****************************************************************************\
+*                                                                             *
+* tlhelp32.h -  WIN32 tool help functions, types, and definitions             *
+*                                                                             *
+* Version 1.0                                                                 *
+*                                                                             *
+* NOTE: windows.h/winbase.h must be #included first                           *
+*                                                                             *
+* Copyright 1994 - 1998 Microsoft Corp.   All rights reserved.             *
+*                                                                             *
+\*****************************************************************************)
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    HANDLE, DWORD, BOOL, LPCVOID, LONG, LPVOID, HMODULE, MAX_PATH, ULONG_PTR;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH/NOPACK/ALIGN:8*>
+
+CONST
+    MAX_MODULE_NAME32   = 255;
+
+(****** Shapshot function **********************************************)
+
+PROCEDURE CreateToolhelp32Snapshot(dwFlags : DWORD;
+                                   th32ProcessID : DWORD) : HANDLE;
+
+
+(* The th32ProcessID argument is only used if TH32CS_SNAPHEAPLIST or *)
+(* TH32CS_SNAPMODULE is specified. th32ProcessID == 0 means the current *)
+(* process. *)
+
+(* NOTE that all of the snapshots are global except for the heap and module *)
+(*      lists which are process specific. To enumerate the heap or module *)
+(*      state for all WIN32 processes call with TH32CS_SNAPALL and the *)
+(*      current process. Then for each process in the TH32CS_SNAPPROCESS *)
+(*      list that isn't the current process, do a call with just *)
+(*      TH32CS_SNAPHEAPLIST and/or TH32CS_SNAPMODULE. *)
+
+CONST
+(* dwFlags *)
+    TH32CS_SNAPHEAPLIST = 000000001h;
+    TH32CS_SNAPPROCESS  = 000000002h;
+    TH32CS_SNAPTHREAD   = 000000004h;
+    TH32CS_SNAPMODULE   = 000000008h;
+    TH32CS_SNAPALL      = (TH32CS_SNAPHEAPLIST BOR
+                           TH32CS_SNAPPROCESS BOR
+                           TH32CS_SNAPTHREAD BOR
+                           TH32CS_SNAPMODULE);
+    TH32CS_INHERIT      = 080000000h;
+
+(* Use CloseHandle to destroy the snapshot *)
+
+
+(****** heap walking ***************************************************)
+
+TYPE
+    HEAPLIST32 =
+		RECORD
+			dwSize        : DWORD;
+			th32ProcessID : DWORD;   (* owning process *)
+			th32HeapID    : ULONG_PTR;      (* heap (in owning process's context!) *)
+			dwFlags       : DWORD;
+		END;
+    PHEAPLIST32 = POINTER TO HEAPLIST32;
+
+CONST
+(* dwFlags *)
+    HF32_DEFAULT      = 1;  (* process's default heap *)
+    HF32_SHARED       = 2;  (* is shared heap *)
+
+
+PROCEDURE Heap32ListFirst(hSnapshot : HANDLE;
+                          VAR lphl : HEAPLIST32) : BOOL;
+
+PROCEDURE Heap32ListNext(hSnapshot : HANDLE;
+                         VAR lphl : HEAPLIST32) : BOOL;
+
+TYPE
+    HEAPENTRY32 =
+		RECORD
+			dwSize              : DWORD;
+			hHandle             : HANDLE;     (* Handle of this heap block *)
+			dwAddress           : ULONG_PTR;   (* Linear address of start of block *)
+			dwBlockSize         : DWORD; (* Size of block in bytes *)
+			dwFlags             : DWORD;
+			dwLockCount         : DWORD;
+			dwResvd             : DWORD;
+			th32ProcessID       : DWORD;   (* owning process *)
+			th32HeapID          : ULONG_PTR;      (* heap block is in *)
+		END;
+
+    PHEAPENTRY32 = POINTER TO HEAPENTRY32;
+
+CONST
+(* dwFlags *)
+    LF32_FIXED    = 000000001h;
+    LF32_FREE     = 000000002h;
+    LF32_MOVEABLE = 000000004h;
+
+PROCEDURE Heap32First(VAR lphe : HEAPENTRY32;
+                      th32ProcessID : DWORD;
+                      th32HeapID : ULONG_PTR) : BOOL;
+
+PROCEDURE Heap32Next(VAR lphe : HEAPENTRY32) : BOOL;
+
+PROCEDURE Toolhelp32ReadProcessMemory(
+    th32ProcessID : DWORD;
+    lpBaseAddress : LPCVOID;
+    lpBuffer : ARRAY OF LOC;
+    cbRead : DWORD;
+    VAR lpNumberOfBytesRead : DWORD) : BOOL;
+
+(***** Process walking *************************************************)
+
+TYPE
+    PROCESSENTRY32W =
+		RECORD
+			dwSize              : DWORD;
+			cntUsage            : DWORD;
+			th32ProcessID       : DWORD;          (* this process *)
+			th32DefaultHeapID   : ULONG_PTR;
+			th32ModuleID        : DWORD;           (* associated exe *)
+			cntThreads          : DWORD;
+			th32ParentProcessID : DWORD;    (* this process's parent process *)
+			pcPriClassBase      : LONG;         (* Base priority of process's threads *)
+			dwFlags             : DWORD;
+			szExeFile           : ARRAY [0..MAX_PATH-1] OF UCHAR;    (* Path *)
+		END;
+    PPROCESSENTRY32W = POINTER TO PROCESSENTRY32W;
+
+    PROCESSENTRY32A =
+		RECORD
+			dwSize              : DWORD;
+			cntUsage            : DWORD;
+			th32ProcessID       : DWORD;          (* this process *)
+			th32DefaultHeapID   : ULONG_PTR;
+			th32ModuleID        : DWORD;           (* associated exe *)
+			cntThreads          : DWORD;
+			th32ParentProcessID : DWORD;    (* this process's parent process *)
+			pcPriClassBase      : LONG;         (* Base priority of process's threads *)
+			dwFlags             : DWORD;
+			szExeFile           : ARRAY [0..MAX_PATH-1] OF ACHAR;    (* Path *)
+		END;
+    PPROCESSENTRY32A = POINTER TO PROCESSENTRY32A;
+
+PROCEDURE Process32FirstW(hSnapshot : HANDLE;
+                          VAR lppe : PROCESSENTRY32W) : BOOL;
+
+PROCEDURE Process32NextW(hSnapshot : HANDLE;
+                         VAR lppe : PROCESSENTRY32W) : BOOL;
+
+%IF UNICODE %THEN
+TYPE
+    PROCESSENTRY32 = PROCESSENTRY32W;
+    PPROCESSENTRY32 = PPROCESSENTRY32W;
+
+PROCEDURE Process32First = Process32FirstW;
+PROCEDURE Process32Next = Process32NextW;
+%ELSE
+TYPE
+    PROCESSENTRY32 = PROCESSENTRY32A;
+    PPROCESSENTRY32 = PROCESSENTRY32A;
+
+PROCEDURE Process32First(hSnapshot : HANDLE;
+                         VAR lppe : PROCESSENTRY32A) : BOOL;
+
+PROCEDURE Process32Next(hSnapshot : HANDLE;
+                        VAR lppe : PROCESSENTRY32A) : BOOL;
+%END  (* !UNICODE *)
+
+(***** Thread walking **************************************************)
+
+TYPE
+    THREADENTRY32 =
+		RECORD
+			dwSize              :  DWORD;
+			cntUsage            : DWORD;
+			th32ThreadID        : DWORD;       (* this thread *)
+			th32OwnerProcessID  : DWORD; (* Process this thread is associated with *)
+			tpBasePri           : LONG;
+			tpDeltaPri          : LONG;
+			dwFlags             : DWORD;
+		END;
+    PTHREADENTRY32 = POINTER TO THREADENTRY32;
+
+PROCEDURE Thread32First(hSnapshot : HANDLE;
+                        VAR lpte : THREADENTRY32) : BOOL;
+
+PROCEDURE Thread32Next(hSnapshot : HANDLE;
+                       VAR lpte : THREADENTRY32) : BOOL;
+
+(***** Module walking *************************************************)
+
+TYPE
+    MODULEENTRY32W =
+		RECORD
+			dwSize              : DWORD;
+			th32ModuleID        : DWORD;       (* This module *)
+			th32ProcessID       : DWORD;      (* owning process *)
+			GlblcntUsage        : DWORD;       (* Global usage count on the module *)
+			ProccntUsage        : DWORD;       (* Module usage count in th32ProcessID's context *)
+			modBaseAddr         : LPVOID;        (* Base address of module in th32ProcessID's context *)
+			modBaseSize         : DWORD;        (* Size in bytes of module starting at modBaseAddr *)
+			hModule             : HMODULE;            (* The hModule of this module in th32ProcessID's context *)
+			szModule            : ARRAY [0..MAX_MODULE_NAME32 + 1-1] OF UCHAR;
+			szExePath           : ARRAY [0..MAX_PATH-1] OF UCHAR;
+		END;
+    PMODULEENTRY32W = POINTER TO MODULEENTRY32W;
+
+PROCEDURE Module32FirstW(hSnapshot : HANDLE;
+                         VAR lpme : MODULEENTRY32W) : BOOL;
+
+PROCEDURE Module32NextW(hSnapshot : HANDLE;
+                        VAR lpme : MODULEENTRY32W) : BOOL;
+
+
+TYPE
+    MODULEENTRY32A =
+		RECORD
+			dwSize              : DWORD;
+			th32ModuleID        : DWORD;       (* This module *)
+			th32ProcessID       : DWORD;      (* owning process *)
+			GlblcntUsage        : DWORD;       (* Global usage count on the module *)
+			ProccntUsage        : DWORD;       (* Module usage count in th32ProcessID's context *)
+			modBaseAddr         : LPVOID;        (* Base address of module in th32ProcessID's context *)
+			modBaseSize         : DWORD;        (* Size in bytes of module starting at modBaseAddr *)
+			hModule             : HMODULE;            (* The hModule of this module in th32ProcessID's context *)
+			szModule            : ARRAY [0..MAX_MODULE_NAME32 + 1-1] OF ACHAR;
+			szExePath           : ARRAY [0..MAX_PATH-1] OF ACHAR;
+		END;
+
+(* NOTE CAREFULLY that the modBaseAddr and hModule fields are valid ONLY *)
+(* in th32ProcessID's process context. *)
+
+%IF UNICODE %THEN
+
+TYPE
+    MODULEENTRY32 = MODULEENTRY32W;
+    PMODULEENTRY32 = PMODULEENTRY32W;
+
+PROCEDURE Module32First = Module32FirstW;
+PROCEDURE Module32Next = Module32NextW;
+
+%ELSE
+
+TYPE
+    MODULEENTRY32 = MODULEENTRY32A;
+    PMODULEENTRY32 = MODULEENTRY32A;
+
+PROCEDURE Module32First(hSnapshot : HANDLE;
+                        VAR lpme : MODULEENTRY32) : BOOL;
+
+PROCEDURE Module32Next(hSnapshot : HANDLE;
+                       VAR lpme : MODULEENTRY32) : BOOL;
+%END  (* !UNICODE *)
+
+END TOOLHELP32.

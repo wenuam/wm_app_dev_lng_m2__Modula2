@@ -1,0 +1,77 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE LZEXPAND;
+
+FROM SYSTEM IMPORT
+    LOC;
+
+FROM WIN32 IMPORT
+    WINT, LONG, WORD, OFSTRUCT;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    LZERROR_BADINHANDLE  = ( -1 );
+    LZERROR_BADOUTHANDLE = ( -2 );
+    LZERROR_READ         = ( -3 );
+    LZERROR_WRITE        = ( -4 );
+    LZERROR_GLOBALLOC    = ( -5 );
+    LZERROR_GLOBLOCK     = ( -6 );
+    LZERROR_BADVALUE     = ( -7 );
+    LZERROR_UNKNOWNALG   = ( -8 );
+
+PROCEDURE LZStart() : WINT;
+
+PROCEDURE LZDone();
+
+PROCEDURE CopyLZFile(a : WINT;
+                     b : WINT) : LONG;
+
+PROCEDURE LZCopy(a : WINT;
+                 b : WINT) : LONG;
+
+PROCEDURE LZInit(a : WINT) : WINT;
+
+PROCEDURE GetExpandedNameA(a : ARRAY OF ACHAR;
+                           VAR b : ARRAY OF ACHAR) : WINT;
+
+PROCEDURE GetExpandedNameW(a : ARRAY OF UCHAR;
+                           VAR b : ARRAY OF UCHAR) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE GetExpandedName = GetExpandedNameW;
+%ELSE
+PROCEDURE GetExpandedName = GetExpandedNameA;
+%END
+
+PROCEDURE LZOpenFileA(a : ARRAY OF ACHAR;
+                      VAR b : OFSTRUCT;
+                      c : WORD) : WINT;
+
+PROCEDURE LZOpenFileW(a : ARRAY OF UCHAR;
+                      VAR b : OFSTRUCT;
+                      c : WORD) : WINT;
+
+%IF UNICODE %THEN
+PROCEDURE LZOpenFile = LZOpenFileW;
+%ELSE
+PROCEDURE LZOpenFile = LZOpenFileA;
+%END
+
+PROCEDURE LZSeek(a : WINT;
+                 b : LONG;
+                 c : WINT) : LONG;
+
+PROCEDURE LZRead(a : WINT;
+                 VAR b : ARRAY OF LOC;
+                 c : WINT) : WINT;
+
+PROCEDURE LZClose(a : WINT);
+
+END LZEXPAND.

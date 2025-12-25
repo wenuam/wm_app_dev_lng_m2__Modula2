@@ -1,0 +1,990 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                            by ADW Software                              *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Threads;
+
+FROM SYSTEM IMPORT
+    ADDRESS, ADRCARD;
+
+(* portability concerns summary *)
+(* Windows => full support, no restrictions. *)
+(* Unix =>
+    timeout on WaitForThreadTermination.
+        only SemDontWait and SemWaitForever are supported.
+        any value other than the above is treated like SemWaitForever.
+
+    timeout on shared objects, name <> "".
+        only SemDontWait and SemWaitForever are supported.
+        any value other than the above is treated like SemWaitForever.
+
+    timeout on anonymous objects, name = "".
+        full timeout values are supported
+
+    MultiSem
+        only anonymous, name = "", objects can be used in a MultiSem.
+
+    shared, name <> "", object names are related to files on disk. therefore
+        names should identify a unique file name. The file need not exist
+        as this module will create and delete it as necessary.
+        using such a file name is compatible with Windows.
+
+    On Unix systems
+        All threads block the following signals.
+          SIGALRM, SIGPROF, SIGUSR1, SIGUSR2, SIGINT, SIGURG, SIGPIPE, SIGPOLL
+          SIGRTMIN..SIGRTMAX
+*)
+
+TYPE
+    Thread;
+
+    ThreadPriority      = (TpIdle,
+                           TpLow,
+                           TpMedLow,
+                           TpNormal,
+                           TpMedHigh,
+                           TpHigh,
+                           TpTimeCritical,
+                           TpUnknown);
+
+    PriorityClass       = (PcLow,
+                           PcNormal,
+                           PcHigh,
+                           PcRealTime,
+                           PcUnknown);
+
+    (*
+       PriorityClass applies to all threads in a process.
+       it sets the base execution priority of the process and thread
+       priorities are relative to the priority class.
+       Threads of PcHigh have a higher execution priority than threads
+       of PcNormal, therefore
+       (PcHigh, TpNormal) >= (PcNormal, TpNormal)
+
+       The combination of PriorityClass and ThreadPriority determine
+       a threads execution priority on a system wide basis.
+       Be careful when using threads with a high execution priority
+       because they can starve other threads in the system of all
+       processor time.
+       high priority threads should be waiting for something to happen,
+       then awake and execute briefly and then go back to waiting.
+
+       Some overlap will likely exist between the highest priority of a lower class
+       and the lowest priority next higher class.
+
+       On Unix systems...
+       PcRealTime = pthreads SCHED_RR, all others use SCHED_OTHER.
+       The system may not allow you to increase the priority unless
+       the process has the necessary privledges.
+       The system may not allow the PcRealTime priority class without proper privledge.
+       ThreadPriority may not have any effect for priority classes other than PcRealTime.
+    *)
+
+
+    ThreadProcedure     = PROCEDURE(ADDRESS) : CARDINAL;
+    (* the thread procedure takes one parameter of type address *)
+    (* this is usually a POINTER value or NIL *)
+    (* the return value is the Thread exit code. *)
+
+    ThreadTermProcedure = PROCEDURE((*th : *)Thread,
+                                    (*code :*)CARDINAL,
+                                    (*data : *)ADDRESS);
+    (* this is the format of a termination notification procedure.
+       th = the thread terminating
+       code = the thread exit code. MAX(CARDINAL) if abnormal termination.
+       data = user data.
+    *)
+
+TYPE
+    CriticalSection;    (* fast single process mutual exclusion *)
+    ConditionVariable;  (* POSIX style condition variable *)
+    RwLock;             (* multiple reader, exclusive writer exclusion *)
+    Barrier;            (* multiple thread synchronization point *)
+
+    MutexSem;           (* single/multiple process mutual exclusion *)
+    EventSem;           (* single/multiple process event (on/off) semaphore *)
+    SignalSem;          (* single/multiple process counting semaphore *)
+
+    MultiSem;           (* a mix of EventSem, MutexSem, SignalSem *)
+
+(* to enhance performance access to the above synchronization objects is
+   not serialized. this means that one thread can delete an object while
+   another is waiting on an object or performing other specific
+   tasks for the object.
+*)
+
+    WaitResult  =
+        (
+         WaitSuccess,   (* obvious meaning *)
+         WaitAbandoned, (* a thread terminated owning the object you were *)
+                        (* waiting for. it never released the object. *)
+                        (* this situation is a program error *)
+         WaitTimeout,   (* the wait time expired without function success *)
+         WaitError      (* some other system dependent error, bad stuff *)
+        );
+
+CONST
+    SemDontWait         = 0;    (* the wait function will not wait if
+                                   if the object cannot be satisfied *)
+    SemWaitForever      = -1;   (* the wait function will wait forever. *)
+                                (* any negative value means wait forever. *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE IsThreadsException() : BOOLEAN;
+(* returns true if the current exception was raised from this module
+   this module only raises exceptions in situations where a system
+   error occurred and no possibility of returning an error exists.
+*)
+
+PROCEDURE CreateThread(VAR OUT T : Thread;
+                       P : ThreadProcedure;
+                       threadParam : ADDRESS;
+                       stackSize : CARDINAL;
+                       requireWait : BOOLEAN) : BOOLEAN;
+(* stackSize = the size the stack for the thread.
+        if stackSize is zero then a reasonable small default stack size is allocated.
+            64k typical.
+        depending on the underlying system the stack may be able to grow beyond the size
+        specified here. for portability you should only depend on the stack size
+        specified here.
+   threadParam = the parameter passed to the thread procedure
+   P = the thread procedure
+   if requireWait = TRUE, then you must call WaitForThreadTermination
+       for this module to release resources associated with the thread.
+       You may alter this status with the RequireThreadWait procedure.
+   returns TRUE if successfull, the thread was created.
+   T = the thread handle. Thread handles are automatically "closed" by this module
+       when a thread terminates.
+*)
+
+PROCEDURE RequireThreadWait(T : Thread; yes : BOOLEAN);
+(* if yes = TRUE then the thread T will not be automatically
+   closed and freed until the it is waited on by another thread.
+   it basically becomes a zombie, until waited on.
+   if yes = FALSE and the thread, T, has already terminated then the thread
+   is closed and ceases to be a zombie.
+*)
+
+PROCEDURE GetCurrentThread() : Thread;
+(* return the Thread identifier for the currently executing thread.
+    returns NIL if the calling thread was not created by this module
+*)
+
+%IF Windows %THEN
+PROCEDURE GetSystemThreadHandle() : ADDRESS;
+%ELSE
+PROCEDURE GetSystemThreadHandle() : ADRCARD;
+%END
+(* return the operating system specific thread handle
+   with this you can call operating system thread related functions.
+*)
+
+PROCEDURE KillThread(VAR INOUT T : Thread; code : CARDINAL) : BOOLEAN;
+(* the preferred method of thread termination is for the
+   thread procedure to return.
+   it can be unsafe to terminate another thread with this call
+   since you may not know what the thread is executing at the time
+   of this call.
+   T is not valid after this call, since thread termination
+   invalidates the thread identifier
+   you can Kill yourself or someone else with this function.
+   code is the termination code of the thread.
+   returns TRUE if the thread is terminated.
+*)
+
+PROCEDURE AddThreadTermination(T : Thread;
+                               proc : ThreadTermProcedure;
+                               data : ADDRESS) : BOOLEAN;
+(* the passed procedure "proc" will be called when the thread "T"
+   terminates, normally or otherwise.
+   "data" is aribtrary data you can have passed to the termination procedure.
+   the procedure is called in the context of the terminating thread.
+   you can have multiple termination procedures attached to a thread.
+   returns TRUE if the termination procedure was added.
+*)
+
+PROCEDURE WaitForThreadTermination(VAR INOUT T : Thread;
+                                   timeout : INTEGER;
+                                   VAR OUT code : CARDINAL) : WaitResult;
+(* T is not valid after this call, since the thread terminated
+   invalidates the thread handle T.
+   wait only for timeout amount of milliseconds
+   timeout is approximate, i.e. it is not actual real time
+   SemDontWait = Dont wait at all if the thread is still running
+   SemWaitForever = do not return until the thread has terminated
+   code is the termination code of the thread
+   RETURN  =
+   WaitSuccess  = the thread has terminated. code = the termination code of the thread.
+                  MAX(CARDINAL) is returned if the thread was not waitable.
+   WaitTimeout = the wait time elapsed time expired before the thread terminated.
+   WaitError = You attempted to wait on a non waitable thread, or the current thread,
+               or some other operating system error.
+*)
+
+PROCEDURE YieldThread;
+(*
+   yield to another thread in the system.
+*)
+
+PROCEDURE SleepThread(time : CARDINAL);
+(* puts the current thread to sleep for time milliseconds
+   NOT real time, only an approximate
+   should not to be used as a precise delay value
+   a value of zero means yield to another thread in the system.
+*)
+
+PROCEDURE Hibernate(timeout : INTEGER) : WaitResult;
+PROCEDURE Awaken(T : Thread) : BOOLEAN;
+(* Hibernate puts the calling thread to sleep until specifically restarted
+   by a call to Awaken, or if the timeout expires.
+   Once the sleeping thread awakes it resets the Awaken
+   signal and the Hibernate call returns.
+   A thread can receive the Awaken signal before it Hibernates. In this
+   case the Hibernate call does not put the thread to sleep, and it just
+   resets the Awaken signal and returns from the call.
+   The main reason to use these calls is for constructing synchronization
+   operations where you want to restart specific threads.
+*)
+
+PROCEDURE SetThreadPriority(T : Thread; pri : ThreadPriority);
+(* set the thread execution priority
+   see the ThreadPriority declaration for information on priorities *)
+
+PROCEDURE GetThreadPriority(T : Thread) : ThreadPriority;
+(* return the current thread prioirty
+   TpUnknown may be returned if the priority could not be determined. *)
+
+PROCEDURE SetPriorityClass(class : PriorityClass);
+(* this sets the thread priority class for the program.
+   see the PriorityClass declaration for information on priorities *)
+
+PROCEDURE GetPriorityClass() : PriorityClass;
+(* returns the current process priority class
+   PcUnknown may be returned if the priority could not be determined. *)
+
+PROCEDURE GetThreadSystemId(T : Thread) : ADRCARD;
+(* return the operating system dependent thread identifier token
+   for the thread specified by T.
+   if T is not a valid thread, then a system dependent value,
+   generally zero, will be returned.
+   on Unix systems this value may not be unique across all threads in
+   all processes in the system. *)
+
+PROCEDURE GetCurrentThreadSystemId() : ADRCARD;
+(* this returns the system id for the current thread.
+   this call works with all threads,
+   even those not created via this module.
+   on Unix systems this value may not be unique across all threads in
+   all processes in the system. *)
+
+PROCEDURE GetThreadFromSystemId(threadId : ADRCARD) : Thread;
+(* threadId is an operating system dependent value that
+   identifies a thread on the machine.
+   this function searches the threads created by this module and matches
+   threadId one one these threads, NIL is returned if there is no match.
+*)
+
+PROCEDURE GetCurrentProcessId() : CARDINAL;
+(* return the process identifier for the calling process.
+
+   Linux note:
+       the original Linux thread library (LinuxThreads),
+       threads are not "threads" but are really "processes" that
+       share system resources.
+       this means that each thread has a different process id number.
+       the Linux NPTL threads library handles process ids correctly.
+*)
+
+PROCEDURE AllocateTlsIndex(VAR OUT index : CARDINAL) : BOOLEAN;
+(* Tls = Thread local storage
+   allocate an index that can be used to store data local to each thread
+   i.e. the threads would use the same index, but the data stored would be
+   unique for each thread
+   the thread data is initialized to zero and is of type ADDRESS.
+   generally you will store a POINTER as the data
+   example of use
+
+    AllocateTlsIndex(MyThreadIndex); (* do this in process/dll initialization *)
+
+    inside the thread procedure you will have this as the first lines
+
+    NEW(ptr); (* allocate the data for this thread *)
+    ...
+    SetTlsData(MyThreadIndex, ptr);
+
+    Now any procedure in the application can access the data specific
+    to a the current thread with the following code
+
+    ptr := GetTlsData(MyTlsIndex);
+
+*)
+
+PROCEDURE FreeTlsIndex(index : CARDINAL);
+(* free an index that was previously allocated *)
+
+PROCEDURE SetTlsData(index : CARDINAL; data : ADDRESS) : BOOLEAN;
+(* store the data in the current thread local storage table
+   index specifies the storage location
+   returns TRUE if successfull
+*)
+
+PROCEDURE GetTlsData(index : CARDINAL) : ADDRESS;
+(* retreive the data in the current thread local storage table
+   index specifies the storage location
+*)
+
+(* --------------------------------------------------------------------*)
+
+(* synchronization services *)
+
+(* CriticalSection is simply used for mutual exclusion of threads within
+   a single process.
+   only one thread can "own" a critical section at a time.
+   other threads continue to run unless they request ownership of an
+   already owned critical section.
+   critical sections are the the fastest general purpose way to protect
+   multiple access to 'whatever' within a single process.
+   Spinlocks are faster but have some drawbacks.
+*)
+
+PROCEDURE CreateCriticalSectionEx(VAR OUT C : CriticalSection;
+                                  spinCount : CARDINAL;
+                                  allowRecursion : BOOLEAN) : BOOLEAN;
+(* create a critical section, with a given spin count
+   spinCount = the number of times the object will spin trying to obtain
+   ownership of the critical section without performing a wait, which can be
+   a time expensive operation.
+   use the spinCount to tune performance of an application.
+   on single CPU machines the spinCount value is ignored and a value of
+   zero is always used.
+   if allowRecursion = TRUE then a thread that owns a critical section can
+   enter the critical section recursively. You must leave the critical section
+   once for each enter.
+   if allowRecursion = FALSE then an attempt by a thread to enter a critical section
+   which it already owns raises an exception.
+*)
+
+PROCEDURE CreateCriticalSection(VAR OUT C : CriticalSection) : BOOLEAN;
+(* implemented as
+    RETURN CreateCriticalSectionEx(C, 0, TRUE);
+*)
+
+PROCEDURE CloseCriticalSection(VAR INOUT C : CriticalSection) : BOOLEAN;
+(* close a critical section. returns TRUE if successfull
+   C = NIL if successfull
+*)
+
+PROCEDURE SetCriticalSectionSpinCount(C : CriticalSection; spinCount : CARDINAL);
+(* set the spinCount for the critical section.
+   see CreateCriticalSectionEx for the meaning of spinCount
+*)
+
+PROCEDURE EnterCriticalSection(C : CriticalSection);
+(* does not return until you own the critical section object *)
+
+PROCEDURE TryEnterCriticalSection(C : CriticalSection) : BOOLEAN;
+(* as EnterCriticalSection except will not wait if the critical section
+   cannot be owned.
+   returns TRUE if the critical section is owned, otherwise FALSE
+*)
+
+PROCEDURE CriticalSectionOwnedByThread(C : CriticalSection) : BOOLEAN;
+(* returns TRUE if the current thread owns the critical section *)
+
+PROCEDURE LeaveCriticalSection(C : CriticalSection);
+(* releases one ownership of the critical section *)
+
+PROCEDURE GetCriticalSectionCount(C : CriticalSection) : CARDINAL;
+(* returns the number times the thread gained ownership, "entered"
+   this call only has meaning for recursive critical sections.
+   returns 0, if the critical section is not owned by the calling thread.
+*)
+
+PROCEDURE PopCriticalSection(C : CriticalSection; count : CARDINAL);
+(* releases ownership of the critical section to a specific level
+   as specified in count.
+   this call does nothing if the critical section is not owned by the calling thread.
+   this call only has meaning for recursive critical sections.
+   this procedure can be useful in outer level exception handlers.
+   example
+
+PROCEDURE proc;
+VAR
+    count : CARDINAL;
+BEGIN
+    count := GetCriticalSetionCount(C);
+    EnterCriticalSection(C);
+
+    (* calls that may or may not gain ownership of the *)
+    (* critical section again *)
+
+    LeaveCriticalSection(C);
+
+EXCEPT
+    (* if an exception occurred in the call chain and some procedures in *)
+    (* this chain also entered the critical section and they did not release *)
+    (* the object in an exception handler then releasing the object *)
+    (* once will not fully release the object and a lockout will occur. *)
+
+    PopCriticalSection(C, count);
+END proc;
+*)
+
+(* --------------------------------------------------------------------*)
+(* the following implements POSIX style condition variables *)
+
+PROCEDURE CreateConditionVariable(VAR OUT CV : ConditionVariable) : BOOLEAN;
+(* create a new condition variable
+   returns TRUE if successfull
+*)
+
+PROCEDURE CloseConditionVariable(VAR INOUT CV : ConditionVariable) : BOOLEAN;
+(* close an open condition variable
+   returns TRUE if successfull, and C = NIL
+*)
+
+PROCEDURE WaitForCondition(CS : CriticalSection;
+                           CV : ConditionVariable;
+                           timeout : INTEGER) : WaitResult;
+(* on entry the critical section is assumed owned (Entered)
+   this procedure atomically releases the critical section and
+   waits for the condition variable.
+   upon return you again own the critical section.
+   wait for only "timeout" amount of milliseconds.
+   timeout is approximate, i.e. it is not actual real time
+   a timeout value of zero is not valid for condition variables
+   RETURN  =
+   WaitSuccess  = condition variable was signaled.
+   WaitTimeout = the wait time expired before the condition was signaled
+   WaitError = Some other operating system error. Bad stuff
+*)
+
+PROCEDURE SignalCondition(CV : ConditionVariable) : BOOLEAN;
+(* signal the condition variable allowing one waiting thread
+   to continue.
+   returns TRUE if a thread was waiting on the condition.
+*)
+
+PROCEDURE BroadcastCondition(CV : ConditionVariable) : BOOLEAN;
+(* broadcast the condition variable allowing all CURRENTLY waiting threads
+   to continue.
+   returns TRUE if one or more threads were waiting on the condition.
+*)
+
+(* --------------------------------------------------------------------*)
+(* the following implements multiple reader, exclusive single writer *)
+(* style of exclusion object. *)
+
+(* RwLock is used to provide multiple threads with the ability to
+   simultaneously read from protected data but to allow only one thread
+   to have write access to the protected data. when a thread has write
+   access no read threads will have any access.
+   Requesting write access is essentially identical to using an exclusion
+   object for exclusive access.
+*)
+
+PROCEDURE CreateRwLock(VAR OUT RW : RwLock) : BOOLEAN;
+(* create the RwLock, returns TRUE if successfull *)
+
+PROCEDURE CloseRwLock(VAR INOUT RW : RwLock) : BOOLEAN;
+(* close the RwLock, returns TRUE if successfull
+   RW = NIL if successfull
+*)
+
+PROCEDURE RwReadLock(RW : RwLock; timeout : INTEGER) : WaitResult;
+(* read only access to the share
+   writes cannot occur while any thread
+   has read access
+   you can request read access recursively
+   you must unlock once for each readlock
+   wait for only "timeout" amount of milliseconds.
+   timeout is approximate, i.e. it is not actual real time
+   WaitSuccess  = you have read access.
+   WaitTimeout = the wait time expired before read access was granted
+   WaitError = Some other operating system error. Bad stuff
+*)
+
+PROCEDURE RwWriteLock(RW : RwLock; timeout : INTEGER) : WaitResult;
+(* full access to the share
+   no other thread has access of any kind to this object
+   while a thread has write access
+   you *cannot* recursively request write access
+   wait for only "timeout" amount of milliseconds.
+   timeout is approximate, i.e. it is not actual real time
+   WaitSuccess  = you have writeaccess.
+   WaitTimeout = the wait time expired before write access was granted
+   WaitError = Some other operating system error. Bad stuff
+*)
+
+PROCEDURE RwUnlock(RW : RwLock);
+(* give up the locked access for this thread
+   this is used for both read and write locks
+*)
+
+(* --------------------------------------------------------------------*)
+(* the following implements a synchronization barrier. *)
+
+(* Barrier is used to synchronize multiple threads at a specific point
+   in code. No threads continue past the barrier until the specified number of
+   threads reach the barrier. At this point then all threads continue past the barrier.
+*)
+
+PROCEDURE CreateBarrier(VAR OUT B : Barrier; count : CARDINAL) : BOOLEAN;
+(* create the Barrier.
+   count = the number of threads that must reach the barrier before being
+           allowed to continue past the barrier.
+           a count of zero means that no thread will ever wait.
+   returns TRUE if successfull
+*)
+
+PROCEDURE CloseBarrier(VAR INOUT B : Barrier) : BOOLEAN;
+(* close the Barrier, returns TRUE if successfull
+   B = NIL if successfull
+*)
+
+PROCEDURE GetBarrierCount(B : Barrier) : CARDINAL;
+(*
+  return the current thread barrier count
+*)
+
+PROCEDURE SetBarrierCount(B : Barrier; count : CARDINAL);
+(*
+  change the count of threads that must be waiting in the barrier before
+  all threads are released.
+  this call may release threads waiting in the barrier if the new count
+  is less than or equal to the number of threads currently waiting in the
+  barrier.
+  a count of zero always releases all threads waiting.
+  this call can be useful in error/exception recovery code.
+*)
+
+PROCEDURE AdjustBarrierCount(B : Barrier; incr : INTEGER);
+(*
+    alter the barrier count by a value of incr.
+    if incr causes the count to be less than zero, the barrier count
+    is set to zero.
+
+    this call may release threads waiting in the barrier if the new count
+    is less than or equal to the number of threads currently waiting in the
+    barrier.
+
+    this call can be useful in error/exception recovery code.
+*)
+
+PROCEDURE WaitAtBarrier(B : Barrier) : BOOLEAN;
+(* wait until the number of threads associated with the barrier
+   have reached this barrier wait call.
+   returns TRUE if this thread was the last thread to reach the barrier.
+   one thread will always return TRUE from this call.
+*)
+
+(* --------------------------------------------------------------------*)
+
+(* named synchronization objects *)
+(*
+ the following services can be used for single or multiple process
+ synchronization.
+ 'name' is the name of the object, by using the same name other processes
+ can use the same object, if "" is supplied then the object cannot be
+ accessed by other processes since it has no name.
+
+ the format of the name passed is dependent on the operating system.
+ Windows has no specific name format, so anything can be used.
+ on Unix systems the name takes the form of a file name.
+ eg. /tmp/MyObject or the path and name of your executable.
+ This file need not exist and will be created/deleted when necessary.
+ Using a name like this is also compatible with Windows even though the
+ name is not associated with a file.
+
+ if your program does not properly close a shared object, or it crashes
+ then the shared object may not be deleted from the system, and may
+ even still exist after the operating system is rebooted. in this case
+ "created" may never be TRUE until the object is deleted manually.
+ this is only a concern on some Unix systems.
+ Windows fully cleans up shared objects in normal and abnormal termination.
+
+ on Unix systems the shared object has a very strict creator/owner and
+ clients relationship. Only the owner can remove an object from the system.
+ Therefore the owner (created = TRUE) should be the last to close the object.
+ This is not an issue on Windows since the last process to close the object
+ will remove it from the system.
+
+ these services will be implemented with operating system primitives when
+ available so that you can share these objects with other languages.
+ the MultiSem API is the restricting factor. if the system supports all of
+ the primities and they can be used in a MultiSem
+ then the system primitives will be used.
+
+ Currently only Windows supports these as system primitives.
+*)
+
+(* ---------------------------------------------------------------------*)
+
+(* MutexSem is simply used for mutual exclusion of threads/processes. *)
+
+PROCEDURE CreateMutexSem(VAR OUT M : MutexSem;
+                         name : ARRAY OF CHAR;
+                         VAR OUT created : BOOLEAN) : BOOLEAN;
+(*
+   you can pass this procedure a null name, ""
+   in this case this object can only be accessed by the current process
+   if the mutex is named and the mutex already exists, it will be opened
+   if it does not exist it will be created
+   on return
+   created = TRUE if the object was created. = FALSE if opened
+   the mutex is created(=TRUE) in the unowned state. if the mutex was opened
+   (created = FALSE) then the current state is unknown
+   returns TRUE if the mutex was either created or opened
+   see the comments on named synchronization objects above for further info
+*)
+
+PROCEDURE OpenMutexSem(VAR OUT M : MutexSem; name : ARRAY OF CHAR) : BOOLEAN;
+(*
+   the mutex MUST be named, ie a null name is not allowed
+   and it must exist, otherwise an error
+   returns TRUE if successfull
+   see the comments on named synchronization objects above for further info
+*)
+
+PROCEDURE CloseMutexSem(VAR INOUT M : MutexSem) : BOOLEAN;
+(*
+   close the mutex, returns TRUE if successfull
+   M = NIL if successfull
+*)
+
+PROCEDURE RequestMutexSem(M : MutexSem; timeout : INTEGER) : WaitResult;
+(*
+   request ownership of the mutex
+   if the thread already owns the mutex, this call will always succeed,
+   and return immediately. an ownership count is maintained and the object
+   must be released once(ReleaseMutexSem) for each call to this
+   procedure.
+   wait for only "timeout" amount of milliseconds.
+   timeout is approximate, i.e. it is not actual real time
+   SemDontWait = Dont wait at all if you cannot own the mutex
+   SemWaitForever = do not return until the mutex is owned, or a some
+                    error occurs.
+   the timeout has portability concerns
+   RETURN  =
+   WaitSuccess  = you own the mutex
+   WaitAbandoned = the thread that owned the mutex terminated
+                   before releasing the mutex, a definite program error
+
+   WaitTimeout = the wait time elapsed time expired before ownership
+                 could be gained
+
+   WaitError = Some other operating system error. Bad stuff
+*)
+
+PROCEDURE ReleaseMutexSem(M : MutexSem);
+(*
+   give up one ownership of the mutex
+*)
+
+PROCEDURE GetMutexSemCount(M : MutexSem) : CARDINAL;
+(*
+   returns the number times the thread gained ownership, "requested"
+*)
+
+PROCEDURE PopMutexSem(M : MutexSem; count : CARDINAL);
+(*
+   releases ownership of the mutex to a specific level
+   see PopCriticalSection for a description of the uses for a
+   function of this type
+*)
+
+(*---------------------------------------------------------------------*)
+
+(*
+   EventSem is boolean of sorts, it is ON or OFF
+   once turned on, all waiters run, it is not turned off until explicitly
+   turned off.
+   the event is EDGE triggered. if the event is set and then immediately
+   reset, all threads that were WAITING AT THE TIME of the trigger
+   will be started when their next execution slice arrives even if at
+   that point the event is not in a set state.
+*)
+
+PROCEDURE CreateEventSem(VAR OUT E : EventSem;
+                         name : ARRAY OF CHAR;
+                         VAR OUT created : BOOLEAN) : BOOLEAN;
+(*
+   you can pass this procedure a null name, ""
+   in this case this event can only be accessed by the current process
+   since the event has no name.
+   if the event is named and the event already exists, it will be opened
+   if it does not exist it will be created
+   on return
+   created = TRUE if the object was created. = FALSE if opened.
+   the event is created(=TRUE) in the reset state. if the event was opened
+   (created = FALSE) then the current state is unknown
+   returns TRUE if the event was either created or opened
+   see the comments on named synchronization objects above for further info
+*)
+
+PROCEDURE OpenEventSem(VAR OUT E : EventSem; name : ARRAY OF CHAR) : BOOLEAN;
+(*
+   the event MUST be named, ie no null name is allowed
+   and it must exist, otherwise an error
+   returns TRUE if successfull
+   the current state of the event is unchanged by this call
+*)
+
+PROCEDURE CloseEventSem(VAR INOUT E : EventSem) : BOOLEAN;
+(*
+   close the event, returns TRUE if successfull
+   E = NIL if successfull
+*)
+
+PROCEDURE SetEventSem(E : EventSem);
+(*
+   place the event in the set or ON state
+*)
+
+PROCEDURE ResetEventSem(E : EventSem);
+(*
+   place the event in the clear or OFF state
+*)
+
+PROCEDURE PulseEventSem(E : EventSem);
+(*
+   this is functionally the same as
+    SetEventSem(E);
+    ResetEventSem(E);
+
+    However, this procedure performs this action atomically.
+*)
+
+PROCEDURE WaitForEventSem(E : EventSem; timeout : INTEGER) : WaitResult;
+(*
+   wait forevent tobe in the set state
+   wait only for timeout amount of milliseconds
+   timeout is approximate, i.e. it is not actual real time
+   SemDontWait = Dont wait at all if the event is not set
+   SemWaitForever = do not return until the event is set
+   the timeout has portability concerns
+   RETURN  =
+   WaitSuccess  = the event was set
+   WaitTimeout = the wait time elapsed time expired before the event was set
+   WaitError = Some other operating system error, Bad stuff.
+*)
+
+(*-----------------------------------------------------------------*)
+
+(*
+   SignalSem maintains a signal count. if the signal count is greater than
+   zero a waiting thread will be allowed to continue. the signal count
+   is decremented by one for each waiting thread that is allowed to run.
+   if the signal count is zero then any thread calling WaitForSignalSem
+   will block until SendSignalSem is called.
+*)
+
+PROCEDURE CreateSignalSem(VAR OUT S : SignalSem;
+                          maxSent, initialSent : CARDINAL;
+                          name : ARRAY OF CHAR;
+                          VAR OUT created : BOOLEAN) : BOOLEAN;
+(*
+   you can pass this procedure a null name, ""
+   in this case this event can only be accessed by the current process
+   since the signal has no name.
+   if the signal is named and the signal already exists, it will be opened
+   if it does not exist it will be created
+   if the name is empty, "", then the signal is always created
+   max = the maximum count of sent signals. if max signals have been sent
+   without any signals received then another send signal generates an
+   error on sending.
+   if maxSent = 0, then a system defined maximum will be used.
+   this will generally be a very large value.
+   use this when you do not care about the maximum number of signals
+   that can be sent.
+   initialSent = the initial sent signal count of the SignalSem.
+   on return
+   created = TRUE if the object was created. = FALSE if opened
+   if the signal is opened(created=FALSE) initialSent in ignored.
+   returns TRUE if successfull
+   see the comments on named synchronization objects above for further info
+*)
+
+PROCEDURE OpenSignalSem(VAR OUT S : SignalSem; name : ARRAY OF CHAR) : BOOLEAN;
+(*
+   the signal MUST be named, ie a nul name is not allowed
+   and it must exist, otherwise an error
+   returns TRUE if successfull
+*)
+
+PROCEDURE CloseSignalSem(VAR INOUT S : SignalSem) : BOOLEAN;
+(*
+   close the signal, returns TRUE if successfull
+   S = NIL if successfull
+*)
+
+PROCEDURE SendSignalSem(S : SignalSem; count : CARDINAL) : BOOLEAN;
+(*
+   increment the signal count by "count"
+   returns TRUE if the signal(s) were actually sent.
+   if the signal count would be overflowed by this call
+   then FALSE will be returned and none of the signals are sent.
+   count must be greater than zero.
+*)
+
+PROCEDURE ResetSignalSem(S : SignalSem);
+(*
+   reset the signal count to zero
+   this procedure is literally or functionally the same as
+
+  WHILE WaitForSignalSem(S, 0) = WaitSuccess DO
+  END;
+
+  Not guaranteed to be atomic
+*)
+
+PROCEDURE WaitForSignalSem(S : SignalSem; timeout : INTEGER) : WaitResult;
+(*
+   wait until the SignalSem is in the signaled state(count>0)
+   one waiting thread will be started per sent signal
+   wait only for timeout amount of milliseconds
+   timeout is approximate, i.e. it is not actual real time
+   SemDontWait = Dont wait at all if you cannot receive a signal.
+   this is a way to see if any signals have been sent without causing the
+   thread to suspend waiting for a signal.
+   SemWaitForever = do not return until a signal is received
+   the timeout has portability concerns
+   RETURN  =
+   WaitSuccess  = a signal was received, meaning the signal count was
+                  nonzero and has been decremented by one.
+   WaitTimeout = the wait elapsed time expired before a signal was received
+   WaitError = Some other operating system error. Bad stuff
+*)
+
+(* ----------------------------------------------------------------- *)
+(* ----------------------------------------------------------------- *)
+(* ----------------------------------------------------------------- *)
+(* ----------------------------------------------------------------- *)
+
+(*
+   the following is an API to allow you to use a single procedure to
+   wait for multiple MutexSem, EventSem, SignalSem in combinations.
+   up to a 64 objects can be waited on
+*)
+
+PROCEDURE CreateMultiSem(VAR OUT M : MultiSem;
+                         allTrigger : BOOLEAN) : BOOLEAN;
+(*
+   EventSem "signaled" = the event is set
+   MutexSem "signaled" = the mutex is not owned
+   SignalSem "signaled" = the signal count is greater than 0.
+
+   if allTrigger = TRUE, all items must be signaled at the SAME TIME
+   for the MultiSem to be triggered. An individual object may become
+   signaled and unsignaled multiple times during the wait for all signals
+   to be simulatneously signaled.
+
+   if allTrigger = FALSE, then only a single object need be "signaled" to
+   cause return of the wait procedure.
+*)
+
+PROCEDURE CloseMultiSem(VAR INOUT M : MultiSem) : BOOLEAN;
+(*
+   this reverses CreateMultiSem
+   returns TRUE if closing the MultiSem was successfull
+   M = NIL if successfull
+*)
+
+PROCEDURE AddEventSemToMultiSem(M : MultiSem;
+                                S : EventSem;
+                                user : CARDINAL) : BOOLEAN;
+(*
+   the user value is returned by WaitForMultiSem to indentify the
+   object that caused something to happen
+   you can define user to be anything you like
+   returns TRUE if successfull
+   FALSE can mean you have exceeded the limit objects that can be
+   added to a MultiSem, or the system does not support the mixture of
+   objects you have attempted to add.
+*)
+
+PROCEDURE AddMutexSemToMultiSem(M : MultiSem;
+                                S : MutexSem;
+                                user : CARDINAL) : BOOLEAN;
+(*
+   the 'user' value is returned by WaitForMultiSem to indentify the
+   object that caused something to happen when allTrigger = FALSE.
+   you can define 'user' to be anything you like
+   returns TRUE if successfull
+   FALSE can mean you have exceeded the limit objects that can be
+   added to a MultiSem, or the system does not support the mixture of
+   objects you have attempted to add.
+*)
+
+PROCEDURE AddSignalSemToMultiSem(M : MultiSem;
+                                 S : SignalSem;
+                                 user : CARDINAL) : BOOLEAN;
+(*
+   the user value is returned by WaitForMultiSem to indentify the
+   object that caused something to happen when allTrigger = FALSE.
+   you can define 'user' to be anything you like
+   returns TRUE if successfull
+   FALSE can mean you have exceeded the limit objects that can be
+   added to a MultiSem, or the system does not support the mixture of
+   objects you have attempted to add.
+*)
+
+PROCEDURE RemoveEventSemFromMultiSem(M : MultiSem; S : EventSem) : BOOLEAN;
+(*
+   returns TRUE if the Event is removed
+*)
+
+PROCEDURE RemoveMutexSemFromMultiSem(M : MultiSem; S : MutexSem) : BOOLEAN;
+(*
+   returns TRUE if the Mutex is removed
+*)
+
+PROCEDURE RemoveSignalSemFromMultiSem(M : MultiSem; S : SignalSem) : BOOLEAN;
+(*
+   returns TRUE if the Signal is removed
+*)
+
+PROCEDURE WaitForMultiSem(M : MultiSem;
+                          VAR OUT user : CARDINAL;
+                          timeout : INTEGER) : WaitResult;
+(*
+   if the return is WaitTimeout or WaitError then 'user' is undefined.
+   if the return value is WaitAbandoned then 'user' tells you which
+   object caused this.
+   if the MultiSem triggers on a single object then 'user' will
+   tell you which object caused WaitForMultiSem to return.
+   wait only for 'timeout' amount of milliseconds
+   timeout is approximate, i.e. it is not actual real time
+   SemDontWait = Dont wait at all, even if the wait condition
+   cannot be satisfied. This is a way to test the conditions without
+   causing the thread to suspend waiting.
+   SemWaitForever = do not return until the wait is satisfied
+   RETURN  =
+   WaitSuccess  = the wait condition(s) are satisfied.
+       when allTrigger is TRUE. returns TRUE if all objects were signaled.
+       this means you own all mutexes.
+        signal counts have been decremented by 1.
+       when allTrigger is FALSE. returns TRUE if one of the objects
+       was signaled.
+       For mutexes this means you own the mutex.
+       for signals this means the signal count has been decremented by 1 .
+       'user' is the value given when the object was added to the MultiSem.
+       use this to identify which object satisfied the wait.
+
+   WaitAbandoned = the thread that owned a mutex terminated
+                   before releasing a mutex, a definite program error
+
+   WaitTimeout = the wait time elapsed time expired before all of the
+                 wait conditions could be satisfied.
+
+   WaitError = Some other operating system error
+*)
+
+END Threads.

@@ -1,0 +1,78 @@
+DEFINITION MODULE RealMath;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs © 1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+
+===========================================*)
+
+%IF IA32 %OR AMD64 %THEN
+IMPORT Float;
+%END
+
+CONST
+    pi          = 3.141592653589793238462;
+    expi        = 2.718281828459045235360;
+
+%IF InlineFpp %THEN
+PROCEDURE sqrt(x : REAL) : REAL [FppPrim, Invariant];
+%ELSE
+PROCEDURE sqrt(x : REAL) : REAL [Invariant];
+%END
+
+%IF InlineFpp %AND IA32 %THEN
+
+PROCEDURE exp(x : REAL) : REAL [FppPrim, Invariant];
+
+PROCEDURE ln(x : REAL) : REAL [FppPrim, Invariant];
+
+(* these functions compute values in radians *)
+
+PROCEDURE sin(x : REAL) : REAL [FppPrim, Invariant];
+
+PROCEDURE cos(x : REAL) : REAL [FppPrim, Invariant];
+
+PROCEDURE tan(x : REAL) : REAL [FppPrim, Invariant];
+
+PROCEDURE arctan(x : REAL) : REAL [FppPrim, Invariant];
+
+%ELSE
+
+PROCEDURE exp(x : REAL) : REAL [Invariant];
+
+PROCEDURE ln(x : REAL) : REAL [Invariant];
+
+(* these functions compute values in radians *)
+
+PROCEDURE sin(x : REAL) : REAL [Invariant];
+
+PROCEDURE cos(x : REAL) : REAL [Invariant];
+
+PROCEDURE tan(x : REAL) : REAL [Invariant];
+
+PROCEDURE arctan(x : REAL) : REAL [Invariant];
+
+%END
+
+PROCEDURE arcsin(x : REAL) : REAL [Invariant];
+
+PROCEDURE arccos(x : REAL) : REAL [Invariant];
+
+PROCEDURE power(base, exponent : REAL) : REAL [Invariant];
+(* base must be > 0.0 *)
+(* exponent may have any value *)
+(* this function is functionally identical to (exp(exponent * ln(base))) *)
+
+%IF IA32 %OR AMD64 %THEN
+PROCEDURE round = Float.Nearest32ToInt32;
+%ELSE
+PROCEDURE round(x : REAL) : INTEGER [Invariant];
+(* return the nearest integer to x *)
+%END
+
+PROCEDURE IsRMathException() : BOOLEAN;
+
+END RealMath.

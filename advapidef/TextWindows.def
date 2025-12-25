@@ -1,0 +1,961 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE TextWindows;
+(* this module is its own self contained system built on top of WinShell *)
+(* for convenience  this module re-exports most WinShell symbols by the *)
+(* same name as they exist in WinShell *)
+(* this module provides for very high level windows that display text *)
+(* within their client area *)
+(* this module fully automates painting and scroll bars for text windows *)
+(* manual control is available for applications where automatic control *)
+(* is not suitable *)
+
+(*
+   For automatic control this module defines a virtual coordinate system.
+   For the purposes of this description we will use the analogy of a text
+   editor, something you should be familiar with. Also we will only discuss
+   the Y or vertical coordinate. The width or X coordinate operates precisely
+   the same way as the Y.
+   We have a text editor using this module. We open a file with 5000 lines
+   of text. Also assume that the window is sized such that 25 lines of text
+   can be displayed. Our virtual coordinate range for this file is 0..4999.
+   We set a virtual coordinate range by using the SetScrollRangeAllowed API.
+   With this module our text editor never knows what exactly is being
+   displayed in the window or exactly where the text caret(cursor) is
+   positioned. It can inquire about this but there is no need.
+   We open the file and put the text caret at position 0, 0.
+   When we first open the file we will receive a paint message for coordinates
+   0..24. If the user scrolls the window down one line we will get a paint
+   message for coordinate 25. You should get the idea what is going on here.
+   The text caret is still at position 0, 0 which is no longer visible in the
+   window since the user scrolled the window down one line and the window
+   is now displaying the coordinates 1..25. The text window already has the text for
+   coordinates 1..24 buffered so it simply scrolls its text buffer and asks you to paint
+   the text for coordinate 25.
+   Lets say the user performed a text search and we need to display the
+   matched text to the user. We simply set the text caret position to the
+   proper virtual coordinate, lets say line 2000 column 1, and then tell
+   the text window system to make sure the text caret is visible the
+   window. That will cause the window to scroll in the proper direction to the
+   proper virtual coordinates and you will receive any paint messages necessary to
+   display the text in that coordinate area. for example, if the coordinate is already
+   visible then no scrolling will occur.
+   The basic point here is that once a virtual coordinate is set up the
+   text window asks you to paint certain coordinates, and it worries about
+   what and where that information is displayed in the window. You have
+   available to you certain API calls to make a given coordinate/range visible
+   within the window if/when necessary.
+
+   The chain of command here is the user tells the text window what to do,
+   and the text window tells your code what to do.
+*)
+(*
+  this module operates with three coordinate systems overlaid on top of
+  each other.
+  Virtual space >= Screen buffer space >= Visible window space
+  this module maintains a "screen buffer" for each window to hold any text
+  painted to minimize paint requests to your code when the operating system
+  is asking the window to paint. this screen buffer can be a fixed size or
+  it can assume whatever size fits within the visible area of the window.
+  if the screen buffer is variable in size then in essence you fold down to
+  two coordinate systems since the screen buffer and window are exactly the
+  same size and at the same position.
+  You only need to worry about the virtual coordinate space, but you should
+  know something about the others to use a few of the API calls in this module.
+  The screen buffer is basically a sliding window into the virtual coordinate
+  space. The visible window is a sliding window into the screen buffer
+  coordinate space.
+
+  If manual scrolling is used then these coordinate spaces have no real
+  meaning since nothing ever moves in the coordinate space. You are always
+  at the top of the coordinate space. You have to maintain your own
+  information about where you are currently displaying in your "document".
+*)
+
+<*/NOPACK*>
+
+FROM SYSTEM IMPORT
+    ADDRESS, ADRCARD, CAST;
+
+IMPORT WinShell;
+
+TYPE
+    (* text windows simply re-exports WinShell types and constants *)
+    (* for convenience *)
+
+    WindowTypes         = WinShell.WindowTypes;
+    COORDINATE          = WinShell.COORDINATE;
+    twPOINT             = WinShell.wsPOINT;
+    twRECT              = WinShell.wsRECT;
+    KeyStateType        = WinShell.KeyStateType;
+    KeyStateSet         = WinShell.KeyStateSet;
+    CloseModes          = WinShell.CloseModes;
+    MouseButton         = WinShell.MouseButton;
+    MouseEventType      = WinShell.MouseEventType;
+    MouseStateType      = WinShell.MouseStateType;
+    MouseStateSet       = WinShell.MouseStateSet;
+    ScrollDirection     = WinShell.ScrollDirection;
+    ScrollClass         = WinShell.ScrollClass;
+
+    ScrollRange         = COORDINATE[0..MAX(COORDINATE)];
+
+    WinAttr             = WinShell.WinAttr;
+    WinAttrSet          = WinShell.WinAttrSet;
+
+CONST
+    TOOLBAR_SEPARATOR   = WinShell.TOOLBAR_SEPARATOR;
+
+TYPE
+    StdToolbarBitmaps   = WinShell.StdToolbarBitmaps;
+    ToolbarButtonTypes  = WinShell.ToolbarButtonTypes;
+    ToolbarButtonInfo   = WinShell.ToolbarButtonInfo;
+
+    SpecialKeys         = WinShell.SpecialKeys;
+    ResponseType        = WinShell.ResponseType;
+
+    ClipboardFormat     = WinShell.ClipboardFormat;
+    HelpCommand         = WinShell.HelpCommand;
+    MenuHandle          = WinShell.MenuHandle;
+    FontInfo            = WinShell.FontInfo;
+    FontWeights         = WinShell.FontWeights;
+    PrintDriverInfo     = WinShell.PrintDriverInfo;
+
+    CursorTypes         = WinShell.CursorTypes;
+    CaretTypes          = WinShell.CaretTypes;
+    DisplayModes        = WinShell.DisplayModes;
+    Beeps               = WinShell.Beeps;
+    WindowDisplayInfo   = WinShell.WindowDisplayInfo;
+    WindowStateType     = WinShell.WindowStateType;
+
+CONST
+    NormalWindow        = WinShell.NormalWindow;
+    NormalChildWindow   = WinShell.NormalChildWindow;
+
+    AddVScrollBar       = WinAttrSet{WinShell.WA_VSCROLL,
+                                     WinShell.WA_VSCROLLTRACK};
+    AddHScrollBar       = WinAttrSet{WinShell.WA_HSCROLL,
+                                     WinShell.WA_HSCROLLTRACK};
+    AddScrollBars       = AddHScrollBar + AddVScrollBar;
+    AddStatusLine       = WinAttrSet{WinShell.WA_STATUSLINE};
+    AddSplitPos2        = WinShell.AddSplitPos2;
+
+TYPE
+    TextWindow;
+
+    ScreenAttribute     = CARDINAL16;(* magic cookie *)
+
+    Cell = (* the format of an individual text character cell *)
+        RECORD
+        ch      : CHAR;
+        attr    : ScreenAttribute;
+        END;
+
+    TextWindowsMsg      = (
+                            TWM_CREATE,
+                            TWM_GAINFOCUS,
+                            TWM_LOSEFOCUS,
+                            TWM_ACTIVATEAPP,
+                            TWM_DEACTIVATEAPP,
+                            TWM_MOUSE,
+                            TWM_KEY,
+                            TWM_CLOSE,
+                            TWM_MENU,
+                            TWM_MENUSELECT,
+                            TWM_MENUSTART,
+                            TWM_MENUEND,
+                            TWM_TAB_ACTIVE,
+                            TWM_PAINT,
+                            TWM_SIZE,
+                            TWM_STATE,
+                            TWM_POSITIONCHANGED,
+                            TWM_SCROLL,
+                            TWM_NOTIFYSCROLL,
+                            TWM_TIMER,
+                            TWM_USER
+                          );
+
+(******************** Message Definitions ************************************
+    TWM_CREATE          same as WinShell
+    TWM_GAINFOCUS       same as WinShell
+    TWM_LOSEFOCUS       same as WinShell
+    TWM_TABACTIVE       same as WinShell
+    WSM_ACTIVATEAPP     same as WinShell
+    WSM_DEACTIVATEAPP   same as WinShell
+    TWM_KEY             same as WinShell
+    TWM_CLOSE           same as WinShell
+    TWM_MENU            same as WinShell
+    TWM_MENUSELECT      same as WinShell
+    TWM_STARTMENU       same as WinShell
+    TWM_ENDMENU         same as WinShell
+    TWM_TIMER           same as WinShell
+    TWM_USER            same as WinShell
+    TWM_SCROLL          same as WinShell
+    TWM_POSITIONCHANGED same as WinShell
+
+    TWM_MOUSE           this window received a mouse event
+        m_pos = Window Coordinates of click in text cells, not pixels
+        m_button = Which button the event is for
+        m_event = the type of event
+        m_state = the state of various other keys at the time of the mouse event
+        m_wheel_count = the mouse wheel movement count.
+        m_wheel_dir = the mouse wheel movement direction.
+
+    TWM_PAINT           this window needs repainting
+        paintRect = rectangle of region that needs to be painted
+               this is in text cells, not pixels
+
+    TWM_SIZE            the size of this window is/has changed
+        sizeType = as WinShell
+        wasMinimized = as WinShell
+        width = the new width in text cells, not pixels
+        height = the new height in text cells, not pixels
+
+            for variable buffer windows the size is changing and a
+                paint message will follow this message
+            for fixed buffer windows the size has changed
+                can be used to set the page size
+
+    TWM_NOTIFYSCROLL    notification that the window has automatically
+                        scrolled in some way.
+
+*****************************************************************************)
+
+    TWMessageRec =
+        RECORD
+        CASE msg : TextWindowsMsg OF
+        TWM_GAINFOCUS, TWM_LOSEFOCUS,
+        TWM_MENUSTART, TWM_MENUEND,
+        TWM_ACTIVATEAPP, TWM_DEACTIVATEAPP,
+        TWM_TAB_ACTIVE,
+        TWM_NOTIFYSCROLL:
+            (* no data for these *)
+        |
+        TWM_CREATE:
+            createParam : ADDRESS;
+        |
+        TWM_MOUSE:
+            m_pos               : twPOINT;
+            m_wheel_count       : CARDINAL;
+            m_state             : MouseStateSet;
+            m_button            : MouseButton;
+            m_event             : MouseEventType;
+            m_wheel_dir         : ScrollDirection;
+        |
+        TWM_KEY:
+            k_count     : CARDINAL;
+            k_special   : SpecialKeys;
+            k_state     : KeyStateSet;
+            k_ch        : CHAR;
+        |
+        TWM_CLOSE:
+            closeMode   : CloseModes;
+        |
+        TWM_MENUSELECT,
+        TWM_MENU:
+            menuId      : INTEGER;
+            accel       : BOOLEAN; (* used only with MENU *)
+        |
+        TWM_PAINT:
+            paintRect   : twRECT;
+        |
+        TWM_SIZE:
+            width               : COORDINATE;
+            height              : COORDINATE;
+        |
+        TWM_STATE:
+            oldState,
+            newState            : WindowStateType;
+        |
+        TWM_POSITIONCHANGED:
+            windowPos   : WinShell.wsPOINT;
+        |
+        TWM_SCROLL:
+            scrollDir   : ScrollDirection;
+            scrollClass : ScrollClass;
+            scrollPos   : ScrollRange;
+        |
+        TWM_TIMER:
+            timerId     : CARDINAL;
+        |
+        TWM_USER:
+            userId      : CARDINAL;
+            userData: ADDRESS;
+        END;
+    END;
+
+    TextWindowProcedure = PROCEDURE(TextWindow, TWMessageRec) : ResponseType;
+
+    (* colors available in a text window *)
+    Colors      = (
+                    Black,
+                    Blue,
+                    Green,
+                    Cyan,
+                    Red,
+                    Purple,
+                    Brown,
+                    DarkGray,
+                    LightGray,
+                    LightBlue,
+                    LightGreen,
+                    LightCyan,
+                    LightRed,
+                    Magenta,
+                    Yellow,
+                    White
+                );
+
+    (* font styles available in a text window *)
+    FontStyles = (FsItalic, FsBold);
+    FontStyleSet = PACKEDSET OF FontStyles;
+
+    ColorValue  = WinShell.ColorValue;
+    ColorTable = ARRAY Colors OF ColorValue;
+
+CONST
+    NormalFont  = FontStyleSet{};
+    BoldFont    = FontStyleSet{FsBold};
+    ItalicFont  = FontStyleSet{FsItalic};
+
+    NullTextWnd = CAST(TextWindowProcedure, NIL);
+
+VAR
+    DefaultFontInfo     : FontInfo;(* the default font that a text window
+                                      will use *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE WinShellToTextWindowMessage(wmsg : WinShell.MessageRec;
+                                      VAR OUT msg : TWMessageRec) : BOOLEAN;
+(* convert a WinShell message to a TextWindow message *)
+(* not all message types can be converted *)
+(* returns TRUE if successful *)
+
+PROCEDURE CreateWindow(parent : WinShell.Window;
+                       name : ARRAY OF CHAR;
+                       menu : ARRAY OF CHAR;
+                       icon : ARRAY OF CHAR;
+                       x, y : COORDINATE;
+                       xSize, ySize : COORDINATE;
+                       xBuffer, yBuffer : COORDINATE;
+                       gutter : BOOLEAN;
+                       font : FontInfo;
+                       background : ScreenAttribute;
+                       windowType : WindowTypes;
+                       wndProc : TextWindowProcedure;
+                       attribs : WinAttrSet;
+                       createParam : ADDRESS) : TextWindow;
+(* create a new window *)
+(* parent = as WinShell  *)
+(* name = as WinShell  *)
+(* menu = the menu for the window. Can be "". *)
+(* icon =  as WinShell *)
+(* attribs = as WinShell *)
+(* wndProc = the window procedure *)
+(* createParam = an arbitrary value you can use to pass information
+                 to the window procedure of the window. this value is
+                 passed in the WSM_CREATE message. *)
+(* font = the font to use for this window *)
+(* background = the background color for this window *)
+(* gutter = TRUE then the text window will always have a blank "gutter"
+            on the left edge of the text window.
+            FALSE the text will start at the left edge of the client area.
+            *)
+(* x, y = only applicable for Toplevel windows.
+          the initial screen coordinates for the window to be displayed
+          if a parameter is -1 then the operating system will choose
+          a default location for that coordinate. *)
+(* xSize, ySize = only applicable for Toplevel windows.
+                  the initial width and height in character cells
+                  if -1 then a system default size will be used *)
+(* xBuffer, yBuffer = the size of the screen buffer. the window can never
+                      be larger than the screen buffer. if either xBuffer
+                      or yBuffer is -1 the screen buffer is a variable size
+                      and is sized to the number of cells the window client
+                      area currently is capable displaying.
+                      the "normal" mode is to use a variable size buffer (-1).
+                      if you are creating a ChildWindow then you should use a variable
+                      buffer since you do not have control over the size of the window.
+                      *)
+(* returns the window handle if successfull, otherwise NIL*)
+
+PROCEDURE SplitWindow(tw : TextWindow;
+                      wndProc : WinShell.WindowProcedure;
+                      splitY : BOOLEAN;
+                      VAR OUT splitter : WinShell.Window);
+(*
+  tw can be a toplevel window or a child window.
+  if splitY = TRUE the the window will be split into a top and bottom halves.
+
+  on return
+  tw becomes a child window of the newly created splitter.
+  splitter has a clientType of SplitterClient.
+      wndProc is the window procedure for this window.
+*)
+
+PROCEDURE UnsplitWindow(splitter : WinShell.Window; keepChild : TextWindow);
+(*
+   splitter must have a client type of SplitterClient.
+   keepChild must currently be a child of the splitter window.
+   If splitter is a top level window then keepChild becomes a top level window.
+   Otherwise, keepChild becomes a child of the splitters parent.
+   splitter is invalid after this call.
+*)
+
+PROCEDURE ConvertTabChildToTopLevel(tw : TextWindow) : BOOLEAN;
+(* convert the Tab child window to a Toplevel window.
+   if the frame window has a toolbar and/or statusline the new
+   toplevel window will create copies of these for itself.
+*)
+
+PROCEDURE CycleActiveTabChild(tw : TextWindow; direction : INTEGER);
+(*
+  tw must be an Tab child window.
+  if direction > 0 then the next tab child becomes the active child window.
+  if direction < 0 then the previous tab child becomes the active child window.
+*)
+
+PROCEDURE CloseWindow(tw : TextWindow; mode : CloseModes) : BOOLEAN;
+(* close an existing window.
+   mode = CM_REQUEST you are requesting that the window close.
+          for example this can give a window a change to prompt for saving any
+          unsaved changes and possibly aborting the close.
+   mode = CM_DICTATE the window *WILL* be closed
+   returns TRUE if the window is closing *)
+
+PROCEDURE IsTextWindow(tw : TextWindow) : BOOLEAN;
+(* is the window handle passed in tw a valid window handle
+   for example a window might have been closed and a copy of the window
+   handle an application had stored somewhere may no longer be valid
+   returns TRUE if the window handle is a valid text window *)
+
+PROCEDURE GetTextWindowType(tw : TextWindow) : WindowTypes;
+(* return the WindowType of the window *)
+
+PROCEDURE SetWindowBackground(tw : TextWindow;
+                              background : ScreenAttribute);
+(* set the background color for the specified window *)
+
+PROCEDURE GetWindowFont(tw : TextWindow; VAR OUT font : FontInfo);
+(* get the font that is currently used by this window *)
+
+PROCEDURE SetWindowFont(tw : TextWindow; font : FontInfo) : BOOLEAN;
+(* set the font to be used for this window.
+   returns TRUE if successful *)
+
+PROCEDURE SetScrollRangeAllowed(tw : TextWindow;
+                                which : WinAttr;
+                                range : ScrollRange);
+(* set the scroll range for the horizontal or vertical scroll bar
+   range is the upper end of the scroll range. the lower end is always zero. *)
+
+PROCEDURE SetScrollRangesAllowed(tw : TextWindow;
+                                 rangeX, rangeY : ScrollRange);
+(* set the scroll range for both the horizontal and vertical scroll bar.
+   rangeX and rangeY respectively.
+   rangeX and rangeY are the upper end of the scroll range. the lower end is
+   always zero. *)
+
+PROCEDURE SetPageSize(tw : TextWindow; x, y : ScrollRange);
+(* set the granularity in character cells that a PAGE scroll operation should move.
+   typically the page size is the visible dimension of the window minus one or
+   two coordinates of overlap so that part of the previous page is visible on the
+   new page.
+*)
+
+PROCEDURE SetAutoScroll(tw : TextWindow; on : BOOLEAN);
+(* windows are created with the scroll bars handled automatically
+   by this module, use this to disable and handle scroll bars manually
+   on = TRUE then scroll bars are handled by this module
+             you will never receive a TWM_SCROLL message
+             you will receive TWM_SCROLLNOTIFY messages when this module
+             automatically scrolls the window
+        FALSE then you will receive TWM_SCROLL messages and should perform
+              appropriate actions for the messages
+              you will not receive TWM_NOTIFYSCROLL messages *)
+
+PROCEDURE SetMinClientSize(tw : TextWindow; x, y : COORDINATE);
+(* set the minimum size in character cells the specified window
+   will be allowed to assume *)
+
+PROCEDURE GetClientSize(tw : TextWindow; VAR OUT x, y : COORDINATE);
+(* get the current size of the text area in character cells of the specified window *)
+
+PROCEDURE SetClientSize(tw : TextWindow; x, y : COORDINATE);
+(* set the current size of the text area in character cells of the specified window *)
+
+PROCEDURE SnapWindowToFont(tw : TextWindow; on : BOOLEAN);
+(* TRUE = window client area will be sized so that only full characters will be shown.
+   FALSE = the bottom and/or right may have partial characters shown *)
+
+PROCEDURE ResizeScreen(tw : TextWindow; xSize, ySize : COORDINATE) : BOOLEAN;
+(* resize the screen buffer for the specified window
+   if the window was create with -1 buffer size values this call has no
+   effect. therefore only use this call on windows with fixed screen buffers
+   returns TRUE if successful *)
+
+PROCEDURE RedirectMessage(tw : TextWindow; msg : TWMessageRec);
+(* this call simply passes the message to the window specified
+   the window should be of the same thread as the window that received
+   the message originally. Everything should work if not, but problems
+   may occur. *)
+
+PROCEDURE ScrollWindow(tw : TextWindow;
+                       dir : ScrollDirection;
+                       class  : ScrollClass;
+                       pos : ScrollRange;
+                       amount : COORDINATE);
+(* scroll the window by the specified amount an direction.
+   typically you would use this API when receiving keyboard input such as the
+   up/down arrow keys and/or the PageUp/Down keys.
+
+   dir can be LEFT, RIGHT, UP or DOWN
+   class can be LINE, PAGE, ABSOLUTE or EXTREME
+   pos is only used with a class of ABSOLUTE
+   amount is used with LINE and PAGE and specifies how may scrolls to do
+   ABSOLUTE is used with UP or LEFT and pos. Where pos specifies a
+            absolute virtual coordinate for the upper left coordinate
+            of the text window
+   EXTREME is used with an ScrollDirection and position the screen
+           at the extreme edge of the virtual coordinate space
+*)
+
+PROCEDURE ScrollBuffer(tw : TextWindow;
+                       dir : ScrollDirection;
+                       amount : ADRCARD);
+(* scroll the data held in the screen buffer.
+   you only use this if you are handling scrolling manually.
+
+   the virtual coordinates of the screen buffer will not change.
+   in manual scrolling the coordinates of the screen buffer never
+   changes since it is your code that is handling this.
+   use this call when performing manual scrolling.
+   this call simply moves the data in the screen buffer and generates a
+   paint message to fill in the resulting empty space
+*)
+
+PROCEDURE MoveCaretTo(tw : TextWindow; x, y : COORDINATE);
+(* move the caret to the specified location in character cells
+   a window need not have a caret for this function to work.
+   the position is remembered and is used if/when the caret is turned on *)
+
+PROCEDURE GetCaretPos(tw : TextWindow; VAR OUT x, y : COORDINATE);
+(* get the current position of the text caret *)
+
+PROCEDURE IsCaretVisible(tw : TextWindow) : BOOLEAN;
+(* is the caret visible (where the user can see it) within the current window display.
+   returns TRUE if the caret is visible
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE MakeCaretVisible(tw : TextWindow);
+(* make sure the caret is visible within the current window display.
+   any necessary scroll actions will be performed.
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE ComposeAttribute(fore, back : Colors;
+                           style : FontStyleSet) : ScreenAttribute;
+(* combine the various screen components into a screen attribute *)
+
+PROCEDURE DecomposeAttribute(sc : ScreenAttribute;
+                             VAR OUT fore, back : Colors;
+                             VAR OUT style : FontStyleSet);
+(* break a screen attribute into its various components *)
+
+PROCEDURE PutStringAt(tw : TextWindow;
+                      x, y : COORDINATE;
+                      str : ARRAY OF CHAR;
+                      a : ScreenAttribute);
+(* write the string at the specified position in character cells
+   output will be clipped if the text is/extends outside the screen buffer
+   x, y = the coordinates of the first character of the string to paint
+   str = the string to paint
+   a = the screen attribute to use when painting the text *)
+
+PROCEDURE PutAttrAt(tw : TextWindow;
+                    x, y : COORDINATE;
+                    attr : ARRAY OF ScreenAttribute);
+(* write the attributes at the specified position in character cells
+   the text remains unaltered, only the attribute is written
+   output will be clipped if the attributes are outside the screen buffer
+   x, y = the coordinates of the first character of the string to paint
+   attr = the attribute string to paint. the HIGH bound of the array
+          determines the number of attributes to paint *)
+
+PROCEDURE WriteString(tw : TextWindow;
+                      str : ARRAY OF CHAR;
+                      a : ScreenAttribute);
+(* write the string at the specified position in character cells
+   output will be clipped if the text is/extends outside the screen buffer
+   str = the string to paint
+   a = the screen attribute to use when painting the text
+   the text is written at the current caret position, and the x caret
+   position is advanced by the length of the string. *)
+
+PROCEDURE WriteStringAt(tw : TextWindow;
+                        x, y : COORDINATE;
+                        str : ARRAY OF CHAR;
+                        a : ScreenAttribute);
+(* this call has the same effect as *)
+(*
+    MoveCaretTo(tw, x, y);
+    WriteString(tw, str, a);
+*)
+
+PROCEDURE WriteCellsAt(tw : TextWindow;
+                       x, y : COORDINATE;
+                       s : ARRAY OF Cell);
+(* this call is like PutStringAt except you are writing whole character
+   rather than a string all with the same attribute.
+   the number of cells to write is determined by the HIGH bound of the
+   array of cells passed *)
+
+PROCEDURE WriteCells(tw : TextWindow; s : ARRAY OF Cell);
+(* this call is like WriteCellsAt except output is to the current caret position *)
+
+PROCEDURE WriteLn(tw : TextWindow);
+(* place the caret at the beginning of the screen buffer for the
+   X coordinate and advance the Y coordinate by one position
+   may cause the screen to scroll if the Y coordinate is at the bottom
+   of the screen buffer
+   the caret position is advanced by this call *)
+
+PROCEDURE EraseToEOL(tw : TextWindow; a : ScreenAttribute);
+(* erase to the end of the screen buffer with spaces and the attribute
+   specified from the current caret position
+   the caret position is advanced by the call *)
+
+PROCEDURE ChangeAttr(tw : TextWindow;
+                     y, x1, x2 : COORDINATE;
+                     a : ScreenAttribute);
+(* change the attributes from coordinate x1 to x2 on coordinate y.
+   output will be clipped if the range is/extends outside the screen buffer *)
+
+PROCEDURE ReadBufferString(tw : TextWindow;
+                           y, x1, x2 : COORDINATE;
+                           VAR OUT str : ARRAY OF CHAR);
+(* read data from the screen buffer maintained for the specified window.
+   read from coordinate y from coordinate x1 to x2.
+   place the data into the parameter string.
+   if x1..x2 is larger than the size of str then the range x1..x2 is reduced
+   to the size of str
+   the string will be null terminated if x1..x2 is smaller than the size
+   the parameter str *)
+
+PROCEDURE RepaintRect(tw : TextWindow; rect : twRECT);
+(* send yourself a TWM_PAINT message for the specified rectangle
+   the rectangle will be clipped to the size of the screen buffer if necessary *)
+
+PROCEDURE RepaintScreen(tw : TextWindow);
+(* send yourself a TWM_PAINT message for the entire screen buffer *)
+
+PROCEDURE MakeRowVisible(tw : TextWindow; y : COORDINATE);
+(* make the specified row, y coordinate, visible in the display window
+   you may receive TWM_PAINT, TWM_SCROLL or TWM_NOTIFYSCROLL messages as a
+   result of this call.
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE IsRectVisible(tw : TextWindow; theRect : twRECT) : BOOLEAN;
+(* returns TRUE if the entire specified rectangle visible in the window.
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE MakeRectVisible(tw : TextWindow; theRect : twRECT);
+(* make the specified rectangle visible in the window.
+   you may receive TWM_PAINT, TWM_SCROLL or TWM_NOTIFYSCROLL messages as a
+   result of this call.
+   if the rectange is larger than the current window size then as much
+   of the rectangle that can be made visible will be made visible
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE GetVisibleRect(tw : TextWindow; VAR OUT theRect : twRECT);
+(* retrieve the rectangle currently visible in the window in virtual coordinates.
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE GetBufferRect(tw : TextWindow; VAR OUT theRect : twRECT);
+(* retrieve the rectangle of the screen buffer in virtual coordinates.
+   manual scrolling windows have no use for this call *)
+
+PROCEDURE EraseScreen(tw : TextWindow; a : ScreenAttribute);
+(* Erase the entire screen buffer with spaces and the given attribute *)
+
+PROCEDURE EraseRect(tw : TextWindow; rect : twRECT; a : ScreenAttribute);
+(* Erase the specified region with spaces and the specified attribute.
+   output will be clipped if the rectangle is/extends outside the screen buffer *)
+
+PROCEDURE Xpos(tw : TextWindow) : COORDINATE;
+(* the X coordinate of the caret position in virtual coordinates *)
+
+PROCEDURE Ypos(tw : TextWindow) : COORDINATE;
+(* the Y coordinate of the caret position in virtual coordinates *)
+
+PROCEDURE Xorg(tw : TextWindow) : COORDINATE;
+(* the X coordinate of the upper left corner of the screen buffer *)
+(* in virtual coordinates *)
+(* manual scrolling windows have no use for this call *)
+
+PROCEDURE Yorg(tw : TextWindow) : COORDINATE;
+(* the Y coordinate of the upper left corner of the screen buffer *)
+(* in virtual coordinates *)
+(* manual scrolling windows have no use for this call *)
+
+PROCEDURE Xmax(tw : TextWindow) : COORDINATE;
+(* the highest X coordinate of the screen buffer in virtual coordinates *)
+
+PROCEDURE Ymax(tw : TextWindow) : COORDINATE;
+(* the highest Y coordinate of the screen buffer in virtual coordinates *)
+
+(* conversion routines to and from Virtual and Buffer coordinates *)
+(* for example if you had an absolute screen coordinate and you wanted *)
+(* to convert that to a text cell coordinate you would *)
+(*
+    WinShell.ScreenToClient(GetWinShellHandle(tw), pt);
+    ClientToBuffer(tw, pt);
+    BufferToVirtual(tw, pt);
+*)
+(* if you had a text window virtual coordinate and you wanted a screen pixel *)
+(*
+    VirtualToBuffer(tw, pt);
+    BufferToClient(tw, pt);
+    WinShell.ClientToScreen(GetWinShellHandle(tw), pt);
+*)
+
+PROCEDURE VirtualToBuffer(tw : TextWindow; VAR INOUT pt : twPOINT);
+
+PROCEDURE BufferToVirtual(tw : TextWindow; VAR INOUT pt : twPOINT);
+
+PROCEDURE ClientToBuffer(tw : TextWindow; VAR INOUT pt : twPOINT);
+(* client pixel coordinates to text cell buffer coordinates *)
+
+PROCEDURE BufferToClient(tw : TextWindow; VAR INOUT pt : twPOINT);
+(* text cell buffer coordinates to client pixel coordinates *)
+
+PROCEDURE GetColorTable(VAR OUT table : ColorTable);
+(* get the table of colors used by this module
+   the table associates the color enumeration this module uses
+   with the RGB color information the corresponding to the enumeration *)
+
+PROCEDURE PaintOff(tw : TextWindow);
+(* function for turning off the updating of the display per "write/put" call.
+   this will increase display updating performance.
+   Off and On calls can be nested, thus you must turn painting On for every Off.
+   Whenever a window receives a TWM_PAINT message painting is automatically
+   turned off for the duration of the PAINT message. *)
+
+PROCEDURE PaintOn(tw : TextWindow);
+(* reverses a PaintOff call *)
+
+PROCEDURE FlushPaint(tw : TextWindow);
+(* if painting is OFF, flush all pending paint updates to the screen.
+   if painting is ON this call has no effect *)
+
+PROCEDURE IsPaintOn(tw : TextWindow) : BOOLEAN;
+(* returns TRUE if paint updates is currently on for the specified window *)
+
+PROCEDURE GetWinShellHandle(tw : TextWindow) : WinShell.Window;
+(* get the WinShell window handle for the text window in question *)
+
+PROCEDURE FindTextWindow(w : WinShell.Window) : TextWindow;
+(* find the text window associated with the WinShell handle *)
+
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+(*-------------------------------------------------------------------*)
+
+(* Stuff TextWindows simply re-exports from WinShell. *)
+(* these procedures take a text window handle and just transfer the *)
+(* call to the appropriate WinShell procedure of the same name *)
+(* coordinates and sizes are in pixels for these calls, not character cells *)
+(* as "native" TextWindows API calls *)
+
+PROCEDURE Beep(beep : Beeps);
+
+PROCEDURE SetDisplayMode(tw : TextWindow; dispMode : DisplayModes);
+
+PROCEDURE GetDisplayMode(tw : TextWindow) : DisplayModes;
+
+PROCEDURE SetWindowEnable(tw : TextWindow; enabled : BOOLEAN);
+
+PROCEDURE IsMinimized(tw : TextWindow) : BOOLEAN;
+
+PROCEDURE IsMaximized(tw : TextWindow) : BOOLEAN;
+
+PROCEDURE SetWindowTitle(tw : TextWindow; title : ARRAY OF CHAR);
+
+PROCEDURE SendUserMessage(tw : TextWindow;
+                          userId : CARDINAL; userData : ADDRESS);
+PROCEDURE PostUserMessage(tw : TextWindow;
+                          userId : CARDINAL; userData : ADDRESS);
+
+PROCEDURE IsUserMessageWaiting(tw : TextWindow) : BOOLEAN;
+
+PROCEDURE CaretOn(tw : TextWindow);
+
+PROCEDURE CaretOff(tw : TextWindow);
+
+PROCEDURE ShowCaret(tw : TextWindow);
+
+PROCEDURE HideCaret(tw : TextWindow);
+
+PROCEDURE SetCaretType(tw : TextWindow; ct : CaretTypes);
+
+PROCEDURE SetScrollBarPos(tw : TextWindow;
+                          which : WinAttr;
+                          pos : ScrollRange);
+
+PROCEDURE SetWindowData(tw : TextWindow;
+                        index : CARDINAL;
+                        data : ADDRESS) : BOOLEAN;
+PROCEDURE SetWindowDataNum(tw : TextWindow;
+                           index : CARDINAL;
+                           data : CARDINAL) : BOOLEAN;
+
+PROCEDURE GetWindowData(tw : TextWindow;
+                        index : CARDINAL) : ADDRESS;
+PROCEDURE GetWindowDataNum(tw : TextWindow;
+                           index : CARDINAL) : CARDINAL;
+
+PROCEDURE GetWindowSize(tw : TextWindow; VAR OUT width, height : COORDINATE);
+
+PROCEDURE SetWindowSize(tw : TextWindow; width, height : COORDINATE);
+
+PROCEDURE GetWindowPos(tw : TextWindow; VAR OUT x, y : COORDINATE);
+
+PROCEDURE SetWindowPos(tw : TextWindow; x, y : COORDINATE);
+
+PROCEDURE CascadeWindow(cascadeThis, onThis : TextWindow);
+
+PROCEDURE SetWindowIsBusy(tw : TextWindow; busy : BOOLEAN);
+
+PROCEDURE GetWindowDisplayInfo(tw : TextWindow; VAR OUT info : WindowDisplayInfo);
+
+PROCEDURE SetWindowDisplayInfo(tw : TextWindow; info : WindowDisplayInfo);
+
+PROCEDURE SetScrollDisableWhenNone(tw : TextWindow; yesH, yesV : BOOLEAN);
+
+PROCEDURE SetActiveTabChild(tw : TextWindow);
+
+PROCEDURE SetTabChildPosition(tw : TextWindow; index : CARDINAL);
+
+PROCEDURE GetForegroundWindow() : TextWindow;
+
+PROCEDURE SetForegroundWindow(tw : TextWindow);
+
+PROCEDURE CreateStatusLine(tw : TextWindow; fmt : ARRAY OF INTEGER) : BOOLEAN;
+
+PROCEDURE RemoveStatusLine(tw :TextWindow);
+
+PROCEDURE SetStatusFormat(tw :TextWindow; fmt : ARRAY OF INTEGER);
+
+PROCEDURE WriteStatusField(tw :TextWindow;
+                           field : CARDINAL;
+                           text : ARRAY OF CHAR);
+
+PROCEDURE SetWindowIcon(tw : TextWindow; icon : ARRAY OF CHAR) : BOOLEAN;
+
+PROCEDURE SetWindowCursor(tw : TextWindow; typ : CursorTypes);
+
+PROCEDURE SetWindowMenu(tw : TextWindow; menu : ARRAY OF CHAR) : BOOLEAN;
+
+PROCEDURE SetMenuItemEnable(tw : TextWindow; id : CARDINAL; state : BOOLEAN);
+
+PROCEDURE GetMenuItemEnable(tw : TextWindow; id : CARDINAL) : BOOLEAN;
+
+PROCEDURE SetMenuItemCheck(tw : TextWindow; id : CARDINAL; state : BOOLEAN);
+
+PROCEDURE GetMenuItemCheck(tw : TextWindow; id : CARDINAL) : BOOLEAN;
+
+PROCEDURE SetMenuItemRadioCheck(tw : TextWindow;
+                                first, last, set : CARDINAL);
+
+PROCEDURE GetMenuItemRadioCheck(tw : TextWindow;
+                                first, last : CARDINAL) : CARDINAL;
+
+PROCEDURE GetWindowMenu(tw : TextWindow) : MenuHandle;
+
+PROCEDURE LoadMenu(tw : TextWindow;
+                   menuId : ARRAY OF CHAR;
+                   popup : BOOLEAN) : MenuHandle;
+
+PROCEDURE AppendMenuItemStr(tw : TextWindow;
+                            menuH : MenuHandle;
+                            str : ARRAY OF CHAR;
+                            id : CARDINAL) : BOOLEAN;
+
+PROCEDURE AppendMenuItemSeparator(tw : TextWindow; menuH : MenuHandle) : BOOLEAN;
+
+PROCEDURE DeleteMenuItemPosition(menuH : MenuHandle; pos : CARDINAL) : BOOLEAN;
+
+PROCEDURE PopupMenuHandle(tw : TextWindow;
+                          menuH : MenuHandle;
+                          button : MouseButton;
+                          x, y : COORDINATE);
+
+PROCEDURE PopupMenu(tw : TextWindow;
+                    menuId : ARRAY OF CHAR;
+                    button : MouseButton;
+                    x, y : COORDINATE);
+
+PROCEDURE SetTimer(tw : TextWindow; timerId : CARDINAL; interval : CARDINAL);
+
+PROCEDURE KillTimer(tw : TextWindow; timerId : CARDINAL);
+
+PROCEDURE OpenClipboard(tw : TextWindow) : BOOLEAN;
+
+PROCEDURE CloseClipboard(tw : TextWindow);
+
+PROCEDURE EmptyClipboard(tw : TextWindow) : BOOLEAN;
+
+PROCEDURE ClipboardFormatAvailable(fmt : ClipboardFormat) : BOOLEAN;
+
+PROCEDURE AllocClipboardMemory(size : CARDINAL) : ADDRESS;
+
+PROCEDURE UnlockClipboardMemory;
+
+PROCEDURE SetClipboard(fmt : ClipboardFormat) : BOOLEAN;
+
+PROCEDURE GetClipboard(fmt : ClipboardFormat) : ADDRESS;
+
+PROCEDURE CreateToolbar(tw : TextWindow;
+                        buttons : ARRAY OF ToolbarButtonInfo;
+                        hasText : BOOLEAN;
+                        hasHelp : BOOLEAN;
+                        canCustomize : BOOLEAN) : BOOLEAN;
+
+PROCEDURE DestroyToolbar(tw : TextWindow);
+
+PROCEDURE SetToolbarButtons(tw : TextWindow; fmt : ARRAY OF CARDINAL);
+
+PROCEDURE GetToolbarButtons(tw : TextWindow;
+                            VAR OUT fmt : ARRAY OF CARDINAL) : CARDINAL;
+
+PROCEDURE IsToolbarButtonShown(tw : TextWindow; index : CARDINAL) : BOOLEAN;
+
+PROCEDURE IsToolbarButtonDown(tw : TextWindow; index : CARDINAL) : BOOLEAN;
+
+PROCEDURE IsToolbarButtonEnabled(tw : TextWindow; index : CARDINAL) : BOOLEAN;
+
+PROCEDURE ShowToolbarButton(tw : TextWindow;
+                            index : CARDINAL;
+                            show : BOOLEAN) : BOOLEAN;
+
+PROCEDURE ToggleToolbarButton(tw : TextWindow;
+                              index : CARDINAL;
+                              down : BOOLEAN) : BOOLEAN;
+
+PROCEDURE EnableToolbarButton(tw : TextWindow;
+                              index : CARDINAL;
+                              enable : BOOLEAN) : BOOLEAN;
+
+PROCEDURE DisplayHelp(tw : TextWindow;
+                      command : HelpCommand;
+                      helpFile : ARRAY OF CHAR;
+                      helpIndex : CARDINAL) : BOOLEAN;
+
+END TextWindows.

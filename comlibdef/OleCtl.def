@@ -1,0 +1,460 @@
+(*
+Name:     OleCtl
+Creation: 05-06-2000
+LastEdit: 05-06-2000
+Author:   Egbert J. van der Haring
+System:   StonyBrook Modula-2
+Remarks:  Copyright (C) Microsoft Corporation, 1992 - 1998.
+          Conversion from Microsoft OleCtl sources to Modula-2 (only 32-bit),
+          copyright (c) 2000, Egbert J. van der Haring. All rights reserved.
+*)
+
+UNSAFEGUARDED DEFINITION MODULE OleCtl;
+
+IMPORT WIN32;
+IMPORT WINUSER;
+IMPORT Ole2;
+IMPORT OleC;
+
+CONST IID_IPropertyFrame= WIN32.GUID{0B196B28AH, 0BAB4H, 0101AH, {0B6H, 9CH, 00H, 0AAH, 00H, 34H, 1DH, 07H}};
+
+      (* Class IDs for property sheet implementations *)
+      CLSID_CFontPropPage=    WIN32.GUID{0BE35200H, 08F91H, 11CEH, {9DH, 0E3H, 00H, 0AAH, 00H, 4BH, 0B8H, 51H}};
+      CLSID_CColorPropPage=   WIN32.GUID{0BE35201H, 08F91H, 11CEH, {9DH, 0E3H, 00H, 0AAH, 00H, 4BH, 0B8H, 51H}};
+      CLSID_CPicturePropPage= WIN32.GUID{0BE35202H, 08F91H, 11CEH, {9DH, 0E3H, 00H, 0AAH, 00H, 4BH, 0B8H, 51H}};
+
+      (* Class IDs for persistent property set formats *)
+      CLSID_PersistPropset=   WIN32.GUID{0FB8F0821H, 0164H, 101BH, {84H, 0EDH, 08H, 00H, 2BH, 2EH, 0C7H, 13H}};
+      CLSID_ConvertVBX=       WIN32.GUID{0FB8F0822H, 0164H, 101BH, {84H, 0EDH, 08H, 00H, 2BH, 2EH, 0C7H, 13H}};
+
+      (* Class ID for standard implementations of IFont and IPicture *)
+      CLSID_StdFont=          WIN32.GUID{0BE35203H, 8F91H, 11CEH, {9DH, 0E3H, 00H, 0AAH, 00H, 4BH, 0B8H, 51H}};
+      CLSID_StdPicture=       WIN32.GUID{0BE35204H, 8F91H, 11CEH, {9DH, 0E3H, 00H, 0AAH, 00H, 4BH, 0B8H, 51H}};
+
+      (* GUIDs for standard types *)
+      GUID_HIMETRIC=             WIN32.GUID{66504300H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_COLOR=                WIN32.GUID{66504301H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_XPOSPIXEL=            WIN32.GUID{66504302H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_YPOSPIXEL=            WIN32.GUID{66504303H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_XSIZEPIXEL=           WIN32.GUID{66504304H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_YSIZEPIXEL=           WIN32.GUID{66504305H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_XPOS=                 WIN32.GUID{66504306H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_YPOS=                 WIN32.GUID{66504307H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_XSIZE=                WIN32.GUID{66504308H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_YSIZE=                WIN32.GUID{66504309H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_TRISTATE=             WIN32.GUID{6650430AH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_OPTIONVALUEEXCLUSIVE= WIN32.GUID{6650430BH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_CHECKVALUEEXCLUSIVE=  WIN32.GUID{6650430CH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTNAME=             WIN32.GUID{6650430DH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTSIZE=             WIN32.GUID{6650430EH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTBOLD=             WIN32.GUID{6650430FH, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTITALIC=           WIN32.GUID{66504310H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTUNDERSCORE=       WIN32.GUID{66504311H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_FONTSTRIKETHROUGH=    WIN32.GUID{66504312H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+      GUID_HANDLE=               WIN32.GUID{66504313H, 0BE0FH, 101AH, {08BH, 0BBH, 00H, 0AAH, 00H, 30H, 0CH, 0ABH}};
+
+
+(* OCPFIPARAMS structure - parameters for OleCreatePropertyFrameIndirect *)
+TYPE OCPFIPARAMS= RECORD
+                    cbStructSize:          WIN32.ULONG;
+                    hWndOwner:             WIN32.HWND;
+                    x, y:                  INTEGER;
+                    lpszCaption:           Ole2.LPCOLESTR;
+                    cObjects:              WIN32.ULONG;
+                    lplpUnk:               ARRAY [0..0] OF Ole2.IUnknown;
+                    cPages:                WIN32.ULONG;
+                    lpPages:               ARRAY [0..0] OF WIN32.CLSID;
+                    lcid:                  WIN32.LCID;
+                    dispidInitialProperty: Ole2.DISPID;
+                  END; (* record *)
+
+
+(* FONTDESC structure *)
+TYPE FONTDESC= RECORD
+                 cbSizeofstruct:  WIN32.UINT;
+                 lpstrName:       Ole2.LPOLESTR;
+                 cySize:          Ole2.CY;
+                 sWeight:         WIN32.SHORT;
+                 sCharset:        WIN32.SHORT;
+                 fItalic:         WIN32.BOOL;
+                 fUnderline:      WIN32.BOOL;
+                 fStrikethrough:  WIN32.BOOL;
+               END; (* record *)
+
+(* PICTDESC structure *)
+CONST PICTYPE_UNINITIALIZED= -1;
+      PICTYPE_NONE=           0;
+      PICTYPE_BITMAP=         1;
+      PICTYPE_METAFILE=       2;
+      PICTYPE_ICON=           3;
+      PICTYPE_ENHMETAFILE=    4;
+
+TYPE PICTDESC= RECORD
+                 cbSizeofstruct: WIN32.UINT;
+                 picType:        WIN32.UINT;
+                 CASE :CARDINAL OF
+                   0: hbitmap: WIN32.HBITMAP;
+                      hpal:    WIN32.HPALETTE;
+                 | 1: hmeta:   WIN32.HMETAFILE;
+                      xExt:    INTEGER;
+                      yExt:    INTEGER;
+                 | 2: hicon:   WIN32.HICON;
+                 | 3: hemf:    WIN32.HENHMETAFILE;
+                 ELSE
+                 END; (* case *)
+               END; (* record *)
+
+(* Typedefs for standard scalar types *)
+TYPE OLE_XPOS_PIXELS=     WIN32.LONG;
+     OLE_YPOS_PIXELS=     WIN32.LONG;
+     OLE_XSIZE_PIXELS=    WIN32.LONG;
+     OLE_YSIZE_PIXELS=    WIN32.LONG;
+     OLE_XPOS_CONTAINER=  WIN32.WFLOAT;
+     OLE_YPOS_CONTAINER=  WIN32.WFLOAT;
+     OLE_XSIZE_CONTAINER= WIN32.WFLOAT;
+     OLE_YSIZE_CONTAINER= WIN32.WFLOAT;
+
+CONST triUnchecked= 0; (* OLE_TRISTATE *)
+      triChecked=   1;
+      triGray=      2;
+
+TYPE OLE_OPTEXCLUSIVE=      Ole2.VARIANT_BOOL;
+     OLE_CANCELBOOL=        Ole2.VARIANT_BOOL;
+     OLE_ENABLEDEFAULTBOOL= Ole2.VARIANT_BOOL;
+
+(* FACILITY_CONTROL status codes *)
+
+CONST FACILITY_CONTROL=                0AH;
+      CTL_E_ILLEGALFUNCTIONCALL=       800A0005H;
+      CTL_E_OVERFLOW=                  800A0006H;
+      CTL_E_OUTOFMEMORY=               800A0007H;
+      CTL_E_DIVISIONBYZERO=            800A0011H;
+      CTL_E_OUTOFSTRINGSPACE=          800A0014H;
+      CTL_E_OUTOFSTACKSPACE=           800A0028H;
+      CTL_E_BADFILENAMEORNUMBER=       800A0052H;
+      CTL_E_FILENOTFOUND=              800A0053H;
+      CTL_E_BADFILEMODE=               800A0054H;
+      CTL_E_FILEALREADYOPEN=           800A0055H;
+      CTL_E_DEVICEIOERROR=             800A0057H;
+      CTL_E_FILEALREADYEXISTS=         800A0058H;
+      CTL_E_BADRECORDLENGTH=           800A0059H;
+      CTL_E_DISKFULL=                  800A0061H;
+      CTL_E_BADRECORDNUMBER=           800A0063H;
+      CTL_E_BADFILENAME=               800A0064H;
+      CTL_E_TOOMANYFILES=              800A0067H;
+      CTL_E_DEVICEUNAVAILABLE=         800A0068H;
+      CTL_E_PERMISSIONDENIED=          800A0070H;
+      CTL_E_DISKNOTREADY=              800A0071H;
+      CTL_E_PATHFILEACCESSERROR=       800A0075H;
+      CTL_E_PATHNOTFOUND=              800A0076H;
+      CTL_E_INVALIDPATTERNSTRING=      800A0093H;
+      CTL_E_INVALIDUSEOFNULL=          800A0094H;
+      CTL_E_INVALIDFILEFORMAT=         800A0321H;
+      CTL_E_INVALIDPROPERTYVALUE=      800A0380H;
+      CTL_E_INVALIDPROPERTYARRAYINDEX= 800A0381H;
+      CTL_E_SETNOTSUPPORTEDATRUNTIME=  800A0382H;
+      CTL_E_SETNOTSUPPORTED=           800A0383H;
+      CTL_E_NEEDPROPERTYARRAYINDEX=    800A0385H;
+      CTL_E_SETNOTPERMITTED=           800A0387H;
+      CTL_E_GETNOTSUPPORTEDATRUNTIME=  800A0393H;
+      CTL_E_GETNOTSUPPORTED=           800A0394H;
+      CTL_E_PROPERTYNOTFOUND=          800A0422H;
+      CTL_E_INVALIDCLIPBOARDFORMAT=    800A0460H;
+      CTL_E_INVALIDPICTURE=            800A0481H;
+      CTL_E_PRINTERERROR=              800A0482H;
+      CTL_E_CANTSAVEFILETOTEMP=        800A0735H;
+      CTL_E_SEARCHTEXTNOTFOUND=        800A0744H;
+      CTL_E_REPLACEMENTSTOOLONG=       800A0746H;
+
+      CTL_E_CUSTOM_FIRST=              800A0600H;
+
+      (* IConnectionPoint status codes *)
+      CONNECT_E_FIRST=    80040200H;
+      CONNECT_E_LAST=     8004020FH;
+      CONNECT_S_FIRST=    00040200H;
+      CONNECT_S_LAST=     0004020FH;
+
+      CONNECT_E_NOCONNECTION=  80040200H; (* there is no connection for this connection id *)
+      CONNECT_E_ADVISELIMIT=   80040201H; (* this implementation's limit for advisory connections has been reached *)
+      CONNECT_E_CANNOTCONNECT= 80040202H; (* connection attempt failed *)
+      CONNECT_E_OVERRIDDEN=    80040203H; (* must use a derived interface to connect *)
+
+      (* DllRegisterServer/DllUnregisterServer status codes *)
+      SELFREG_E_FIRST=         80040200H;
+      SELFREG_E_LAST=          8004020FH;
+      SELFREG_S_FIRST=         00040200H;
+      SELFREG_S_LAST=          0004020FH;
+
+      SELFREG_E_TYPELIB=       80040200H; (* failed to register/unregister type library *)
+      SELFREG_E_CLASS=         80040201H; (* failed to register/unregister class *)
+
+      (* IPerPropertyBrowsing status codes *)
+      PERPROP_E_FIRST=    80040200H;
+      PERPROP_E_LAST=     8004020FH;
+      PERPROP_S_FIRST=    00040200H;
+      PERPROP_S_LAST=     0004020FH;
+
+      PERPROP_E_NOPAGEAVAILABLE= 80040200H; (* no page available for requested property *)
+
+      (* OLEMISC_ constants (they are also defined in the latest oleidl.h) *)
+      OLEMISC_INVISIBLEATRUNTIME=  00000400H;
+      OLEMISC_ALWAYSRUN=           00000800H;
+      OLEMISC_ACTSLIKEBUTTON=      00001000H;
+      OLEMISC_ACTSLIKELABEL=       00002000H;
+      OLEMISC_NOUIACTIVATE=        00004000H;
+      OLEMISC_ALIGNABLE=           00008000H;
+      OLEMISC_SIMPLEFRAME=         00010000H;
+      OLEMISC_SETCLIENTSITEFIRST=  00020000H;
+      OLEMISC_IMEMODE=             00040000H;
+
+      (* OLEIVERB_ constants *)
+      OLEIVERB_PROPERTIES= -7;
+
+(* Variant type (VT_) tags for property sets *)
+
+      VT_STREAMED_PROPSET= 73;  (* [P]  Stream contains a property set *)
+      VT_STORED_PROPSET=   74;  (* [P]  Storage contains a property set *)
+      VT_BLOB_PROPSET=     75;  (* [P]  Blob contains a property set *)
+      VT_VERBOSE_ENUM=     76;  (* [P]  Enum value with text string *)
+
+      (* Variant type (VT_) tags that are just aliases for others *)
+      VT_COLOR=            Ole2.VT_I4;
+      VT_XPOS_PIXELS=      Ole2.VT_I4;
+      VT_YPOS_PIXELS=      Ole2.VT_I4;
+      VT_XSIZE_PIXELS=     Ole2.VT_I4;
+      VT_YSIZE_PIXELS=     Ole2.VT_I4;
+      VT_XPOS_HIMETRIC=    Ole2.VT_I4;
+      VT_YPOS_HIMETRIC=    Ole2.VT_I4;
+      VT_XSIZE_HIMETRIC=   Ole2.VT_I4;
+      VT_YSIZE_HIMETRIC=   Ole2.VT_I4;
+      VT_TRISTATE=         Ole2.VT_I2;
+      VT_OPTEXCLUSIVE=     Ole2.VT_BOOL;
+      VT_FONT=             Ole2.VT_DISPATCH;
+      VT_PICTURE=          Ole2.VT_DISPATCH;
+      VT_HANDLE=           Ole2.VT_I4;
+
+      (* Reflected Window Message IDs *)
+      OCM__BASE=           WINUSER.WM_USER+1C00H;
+      OCM_COMMAND=         OCM__BASE+WINUSER.WM_COMMAND;
+
+      OCM_CTLCOLORBTN=       OCM__BASE + WINUSER.WM_CTLCOLORBTN;
+      OCM_CTLCOLOREDIT=      OCM__BASE + WINUSER.WM_CTLCOLOREDIT;
+      OCM_CTLCOLORDLG=       OCM__BASE + WINUSER.WM_CTLCOLORDLG;
+      OCM_CTLCOLORLISTBOX=   OCM__BASE + WINUSER.WM_CTLCOLORLISTBOX;
+      OCM_CTLCOLORMSGBOX=    OCM__BASE + WINUSER.WM_CTLCOLORMSGBOX;
+      OCM_CTLCOLORSCROLLBAR= OCM__BASE + WINUSER.WM_CTLCOLORSCROLLBAR;
+      OCM_CTLCOLORSTATIC=    OCM__BASE + WINUSER.WM_CTLCOLORSTATIC;
+
+      OCM_DRAWITEM=          OCM__BASE + WINUSER.WM_DRAWITEM;
+      OCM_MEASUREITEM=       OCM__BASE + WINUSER.WM_MEASUREITEM;
+      OCM_DELETEITEM=        OCM__BASE + WINUSER.WM_DELETEITEM;
+      OCM_VKEYTOITEM=        OCM__BASE + WINUSER.WM_VKEYTOITEM;
+      OCM_CHARTOITEM=        OCM__BASE + WINUSER.WM_CHARTOITEM;
+      OCM_COMPAREITEM=       OCM__BASE + WINUSER.WM_COMPAREITEM;
+      OCM_HSCROLL=           OCM__BASE + WINUSER.WM_HSCROLL;
+      OCM_VSCROLL=           OCM__BASE + WINUSER.WM_VSCROLL;
+      OCM_PARENTNOTIFY=      OCM__BASE + WINUSER.WM_PARENTNOTIFY;
+
+      OCM_NOTIFY=            OCM__BASE + WINUSER.WM_NOTIFY;
+
+      (* Self-registration APIs (to be implemented by server DLL)
+      STDAPI DllRegisterServer(void);
+      STDAPI DllUnregisterServer(void);
+      *)
+
+
+(* Property frame APIs *)
+
+PROCEDURE OleCreatePropertyFrame(hwndOwner:   WIN32.HWND;
+                                 x, y:        WIN32.UINT;
+                                 lpszCaption: Ole2.LPCOLESTR;
+                                 cObjects:    WIN32.ULONG;
+                                 ppUnk:       ARRAY OF Ole2.IUnknown;
+                                 cPages:      WIN32.ULONG;
+                                 pPageClsID:  ARRAY OF WIN32.LPCLSID;
+                                 lcid:        WIN32.LCID;
+                                 dwReserved:  WIN32.DWORD;
+                                 pvReserved:  WIN32.LPVOID): WIN32.HRESULT;
+
+PROCEDURE OleCreatePropertyFrameIndirect(lpParams: OCPFIPARAMS): WIN32.HRESULT;
+
+
+(* Standard type APIs *)
+
+PROCEDURE OleTranslateColor(clr:        OleC.OLE_COLOR;
+                            hpal:       WIN32.HPALETTE;
+                            lpcolorref: WIN32.LPCOLORREF): WIN32.HRESULT;
+
+PROCEDURE OleCreateFontIndirect(    FontDesc: FONTDESC;
+                                    iid:      WIN32.IID;
+                                VAR iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleCreatePictureIndirect(    PictDesc: PICTDESC;
+                                       iid:      WIN32.IID;
+                                       fOwn:     WIN32.BOOL;
+                                   VAR iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleLoadPicture(    iStream:  Ole2.IStream;
+                             lSize:    WIN32.LONG;
+                             fRunmode: WIN32.BOOL;
+                             iid:      WIN32.IID;
+                         VAR iUnknown: Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleLoadPictureEx(    iStream:      Ole2.IStream;
+                               lSize:        WIN32.LONG;
+                               fRunmode:     WIN32.BOOL;
+                               iid:          WIN32.IID;
+                               xSizeDesired: WIN32.DWORD;
+                               ySizeDesired: WIN32.DWORD;
+                               dwFlags:      WIN32.DWORD;
+                           VAR iUnknown:     Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleLoadPicturePath(    szURLorPath:    Ole2.LPOLESTR;
+                                 iUnknownCaller: Ole2.IUnknown;
+                                 dwReserved:     WIN32.DWORD;
+                                 clrReserved:    OleC.OLE_COLOR;
+                                 iid:            WIN32.IID;
+                             VAR ppvRet:         WIN32.LPVOID): WIN32.HRESULT;
+
+PROCEDURE OleLoadPictureFile(    varFileName:  Ole2.VARIANT;
+                             VAR iDispPicture: Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleLoadPictureFileEx(    varFileName:  Ole2.VARIANT;
+                                   xSizeDesired: WIN32.DWORD;
+                                   ySizeDesired: WIN32.DWORD;
+                                   dwFlags:      WIN32.DWORD;
+                               VAR iDispPicture: Ole2.IUnknown): WIN32.HRESULT;
+
+PROCEDURE OleSavePictureFile(iDispPicture: Ole2.IUnknown;
+                             bstrFileName: Ole2.BSTR): WIN32.HRESULT;
+
+PROCEDURE OleIconToCursor(hinstExe: WIN32.HINSTANCE;
+                          hIcon:    WIN32.HICON): WIN32.HCURSOR;
+
+CONST LP_DEFAULT=      00;
+      LP_MONOCHROME=   01;
+      LP_VGACOLOR=     02;
+      LP_COLOR=        04;
+
+      (*  Standard dispatch ID constants *)
+      DISPID_AUTOSIZE=                  -500;
+      DISPID_BACKCOLOR=                 -501;
+      DISPID_BACKSTYLE=                 -502;
+      DISPID_BORDERCOLOR=               -503;
+      DISPID_BORDERSTYLE=               -504;
+      DISPID_BORDERWIDTH=               -505;
+      DISPID_DRAWMODE=                  -507;
+      DISPID_DRAWSTYLE=                 -508;
+      DISPID_DRAWWIDTH=                 -509;
+      DISPID_FILLCOLOR=                 -510;
+      DISPID_FILLSTYLE=                 -511;
+      DISPID_FONT=                      -512;
+      DISPID_FORECOLOR=                 -513;
+      DISPID_ENABLED=                   -514;
+      DISPID_HWND=                      -515;
+      DISPID_TABSTOP=                   -516;
+      DISPID_TEXT=                      -517;
+      DISPID_CAPTION=                   -518;
+      DISPID_BORDERVISIBLE=             -519;
+      DISPID_APPEARANCE=                -520;
+      DISPID_MOUSEPOINTER=              -521;
+      DISPID_MOUSEICON=                 -522;
+      DISPID_PICTURE=                   -523;
+      DISPID_VALID=                     -524;
+      DISPID_READYSTATE=                -525;
+      DISPID_LISTINDEX=                 -526;
+      DISPID_SELECTED=                  -527;
+      DISPID_LIST=                      -528;
+      DISPID_COLUMN=                    -529;
+      DISPID_LISTCOUNT=                 -531;
+      DISPID_MULTISELECT=               -532;
+      DISPID_MAXLENGTH=                 -533;
+      DISPID_PASSWORDCHAR=              -534;
+      DISPID_SCROLLBARS=                -535;
+      DISPID_WORDWRAP=                  -536;
+      DISPID_MULTILINE=                 -537;
+      DISPID_NUMBEROFROWS=              -538;
+      DISPID_NUMBEROFCOLUMNS=           -539;
+      DISPID_DISPLAYSTYLE=              -540;
+      DISPID_GROUPNAME=                 -541;
+      DISPID_IMEMODE=                   -542;
+      DISPID_ACCELERATOR=               -543;
+      DISPID_ENTERKEYBEHAVIOR=          -544;
+      DISPID_TABKEYBEHAVIOR=            -545;
+      DISPID_SELTEXT=                   -546;
+      DISPID_SELSTART=                  -547;
+      DISPID_SELLENGTH=                 -548;
+
+      DISPID_REFRESH=                   -550;
+      DISPID_DOCLICK=                   -551;
+      DISPID_ABOUTBOX=                  -552;
+      DISPID_ADDITEM=                   -553;
+      DISPID_CLEAR=                     -554;
+      DISPID_REMOVEITEM=                -555;
+
+      DISPID_CLICK=                     -600;
+      DISPID_DBLCLICK=                  -601;
+      DISPID_KEYDOWN=                   -602;
+      DISPID_KEYPRESS=                  -603;
+      DISPID_KEYUP=                     -604;
+      DISPID_MOUSEDOWN=                 -605;
+      DISPID_MOUSEMOVE=                 -606;
+      DISPID_MOUSEUP=                   -607;
+      DISPID_ERROREVENT=                -608;
+      DISPID_READYSTATECHANGE=          -609;
+      DISPID_CLICK_VALUE=               -610;
+      DISPID_RIGHTTOLEFT=               -611;
+      DISPID_TOPTOBOTTOM=               -612;
+      DISPID_THIS=                      -613;
+
+      DISPID_AMBIENT_BACKCOLOR=         -701;
+      DISPID_AMBIENT_DISPLAYNAME=       -702;
+      DISPID_AMBIENT_FONT=              -703;
+      DISPID_AMBIENT_FORECOLOR=         -704;
+      DISPID_AMBIENT_LOCALEID=          -705;
+      DISPID_AMBIENT_MESSAGEREFLECT=    -706;
+      DISPID_AMBIENT_SCALEUNITS=        -707;
+      DISPID_AMBIENT_TEXTALIGN=         -708;
+      DISPID_AMBIENT_USERMODE=          -709;
+      DISPID_AMBIENT_UIDEAD=            -710;
+      DISPID_AMBIENT_SHOWGRABHANDLES=   -711;
+      DISPID_AMBIENT_SHOWHATCHING=      -712;
+      DISPID_AMBIENT_DISPLAYASDEFAULT=  -713;
+      DISPID_AMBIENT_SUPPORTSMNEMONICS= -714;
+      DISPID_AMBIENT_AUTOCLIP=          -715;
+      DISPID_AMBIENT_APPEARANCE=        -716;
+
+      DISPID_AMBIENT_CODEPAGE=          -725;
+      DISPID_AMBIENT_PALETTE=           -726;
+      DISPID_AMBIENT_CHARSET=           -727;
+      DISPID_AMBIENT_TRANSFERPRIORITY=  -728;
+
+      DISPID_AMBIENT_RIGHTTOLEFT=       -732;
+      DISPID_AMBIENT_TOPTOBOTTOM=       -733;
+
+      DISPID_Name=                      -800;
+      DISPID_Delete=                    -801;
+      DISPID_Object=                    -802;
+      DISPID_Parent=                    -803;
+
+      (* Dispatch ID constants for font and picture types *)
+      DISPID_FONT_NAME=    0;
+      DISPID_FONT_SIZE=    2;
+      DISPID_FONT_BOLD=    3;
+      DISPID_FONT_ITALIC=  4;
+      DISPID_FONT_UNDER=   5;
+      DISPID_FONT_STRIKE=  6;
+      DISPID_FONT_WEIGHT=  7;
+      DISPID_FONT_CHARSET= 8;
+      DISPID_FONT_CHANGED= 9;
+
+      DISPID_PICT_HANDLE=  0;
+      DISPID_PICT_HPAL=    2;
+      DISPID_PICT_TYPE=    3;
+      DISPID_PICT_WIDTH=   4;
+      DISPID_PICT_HEIGHT=  5;
+      DISPID_PICT_RENDER=  6;
+
+
+
+END OleCtl.

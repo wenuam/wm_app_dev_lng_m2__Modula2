@@ -1,0 +1,127 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                        by ADW Software                                  *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE PipedExec;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM FileFunc IMPORT
+    File;
+
+TYPE
+    PipedExecHandle;
+
+    ExecFlags = (ExecDetached,
+                 ExecMinimized,
+                 ExecMaximized,
+                 ExecHidden);
+    ExecFlagSet = SET OF ExecFlags;
+
+(* All ExecFlags are optional behavior if the targeted operating
+   system supports that option. If the system does not support an option
+   then it is ignored
+*)
+(* ExecDetached => the process will not have standard input/output. All
+                   standard output will be ignored. The process will receive
+                   an error on standard input reads.
+                   The program can create windows if it desires
+   ExecMinimized => The application will be informed to open its window(s)
+                    in the minimized state.
+   ExecMaximized => The application will be informed to open its window(s)
+                    in the maximize state.
+   ExecHidden    => The application will be informed to open its window(s)
+                    hidden.
+*)
+
+PROCEDURE PipedExec(VAR OUT execHandle : PipedExecHandle;
+                    program, command, defaultPath : ARRAY OF CHAR;
+                    VAR OUT childIn : File;
+                    inBufferSize : CARDINAL;
+                    VAR OUT childOut : File;
+                    outBufferSize : CARDINAL;
+                    flags : ExecFlagSet) : BOOLEAN;
+(* this procedure executes a program asychronously with the current process
+   thus this call returns before the executed program has terminated.
+   you communicate with the program through pipes which are created
+   automatically by this call.
+   once you receive a PipeBroken error code on the childOut file, then
+   you can generally assume that the child program has terminated.
+   execHandle = a handle identifying this exec. You must close this handle
+                when you are finished communicating with the child process
+   program = the file specification of the program to execute.
+             the system path will not be searched, so this string must
+             specify the program location.
+   command = the command line to pass to the executed program
+   defaultPath = the default device and directory for the program.
+                 a value of "", means use the current default path.
+   inBufferSize = the size of the system buffer for data transfer between
+                  your program and the child input.
+                  the system is free to ignore this buffer size and use
+                  its own buffer size.
+   outBufferSize = the size of the system buffer for data transfer between
+                   your program and the child output
+                  the system is free to ignore this buffer size and use
+                  its own buffer size.
+*)
+
+(* on return
+   childIn = a file record that can be used to write data to the executed
+             programs standard input.
+   childOut = a file record that can be used to read data from the executed
+              programs standard output.
+              the standard error output is also redirected to the childOut file.
+*)
+
+PROCEDURE PipedExecEx(VAR OUT execHandle : PipedExecHandle;
+                      program, command, defaultPath : ARRAY OF CHAR;
+                      VAR INOUT childIn : File;
+                      inBufferSize : CARDINAL;
+                      VAR INOUT childOut : File;
+                      outBufferSize : CARDINAL;
+                      flags : ExecFlagSet) : BOOLEAN;
+(* like PipedExec except that childIn and/or childOut must be initialized
+   upon input and these file handles will be used to communicate with
+   the executed program. If the file handle is initialized with the value
+   FileFunc.InvalidHandle then a pipe will be allocated for that
+   channel and the File record will be returned initialized. Otherwise
+   the File record is left untouched.
+   Thus if both childIn and childOut are initialized with
+   FileFunc.InvalidHandle then this function acts exactly like PipedExec.
+   This function duplicates any handles passed to it and therefore you may
+   close the File records after return from this call if you desire.
+
+   If you pass a File record initialized with a valid handle the File
+   must have been opened with the proper mode.
+   ChildIn = ReadOnlyDenyNone
+   ChildOut = WriteOnlyDenyNone
+   this is the reverse of what the parent wants because the child is
+   acting on the opposite end of the pipe.
+   therefore you will need to open your own handle to the "file"
+   before/after this call to communicate with the child.
+   for the parent...
+   to write input to the child the mode should be = WriteOnlyDenyNone
+   to read output from the child the mode should be = ReadOnlyDenyNone
+   you need to use DenyNone because the parent and child are using
+   opposite access modes.
+*)
+
+
+PROCEDURE GetExitCode(execHandle : PipedExecHandle; timeout : INTEGER) : CARDINAL;
+(* use this function to obtain the exitcode of the executed program
+   if the program has terminated, otherwise the return value
+   is MAX(CARDINAL).
+   timeout is the amount of time in milliseconds to wait for program termination if not already terminated.
+   -1 = forever.
+*)
+
+PROCEDURE ClosePipedExec(VAR INOUT execHandle : PipedExecHandle);
+(* frees data used to communicate with child. if the program has not terminated it will be forcibly terminated. *)
+
+END PipedExec.

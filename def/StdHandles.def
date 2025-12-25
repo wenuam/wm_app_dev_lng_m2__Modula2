@@ -1,0 +1,38 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE StdHandles;
+
+FROM SYSTEM IMPORT
+    ADRCARD;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* the meanings the the various functions should be obvious by their names *)
+
+PROCEDURE HaveStdInput() : BOOLEAN;
+
+PROCEDURE StdInputHandle() : ADRCARD;
+
+PROCEDURE HaveStdOutput() : BOOLEAN;
+
+PROCEDURE StdOutputHandle() : ADRCARD;
+
+PROCEDURE HaveStdError() : BOOLEAN;
+
+PROCEDURE StdErrorHandle() : ADRCARD;
+(* generally the same as the standard output handle *)
+
+PROCEDURE IsConsole(h : ADRCARD) : BOOLEAN;
+(* is the handle refering to a command console *)
+(* for input handles this generally means the keyboard *)
+(* for output handles this means the display *)
+
+END StdHandles.

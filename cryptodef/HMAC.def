@@ -1,0 +1,32 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE HMAC;
+(* implements the HMAC algorithm (RFC 2104). *)
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+IMPORT SHA1;
+
+PROCEDURE HMAC_SHA1(hash : SHA1.SHA1;
+                    key : ADDRESS;
+                    keyLen : CARDINAL;
+                    message : ADDRESS;
+                    messageLen : CARDINAL;
+                    VAR OUT mac : ARRAY OF BYTE);
+(*
+   HMAC with the SHA-1 hash function.
+
+   hash = an SHA1 hash object. can be NIL, in which case the module will
+      create and destroy an SHA1 hash object for its own use.
+
+   mac = the message authentication code. its size is the hash length.
+*)
+
+END HMAC.

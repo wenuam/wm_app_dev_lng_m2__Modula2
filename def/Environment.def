@@ -1,0 +1,47 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Environment;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE GetSymbol(name : ARRAY OF CHAR;
+                    VAR OUT result : ARRAY OF CHAR) : BOOLEAN;
+(* Get the value of an enviroment symbol.  name is the name of the symbol
+   to get, result is the returned definition, function value is TRUE if the
+   symbol was found.
+   name should not be longer than 128 characters.
+   returns FALSE if the symbol is not found and the value in result will
+   be unchanged.
+   returns TRUE if the symbol was found and the entire contents of the
+   symbol fit in the output variable result.
+   if the symbol was found and result is not large enough FALSE is returned
+   and the value in result will be the truncated value of the symbol.
+*)
+
+PROCEDURE GetCommandLine(VAR OUT commandLine : ARRAY OF CHAR);
+(* Get the command line with which the program was run.
+   on DOS and Windows this is the command line as is.
+   on Unix systems this is teh command line reconstituted with space characters
+   in between each command token. if a command token contain space characters then
+   the token is surrounded with the " character.
+*)
+
+PROCEDURE GetProgramName(VAR OUT name : ARRAY OF CHAR);
+(* Get the name of the currently running program.
+   under DOS, DOS extended, Win16, Win32 this will be a fully qualified
+   path and name of the running executable program.
+*)
+(* On Linux 2.2 and later kernels a fully qualified path is returned. *)
+(* On other Unix systems this value does not have any real meaning
+   other than the name of the program executed.
+*)
+
+END Environment.

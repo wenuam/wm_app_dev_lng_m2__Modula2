@@ -1,0 +1,108 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE DDE;
+
+FROM WIN32 IMPORT
+    BYTE, HWND, UINT, BOOL, LONG,
+    SECURITY_QUALITY_OF_SERVICE, PSECURITY_QUALITY_OF_SERVICE,
+    UINT_PTR, LPARAM;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+    WM_DDE_FIRST         = 003E0h;
+    WM_DDE_INITIATE      = ( WM_DDE_FIRST );
+    WM_DDE_TERMINATE     = ( WM_DDE_FIRST + 1 );
+    WM_DDE_ADVISE        = ( WM_DDE_FIRST + 2 );
+    WM_DDE_UNADVISE      = ( WM_DDE_FIRST + 3 );
+    WM_DDE_ACK           = ( WM_DDE_FIRST + 4 );
+    WM_DDE_DATA          = ( WM_DDE_FIRST + 5 );
+    WM_DDE_REQUEST       = ( WM_DDE_FIRST + 6 );
+    WM_DDE_POKE          = ( WM_DDE_FIRST + 7 );
+    WM_DDE_EXECUTE       = ( WM_DDE_FIRST + 8 );
+    WM_DDE_LAST          = ( WM_DDE_FIRST + 8 );
+
+CONST
+    GetAck      =  08000h;
+    GetBusy     =  04000h;
+    GetRetCode  =  000ffh;
+TYPE
+    DDEACK = RECORD
+          status         : CARDINAL16;
+    END;
+
+CONST
+    GetDeferUpd =  04000h;
+    GetAckReq   =  08000h;
+
+TYPE
+    DDEADVISE = RECORD
+          flags          : CARDINAL16;
+          cfFormat       : CARDINAL16;
+    END;
+
+CONST
+    GetResponse =  01000h;
+    GetRelease  =  02000h;
+
+TYPE
+    DDEDATA = RECORD
+          flags          : CARDINAL16;
+          cfFormat       : CARDINAL16;
+          Value          : ARRAY [0..1 - 1] OF BYTE;
+    END;
+
+
+    DDEPOKE = RECORD
+          flags          : CARDINAL16;
+          cfFormat       : CARDINAL16;
+          Value          : ARRAY [0..1 - 1] OF BYTE;
+    END;
+
+    DDELN = RECORD
+          flags          : CARDINAL16;
+          cfFormat       : CARDINAL16;
+    END;
+
+CONST
+    GetAck_UP   = 01000h;
+
+TYPE
+    DDEUP = RECORD
+          flags          : CARDINAL16;
+          cfFormat       : CARDINAL16;
+          rgb            : ARRAY [0..1 - 1] OF BYTE;
+    END;
+
+PROCEDURE DdeSetQualityOfService(hwndClient : HWND;
+                                 VAR pqosNew : SECURITY_QUALITY_OF_SERVICE;
+                                 pqosPrev : PSECURITY_QUALITY_OF_SERVICE) : BOOL;
+
+PROCEDURE ImpersonateDdeClientWindow(hWndClient : HWND;
+                                     hWndServer : HWND) : BOOL;
+
+PROCEDURE PackDDElParam(msg : UINT;
+                        uiLo : UINT_PTR;
+                        uiHi : UINT_PTR) : LPARAM;
+
+PROCEDURE UnpackDDElParam(msg : UINT;
+                          lParam : LONG;
+                          VAR puiLo : UINT_PTR;
+                          VAR puiHi : UINT_PTR) : BOOL;
+
+PROCEDURE FreeDDElParam(msg : UINT;
+                        lParam : LPARAM) : BOOL;
+
+PROCEDURE ReuseDDElParam(lParam : LPARAM;
+                         msgIn : UINT;
+                         msgOut : UINT;
+                         uiLo : UINT_PTR;
+                         uiHi : UINT_PTR) : LPARAM;
+
+END DDE.

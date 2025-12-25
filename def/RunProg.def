@@ -1,0 +1,111 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE RunProg;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+TYPE
+    ExecHandle;
+
+    ExecFlags = (ExecAsync,
+                 ExecDetached,
+                 ExecMinimized,
+                 ExecMaximized,
+                 ExecHidden,
+                 ExecNormalPriority,
+                 ExecIdlePriority,
+                 ExecHighPriority);
+    ExecFlagSet = SET OF ExecFlags;
+
+CONST
+    SyncExec    = ExecFlagSet{};
+    AsyncExec   = ExecFlagSet{ExecAsync};
+
+PROCEDURE RunProgram(name, command, defaultPath : ARRAY OF CHAR;
+                     flags : ExecFlagSet;
+                     VAR OUT status : CARDINAL) : BOOLEAN;
+(*
+   Run the program given by "name" and passing the command line
+   specified by "command".  The exit status of the program
+   is returned in status
+   defaultPath is the default device and directory for the application.
+   if defaultPath = "" then the curreent default path is used.
+   this function returns TRUE if the program was executed.
+   The program is executed synchronous by default, meaning the program
+   being executed must terminate before this call will return.
+   status has no meaning unless the program is executed synchronous.
+
+   on Unix systems when ExecAsync is used the executed process is
+   orphaned by this call. Use RunProgramEx to not orphan the process.
+   the process is orphaned because Unix want's the parent
+   to "wait" on the child.
+
+   All ExecFlags are optional behavior if the targeted operating
+   system supports that option. If the system does not support an option
+   then it is ignored.
+   ExecAsync => If this flag is given then RunProgram will return after
+                the specified program starts executing.
+   ExecDetached => the process will not have standard input/output. All
+                   standard output will be ignored. The process will receive
+                   an error on standard input reads.
+                   The program can create windows if it desires
+                   ExecDetached implies ExecAsync
+                   The program is run in the background
+   ExecMinimized => The application will be informed to open its window
+                    in the minimized state.
+   ExecMaximized => The application will be informed to open its window
+                    in the maximized state.
+   ExecHidden    => The application will be informed to open its window hidden.
+   Exec...Priority => Normal is assumed if none of these flags are used.
+                      determines the process execution priority
+*)
+
+PROCEDURE RunProgramEx(name, command, defaultPath : ARRAY OF CHAR;
+                       flags : ExecFlagSet;
+                       VAR OUT handle : ExecHandle) : BOOLEAN;
+(*
+   this procedure is always used with ExecAsync
+   if this flag is not specified it will return FALSE,
+   otherwise this procedure operates just as RunProgram.
+   the parameters are as RunProgram.
+   the procedure returns in the parameter 'handle'
+   a value which you can later use to retrieve the exit status
+   of the program.
+   when you are done with the program you should call TerminateProgram
+   to free up resources allocated internally to track the executed program
+   TerminateProgram also terminates the program if it is still running.
+*)
+
+PROCEDURE GetProgramExitStatus(handle : ExecHandle) : CARDINAL;
+(*
+   retrieve the exit value of the program
+   if the program has not terminated MAX(CARDINAL) will be returned
+*)
+
+PROCEDURE TerminateProgram(VAR INOUT handle : ExecHandle);
+(*
+   this terminates the program you executed and releases resources
+   allocated to track the executed program
+   the value of handle is invalid(NIL) after this call
+*)
+
+PROCEDURE PerformCommand(com : ARRAY OF CHAR;
+                         flags : ExecFlagSet;
+                         VAR OUT status : CARDINAL) : BOOLEAN;
+(*
+   Run the command shell to perform the command, the com parameter.
+   status is the exit status of the command shell
+   not of a program that it runs
+   returns TRUE if the command shell was executed
+   status is the return result of the command interpreter.
+*)
+
+END RunProg.

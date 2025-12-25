@@ -1,0 +1,246 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE RSA;
+(* implements the RSA "encryption" algorithm *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+FROM VLI IMPORT
+    VLI, Digit;
+
+TYPE
+    RSA;
+
+CONST
+    (* prime Fermat numbers *)
+    F0  = 3;
+    F1  = 17;
+    F2  = 257;
+    F3  = 4097;
+    F4  = 65537;
+
+PROCEDURE GenerateKeys(bits : CARDINAL; e : Digit; VAR OUT p, q, n : VLI);
+PROCEDURE GenerateKeys2(bits : CARDINAL; e : VLI; VAR OUT p, q, n : VLI);
+(* e is the public exponent of the RSA function.
+   bits is typically 768, 1024, 1536, 2048.
+   1024 being the most common.
+
+   p and q are primes of size (bits/2), in the proper range for RSA. the high bit
+   of the prime is always set.
+   n is simply p*q, the modulus for the RSA function.
+
+   a public key is (e, n).
+   a private key is (e, p, q)
+
+   for GenerateKeys, 'e' must be a prime number, typically a Fermat number (F0..F4).
+   for GenerateKeys2 'e' can be any odd value. primes are preferred.
+
+   this procedure can take a very long time to compute and return keys for
+   large bit sizes.
+*)
+
+PROCEDURE Create(e : Digit; p, q, n : VLI) : RSA;
+PROCEDURE Create2(e, p, q, n : VLI) : RSA;
+(* create a new RSA object with the given key values.
+
+   returns NIL if not enough information is passed for a public or
+   private key, or if the information for the private key is not valid
+   for a private key.
+   otherwise and valid RSA object is returned.
+   only one thread at a time can use an encryption object.
+
+   valid options to pass are. (e, n) (e, p, q)
+   when not passing a value to a parameter pass the value NIL.
+   this module makes a copy of the VLI numbers passed.
+
+   to set a public key.
+   crypt := Create(e, NIL, NIL, n);
+
+   to set a private and public key.
+   crypt := Create(e, p, q, NIL);
+   if you pass an 'n' value when you also pass a 'p' and 'q' value, the
+   'n' value is ignored.
+
+   for Create, 'e' must be a prime number, typically a Fermat number (F0..F4).
+   for Create2, 'e' can be any odd value. primes are preferred.
+*)
+
+PROCEDURE Destroy(VAR INOUT crypt : RSA);
+(* crypt = NIL on return *)
+
+PROCEDURE HasPrivateKey(crypt : RSA) : BOOLEAN;
+(* returns TRUE if the RSA object has a private key setup.
+   this also means a public key is setup.
+*)
+
+PROCEDURE EncodeVLI(crypt : RSA;
+                    input : ADDRESS;
+                    amount : CARDINAL;
+                    VAR INOUT output : VLI) : BOOLEAN;
+(* encode raw data into a VLI number.
+   input[0] = the most significant byte of the VLI number.
+   returns TRUE if successful.
+   failure only occurs if the encoded data value is greater than the
+   modulus of the RSA function. the modulus is the value 'n'.
+   therefore if you are using 1024-bit RSA, which is 128 bytes, then
+   127 bytes of data can never fail and 128-bytes might fail.
+*)
+
+PROCEDURE DecodeVLI(input : VLI;
+                    output : ADDRESS;
+                    VAR INOUT amount : CARDINAL) : BOOLEAN;
+(* decodes a VLI number into a raw data byte stream.
+   output[0] = the most significant byte of the VLI number.
+
+   on entry amount is the size in bytes of the 'output' buffer.
+   on return amount is the number of bytes of data placed into the output buffer.
+
+   the return value is the number of bytes of data returned.
+   if you are using 1024-bit RSA then the size of the data returned can
+   never be more than 1024/8 = 128 bytes.
+
+   returns TRUE is successful,
+   if output is not large enough to contain the data, FALSE is returned.
+*)
+
+PROCEDURE PublicFunctionVLI(crypt : RSA; input : VLI; VAR OUT output : VLI);
+(* encrypt/decrypt the data using the public key.
+   input and output can be the same parameter.
+
+   for encryption this is used to encrypt data.
+   for signing, this is used to decrypt data.
+*)
+
+PROCEDURE PublicFunction(crypt : RSA;
+                         input : ADDRESS;
+                         inputSize : CARDINAL;
+                         output : ADDRESS;
+                         VAR INOUT outputSize : CARDINAL) : BOOLEAN;
+(* implemented as
+    IF EncodeVLI(...) THEN
+        PublicFunctionVLI(...);
+        RETURN DecodeVLI(...);
+    END;
+    RETURN FALSE;
+
+   input and output can be the same parameter.
+
+   in entry outputSize = the maximum size of the output buffer.
+   on return outputSize = the actual number of bytes placed in the output buffer.
+
+   for encryption this is used to encrypt data.
+   for signing, this is used to decrypt data.
+
+   returns TRUE if successful.
+   returns FALSE
+       if the input data block is improperly sized to encode into an RSA VLI integer.
+       if the output block is not large enough
+*)
+
+PROCEDURE PrivateFunctionVLI(crypt : RSA; input : VLI; VAR OUT output : VLI);
+(* encrypt/decrypt the data using the private key.
+   the object must have a valid private key.
+   input and output can be the same parameter.
+
+   for encryption this is used to decrypt data.
+   for signing, this is used to encrypt data.
+*)
+
+PROCEDURE PrivateFunction(crypt : RSA;
+                          input : ADDRESS;
+                          inputSize : CARDINAL;
+                          output : ADDRESS;
+                          VAR INOUT outputSize : CARDINAL) : BOOLEAN;
+(* implemented as
+    IF EncodeVLI(...) THEN
+        PrivateFunctionVLI(...);
+        RETURN DecodeVLI(...);
+    END;
+    RETURN FALSE;
+
+   input and output can be the same parameter.
+
+   in entry outputSize = the maximum size of the output buffer.
+   on return outputSize = the actual number of bytes placed in the output buffer.
+
+   for encryption this is used to decrypt data.
+   for signing, this is used to encrypt data.
+
+   returns TRUE if successful.
+   returns FALSE
+       if the input data block is improperly sized to encode into an RSA VLI integer.
+       if the output block is not large enough
+*)
+
+PROCEDURE Encrypt_OAEP_SHA1(crypt : RSA;
+                            message : ADDRESS;
+                            messageLen : CARDINAL;
+                            encodingParams : ADDRESS;
+                            encodingParamsLen : CARDINAL;
+                            cipher : ADDRESS;
+                            VAR INOUT cipherLen : CARDINAL) : BOOLEAN;
+(* implemented as
+   IF CryptEncode.Encode_OAEP(...) THEN
+       RETURN PublicFunction(...);
+   END;
+   RETURN FALSE;
+*)
+
+PROCEDURE Decrypt_OAEP_SHA1(crypt : RSA;
+                            cipher : ADDRESS;
+                            cipherLen : CARDINAL;
+                            encodingParams : ADDRESS;
+                            encodingParamsLen : CARDINAL;
+                            message : ADDRESS;
+                            VAR INOUT messageLen : CARDINAL) : BOOLEAN;
+(* implemented as
+    IF PrivateFunction(...) THEN
+        ...handle padding as necessary
+        RETURN CryptEncode.Decode_OAEP(...);
+    END;
+    RETURN FALSE;
+*)
+
+PROCEDURE Sign_PSS_SHA1(crypt : RSA;
+                        messageHash : ADDRESS;
+                        saltLen : CARDINAL;
+                        cipher : ADDRESS;
+                        VAR INOUT cipherLen : CARDINAL) : BOOLEAN;
+(* implemented as
+    IF CryptEncode.Encode_PSS(...) THEN
+        RETURN PrivateFunction(...);
+    END;
+    RETURN FALSE;
+*)
+
+PROCEDURE Verify_PSS_SHA1(crypt : RSA;
+                          cipher : ADDRESS;
+                          cipherLen : CARDINAL;
+                          saltLen : CARDINAL;
+                          messageHash : ADDRESS) : BOOLEAN;
+(* implemented as
+    IF PublicFunction(...) THEN
+        ...handle padding as necessary
+        RETURN CryptEncode.Verify_PSS(...);
+    END;
+    RETURN FALSE;
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END RSA.

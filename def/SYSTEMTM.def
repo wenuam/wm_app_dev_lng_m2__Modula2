@@ -1,0 +1,26 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMTM;
+
+TYPE
+    TermProcType        = PROCEDURE();
+
+VAR
+    HaltCalled  ['TERMINATION_HaltCalled']      : BOOLEAN;
+    Terminating ['TERMINATION_Terminating']     : BOOLEAN;
+    TermProc    ["TERMINATION_TermProc"]        : TermProcType;
+
+PROCEDURE IsTerminating ['TERMINATION_IsTerminating'] () : BOOLEAN;
+
+PROCEDURE HasHalted ['TERMINATION_HasHalted'] () : BOOLEAN;
+
+PROCEDURE RunTerm ['TERMINATION_RunTerm'] ();
+
+END SYSTEMTM.

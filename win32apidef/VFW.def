@@ -1,0 +1,2798 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+UNSAFEGUARDED DEFINITION MODULE VFW;
+
+FROM SYSTEM IMPORT
+    ADDRESS, CAST;
+
+FROM WIN32 IMPORT
+    DWORD, LONG, BOOL, WORD, TCHAR, LPVOID, LPARAM, WPARAM, LPDWORD, LPPOINT,
+    HWND, LRESULT, WCHAR, UINT, WINT, HPALETTE, HDC, FARPROC, RECT, BYTE,
+    HRESULT, HANDLE, ULONG, SCODE, HINSTANCE, POINT, GUID, DWORD_PTR, INT_PTR;
+
+FROM WINGDI IMPORT
+    LPBITMAPINFOHEADER, LPPALETTEENTRY, LPBITMAPINFO, PALETTEENTRY;
+
+FROM MMSYSTEM IMPORT
+    DRV_USER, LPWAVEHDR, LPWAVEFORMATEX;
+
+FROM COMMDLG IMPORT
+    OPENFILENAMEA, OPENFILENAMEW;
+
+FROM RPCCore IMPORT
+    REFIID, LPCLSID, CLSID;
+
+FROM OOle2 IMPORT
+    IUnknown;
+
+FROM WINUSER IMPORT
+    WM_USER;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/NOPACK*>
+
+PROCEDURE VideoForWindowsVersion() : DWORD;
+
+PROCEDURE InitVFW() : LONG;
+
+PROCEDURE TermVFW() : LONG;
+
+PROCEDURE MKFOURCC(c0, c1, c2, c3 : ACHAR) : DWORD;
+
+PROCEDURE aviTWOCC(ch0, ch1 : ACHAR) : WORD;
+
+CONST
+    ICTYPE_VIDEO    = ORD('v') BOR
+                     (ORD('i') SHL 8) BOR
+                     (ORD('d') SHL 16) BOR
+                     (ORD('c') SHL 24);
+
+    ICTYPE_AUDIO    = ORD('a') BOR
+                     (ORD('u') SHL 8) BOR
+                     (ORD('d') SHL 16) BOR
+                     (ORD('c') SHL 24);
+
+CONST
+    ICVERSION           = 00104h;
+
+TYPE
+    HIC                 = POINTER TO RECORD END;
+
+CONST
+    BI_1632              = 032333631h;
+
+    ICERR_OK             = 0;
+    ICERR_DONTDRAW       = 1;
+    ICERR_NEWPALETTE     = 2;
+    ICERR_GOTOKEYFRAME   = 3;
+    ICERR_STOPDRAWING    = 4;
+
+    ICERR_UNSUPPORTED    = -1;
+    ICERR_BADFORMAT      = -2;
+    ICERR_MEMORY         = -3;
+    ICERR_INTERNAL       = -4;
+    ICERR_BADFLAGS       = -5;
+    ICERR_BADPARAM       = -6;
+    ICERR_BADSIZE        = -7;
+    ICERR_BADHANDLE      = -8;
+    ICERR_CANTUPDATE     = -9;
+    ICERR_ABORT          = -10;
+    ICERR_ERROR          = -100;
+    ICERR_BADBITDEPTH    = -200;
+    ICERR_BADIMAGESIZE   = -201;
+    ICERR_CUSTOM         = -400;
+
+    ICMODE_COMPRESS      = 1;
+    ICMODE_DECOMPRESS    = 2;
+    ICMODE_FASTDECOMPRESS= 3;
+    ICMODE_QUERY         = 4;
+    ICMODE_FASTCOMPRESS  = 5;
+    ICMODE_DRAW          = 8;
+
+    AVIIF_LIST           = 000000001h;
+    AVIIF_TWOCC          = 000000002h;
+    AVIIF_KEYFRAME       = 000000010h;
+    ICQUALITY_LOW        = 0;
+    ICQUALITY_HIGH       = 10000;
+    ICQUALITY_DEFAULT    = -1;
+
+    ICM_USER             = DRV_USER;
+
+    ICM_RESERVED_LOW     = DRV_USER + 1000h;
+    ICM_RESERVED         = ICM_RESERVED_LOW;
+    ICM_RESERVED_HIGH    = DRV_USER + 2000h;
+
+    ICM_GETSTATE         = ICM_RESERVED+0;
+    ICM_SETSTATE         = ICM_RESERVED+1;
+    ICM_GETINFO          = ICM_RESERVED+2;
+
+    ICM_CONFIGURE        = ICM_RESERVED+10;
+    ICM_ABOUT            = ICM_RESERVED+11;
+
+
+    ICM_GETDEFAULTQUALITY       = ICM_RESERVED+30;
+    ICM_GETQUALITY              = ICM_RESERVED+31;
+    ICM_SETQUALITY              = ICM_RESERVED+32;
+
+    ICM_SET                     = ICM_RESERVED+40;
+    ICM_GET                     = ICM_RESERVED+41;
+
+    ICM_FRAMERATE   = ORD('F') BOR
+                     (ORD('r') SHL 8) BOR
+                     (ORD('m') SHL 16) BOR
+                     (ORD('R') SHL 24);
+
+    ICM_KEYFRAMERATE= ORD('K') BOR
+                     (ORD('e') SHL 8) BOR
+                     (ORD('y') SHL 16) BOR
+                     (ORD('R') SHL 24);
+
+    ICM_COMPRESS_GET_FORMAT     = ICM_USER+4;
+    ICM_COMPRESS_GET_SIZE       = ICM_USER+5;
+    ICM_COMPRESS_QUERY          = ICM_USER+6;
+    ICM_COMPRESS_BEGIN          = ICM_USER+7;
+    ICM_COMPRESS                = ICM_USER+8;
+    ICM_COMPRESS_END            = ICM_USER+9;
+
+    ICM_DECOMPRESS_GET_FORMAT   = ICM_USER+10;
+    ICM_DECOMPRESS_QUERY        = ICM_USER+11;
+    ICM_DECOMPRESS_BEGIN        = ICM_USER+12;
+    ICM_DECOMPRESS              = ICM_USER+13;
+    ICM_DECOMPRESS_END          = ICM_USER+14;
+    ICM_DECOMPRESS_SET_PALETTE  = ICM_USER+29;
+    ICM_DECOMPRESS_GET_PALETTE  = ICM_USER+30;
+
+    ICM_DRAW_QUERY              = ICM_USER+31;
+    ICM_DRAW_BEGIN              = ICM_USER+15;
+    ICM_DRAW_GET_PALETTE        = ICM_USER+16;
+    ICM_DRAW_START              = ICM_USER+18;
+    ICM_DRAW_STOP               = ICM_USER+19;
+    ICM_DRAW_END                = ICM_USER+21;
+    ICM_DRAW_GETTIME            = ICM_USER+32;
+    ICM_DRAW                    = ICM_USER+33;
+    ICM_DRAW_WINDOW             = ICM_USER+34;
+    ICM_DRAW_SETTIME            = ICM_USER+35;
+    ICM_DRAW_REALIZE            = ICM_USER+36;
+    ICM_DRAW_FLUSH              = ICM_USER+37;
+    ICM_DRAW_RENDERBUFFER       = ICM_USER+38;
+
+    ICM_DRAW_START_PLAY         = ICM_USER+39;
+    ICM_DRAW_STOP_PLAY          = ICM_USER+40;
+
+    ICM_DRAW_SUGGESTFORMAT      = ICM_USER+50;
+    ICM_DRAW_CHANGEPALETTE      = ICM_USER+51;
+
+
+    ICM_GETBUFFERSWANTED        = ICM_USER+41;
+
+    ICM_GETDEFAULTKEYFRAMERATE  = ICM_USER+42;
+
+
+    ICM_DECOMPRESSEX_BEGIN      = ICM_USER+60;
+    ICM_DECOMPRESSEX_QUERY      = ICM_USER+61;
+    ICM_DECOMPRESSEX            = ICM_USER+62;
+    ICM_DECOMPRESSEX_END        = ICM_USER+63;
+
+    ICM_COMPRESS_FRAMES_INFO    = ICM_USER+70;
+    ICM_SET_STATUS_PROC         = ICM_USER+72;
+
+TYPE
+    ICOPEN =
+		RECORD
+			dwSize         : DWORD;
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			dwVersion      : DWORD;
+			dwFlags        : DWORD;
+			dwError        : LRESULT;
+			pV1Reserved    : LPVOID;
+			pV2Reserved    : LPVOID;
+			dnDevNode      : DWORD;
+		END;
+
+    ICINFO =
+		RECORD
+			dwSize         : DWORD;
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			dwFlags        : DWORD;
+			dwVersion      : DWORD;
+			dwVersionICM   : DWORD;
+			szName         : ARRAY [0..16 - 1] OF WCHAR;
+			szDescription  : ARRAY [0..128 - 1] OF WCHAR;
+			szDriver       : ARRAY [0..128 - 1] OF WCHAR;
+		END;
+
+
+CONST
+    VIDCF_QUALITY        = 00001h;
+    VIDCF_CRUNCH         = 00002h;
+    VIDCF_TEMPORAL       = 00004h;
+    VIDCF_COMPRESSFRAMES = 00008h;
+    VIDCF_DRAW           = 00010h;
+    VIDCF_FASTTEMPORALC  = 00020h;
+    VIDCF_FASTTEMPORALD  = 00080h;
+
+    ICCOMPRESS_KEYFRAME  = 000000001h;
+
+TYPE
+    ICCOMPRESS =
+		RECORD
+			dwFlags        : DWORD;
+			lpbiOutput     : LPBITMAPINFOHEADER;
+			lpOutput       : LPVOID;
+			lpbiInput      : LPBITMAPINFOHEADER;
+			lpInput        : LPVOID;
+			lpckid         : LPDWORD;
+			lpdwFlags      : LPDWORD;
+			lFrameNum      : LONG;
+			dwFrameSize    : DWORD;
+			dwQuality      : DWORD;
+			lpbiPrev       : LPBITMAPINFOHEADER;
+			lpPrev         : LPVOID;
+		END;
+
+
+CONST
+    ICCOMPRESSFRAMES_PADDING= 000000001h;
+
+TYPE
+    ICCOMPRESSFRAMES =
+		RECORD
+			dwFlags        : DWORD;
+			lpbiOutput     : LPBITMAPINFOHEADER;
+			lOutput        : LPARAM;
+			lpbiInput      : LPBITMAPINFOHEADER;
+			lInput         : LPARAM;
+			lStartFrame    : LONG;
+			lFrameCount    : LONG;
+			lQuality       : LONG;
+			lDataRate      : LONG;
+			lKeyRate       : LONG;
+			dwRate         : DWORD;
+			dwScale        : DWORD;
+			dwOverheadPerFrame: DWORD;
+			dwReserved2    : DWORD;
+			GetData        : PROCEDURE (LPARAM, LONG, LPVOID, LONG):LONG;
+			PutData        : PROCEDURE (LPARAM, LONG, LPVOID, LONG):LONG;
+		END;
+
+    FPFN_PROC   = PROCEDURE (LPARAM, UINT, LONG) : LONG;
+
+    ICSETSTATUSPROC =
+		RECORD
+			dwFlags        : DWORD;
+			lParam         : LPARAM;
+			Status         : FPFN_PROC;
+		END;
+
+
+CONST
+    ICSTATUS_START          = 0;
+    ICSTATUS_STATUS         = 1;
+    ICSTATUS_END            = 2;
+    ICSTATUS_ERROR          = 3;
+    ICSTATUS_YIELD          = 4;
+
+    ICDECOMPRESS_HURRYUP    = 080000000h;
+    ICDECOMPRESS_UPDATE     = 040000000h;
+    ICDECOMPRESS_PREROLL    = 020000000h;
+    ICDECOMPRESS_NULLFRAME  = 010000000h;
+    ICDECOMPRESS_NOTKEYFRAME= 008000000h;
+
+TYPE
+    ICDECOMPRESS =
+		RECORD
+			dwFlags        : DWORD;
+			lpbiInput      : LPBITMAPINFOHEADER;
+			lpInput        : LPVOID;
+			lpbiOutput     : LPBITMAPINFOHEADER;
+			lpOutput       : LPVOID;
+			ckid           : DWORD;
+		END;
+
+    ICDECOMPRESSEX =
+		RECORD
+			dwFlags        : DWORD;
+			lpbiSrc        : LPBITMAPINFOHEADER;
+			lpSrc          : LPVOID;
+			lpbiDst        : LPBITMAPINFOHEADER;
+			lpDst          : LPVOID;
+			xDst           : WINT;
+			yDst           : WINT;
+			dxDst          : WINT;
+			dyDst          : WINT;
+			xSrc           : WINT;
+			ySrc           : WINT;
+			dxSrc          : WINT;
+			dySrc          : WINT;
+		END;
+
+
+CONST
+    ICDRAW_QUERY         = 000000001h;
+    ICDRAW_FULLSCREEN    = 000000002h;
+    ICDRAW_HDC           = 000000004h;
+    ICDRAW_ANIMATE       = 000000008h;
+    ICDRAW_CONTINUE      = 000000010h;
+    ICDRAW_MEMORYDC      = 000000020h;
+    ICDRAW_UPDATING      = 000000040h;
+    ICDRAW_RENDER        = 000000080h;
+    ICDRAW_BUFFER        = 000000100h;
+
+TYPE
+    ICDRAWBEGIN =
+		RECORD
+			dwFlags        : DWORD;
+			hpal           : HPALETTE;
+			hwnd           : HWND;
+			hdc            : HDC;
+			xDst           : WINT;
+			yDst           : WINT;
+			dxDst          : WINT;
+			dyDst          : WINT;
+			lpbi           : LPBITMAPINFOHEADER;
+			xSrc           : WINT;
+			ySrc           : WINT;
+			dxSrc          : WINT;
+			dySrc          : WINT;
+			dwRate         : DWORD;
+			dwScale        : DWORD;
+		END;
+
+
+CONST
+    ICDRAW_HURRYUP       = 080000000h;
+    ICDRAW_UPDATE        = 040000000h;
+    ICDRAW_PREROLL       = 020000000h;
+    ICDRAW_NULLFRAME     = 010000000h;
+    ICDRAW_NOTKEYFRAME   = 008000000h;
+
+TYPE
+    ICDRAW =
+		RECORD
+			dwFlags        : DWORD;
+			lpFormat       : LPVOID;
+			lpData         : LPVOID;
+			cbData         : DWORD;
+			lTime          : LONG;
+		END;
+
+    ICDRAWSUGGEST =
+		RECORD
+			lpbiIn         : LPBITMAPINFOHEADER;
+			lpbiSuggest    : LPBITMAPINFOHEADER;
+			dxSrc          : WINT;
+			dySrc          : WINT;
+			dxDst          : WINT;
+			dyDst          : WINT;
+			hicDecompressor: HIC;
+		END;
+
+    ICPALETTE =
+		RECORD
+			dwFlags        : DWORD;
+			iStart         : WINT;
+			iLen           : WINT;
+			lppe           : LPPALETTEENTRY;
+		END;
+
+
+PROCEDURE ICInfo(fccType : DWORD;
+                 fccHandler : DWORD;
+                 VAR lpicinfo : ICINFO) : BOOL;
+
+PROCEDURE ICInstall(fccType : DWORD;
+                    fccHandler : DWORD;
+                    lParam : LPARAM;
+                    szDesc : ARRAY OF ACHAR;
+                    wFlags : UINT) : BOOL;
+
+PROCEDURE ICRemove(fccType : DWORD;
+                   fccHandler : DWORD;
+                   wFlags : UINT) : BOOL;
+
+PROCEDURE ICGetInfo(hic : HIC;
+                    VAR picinfo : ICINFO;
+                    cb : DWORD) : LRESULT;
+
+PROCEDURE ICOpen(fccType : DWORD;
+                 fccHandler : DWORD;
+                 wMode : UINT) : HIC;
+
+PROCEDURE ICOpenFunction(fccType : DWORD;
+                         fccHandler : DWORD;
+                         wMode : UINT;
+                         lpfnHandler : FARPROC) : HIC;
+
+PROCEDURE ICClose(hic : HIC) : LRESULT;
+
+PROCEDURE ICSendMessage(hic : HIC;
+                        msg : UINT;
+                        dw1 : DWORD_PTR;
+                        dw2 : DWORD_PTR) : LRESULT;
+
+CONST
+    ICINSTALL_UNICODE    = 08000h;
+    ICINSTALL_DRIVERW    = 08002h;
+
+    ICINSTALL_FUNCTION   = 00001h;
+    ICINSTALL_DRIVER     = 00002h;
+    ICINSTALL_HDRV       = 00004h;
+
+    ICMF_CONFIGURE_QUERY = 000000001h;
+    ICMF_ABOUT_QUERY     = 000000001h;
+
+PROCEDURE ICQueryAbout(hic : HIC) : BOOLEAN;
+
+PROCEDURE ICAbout(hic : HIC; hwnd : HWND) : LRESULT;
+
+PROCEDURE ICQueryConfigure(hic : HIC) : BOOLEAN;
+
+PROCEDURE ICConfigure(hic : HIC; hwnd : HWND) : LRESULT;
+
+PROCEDURE  ICGetState(hic : HIC; pv : LPVOID; cb : DWORD) : LRESULT;
+
+PROCEDURE ICSetState(hic : HIC; pv : LPVOID; cb : DWORD) : LRESULT;
+
+PROCEDURE ICGetStateSize(hic : HIC) : LRESULT;
+
+PROCEDURE ICGetDefaultQuality(hic : HIC) : DWORD;
+
+PROCEDURE ICGetDefaultKeyFrameRate(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawWindow(hic : HIC; prc : RECT) : LRESULT;
+
+PROCEDURE ICCompress(hic : HIC;
+                     dwFlags : DWORD;
+                     lpbiOutput : LPBITMAPINFOHEADER;
+                     lpData : LPVOID;
+                     lpbiInput : LPBITMAPINFOHEADER;
+                     lpBits : LPVOID;
+                     VAR lpckid : DWORD;
+                     VAR lpdwFlags : DWORD;
+                     lFrameNum : LONG;
+                     dwFrameSize : DWORD;
+                     dwQuality : DWORD;
+                     lpbiPrev : LPBITMAPINFOHEADER;
+                     lpPrev : LPVOID) : DWORD [msCDECL];
+
+PROCEDURE ICCompressBegin(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICCompressQuery(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICCompressGetFormat(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICCompressGetFormatSize(hic : HIC; lpbi : LPBITMAPINFOHEADER)  : LRESULT;
+
+PROCEDURE ICCompressGetSize(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICCompressEnd(hic : HIC) : LRESULT;
+
+PROCEDURE ICDecompress(hic : HIC;
+                       dwFlags : DWORD;
+                       lpbiFormat : LPBITMAPINFOHEADER;
+                       lpData : LPVOID;
+                       lpbi : LPBITMAPINFOHEADER;
+                       lpBits : LPVOID) : DWORD [msCDECL];
+
+PROCEDURE ICDecompressBegin(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICDecompressQuery(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICDecompressGetFormat(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LONG;
+
+PROCEDURE ICDecompressGetFormatSize(hic: HIC; lpbi : LPBITMAPINFOHEADER) : LONG;
+
+PROCEDURE ICDecompressGetPalette(hic : HIC; lpbiInput, lpbiOutput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICDecompressSetPalette(hic : HIC; lpbiPalette : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICDecompressEnd(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawBegin(hic : HIC;
+                      dwFlags : DWORD;
+                      hpal : HPALETTE;
+                      hwnd : HWND;
+                      hdc : HDC;
+                      xDst : WINT;
+                      yDst : WINT;
+                      dxDst : WINT;
+                      dyDst : WINT;
+                      lpbi : LPBITMAPINFOHEADER;
+                      xSrc : WINT;
+                      ySrc : WINT;
+                      dxSrc : WINT;
+                      dySrc : WINT;
+                      dwRate : DWORD;
+                      dwScale : DWORD) : DWORD [msCDECL];
+
+
+PROCEDURE ICDraw(hic : HIC;
+                 dwFlags : DWORD;
+                 lpFormat : LPVOID;
+                 lpData : LPVOID;
+                 cbData : DWORD;
+                 lTime : LONG) :DWORD [msCDECL];
+
+PROCEDURE ICDrawSuggestFormat(
+                                hic : HIC;
+                                lpbiIn : LPBITMAPINFOHEADER;
+                                lpbiOut : LPBITMAPINFOHEADER;
+                                dxSrc : WINT;
+                                dySrc : WINT;
+                                dxDst : WINT;
+                                dyDst : WINT;
+                                hicDecomp : HIC) : LRESULT; (*MACRO*)
+
+PROCEDURE ICDrawQuery(hic : HIC; lpbiInput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICDrawChangePalette(hic : HIC; lpbiInput : LPBITMAPINFOHEADER) : LRESULT;
+
+PROCEDURE ICGetBuffersWanted(hic : HIC; VAR lpdwBuffers : DWORD) : LRESULT;
+
+PROCEDURE ICDrawEnd(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawStart(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawStartPlay(hic : HIC; lFrom, lTo : DWORD_PTR) : LRESULT;
+
+PROCEDURE ICDrawStop(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawStopPlay(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawGetTime(hic : HIC; VAR lplTime : LONG) : LRESULT;
+
+PROCEDURE ICDrawSetTime(hic : HIC; lTime : LONG) : LRESULT;
+
+PROCEDURE ICDrawRealize(hic : HIC; hdc : HDC; fBackground : BOOL) : LRESULT;
+
+PROCEDURE ICDrawFlush(hic : HIC) : LRESULT;
+
+PROCEDURE ICDrawRenderBuffer(hic : HIC) : LRESULT;
+
+PROCEDURE ICSetStatusProc(
+            hic : HIC;
+            dwFlags : DWORD;
+            lParam : LRESULT;
+            fpfnStatus : FPFN_PROC
+             ) : LRESULT;
+
+PROCEDURE ICDecompressOpen(fccType, fccHandler : DWORD;
+                           lpbiIn, lpbiOut : LPBITMAPINFOHEADER) : HIC;
+
+PROCEDURE ICDrawOpen(fccType, fccHandler : DWORD; lpbiIn : LPBITMAPINFOHEADER) : HIC;
+
+PROCEDURE ICLocate(fccType : DWORD;
+                   fccHandler : DWORD;
+                   lpbiIn : LPBITMAPINFOHEADER;
+                   lpbiOut : LPBITMAPINFOHEADER;
+                   wFlags : WORD) : HIC;
+
+PROCEDURE ICGetDisplayFormat(hic : HIC;
+                             lpbiIn : LPBITMAPINFOHEADER;
+                             lpbiOut : LPBITMAPINFOHEADER;
+                             BitDepth : WINT;
+                             dx : WINT;
+                             dy : WINT) : HIC;
+
+PROCEDURE ICImageCompress(hic : HIC;
+                          uiFlags : UINT;
+                          lpbiIn : LPBITMAPINFO;
+                          lpBits : LPVOID;
+                          lpbiOut : LPBITMAPINFO;
+                          lQuality : LONG;
+                          VAR plSize : LONG) : HANDLE;
+
+PROCEDURE ICImageDecompress(hic : HIC;
+                            uiFlags : UINT;
+                            lpbiIn : LPBITMAPINFO;
+                            lpBits : LPVOID;
+                            lpbiOut : LPBITMAPINFO) : HANDLE;
+
+
+TYPE
+    PCOMPVARS            = POINTER TO COMPVARS;
+    COMPVARS =
+		RECORD
+			cbSize         : LONG;
+			dwFlags        : DWORD;
+			hic            : HIC;
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			lpbiIn         : LPBITMAPINFO;
+			lpbiOut        : LPBITMAPINFO;
+			lpBitsOut      : LPVOID;
+			lpBitsPrev     : LPVOID;
+			lFrame         : LONG;
+			lKey           : LONG;
+			lDataRate      : LONG;
+			lQ             : LONG;
+			lKeyCount      : LONG;
+			lpState        : LPVOID;
+			cbState        : LONG;
+		END;
+
+CONST
+    ICMF_COMPVARS_VALID  = 000000001h;
+
+PROCEDURE ICCompressorChoose(hwnd : HWND;
+                             uiFlags : UINT;
+                             pvIn : LPVOID;
+                             lpData : LPVOID;
+                             pc : PCOMPVARS;
+                             lpszTitle : ARRAY OF ACHAR) : BOOL;
+
+
+CONST
+    ICMF_CHOOSE_KEYFRAME = 00001h;
+    ICMF_CHOOSE_DATARATE = 00002h;
+    ICMF_CHOOSE_PREVIEW  = 00004h;
+    ICMF_CHOOSE_ALLCOMPRESSORS= 00008h;
+
+PROCEDURE ICSeqCompressFrameStart(pc : PCOMPVARS;
+                                  lpbiIn : LPBITMAPINFO) : BOOL;
+
+PROCEDURE ICSeqCompressFrameEnd(pc : PCOMPVARS);
+
+PROCEDURE ICSeqCompressFrame(pc : PCOMPVARS;
+                             uiFlags : UINT;
+                             lpBits : LPVOID;
+                             VAR pfKey : BOOL;
+                             VAR plSize : LONG) : LPVOID;
+
+PROCEDURE ICCompressorFree(pc : PCOMPVARS);
+
+
+TYPE
+    HDRAWDIB             = HANDLE;
+
+CONST
+    DDF_UPDATE           = 00002h;
+    DDF_SAME_HDC         = 00004h;
+    DDF_SAME_DRAW        = 00008h;
+    DDF_DONTDRAW         = 00010h;
+    DDF_ANIMATE          = 00020h;
+    DDF_BUFFER           = 00040h;
+    DDF_JUSTDRAWIT       = 00080h;
+    DDF_FULLSCREEN       = 00100h;
+    DDF_BACKGROUNDPAL    = 00200h;
+    DDF_NOTKEYFRAME      = 00400h;
+    DDF_HURRYUP          = 00800h;
+    DDF_HALFTONE         = 01000h;
+
+    DDF_PREROLL          = DDF_DONTDRAW;
+    DDF_SAME_DIB         = DDF_SAME_DRAW;
+    DDF_SAME_SIZE        = DDF_SAME_DRAW;
+
+PROCEDURE DrawDibOpen() : HDRAWDIB;
+
+PROCEDURE DrawDibClose(hdd : HDRAWDIB) : BOOL;
+
+PROCEDURE DrawDibGetBuffer(hdd : HDRAWDIB;
+                           lpbi : LPBITMAPINFOHEADER;
+                           dwSize : DWORD;
+                           dwFlags : DWORD) : LPVOID;
+
+PROCEDURE DrawDibGetPalette(hdd : HDRAWDIB) : HPALETTE;
+
+PROCEDURE DrawDibSetPalette(hdd : HDRAWDIB;
+                            hpal : HPALETTE) : BOOL;
+
+PROCEDURE DrawDibChangePalette(hdd : HDRAWDIB;
+                               iStart : WINT;
+                               iLen : WINT;
+                               lppe : LPPALETTEENTRY) : BOOL;
+
+PROCEDURE DrawDibRealize(hdd : HDRAWDIB;
+                         hdc : HDC;
+                         fBackground : BOOL) : UINT;
+
+PROCEDURE DrawDibStart(hdd : HDRAWDIB;
+                       rate : DWORD) : BOOL;
+
+PROCEDURE DrawDibStop(hdd : HDRAWDIB) : BOOL;
+
+PROCEDURE DrawDibBegin(hdd : HDRAWDIB;
+                       hdc : HDC;
+                       dxDst : WINT;
+                       dyDst : WINT;
+                       lpbi : LPBITMAPINFOHEADER;
+                       dxSrc : WINT;
+                       dySrc : WINT;
+                       wFlags : UINT) : BOOL;
+
+PROCEDURE DrawDibDraw(hdd : HDRAWDIB;
+                      hdc : HDC;
+                      xDst : WINT;
+                      yDst : WINT;
+                      dxDst : WINT;
+                      dyDst : WINT;
+                      lpbi : LPBITMAPINFOHEADER;
+                      lpBits : LPVOID;
+                      xSrc : WINT;
+                      ySrc : WINT;
+                      dxSrc : WINT;
+                      dySrc : WINT;
+                      wFlags : UINT) : BOOL;
+
+PROCEDURE DrawDibUpdate(hdd : HDRAWDIB; hdc : HDC; x, y : WINT) : BOOL;
+
+PROCEDURE DrawDibEnd(hdd : HDRAWDIB) : BOOL;
+
+
+TYPE
+    LPDRAWDIBTIME        = POINTER TO DRAWDIBTIME;
+    DRAWDIBTIME = RECORD
+          timeCount      : LONG;
+          timeDraw       : LONG;
+          timeDecompress : LONG;
+          timeDither     : LONG;
+          timeStretch    : LONG;
+          timeBlt        : LONG;
+          timeSetDIBits  : LONG;
+    END;
+
+
+
+PROCEDURE DrawDibTime(hdd : HDRAWDIB;
+                      lpddtime : LPDRAWDIBTIME) : BOOL;
+
+
+CONST
+    PD_CAN_DRAW_DIB      = 00001h;
+    PD_CAN_STRETCHDIB    = 00002h;
+    PD_STRETCHDIB_1_1_OK = 00004h;
+    PD_STRETCHDIB_1_2_OK = 00008h;
+    PD_STRETCHDIB_1_N_OK = 00010h;
+
+PROCEDURE DrawDibProfileDisplay(lpbi : LPBITMAPINFOHEADER) : DWORD;
+
+
+TYPE
+    FOURCC               = DWORD;
+    TWOCC                = WORD;
+
+CONST
+    formtypeAVI          = ORD('A') BOR
+                          (ORD('V') SHL 8) BOR
+                          (ORD('I') SHL 16) BOR
+                          (ORD(' ') SHL 24);
+
+    listtypeAVIHEADER    = ORD('h') BOR
+                          (ORD('d') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('l') SHL 24);
+
+    ckidAVIMAINHDR       = ORD('a') BOR
+                          (ORD('v') SHL 8) BOR
+                          (ORD('i') SHL 16) BOR
+                          (ORD('h') SHL 24);
+
+    listtypeSTREAMHEADER = ORD('s') BOR
+                          (ORD('t') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('l') SHL 24);
+
+    ckidSTREAMHEADER     = ORD('s') BOR
+                          (ORD('t') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('h') SHL 24);
+
+    ckidSTREAMFORMAT     = ORD('s') BOR
+                          (ORD('t') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('f') SHL 24);
+
+    ckidSTREAMHANDLERDATA= ORD('s') BOR
+                          (ORD('t') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('d') SHL 24);
+
+    ckidSTREAMNAME       = ORD('s') BOR
+                          (ORD('t') SHL 8) BOR
+                          (ORD('r') SHL 16) BOR
+                          (ORD('n') SHL 24);
+
+    listtypeAVIMOVIE     = ORD('m') BOR
+                          (ORD('o') SHL 8) BOR
+                          (ORD('v') SHL 16) BOR
+                          (ORD('i') SHL 24);
+
+    listtypeAVIRECORD    = ORD('r') BOR
+                          (ORD('e') SHL 8) BOR
+                          (ORD('c') SHL 16) BOR
+                          (ORD(' ') SHL 24);
+
+    ckidAVINEWINDEX      = ORD('i') BOR
+                          (ORD('d') SHL 8) BOR
+                          (ORD('x') SHL 16) BOR
+                          (ORD('1') SHL 24);
+
+    streamtypeVIDEO      = ORD('v') BOR
+                          (ORD('i') SHL 8) BOR
+                          (ORD('d') SHL 16) BOR
+                          (ORD('s') SHL 24);
+
+    streamtypeAUDIO      = ORD('a') BOR
+                          (ORD('u') SHL 8) BOR
+                          (ORD('d') SHL 16) BOR
+                          (ORD('s') SHL 24);
+
+    streamtypeMIDI       = ORD('m') BOR
+                          (ORD('i') SHL 8) BOR
+                          (ORD('d') SHL 16) BOR
+                          (ORD('s') SHL 24);
+
+    streamtypeTEXT       = ORD('t') BOR
+                          (ORD('x') SHL 8) BOR
+                          (ORD('t') SHL 16) BOR
+                          (ORD('s') SHL 24);
+
+    cktypeDIBbits            = ORD('d') BOR
+                              (ORD('b') SHL 8);
+
+    cktypeDIBcompressed      = ORD('d') BOR
+                              (ORD('c') SHL 8);
+
+    cktypePALchange          = ORD('p') BOR
+                              (ORD('c') SHL 8);
+
+    cktypeWAVEbytes          = ORD('w') BOR
+                              (ORD('b') SHL 8);
+
+    ckidAVIPADDING        = ORD('J') BOR
+                           (ORD('U') SHL 8) BOR
+                           (ORD('N') SHL 16) BOR
+                           (ORD('K') SHL 24);
+
+PROCEDURE FromHex(n : ACHAR) : DWORD;
+
+PROCEDURE StreamFromFOURCC(fcc : FOURCC) : WORD;
+
+PROCEDURE TWOCCFromFOURCC(fcc : FOURCC) : TWOCC;
+
+PROCEDURE ToHex(n : DWORD) : ACHAR;
+
+PROCEDURE MAKEAVICKID(tcc : TWOCC; stream : DWORD) : LONG;
+
+CONST
+    AVIF_HASINDEX        = 000000010h;
+    AVIF_MUSTUSEINDEX    = 000000020h;
+    AVIF_ISINTERLEAVED   = 000000100h;
+    AVIF_TRUSTCKTYPE     = 000000800h;
+    AVIF_WASCAPTUREFILE  = 000010000h;
+    AVIF_COPYRIGHTED     = 000020000h;
+
+    AVI_HEADERSIZE       = 2048;
+
+TYPE
+    MainAVIHeader =
+		RECORD
+			dwMicroSecPerFrame    : DWORD;
+			dwMaxBytesPerSec      : DWORD;
+			dwPaddingGranularity  : DWORD;
+			dwFlags               : DWORD;
+			dwTotalFrames         : DWORD;
+			dwInitialFrames       : DWORD;
+			dwStreams             : DWORD;
+			dwSuggestedBufferSize : DWORD;
+			dwWidth               : DWORD;
+			dwHeight              : DWORD;
+			dwReserved            : ARRAY [0..4 - 1] OF DWORD;
+		END;
+
+
+CONST
+    AVISF_DISABLED              = 000000001h;
+    AVISF_VIDEO_PALCHANGES      = 000010000h;
+
+TYPE
+    AVIStreamHeader =
+		RECORD
+			fccType        : FOURCC;
+			fccHandler     : FOURCC;
+			dwFlags        : DWORD;
+			wPriority      : WORD;
+			wLanguage      : WORD;
+			dwInitialFrames: DWORD;
+			dwScale        : DWORD;
+			dwRate         : DWORD;
+			dwStart        : DWORD;
+			dwLength       : DWORD;
+			dwSuggestedBufferSize: DWORD;
+			dwQuality      : DWORD;
+			dwSampleSize   : DWORD;
+			rcFrame        : RECT;
+		END;
+
+
+CONST
+    AVIIF_FIRSTPART      = 000000020h;
+    AVIIF_LASTPART       = 000000040h;
+    AVIIF_MIDPART        = AVIIF_LASTPART BOR AVIIF_FIRSTPART;
+
+    AVIIF_NOTIME         = 000000100h;
+    AVIIF_COMPUSE        = 00FFF0000h;
+
+TYPE
+    AVIINDEXENTRY =
+		RECORD
+			ckid           : DWORD;
+			dwFlags        : DWORD;
+			dwChunkOffset  : DWORD;
+			dwChunkLength  : DWORD;
+		END;
+
+    AVIPALCHANGE =
+		RECORD
+			bFirstEntry    : BYTE;
+			bNumEntries    : BYTE;
+			wFlags         : WORD;
+			peNew          : ARRAY [0..0] OF PALETTEENTRY;
+		END;
+
+CONST
+    AVIGETFRAMEF_BESTDISPLAYFMT= 1;
+
+TYPE
+    LPAVISTREAMINFOW     = POINTER TO AVISTREAMINFOW;
+    AVISTREAMINFOW =
+		RECORD
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			dwFlags        : DWORD;
+			dwCaps         : DWORD;
+			wPriority      : WORD;
+			wLanguage      : WORD;
+			dwScale        : DWORD;
+			dwRate         : DWORD;
+			dwStart        : DWORD;
+			dwLength       : DWORD;
+			dwInitialFrames: DWORD;
+			dwSuggestedBufferSize: DWORD;
+			dwQuality      : DWORD;
+			dwSampleSize   : DWORD;
+			rcFrame        : RECT;
+			dwEditCount    : DWORD;
+			dwFormatChangeCount: DWORD;
+			szName         : ARRAY [0..64 - 1] OF WCHAR;
+		END;
+
+    LPAVISTREAMINFOA     = POINTER TO AVISTREAMINFOA;
+    AVISTREAMINFOA =
+		RECORD
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			dwFlags        : DWORD;
+			dwCaps         : DWORD;
+			wPriority      : WORD;
+			wLanguage      : WORD;
+			dwScale        : DWORD;
+			dwRate         : DWORD;
+			dwStart        : DWORD;
+			dwLength       : DWORD;
+			dwInitialFrames: DWORD;
+			dwSuggestedBufferSize: DWORD;
+			dwQuality      : DWORD;
+			dwSampleSize   : DWORD;
+			rcFrame        : RECT;
+			dwEditCount    : DWORD;
+			dwFormatChangeCount: DWORD;
+			szName         : ARRAY [0..64 - 1] OF ACHAR;
+		END;
+
+%IF UNICODE %THEN
+    AVISTREAMINFO       = AVISTREAMINFOW;
+%ELSE
+    AVISTREAMINFO       = AVISTREAMINFOA;
+%END
+    LPAVISTREAMINFO     = POINTER TO AVISTREAMINFO;
+
+CONST
+    AVISTREAMINFO_DISABLED      = 000000001h;
+    AVISTREAMINFO_FORMATCHANGES = 000010000h;
+
+TYPE
+    LPAVIFILEINFOW       = POINTER TO AVIFILEINFOW;
+    AVIFILEINFOW =
+		RECORD
+			dwMaxBytesPerSec      : DWORD;
+			dwFlags               : DWORD;
+			dwCaps                : DWORD;
+			dwStreams             : DWORD;
+			dwSuggestedBufferSize : DWORD;
+			dwWidth               : DWORD;
+			dwHeight              : DWORD;
+			dwScale               : DWORD;
+			dwRate                : DWORD;
+			dwLength              : DWORD;
+			dwEditCount           : DWORD;
+			szFileType            : ARRAY [0..64 - 1] OF WCHAR;
+		END;
+
+
+    LPAVIFILEINFOA       = POINTER TO AVIFILEINFOA;
+    AVIFILEINFOA =
+		RECORD
+			dwMaxBytesPerSec      : DWORD;
+			dwFlags               : DWORD;
+			dwCaps                : DWORD;
+			dwStreams             : DWORD;
+			dwSuggestedBufferSize : DWORD;
+			dwWidth               : DWORD;
+			dwHeight              : DWORD;
+			dwScale               : DWORD;
+			dwRate                : DWORD;
+			dwLength              : DWORD;
+			dwEditCount           : DWORD;
+			szFileType            : ARRAY [0..64 - 1] OF ACHAR;
+		END;
+
+%IF UNICODE %THEN
+    AVIFILEINFO = AVIFILEINFOW;
+%ELSE
+    AVIFILEINFO = AVIFILEINFOA;
+%END
+    LPAVIFILEINFO       = POINTER TO AVIFILEINFO;
+
+
+CONST
+    AVIFILEINFO_HASINDEX        = 000000010h;
+    AVIFILEINFO_MUSTUSEINDEX    = 000000020h;
+    AVIFILEINFO_ISINTERLEAVED   = 000000100h;
+    AVIFILEINFO_WASCAPTUREFILE  = 000010000h;
+    AVIFILEINFO_COPYRIGHTED     = 000020000h;
+
+    AVIFILECAPS_CANREAD         = 000000001h;
+    AVIFILECAPS_CANWRITE        = 000000002h;
+    AVIFILECAPS_ALLKEYFRAMES    = 000000010h;
+    AVIFILECAPS_NOCOMPRESSION   = 000000020h;
+
+TYPE
+    AVISAVECALLBACK             = PROCEDURE (WINT) : BOOL;
+
+    LPAVICOMPRESSOPTIONS        = POINTER TO AVICOMPRESSOPTIONS;
+
+    AVICOMPRESSOPTIONS =
+		RECORD
+			fccType        : DWORD;
+			fccHandler     : DWORD;
+			dwKeyFrameEvery: DWORD;
+			dwQuality      : DWORD;
+			dwBytesPerSecond: DWORD;
+			dwFlags        : DWORD;
+			lpFormat       : LPVOID;
+			cbFormat       : DWORD;
+			lpParms        : LPVOID;
+			cbParms        : DWORD;
+			dwInterleaveEvery: DWORD;
+		END;
+
+
+CONST
+    AVICOMPRESSF_INTERLEAVE     = 000000001h;
+    AVICOMPRESSF_DATARATE       = 000000002h;
+    AVICOMPRESSF_KEYFRAMES      = 000000004h;
+    AVICOMPRESSF_VALID          = 000000008h;
+
+TYPE
+    LPIAVIStreamVtbl            = POINTER TO IAVIStreamVtbl;
+
+    IAVIStream =
+		RECORD
+			lpVtbl  : LPIAVIStreamVtbl;
+		END;
+
+    IAVIStreamVtbl =
+		RECORD
+			QueryInterface  : PROCEDURE (VAR IAVIStream,
+										REFIID,
+										VAR ADDRESS) : HRESULT;
+
+			AddRef          : PROCEDURE (VAR IAVIStream) : ULONG;
+
+			Release         : PROCEDURE (VAR IAVIStream) : ULONG;
+
+			Create          : PROCEDURE (VAR IAVIStream,
+										 LPARAM,
+										 LPARAM) : HRESULT;
+
+			Info            : PROCEDURE (VAR IAVIStream,
+										 LPAVISTREAMINFOW,
+										 LONG) : HRESULT;
+
+			FindSample      : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LONG) : LONG;
+
+			ReadFormat      : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LPVOID,
+										 VAR LONG) : HRESULT;
+
+			SetFormat       : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LPVOID,
+										 LONG) : HRESULT;
+
+			Read            : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LONG,
+										 LPVOID,
+										 LONG,
+										 VAR LONG,
+										 VAR LONG) : HRESULT;
+
+			Write           : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LONG,
+										 LPVOID,
+										 LONG,
+										 DWORD,
+										 VAR LONG,
+										 VAR LONG) : HRESULT;
+
+			Delete          : PROCEDURE (VAR IAVIStream,
+										 LONG,
+										 LONG) : HRESULT;
+
+			ReadData        : PROCEDURE (VAR IAVIStream,
+										 DWORD,
+										 LPVOID,
+										 VAR LONG) : HRESULT;
+
+			WriteData       : PROCEDURE (VAR IAVIStream,
+										 DWORD,
+										 LPVOID,
+										 LONG) : HRESULT;
+
+			SetInfo         : PROCEDURE (VAR IAVIStream,
+										 LPAVISTREAMINFOW,
+										 LONG) : HRESULT;
+		END;
+
+TYPE
+    PAVISTREAM          = POINTER TO IAVIStream;
+
+    LPIAVIStreamingVtbl = POINTER TO IAVIStreamingVtbl;
+
+    IAVIStreaming = RECORD
+        lpVtbl  : LPIAVIStreamingVtbl;
+    END;
+
+    IAVIStreamingVtbl = RECORD
+        QueryInterface  : PROCEDURE (VAR IAVIStreaming,
+                                    REFIID,
+                                    VAR ADDRESS) : HRESULT;
+
+        AddRef          : PROCEDURE (VAR IAVIStreaming) : ULONG;
+
+        Release         : PROCEDURE (VAR IAVIStreaming) : ULONG;
+
+        Begin           : PROCEDURE (VAR IAVIStreaming,
+                                     LONG,
+                                     LONG,
+                                     LONG) : HRESULT;
+
+        End             : PROCEDURE (VAR IAVIStreaming) : HRESULT;
+    END;
+
+    PAVISTREAMING       = POINTER TO IAVIStreaming;
+
+    LPIAVIEditStreamVtbl        = POINTER TO IAVIEditStreamVtbl;
+
+    IAVIEditStream = RECORD
+        lpVtbl  : LPIAVIEditStreamVtbl;
+    END;
+
+    IAVIEditStreamVtbl = RECORD
+        QueryInterface  : PROCEDURE (VAR IAVIEditStream,
+                                    REFIID,
+                                    VAR ADDRESS) : HRESULT;
+
+        AddRef          : PROCEDURE (VAR IAVIEditStream) : ULONG;
+
+        Release         : PROCEDURE (VAR IAVIEditStream) : ULONG;
+
+        Cut             : PROCEDURE (VAR IAVIEditStream,
+                                     VAR LONG,
+                                     VAR LONG,
+                                     VAR PAVISTREAM) : HRESULT;
+
+        Copy            : PROCEDURE (VAR IAVIEditStream,
+                                     VAR LONG,
+                                     VAR LONG,
+                                     VAR PAVISTREAM) : HRESULT;
+
+        Paste           : PROCEDURE (VAR IAVIEditStream,
+                                     VAR LONG,
+                                     VAR LONG,
+                                     PAVISTREAM,
+                                     LONG,
+                                     LONG) : HRESULT;
+
+        Clone           : PROCEDURE (VAR IAVIEditStream,
+                                     VAR PAVISTREAM) : HRESULT;
+
+        SetInfo         : PROCEDURE (VAR IAVIEditStream,
+                                     VAR AVISTREAMINFOW,
+                                     LONG) : HRESULT;
+    END;
+
+    PAVIEDITSTREAM      = POINTER TO IAVIEditStream;
+
+    LPIAVIFileVtbl      = POINTER TO IAVIFileVtbl;
+
+    IAVIFile = RECORD
+        lpVtbl  : LPIAVIFileVtbl;
+    END;
+
+    IAVIFileVtbl = RECORD
+        QueryInterface  : PROCEDURE (VAR IAVIFile,
+                                    REFIID,
+                                    VAR ADDRESS) : HRESULT;
+
+        AddRef          : PROCEDURE (VAR IAVIFile) : ULONG;
+
+        Release         : PROCEDURE (VAR IAVIFile) : ULONG;
+
+        Info            : PROCEDURE (VAR IAVIFile,
+                                     VAR AVIFILEINFOW,
+                                     LONG)  : HRESULT;
+
+        GetStream       : PROCEDURE (VAR IAVIFile,
+                                     VAR PAVISTREAM,
+                                     DWORD,
+                                     LONG)  : HRESULT;
+
+        CreateStream    : PROCEDURE (VAR IAVIFile,
+                                     VAR PAVISTREAM,
+                                     VAR AVISTREAMINFOW)  : HRESULT;
+
+        WriteData       : PROCEDURE (VAR IAVIFile,
+                                     DWORD,
+                                     LPVOID,
+                                     LONG) : HRESULT;
+
+        ReadData        : PROCEDURE (VAR IAVIFile,
+                                     DWORD,
+                                     LPVOID,
+                                     VAR LONG) : HRESULT;
+
+        EndRecord       : PROCEDURE (VAR IAVIFile) : HRESULT;
+
+        DeleteStream    : PROCEDURE (VAR IAVIFile,
+                                     DWORD,
+                                     LONG) : HRESULT;
+    END;
+
+    PAVIFILE    = POINTER TO IAVIFile;
+
+
+    LPIGetFrameVtbl     = POINTER TO IGetFrameVtbl;
+
+    IGetFrame = RECORD
+        lpVtbl  : LPIGetFrameVtbl;
+    END;
+
+    IGetFrameVtbl = RECORD
+        QueryInterface  : PROCEDURE (VAR IGetFrame,
+                                    REFIID,
+                                    VAR ADDRESS) : HRESULT;
+
+        AddRef          : PROCEDURE (VAR IGetFrame) : ULONG;
+
+        Release         : PROCEDURE (VAR IGetFrame) : ULONG;
+
+        GetFrame        : PROCEDURE (VAR IGetFrame, LONG) : LPVOID;
+
+        Begin           : PROCEDURE (VAR IGetFrame,
+                                     LONG,
+                                     LONG,
+                                     LONG) : HRESULT;
+
+        End             : PROCEDURE (VAR IGetFrame) : HRESULT;
+
+        SetFormat       : PROCEDURE (VAR IGetFrame,
+                                     LPBITMAPINFOHEADER,
+                                     LPVOID,
+                                     WINT,
+                                     WINT,
+                                     WINT,
+                                     WINT) : HRESULT;
+    END;
+
+    PGETFRAME   = POINTER TO IGetFrame;
+
+CONST
+    IID_IAVIFile        = GUID{000020020h,0,0,{0ch,0,0,0,0,0,0,46h}};
+    IID_IAVIStream      = GUID{000020021h,0,0,{0ch,0,0,0,0,0,0,46h}};
+    IID_IAVIStreaming   = GUID{000020022h,0,0,{0ch,0,0,0,0,0,0,46h}};
+    IID_IGetFrame       = GUID{000020023h,0,0,{0ch,0,0,0,0,0,0,46h}};
+    IID_IAVIEditStream  = GUID{000020024h,0,0,{0ch,0,0,0,0,0,0,46h}};
+
+    CLSID_AVISimpleUnMarshal    = GUID{000020009h,0,0,{0ch,0,0,0,0,0,0,46h}};
+
+    CLSID_AVIFile       = GUID{000020000h,0,0,{0ch,0,0,0,0,0,0,46h}};
+
+CONST
+    AVIFILEHANDLER_CANREAD              = 00001h;
+    AVIFILEHANDLER_CANWRITE             = 00002h;
+    AVIFILEHANDLER_CANACCEPTNONRGB      = 00004h;
+
+PROCEDURE AVIFileInit();
+
+PROCEDURE AVIFileExit();
+
+PROCEDURE AVIFileAddRef(pfile : PAVIFILE) : ULONG;
+
+PROCEDURE AVIFileRelease(pfile : PAVIFILE) : ULONG;
+
+PROCEDURE AVIFileOpenW(VAR ppfile : PAVIFILE;
+                       szFile : ARRAY OF UCHAR;
+                       uMode : UINT;
+                       lpHandler : LPCLSID) : HRESULT;
+
+PROCEDURE AVIFileOpenA(VAR ppfile : PAVIFILE;
+                       szFile : ARRAY OF ACHAR;
+                       uMode : UINT;
+                       lpHandler : LPCLSID) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIFileOpen = AVIFileOpenW;
+%ELSE
+PROCEDURE AVIFileOpen = AVIFileOpenA;
+%END
+
+PROCEDURE AVIFileInfoW(pfile : PAVIFILE;
+                      pfi : LPAVIFILEINFOW;
+                      lSize : LONG) : HRESULT;
+
+PROCEDURE AVIFileInfoA(pfile : PAVIFILE;
+                      pfi : LPAVIFILEINFOA;
+                      lSize : LONG) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIFileInfo = AVIFileInfoW;
+%ELSE
+PROCEDURE AVIFileInfo = AVIFileInfoA;
+%END
+
+PROCEDURE AVIFileGetStream(pfile : PAVIFILE;
+                           VAR ppavi : PAVISTREAM;
+                           fccType : DWORD;
+                           lParam : LONG) : HRESULT;
+
+PROCEDURE AVIFileCreateStreamW(pfile : PAVIFILE;
+                              VAR ppavi : PAVISTREAM;
+                              VAR psi : AVISTREAMINFOW) : HRESULT;
+
+PROCEDURE AVIFileCreateStreamA(pfile : PAVIFILE;
+                              VAR ppavi : PAVISTREAM;
+                              VAR psi : AVISTREAMINFOA) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIFileCreateStream = AVIFileCreateStreamW;
+%ELSE
+PROCEDURE AVIFileCreateStream = AVIFileCreateStreamA;
+%END
+
+PROCEDURE AVIFileWriteData(pfile : PAVIFILE;
+                           ckid : DWORD;
+                           lpData : LPVOID;
+                           cbData : LONG) : HRESULT;
+
+PROCEDURE AVIFileReadData(pfile : PAVIFILE;
+                          ckid : DWORD;
+                          lpData : LPVOID;
+                          VAR lpcbData : LONG) : HRESULT;
+
+PROCEDURE AVIFileEndRecord(pfile : PAVIFILE) : HRESULT;
+
+PROCEDURE AVIStreamAddRef(pfile : PAVISTREAM) : ULONG;
+
+PROCEDURE AVIStreamRelease(pfile : PAVISTREAM) : ULONG;
+
+PROCEDURE AVIStreamInfoW(pavi : PAVISTREAM;
+                        psi : LPAVISTREAMINFOW;
+                        lSize : LONG) : HRESULT;
+
+PROCEDURE AVIStreamInfoA(pavi : PAVISTREAM;
+                        psi : LPAVISTREAMINFOA;
+                        lSize : LONG) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIStreamInfo = AVIStreamInfoW;
+%ELSE
+PROCEDURE AVIStreamInfo = AVIStreamInfoA;
+%END
+
+PROCEDURE AVIStreamFindSample(pavi : PAVISTREAM;
+                              lPos : LONG;
+                              lFlags : LONG) : LONG;
+
+PROCEDURE AVIStreamReadFormat(pavi : PAVISTREAM;
+                              lPos : LONG;
+                              lpFormat : LPVOID;
+                              VAR lpcbFormat : LONG) : HRESULT;
+
+PROCEDURE AVIStreamSetFormat(pavi : PAVISTREAM;
+                              lPos : LONG;
+                              lpFormat : LPVOID;
+                              cbFormat : LONG) : HRESULT;
+
+PROCEDURE AVIStreamReadData(pavi : PAVISTREAM;
+                            fcc : DWORD;
+                            lpFormat : LPVOID;
+                            VAR lpcbFormat : LONG) : HRESULT;
+
+PROCEDURE AVIStreamWriteData(pavi : PAVISTREAM;
+                            fcc : DWORD;
+                            lpFormat : LPVOID;
+                            lpcbFormat : LONG) : HRESULT;
+
+PROCEDURE AVIStreamRead(pavi : PAVISTREAM;
+                        lStart : LONG;
+                        lSamples : LONG;
+                        lpBuffer : LPVOID;
+                        cbBuffer : LONG;
+                        VAR plBytes : LONG;
+                        VAR plSamples : LONG) : HRESULT;
+
+
+CONST
+    AVISTREAMREAD_CONVENIENT    = -1;
+
+PROCEDURE AVIStreamWrite(pavi : PAVISTREAM;
+                        lStart : LONG;
+                        lSamples : LONG;
+                        lpBuffer : LPVOID;
+                        cbBuffer : LONG;
+                        dwFlags : DWORD;
+                        VAR plSampWritten : LONG;
+                        VAR plBytesWritten : LONG) : HRESULT;
+
+PROCEDURE AVIStreamStart(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamLength(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamTimeToSample(pavi : PAVISTREAM; lTime : LONG) : LONG;
+
+PROCEDURE AVIStreamSampleToTime(pavi : PAVISTREAM; lSample : LONG) : LONG;
+
+PROCEDURE AVIStreamBeginStreaming(pavi : PAVISTREAM;
+                                  lStart : LONG;
+                                  lEnd : LONG;
+                                  lRate : LONG) : HRESULT;
+
+PROCEDURE AVIStreamEndStreaming(pavi : PAVISTREAM) : HRESULT;
+
+PROCEDURE AVIStreamGetFrameOpen(pavi : PAVISTREAM;
+                                lpbiWanted : LPBITMAPINFOHEADER) : PGETFRAME;
+
+PROCEDURE AVIStreamGetFrame(pg : PGETFRAME; lPos : LONG) : LPVOID;
+
+PROCEDURE AVIStreamGetFrameClose(pg : PGETFRAME) : HRESULT;
+
+PROCEDURE AVIStreamOpenFromFileW(VAR ppavi : PAVISTREAM;
+                                 szFile : ARRAY OF UCHAR;
+                                 fccType : DWORD;
+                                 lParam : LONG;
+                                 mode : UINT;
+                                 VAR pclsidHandler : CLSID) : HRESULT;
+
+PROCEDURE AVIStreamOpenFromFileA(VAR ppavi : PAVISTREAM;
+                                 szFile : ARRAY OF ACHAR;
+                                 fccType : DWORD;
+                                 lParam : LONG;
+                                 mode : UINT;
+                                 VAR pclsidHandler : CLSID) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIStreamOpenFromFile = AVIStreamOpenFromFileW;
+%ELSE
+PROCEDURE AVIStreamOpenFromFile = AVIStreamOpenFromFileA;
+%END
+
+PROCEDURE AVIStreamCreate(VAR ppavi : PAVISTREAM;
+                          lParam1 : LONG;
+                          lParam2 : LONG;
+                          VAR pclsidHandler :  CLSID) : HRESULT;
+
+CONST
+    FIND_DIR             = 00000000Fh;
+    FIND_NEXT            = 000000001h;
+    FIND_PREV            = 000000004h;
+    FIND_FROM_START      = 000000008h;
+
+    FIND_TYPE            = 0000000F0h;
+    FIND_KEY             = 000000010h;
+    FIND_ANY             = 000000020h;
+    FIND_FORMAT          = 000000040h;
+
+    FIND_RET             = 00000F000h;
+    FIND_POS             = 000000000h;
+    FIND_LENGTH          = 000001000h;
+    FIND_OFFSET          = 000002000h;
+    FIND_SIZE            = 000003000h;
+    FIND_INDEX           = 000004000h;
+
+PROCEDURE AVIStreamFindKeyFrame ["_AVIStreamFindSample@12"]
+                             (pavi : PAVISTREAM;
+                              lPos : LONG;
+                              lFlags : LONG) : LONG;
+
+
+PROCEDURE AVIStreamClose["_AVIStreamRelease@4"](pfile : PAVISTREAM) : ULONG;
+
+PROCEDURE AVIFileClose["_AVIFileRelease@4"](pfile : PAVIFILE) : ULONG;
+
+PROCEDURE AVIStreamInit["_AVIFileInit@0"]();
+
+PROCEDURE AVIStreamExit["_AVIFileExit@0"]();
+
+CONST
+    SEARCH_NEAREST      = FIND_PREV;
+    SEARCH_BACKWARD     = FIND_PREV;
+    SEARCH_FORWARD      = FIND_NEXT;
+    SEARCH_KEY          = FIND_KEY;
+    SEARCH_ANY          = FIND_ANY;
+
+PROCEDURE AVIStreamSampleToSample(pavi1, pavi2 : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamNextSample(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamPrevSample(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamNearestSample(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamNextKeyFrame(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamPrevKeyFrame(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamNearestKeyFrame(pavi : PAVISTREAM; l : LONG) : LONG;
+
+PROCEDURE AVIStreamIsKeyFrame(pavi : PAVISTREAM; l : LONG) : BOOL;
+
+PROCEDURE AVIStreamPrevSampleTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamNextSampleTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamNearestSampleTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamNextKeyFrameTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamPrevKeyFrameTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamNearestKeyFrameTime(pavi : PAVISTREAM; t : LONG) : LONG;
+
+PROCEDURE AVIStreamStartTime(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamLengthTime(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamEnd(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamEndTime(pavi : PAVISTREAM) : LONG;
+
+PROCEDURE AVIStreamSampleSize(pavi : PAVISTREAM; lPos : LONG; VAR plSize : LONG) : LONG;
+
+PROCEDURE AVIStreamFormatSize(pavi : PAVISTREAM; lPos : LONG; VAR plSize : LONG) : LONG;
+
+PROCEDURE AVIStreamDataSize(pavi : PAVISTREAM; fcc : FOURCC; VAR plSize : LONG) : LONG;
+
+CONST
+    comptypeDIB          = ORD('D') BOR
+                          (ORD('I') SHL 8) BOR
+                          (ORD('B') SHL 16) BOR
+                          (ORD(' ') SHL 24);
+
+PROCEDURE AVIMakeCompressedStream(
+                VAR ppsCompressed : PAVISTREAM;
+                ppsSource : PAVISTREAM;
+                VAR lpOptionsd : AVICOMPRESSOPTIONS;
+                VAR pclsidHandler : CLSID) : HRESULT;
+
+PROCEDURE AVISaveA(szFile : ARRAY OF ACHAR;
+                  VAR pclsidHandler : CLSID;
+                  lpfnCallback : AVISAVECALLBACK;
+                  nStreams : WINT;
+                  pfile : PAVISTREAM;
+                  lpOptions : LPAVICOMPRESSOPTIONS) : HRESULT [CDECL, VARIABLE];
+
+PROCEDURE AVISaveW(szFile : ARRAY OF UCHAR;
+                  VAR pclsidHandler : CLSID;
+                  lpfnCallback : AVISAVECALLBACK;
+                  nStreams : WINT;
+                  pfile : PAVISTREAM;
+                  lpOptions : LPAVICOMPRESSOPTIONS) : HRESULT [CDECL, VARIABLE];
+
+PROCEDURE AVISaveVA(szFile : ARRAY OF ACHAR;
+                  VAR pclsidHandler : CLSID;
+                  lpfnCallback : AVISAVECALLBACK;
+                  nStreams : WINT;
+                  pfile : PAVISTREAM;
+                  lpOptions : LPAVICOMPRESSOPTIONS) : HRESULT;
+
+PROCEDURE AVISaveVW(szFile : ARRAY OF UCHAR;
+                  VAR pclsidHandler : CLSID;
+                  lpfnCallback : AVISAVECALLBACK;
+                  nStreams : WINT;
+                  pfile : PAVISTREAM;
+                  lpOptions : LPAVICOMPRESSOPTIONS) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVISave = AVISaveW;
+
+PROCEDURE AVISaveV = AVISaveVW;
+%ELSE
+PROCEDURE AVISave = AVISaveA;
+
+PROCEDURE AVISaveV = AVISaveVA;
+%END
+
+PROCEDURE AVISaveOptions(hwnd : HWND;
+                         uiFlags : UINT;
+                         nStreams : WINT;
+                         VAR ppavi : PAVISTREAM;
+                         VAR plpOptions : LPAVICOMPRESSOPTIONS) : INT_PTR;
+
+PROCEDURE AVISaveOptionsFree(nStreams : WINT;
+                             VAR plpOptions : LPAVICOMPRESSOPTIONS) : HRESULT;
+
+PROCEDURE AVIBuildFilterW(VAR lpszFilter : ARRAY OF UCHAR;
+                         cbFilter : LONG;
+                         fSaving : BOOL) : HRESULT;
+
+PROCEDURE AVIBuildFilterA(VAR lpszFilter : ARRAY OF ACHAR;
+                         cbFilter : LONG;
+                         fSaving : BOOL) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE AVIBuildFilter = AVIBuildFilterW;
+%ELSE
+PROCEDURE AVIBuildFilter = AVIBuildFilterA;
+%END
+
+PROCEDURE AVIMakeFileFromStreams(VAR ppfile : PAVIFILE;
+                                 nStreams : WINT;
+                                 VAR papStreams : PAVISTREAM) : HRESULT;
+
+PROCEDURE AVIMakeStreamFromClipboard(cfFormat : UINT;
+                                     hGlobal : HANDLE;
+                                     VAR ppstream : PAVISTREAM) : HRESULT;
+
+PROCEDURE AVIPutFileOnClipboard(pf : PAVIFILE) : HRESULT;
+
+PROCEDURE AVIGetFromClipboard(VAR lppf : PAVIFILE) : HRESULT;
+
+PROCEDURE AVIClearClipboard() : HRESULT;
+
+
+PROCEDURE CreateEditableStream(VAR ppsEditable : PAVISTREAM;
+                               psSource : PAVISTREAM) : HRESULT;
+
+PROCEDURE EditStreamCut(pavi : PAVISTREAM;
+                        VAR plStart : LONG;
+                        VAR plLength : LONG;
+                        VAR ppResult : PAVISTREAM) : HRESULT;
+
+PROCEDURE EditStreamCopy(pavi : PAVISTREAM;
+                        VAR plStart : LONG;
+                        VAR plLength : LONG;
+                        VAR ppResult : PAVISTREAM) : HRESULT;
+
+PROCEDURE EditStreamPaste(pavi : PAVISTREAM;
+                          VAR plStart : LONG;
+                          VAR plLength : LONG;
+                          VAR ppResult : PAVISTREAM;
+                          lStart : LONG;
+                          lEnd : LONG) : HRESULT;
+
+PROCEDURE EditStreamClone(pavi : PAVISTREAM; VAR ppResult : PAVISTREAM) : HRESULT;
+
+PROCEDURE EditStreamSetNameA(pavi : PAVISTREAM; lpszName : ARRAY OF ACHAR) : HRESULT;
+
+PROCEDURE EditStreamSetNameW(pavi : PAVISTREAM; lpszName : ARRAY OF UCHAR) : HRESULT;
+
+PROCEDURE EditStreamSetInfoW(pavi : PAVISTREAM;
+                             lpInfo : LPAVISTREAMINFOW;
+                             cbInfo : LONG) : HRESULT;
+
+PROCEDURE EditStreamSetInfoA(pavi : PAVISTREAM;
+                             lpInfo : LPAVISTREAMINFOW;
+                             cbInfo : LONG) : HRESULT;
+
+%IF UNICODE %THEN
+PROCEDURE EditStreamSetName = EditStreamSetNameW;
+
+PROCEDURE EditStreamSetInfo = EditStreamSetInfoW;
+%ELSE
+PROCEDURE EditStreamSetName = EditStreamSetNameA;
+
+PROCEDURE EditStreamSetInfo = EditStreamSetInfoA;
+%END
+
+CONST
+    AVIERR_OK            = 0;
+
+PROCEDURE MAKE_AVIERR(error : LONG) : SCODE;
+
+CONST
+    AVIERR_UNSUPPORTED          = CAST(SCODE, 2147762277);
+    AVIERR_BADFORMAT            = CAST(SCODE, 2147762278);
+    AVIERR_MEMORY               = CAST(SCODE, 2147762279);
+    AVIERR_INTERNAL             = CAST(SCODE, 2147762280);
+    AVIERR_BADFLAGS             = CAST(SCODE, 2147762281);
+    AVIERR_BADPARAM             = CAST(SCODE, 2147762282);
+    AVIERR_BADSIZE              = CAST(SCODE, 2147762283);
+    AVIERR_BADHANDLE            = CAST(SCODE, 2147762284);
+    AVIERR_FILEREAD             = CAST(SCODE, 2147762285);
+    AVIERR_FILEWRITE            = CAST(SCODE, 2147762286);
+    AVIERR_FILEOPEN             = CAST(SCODE, 2147762287);
+    AVIERR_COMPRESSOR           = CAST(SCODE, 2147762288);
+    AVIERR_NOCOMPRESSOR         = CAST(SCODE, 2147762289);
+    AVIERR_READONLY             = CAST(SCODE, 2147762290);
+    AVIERR_NODATA               = CAST(SCODE, 2147762291);
+    AVIERR_BUFFERTOOSMALL       = CAST(SCODE, 2147762292);
+    AVIERR_CANTCOMPRESS         = CAST(SCODE, 2147762293);
+    AVIERR_USERABORT            = CAST(SCODE, 2147762374);
+    AVIERR_ERROR                = CAST(SCODE, 2147762375);
+
+CONST
+    MCIWND_WINDOW_CLASS         = "MCIWndClass";
+
+PROCEDURE MCIWndCreateA(hwndParent : HWND;
+                        hInstance : HINSTANCE;
+                        dwStyle : DWORD;
+                        szFile : ARRAY OF ACHAR) : HWND [msCDECL];
+
+PROCEDURE MCIWndCreateW(hwndParent : HWND;
+                        hInstance : HINSTANCE;
+                        dwStyle : DWORD;
+                        szFile : ARRAY OF UCHAR) : HWND [msCDECL];
+
+%IF UNICODE %THEN
+PROCEDURE MCIWndCreate = MCIWndCreateW;
+%ELSE
+PROCEDURE MCIWndCreate = MCIWndCreateA;
+%END
+
+PROCEDURE MCIWndRegisterClass() : BOOL [msCDECL];
+
+
+CONST
+    MCIWNDOPENF_NEW             = 00001h;
+
+    MCIWNDF_NOAUTOSIZEWINDOW    = 00001h;
+    MCIWNDF_NOPLAYBAR           = 00002h;
+    MCIWNDF_NOAUTOSIZEMOVIE     = 00004h;
+    MCIWNDF_NOMENU              = 00008h;
+    MCIWNDF_SHOWNAME            = 00010h;
+    MCIWNDF_SHOWPOS             = 00020h;
+    MCIWNDF_SHOWMODE            = 00040h;
+    MCIWNDF_SHOWALL             = 00070h;
+
+    MCIWNDF_NOTIFYANSI          = 00080h;
+
+    MCIWNDF_NOTIFYMODEW         = 00100h;
+    MCIWNDF_NOTIFYPOSW          = 00200h;
+    MCIWNDF_NOTIFYSIZEW         = 00400h;
+    MCIWNDF_NOTIFYMEDIAW        = 00800h;
+    MCIWNDF_NOTIFYERRORW        = 01000h;
+    MCIWNDF_NOTIFYALLW          = 01F00h;
+
+    MCIWNDF_NOTIFYMODEA         = 00180h;
+    MCIWNDF_NOTIFYPOSA          = 00280h;
+    MCIWNDF_NOTIFYSIZEA         = 00480h;
+    MCIWNDF_NOTIFYMEDIAA        = 00880h;
+    MCIWNDF_NOTIFYERRORA        = 01080h;
+    MCIWNDF_NOTIFYALLA          = 01F80h;
+
+%IF UNICODE %THEN
+    MCIWNDF_NOTIFYMODE          = MCIWNDF_NOTIFYMODEW;
+    MCIWNDF_NOTIFYPOS           = MCIWNDF_NOTIFYPOSW;
+    MCIWNDF_NOTIFYSIZE          = MCIWNDF_NOTIFYSIZEW;
+    MCIWNDF_NOTIFYMEDIA         = MCIWNDF_NOTIFYMEDIAW;
+    MCIWNDF_NOTIFYERROR         = MCIWNDF_NOTIFYERRORW;
+    MCIWNDF_NOTIFYALL           = MCIWNDF_NOTIFYALLW;
+%ELSE
+    MCIWNDF_NOTIFYMODE          = MCIWNDF_NOTIFYMODEA;
+    MCIWNDF_NOTIFYPOS           = MCIWNDF_NOTIFYPOSA;
+    MCIWNDF_NOTIFYSIZE          = MCIWNDF_NOTIFYSIZEA;
+    MCIWNDF_NOTIFYMEDIA         = MCIWNDF_NOTIFYMEDIAA;
+    MCIWNDF_NOTIFYERROR         = MCIWNDF_NOTIFYERRORA;
+    MCIWNDF_NOTIFYALL           = MCIWNDF_NOTIFYALLA;
+%END
+
+    MCIWNDF_RECORD              = 02000h;
+    MCIWNDF_NOERRORDLG          = 04000h;
+    MCIWNDF_NOOPEN              = 08000h;
+
+PROCEDURE MCIWndCanPlay(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndCanRecord(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndCanSave(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndCanWindow(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndCanEject(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndCanConfig(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndPaletteKick(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndSave(hwnd : HWND; szFile : ARRAY OF ACHAR) : LONG;
+
+PROCEDURE MCIWndSaveDialog(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndNew(hwnd : HWND; lp : ADDRESS) : LONG;
+
+PROCEDURE MCIWndRecord(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndOpen(hwnd : HWND; sz : ARRAY OF ACHAR; f : UINT) : LONG;
+
+PROCEDURE MCIWndOpenDialog(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndClose(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndPlay(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndStop(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndPause(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndResume(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndSeek(hwnd : HWND; lPos : LONG) : LONG;
+
+PROCEDURE MCIWndEject(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndHome(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndEnd(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndGetSource(hwnd : HWND; VAR prc : RECT): LONG;
+
+PROCEDURE MCIWndPutSource(hwnd : HWND; prc : RECT) : LONG;
+
+PROCEDURE MCIWndGetDest(hwnd : HWND; VAR prc : RECT): LONG;
+
+PROCEDURE MCIWndPutDest(hwnd : HWND; VAR prc : RECT): LONG;
+
+PROCEDURE MCIWndPlayReverse(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndPlayFrom(hwnd : HWND; lPos : LONG) : LONG;
+
+PROCEDURE MCIWndPlayTo(hwnd : HWND; lPos : LONG) : LONG;
+
+PROCEDURE MCIWndPlayFromTo(hwnd : HWND; lStart, lEnd : LONG) : LONG;
+
+PROCEDURE MCIWndGetDeviceID(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndGetAlias(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndGetMode(hwnd : HWND; VAR lp : ARRAY OF TCHAR; len : LONG) : LONG;
+
+PROCEDURE MCIWndGetPosition(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndGetPositionString(hwnd : HWND;
+                                   VAR lp : ARRAY OF TCHAR;
+                                   len : UINT) : LONG;
+
+PROCEDURE MCIWndGetStart(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndGetLength(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndGetEnd(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndStep(hwnd : HWND; n : LONG) : LONG;
+
+PROCEDURE MCIWndDestroy(hwnd : HWND);
+
+PROCEDURE MCIWndSetZoom(hwnd : HWND; iZoom : UINT);
+
+PROCEDURE MCIWndGetZoom(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndSetVolume(hwnd : HWND; iVol : UINT) : LONG;
+
+PROCEDURE MCIWndGetVolume(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndSetSpeed(hwnd : HWND; iSpeed : UINT) : LONG;
+
+PROCEDURE MCIWndGetSpeed(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndSetTimeFormat(hwnd : HWND; lp : ARRAY OF TCHAR) : LONG;
+
+PROCEDURE MCIWndGetTimeFormat(hwnd : HWND; VAR lp : ARRAY OF TCHAR; len : UINT) : LONG;
+
+PROCEDURE MCIWndValidateMedia(hwnd : HWND);
+
+PROCEDURE MCIWndSetRepeat(hwnd : HWND; f : BOOL);
+
+PROCEDURE MCIWndGetRepeat(hwnd : HWND) : BOOL;
+
+PROCEDURE MCIWndUseFrames(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndUseTime(hwnd : HWND) : LONG;
+
+PROCEDURE MCIWndSetActiveTimer(hwnd : HWND; active : UINT);
+
+PROCEDURE MCIWndSetInactiveTimer(hwnd : HWND; active : UINT);
+
+PROCEDURE MCIWndSetTimers(hwnd : HWND; active, inactive : UINT);
+
+PROCEDURE MCIWndGetActiveTimer(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndGetInactiveTimer(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndRealize(hwnd : HWND; fBkgnd : BOOL) : LONG;
+
+PROCEDURE MCIWndSendString(hwnd : HWND; sz : ARRAY OF TCHAR) : LONG;
+
+<*/PUSH/HIGH*>
+PROCEDURE MCIWndReturnString(hwnd : HWND; VAR lp : ARRAY OF TCHAR) : LONG;
+
+PROCEDURE MCIWndGetError(hwnd : HWND; VAR lp : ARRAY OF TCHAR) : LONG;
+<*/POP*>
+
+PROCEDURE MCIWndGetPalette(hwnd : HWND ) : HPALETTE;
+
+PROCEDURE MCIWndSetPalette(hwnd : HWND; hpal : HPALETTE) : LONG;
+
+<*/PUSH/HIGH*>
+PROCEDURE MCIWndGetFileName(hwnd : HWND; VAR lp : ARRAY OF TCHAR) : LONG;
+
+PROCEDURE MCIWndGetDevice(hwnd : HWND; VAR lp : ARRAY OF TCHAR) : LONG;
+<*/POP*>
+
+PROCEDURE MCIWndGetStyles(hwnd : HWND) : UINT;
+
+PROCEDURE MCIWndChangeStyles(hwnd : HWND; mask : UINT; value : LONG) : LONG;
+
+PROCEDURE MCIWndOpenInterface(hwnd : HWND; pUnk : IUnknown) : LONG;
+
+PROCEDURE MCIWndSetOwner(hwnd : HWND; hwndP : HWND) : LONG;
+
+CONST
+
+    MCIWNDM_GETDEVICEID         = WM_USER + 100;
+    MCIWNDM_GETSTART            = WM_USER + 103;
+    MCIWNDM_GETLENGTH           = WM_USER + 104;
+    MCIWNDM_GETEND              = WM_USER + 105;
+    MCIWNDM_EJECT               = WM_USER + 107;
+    MCIWNDM_SETZOOM             = WM_USER + 108;
+    MCIWNDM_GETZOOM             = WM_USER + 109;
+    MCIWNDM_SETVOLUME           = WM_USER + 110;
+    MCIWNDM_GETVOLUME           = WM_USER + 111;
+    MCIWNDM_SETSPEED            = WM_USER + 112;
+    MCIWNDM_GETSPEED            = WM_USER + 113;
+    MCIWNDM_SETREPEAT           = WM_USER + 114;
+    MCIWNDM_GETREPEAT           = WM_USER + 115;
+    MCIWNDM_REALIZE             = WM_USER + 118;
+    MCIWNDM_VALIDATEMEDIA       = WM_USER + 121;
+    MCIWNDM_PLAYFROM            = WM_USER + 122;
+    MCIWNDM_PLAYTO              = WM_USER + 123;
+    MCIWNDM_GETPALETTE          = WM_USER + 126;
+    MCIWNDM_SETPALETTE          = WM_USER + 127;
+    MCIWNDM_SETTIMERS           = WM_USER + 129;
+    MCIWNDM_SETACTIVETIMER      = WM_USER + 130;
+    MCIWNDM_SETINACTIVETIMER    = WM_USER + 131;
+    MCIWNDM_GETACTIVETIMER      = WM_USER + 132;
+    MCIWNDM_GETINACTIVETIMER    = WM_USER + 133;
+    MCIWNDM_CHANGESTYLES        = WM_USER + 135;
+    MCIWNDM_GETSTYLES           = WM_USER + 136;
+    MCIWNDM_GETALIAS            = WM_USER + 137;
+    MCIWNDM_PLAYREVERSE         = WM_USER + 139;
+    MCIWNDM_GET_SOURCE          = WM_USER + 140;
+    MCIWNDM_PUT_SOURCE          = WM_USER + 141;
+    MCIWNDM_GET_DEST            = WM_USER + 142;
+    MCIWNDM_PUT_DEST            = WM_USER + 143;
+    MCIWNDM_CAN_PLAY            = WM_USER + 144;
+    MCIWNDM_CAN_WINDOW          = WM_USER + 145;
+    MCIWNDM_CAN_RECORD          = WM_USER + 146;
+    MCIWNDM_CAN_SAVE            = WM_USER + 147;
+    MCIWNDM_CAN_EJECT           = WM_USER + 148;
+    MCIWNDM_CAN_CONFIG          = WM_USER + 149;
+    MCIWNDM_PALETTEKICK         = WM_USER + 150;
+    MCIWNDM_OPENINTERFACE       = WM_USER + 151;
+    MCIWNDM_SETOWNER            = WM_USER + 152;
+
+    MCIWNDM_SENDSTRINGA         = WM_USER + 101;
+    MCIWNDM_GETPOSITIONA        = WM_USER + 102;
+    MCIWNDM_GETMODEA            = WM_USER + 106;
+    MCIWNDM_SETTIMEFORMATA      = WM_USER + 119;
+    MCIWNDM_GETTIMEFORMATA      = WM_USER + 120;
+    MCIWNDM_GETFILENAMEA        = WM_USER + 124;
+    MCIWNDM_GETDEVICEA          = WM_USER + 125;
+    MCIWNDM_GETERRORA           = WM_USER + 128;
+    MCIWNDM_NEWA                = WM_USER + 134;
+    MCIWNDM_RETURNSTRINGA       = WM_USER + 138;
+    MCIWNDM_OPENA               = WM_USER + 153;
+
+    MCIWNDM_SENDSTRINGW         = WM_USER + 201;
+    MCIWNDM_GETPOSITIONW        = WM_USER + 202;
+    MCIWNDM_GETMODEW            = WM_USER + 206;
+    MCIWNDM_SETTIMEFORMATW      = WM_USER + 219;
+    MCIWNDM_GETTIMEFORMATW      = WM_USER + 220;
+    MCIWNDM_GETFILENAMEW        = WM_USER + 224;
+    MCIWNDM_GETDEVICEW          = WM_USER + 225;
+    MCIWNDM_GETERRORW           = WM_USER + 228;
+    MCIWNDM_NEWW                = WM_USER + 234;
+    MCIWNDM_RETURNSTRINGW       = WM_USER + 238;
+    MCIWNDM_OPENW               = WM_USER + 252;
+
+%IF UNICODE %THEN
+    MCIWNDM_SENDSTRING          = MCIWNDM_SENDSTRINGW;
+    MCIWNDM_GETPOSITION         = MCIWNDM_GETPOSITIONW;
+    MCIWNDM_GETMODE             = MCIWNDM_GETMODEW;
+    MCIWNDM_SETTIMEFORMAT       = MCIWNDM_SETTIMEFORMATW;
+    MCIWNDM_GETTIMEFORMAT       = MCIWNDM_GETTIMEFORMATW;
+    MCIWNDM_GETFILENAME         = MCIWNDM_GETFILENAMEW;
+    MCIWNDM_GETDEVICE           = MCIWNDM_GETDEVICEW;
+    MCIWNDM_GETERROR            = MCIWNDM_GETERRORW;
+    MCIWNDM_NEW                 = MCIWNDM_NEWW;
+    MCIWNDM_RETURNSTRING        = MCIWNDM_RETURNSTRINGW;
+    MCIWNDM_OPEN                = MCIWNDM_OPENW;
+%ELSE
+    MCIWNDM_SENDSTRING          = MCIWNDM_SENDSTRINGA;
+    MCIWNDM_GETPOSITION         = MCIWNDM_GETPOSITIONA;
+    MCIWNDM_GETMODE             = MCIWNDM_GETMODEA;
+    MCIWNDM_SETTIMEFORMAT       = MCIWNDM_SETTIMEFORMATA;
+    MCIWNDM_GETTIMEFORMAT       = MCIWNDM_GETTIMEFORMATA;
+    MCIWNDM_GETFILENAME         = MCIWNDM_GETFILENAMEA;
+    MCIWNDM_GETDEVICE           = MCIWNDM_GETDEVICEA;
+    MCIWNDM_GETERROR            = MCIWNDM_GETERRORA;
+    MCIWNDM_NEW                 = MCIWNDM_NEWA;
+    MCIWNDM_RETURNSTRING        = MCIWNDM_RETURNSTRINGA;
+    MCIWNDM_OPEN                = MCIWNDM_OPENA;
+%END
+
+    MCIWNDM_NOTIFYMODE          = WM_USER + 200;
+    MCIWNDM_NOTIFYPOS           = WM_USER + 201;
+    MCIWNDM_NOTIFYSIZE          = WM_USER + 202;
+    MCIWNDM_NOTIFYMEDIA         = WM_USER + 203;
+    MCIWNDM_NOTIFYERROR         = WM_USER + 205;
+
+    MCIWND_START         = -1;
+    MCIWND_END           = -2;
+
+    MCI_OPEN             = 00803h;
+    MCI_CLOSE            = 00804h;
+    MCI_PLAY             = 00806h;
+    MCI_SEEK             = 00807h;
+    MCI_STOP             = 00808h;
+    MCI_PAUSE            = 00809h;
+    MCI_STEP             = 0080Eh;
+    MCI_RECORD           = 0080Fh;
+    MCI_SAVE             = 00813h;
+    MCI_CUT              = 00851h;
+    MCI_COPY             = 00852h;
+    MCI_PASTE            = 00853h;
+    MCI_RESUME           = 00855h;
+    MCI_DELETE           = 00856h;
+
+    MCI_MODE_NOT_READY   = 524;
+    MCI_MODE_STOP        = 525;
+    MCI_MODE_PLAY        = 526;
+    MCI_MODE_RECORD      = 527;
+    MCI_MODE_SEEK        = 528;
+    MCI_MODE_PAUSE       = 529;
+    MCI_MODE_OPEN        = 530;
+
+TYPE
+    HVIDEO               = POINTER TO RECORD END;
+
+TYPE
+    LPHVIDEO             = POINTER TO HVIDEO;
+
+CONST
+    DV_ERR_OK                   = 0;
+    DV_ERR_BASE                 = 1;
+
+    DV_ERR_NONSPECIFIC          = DV_ERR_BASE;
+
+    DV_ERR_BADFORMAT            = DV_ERR_BASE + 1;
+
+    DV_ERR_STILLPLAYING         = DV_ERR_BASE + 2;
+
+    DV_ERR_UNPREPARED           = DV_ERR_BASE + 3;
+
+    DV_ERR_SYNC                 = DV_ERR_BASE + 4;
+
+    DV_ERR_TOOMANYCHANNELS      = DV_ERR_BASE + 5;
+
+    DV_ERR_NOTDETECTED          = DV_ERR_BASE + 6;
+
+    DV_ERR_BADINSTALL           = DV_ERR_BASE + 7;
+
+    DV_ERR_CREATEPALETTE        = DV_ERR_BASE + 8;
+
+    DV_ERR_SIZEFIELD            = DV_ERR_BASE + 9;
+
+    DV_ERR_PARAM1               = DV_ERR_BASE + 10;
+
+    DV_ERR_PARAM2               = DV_ERR_BASE + 11;
+
+    DV_ERR_CONFIG1              = DV_ERR_BASE + 12;
+
+    DV_ERR_CONFIG2              = DV_ERR_BASE + 13;
+
+    DV_ERR_FLAGS                = DV_ERR_BASE + 14;
+
+    DV_ERR_13                   = DV_ERR_BASE + 15;
+
+    DV_ERR_NOTSUPPORTED         = DV_ERR_BASE + 16;
+
+    DV_ERR_NOMEM                = DV_ERR_BASE + 17;
+
+    DV_ERR_ALLOCATED            = DV_ERR_BASE + 18;
+
+    DV_ERR_BADDEVICEID          = DV_ERR_BASE + 19;
+
+    DV_ERR_INVALHANDLE          = DV_ERR_BASE + 20;
+
+    DV_ERR_BADERRNUM            = DV_ERR_BASE + 21;
+
+    DV_ERR_NO_BUFFERS           = DV_ERR_BASE + 22;
+
+    DV_ERR_MEM_CONFLICT         = DV_ERR_BASE + 23;
+
+    DV_ERR_IO_CONFLICT          = DV_ERR_BASE + 24;
+
+    DV_ERR_DMA_CONFLICT         = DV_ERR_BASE + 25;
+
+    DV_ERR_INT_CONFLICT         = DV_ERR_BASE + 26;
+
+    DV_ERR_PROTECT_ONLY         = DV_ERR_BASE + 27;
+
+    DV_ERR_LASTERROR            = DV_ERR_BASE + 27;
+
+    DV_ERR_USER_MSG             = DV_ERR_BASE + 1000;
+
+    MM_DRVM_OPEN                = 03D0h;
+
+    MM_DRVM_CLOSE               = 03D1h;
+
+    MM_DRVM_DATA                = 03D2h;
+
+    MM_DRVM_ERROR               = 03D3h;
+
+    DV_VM_OPEN                  = MM_DRVM_OPEN;
+
+    DV_VM_CLOSE                 = MM_DRVM_CLOSE;
+
+    DV_VM_DATA                  = MM_DRVM_DATA;
+
+    DV_VM_ERROR                 = MM_DRVM_ERROR;
+
+TYPE
+    LPVIDEOHDR           = POINTER TO VIDEOHDR;
+    PVIDEOHDR            = POINTER TO VIDEOHDR;
+    VIDEOHDR = RECORD
+          lpData         : ADDRESS;
+          dwBufferLength : DWORD;
+          dwBytesUsed    : DWORD;
+          dwTimeCaptured : DWORD;
+          dwUser         : DWORD_PTR;
+          dwFlags        : DWORD;
+          dwReserved     : ARRAY [0..4 - 1] OF DWORD_PTR;
+    END;
+
+CONST
+    VHDR_DONE            = 000000001h;
+    VHDR_PREPARED        = 000000002h;
+    VHDR_INQUEUE         = 000000004h;
+    VHDR_KEYFRAME        = 000000008h;
+
+TYPE
+    LPCHANNEL_CAPS       = POINTER TO CHANNEL_CAPS;
+    PCHANNEL_CAPS        = POINTER TO CHANNEL_CAPS;
+
+    CHANNEL_CAPS = RECORD
+          dwFlags        : DWORD;
+          dwSrcRectXMod  : DWORD;
+          dwSrcRectYMod  : DWORD;
+          dwSrcRectWidthMod: DWORD;
+          dwSrcRectHeightMod: DWORD;
+          dwDstRectXMod  : DWORD;
+          dwDstRectYMod  : DWORD;
+          dwDstRectWidthMod: DWORD;
+          dwDstRectHeightMod: DWORD;
+    END;
+
+CONST
+    VCAPS_OVERLAY        = 000000001h;
+    VCAPS_SRC_CAN_CLIP   = 000000002h;
+    VCAPS_DST_CAN_CLIP   = 000000004h;
+    VCAPS_CAN_SCALE      = 000000008h;
+
+CONST
+    VIDEO_EXTERNALIN     = 00001h;
+    VIDEO_EXTERNALOUT    = 00002h;
+    VIDEO_IN             = 00004h;
+    VIDEO_OUT            = 00008h;
+
+    VIDEO_DLG_QUERY      = 00010h;
+
+    VIDEO_CONFIGURE_QUERY= 08000h;
+
+    VIDEO_CONFIGURE_SET  = 01000h;
+
+    VIDEO_CONFIGURE_GET         = 02000h;
+    VIDEO_CONFIGURE_QUERYSIZE   = 00001h;
+
+    VIDEO_CONFIGURE_CURRENT     = 00010h;
+    VIDEO_CONFIGURE_NOMINAL     = 00020h;
+    VIDEO_CONFIGURE_MIN         = 00040h;
+    VIDEO_CONFIGURE_MAX         = 00080h;
+
+    DVM_USER             = 04000h;
+    DVM_CONFIGURE_START  = 01000h;
+    DVM_CONFIGURE_END    = 01FFFh;
+
+    DVM_PALETTE          = DVM_CONFIGURE_START + 1;
+    DVM_FORMAT           = DVM_CONFIGURE_START + 2;
+    DVM_PALETTERGB555    = DVM_CONFIGURE_START + 3;
+    DVM_SRC_RECT         = DVM_CONFIGURE_START + 4;
+    DVM_DST_RECT         = DVM_CONFIGURE_START + 5;
+
+PROCEDURE AVICapSM(hwnd : HWND; m : UINT; w : WPARAM; l : LPARAM) : UINT;
+CONST
+    WM_CAP_START                    = WM_USER;
+
+    WM_CAP_UNICODE_START            = WM_USER+100;
+
+    WM_CAP_GET_CAPSTREAMPTR         = WM_CAP_START+1;
+
+    WM_CAP_SET_CALLBACK_ERRORW      = WM_CAP_UNICODE_START+2;
+    WM_CAP_SET_CALLBACK_STATUSW     = WM_CAP_UNICODE_START+3;
+
+    WM_CAP_SET_CALLBACK_ERRORA      = WM_CAP_START+2;
+    WM_CAP_SET_CALLBACK_STATUSA     = WM_CAP_START+3;
+
+%IF UNICODE %THEN
+    WM_CAP_SET_CALLBACK_ERROR       = WM_CAP_SET_CALLBACK_ERRORW;
+    WM_CAP_SET_CALLBACK_STATUS      = WM_CAP_SET_CALLBACK_STATUSW;
+%ELSE
+    WM_CAP_SET_CALLBACK_ERROR       = WM_CAP_SET_CALLBACK_ERRORA;
+    WM_CAP_SET_CALLBACK_STATUS      = WM_CAP_SET_CALLBACK_STATUSA;
+%END
+
+    WM_CAP_SET_CALLBACK_YIELD       = WM_CAP_START+4;
+    WM_CAP_SET_CALLBACK_FRAME       = WM_CAP_START+5;
+    WM_CAP_SET_CALLBACK_VIDEOSTREAM = WM_CAP_START+6;
+    WM_CAP_SET_CALLBACK_WAVESTREAM  = WM_CAP_START+7;
+    WM_CAP_GET_USER_DATA            = WM_CAP_START+8;
+    WM_CAP_SET_USER_DATA            = WM_CAP_START+9;
+
+    WM_CAP_DRIVER_CONNECT           = WM_CAP_START+10;
+    WM_CAP_DRIVER_DISCONNECT        = WM_CAP_START+11;
+
+    WM_CAP_DRIVER_GET_NAMEA         = WM_CAP_START+12;
+    WM_CAP_DRIVER_GET_VERSIONA      = WM_CAP_START+13;
+
+    WM_CAP_DRIVER_GET_NAMEW         = WM_CAP_UNICODE_START+12;
+    WM_CAP_DRIVER_GET_VERSIONW      = WM_CAP_UNICODE_START+13;
+
+%IF UNICODE %THEN
+    WM_CAP_DRIVER_GET_NAME          = WM_CAP_DRIVER_GET_NAMEW;
+    WM_CAP_DRIVER_GET_VERSION       = WM_CAP_DRIVER_GET_VERSIONW;
+%ELSE
+    WM_CAP_DRIVER_GET_NAME          = WM_CAP_DRIVER_GET_NAMEA;
+    WM_CAP_DRIVER_GET_VERSION       = WM_CAP_DRIVER_GET_VERSIONA;
+%END
+
+    WM_CAP_DRIVER_GET_CAPS          = WM_CAP_START+14;
+
+    WM_CAP_FILE_SET_CAPTURE_FILEA   = WM_CAP_START+20;
+    WM_CAP_FILE_GET_CAPTURE_FILEA   = WM_CAP_START+21;
+    WM_CAP_FILE_SAVEASA             = WM_CAP_START+23;
+    WM_CAP_FILE_SAVEDIBA            = WM_CAP_START+25;
+
+    WM_CAP_FILE_SET_CAPTURE_FILEW   = WM_CAP_UNICODE_START+20;
+    WM_CAP_FILE_GET_CAPTURE_FILEW   = WM_CAP_UNICODE_START+21;
+    WM_CAP_FILE_SAVEASW             = WM_CAP_UNICODE_START+23;
+    WM_CAP_FILE_SAVEDIBW            = WM_CAP_UNICODE_START+25;
+
+%IF UNICODE %THEN
+    WM_CAP_FILE_SET_CAPTURE_FILE    = WM_CAP_FILE_SET_CAPTURE_FILEW;
+    WM_CAP_FILE_GET_CAPTURE_FILE    = WM_CAP_FILE_GET_CAPTURE_FILEW;
+    WM_CAP_FILE_SAVEAS              = WM_CAP_FILE_SAVEASW;
+    WM_CAP_FILE_SAVEDIB             = WM_CAP_FILE_SAVEDIBW;
+%ELSE
+    WM_CAP_FILE_SET_CAPTURE_FILE    = WM_CAP_FILE_SET_CAPTURE_FILEA;
+    WM_CAP_FILE_GET_CAPTURE_FILE    = WM_CAP_FILE_GET_CAPTURE_FILEA;
+    WM_CAP_FILE_SAVEAS              = WM_CAP_FILE_SAVEASA;
+    WM_CAP_FILE_SAVEDIB             = WM_CAP_FILE_SAVEDIBA;
+%END
+
+    WM_CAP_FILE_ALLOCATE            = WM_CAP_START+22;
+    WM_CAP_FILE_SET_INFOCHUNK       = WM_CAP_START+24;
+
+    WM_CAP_EDIT_COPY                = WM_CAP_START+30;
+
+    WM_CAP_SET_AUDIOFORMAT          = WM_CAP_START+35;
+    WM_CAP_GET_AUDIOFORMAT          = WM_CAP_START+36;
+
+    WM_CAP_DLG_VIDEOFORMAT          = WM_CAP_START+41;
+    WM_CAP_DLG_VIDEOSOURCE          = WM_CAP_START+42;
+    WM_CAP_DLG_VIDEODISPLAY         = WM_CAP_START+43;
+    WM_CAP_GET_VIDEOFORMAT          = WM_CAP_START+44;
+    WM_CAP_SET_VIDEOFORMAT          = WM_CAP_START+45;
+    WM_CAP_DLG_VIDEOCOMPRESSION     = WM_CAP_START+46;
+
+    WM_CAP_SET_PREVIEW              = WM_CAP_START+50;
+    WM_CAP_SET_OVERLAY              = WM_CAP_START+51;
+    WM_CAP_SET_PREVIEWRATE          = WM_CAP_START+52;
+    WM_CAP_SET_SCALE                = WM_CAP_START+53;
+    WM_CAP_GET_STATUS               = WM_CAP_START+54;
+    WM_CAP_SET_SCROLL               = WM_CAP_START+55;
+
+    WM_CAP_GRAB_FRAME               = WM_CAP_START+60;
+    WM_CAP_GRAB_FRAME_NOSTOP        = WM_CAP_START+61;
+
+    WM_CAP_SEQUENCE                 = WM_CAP_START+62;
+    WM_CAP_SEQUENCE_NOFILE          = WM_CAP_START+63;
+    WM_CAP_SET_SEQUENCE_SETUP       = WM_CAP_START+64;
+    WM_CAP_GET_SEQUENCE_SETUP       = WM_CAP_START+65;
+
+    WM_CAP_SET_MCI_DEVICEA          = WM_CAP_START+66;
+    WM_CAP_GET_MCI_DEVICEA          = WM_CAP_START+67;
+    WM_CAP_SET_MCI_DEVICEW          = WM_CAP_UNICODE_START+66;
+    WM_CAP_GET_MCI_DEVICEW          = WM_CAP_UNICODE_START+67;
+%IF UNICODE %THEN
+    WM_CAP_SET_MCI_DEVICE           = WM_CAP_SET_MCI_DEVICEW;
+    WM_CAP_GET_MCI_DEVICE           = WM_CAP_GET_MCI_DEVICEW;
+%ELSE
+    WM_CAP_SET_MCI_DEVICE           = WM_CAP_SET_MCI_DEVICEA;
+    WM_CAP_GET_MCI_DEVICE           = WM_CAP_GET_MCI_DEVICEA;
+%END
+
+
+
+    WM_CAP_STOP                     = WM_CAP_START+68;
+    WM_CAP_ABORT                    = WM_CAP_START+69;
+
+    WM_CAP_SINGLE_FRAME_OPEN        = WM_CAP_START+70;
+    WM_CAP_SINGLE_FRAME_CLOSE       = WM_CAP_START+71;
+    WM_CAP_SINGLE_FRAME             = WM_CAP_START+72;
+
+    WM_CAP_PAL_OPENA                = WM_CAP_START+80;
+    WM_CAP_PAL_SAVEA                = WM_CAP_START+81;
+
+    WM_CAP_PAL_OPENW                = WM_CAP_UNICODE_START+80;
+    WM_CAP_PAL_SAVEW                = WM_CAP_UNICODE_START+81;
+%IF UNICODE %THEN
+    WM_CAP_PAL_OPEN                 = WM_CAP_PAL_OPENW;
+    WM_CAP_PAL_SAVE                 = WM_CAP_PAL_SAVEW;
+%ELSE
+    WM_CAP_PAL_OPEN                 = WM_CAP_PAL_OPENA;
+    WM_CAP_PAL_SAVE                 = WM_CAP_PAL_SAVEA;
+%END
+
+    WM_CAP_PAL_PASTE                = WM_CAP_START+  82;
+    WM_CAP_PAL_AUTOCREATE           = WM_CAP_START+  83;
+    WM_CAP_PAL_MANUALCREATE         = WM_CAP_START+  84;
+
+    WM_CAP_SET_CALLBACK_CAPCONTROL  = WM_CAP_START+  85;
+
+    WM_CAP_UNICODE_END              = WM_CAP_PAL_SAVEW;
+    WM_CAP_END                      = WM_CAP_UNICODE_END;
+
+
+
+TYPE
+    CAPYIELDCALLBACK     = PROCEDURE (HWND) : LRESULT;
+
+    CAPSTATUSCALLBACKW   = PROCEDURE (HWND, WINT, ARRAY OF UCHAR) : LRESULT;
+
+    CAPERRORCALLBACKW    = PROCEDURE (HWND, WINT, ARRAY OF UCHAR) : LRESULT;
+
+    CAPSTATUSCALLBACKA   = PROCEDURE (HWND, WINT, ARRAY OF ACHAR) : LRESULT;
+
+    CAPERRORCALLBACKA    = PROCEDURE (HWND, WINT, ARRAY OF ACHAR) : LRESULT;
+
+%IF UNICODE %THEN
+    CAPSTATUSCALLBACK    = CAPSTATUSCALLBACKW;
+    CAPERRORCALLBACK     = CAPERRORCALLBACKW;
+%ELSE
+    CAPSTATUSCALLBACK    = CAPSTATUSCALLBACKA;
+    CAPERRORCALLBACK     = CAPERRORCALLBACKA;
+%END
+
+    CAPVIDEOCALLBACK     = PROCEDURE (HWND, LPVIDEOHDR) : LRESULT;
+
+    CAPWAVECALLBACK      = PROCEDURE (HWND, LPWAVEHDR) : LRESULT;
+
+    CAPCONTROLCALLBACK   = PROCEDURE (HWND, WINT):LRESULT;
+
+    LPCAPDRIVERCAPS      = POINTER TO CAPDRIVERCAPS;
+    PCAPDRIVERCAPS       = POINTER TO CAPDRIVERCAPS;
+    CAPDRIVERCAPS =
+		RECORD
+			wDeviceIndex          : UINT;
+			fHasOverlay           : BOOL;
+			fHasDlgVideoSource    : BOOL;
+			fHasDlgVideoFormat    : BOOL;
+			fHasDlgVideoDisplay   : BOOL;
+			fCaptureInitialized   : BOOL;
+			fDriverSuppliesPalettes: BOOL;
+			hVideoIn              : HANDLE;
+			hVideoOut             : HANDLE;
+			hVideoExtIn           : HANDLE;
+			hVideoExtOut          : HANDLE;
+		END;
+
+    LPCAPINFOCHUNK       = POINTER TO CAPINFOCHUNK;
+    PCAPINFOCHUNK        = POINTER TO CAPINFOCHUNK;
+    CAPINFOCHUNK =
+		RECORD
+			fccInfoID      : FOURCC;
+			lpData         : LPVOID;
+			cbData         : LONG;
+		END;
+
+    LPCAPSTATUS          = POINTER TO CAPSTATUS;
+    PCAPSTATUS           = POINTER TO CAPSTATUS;
+    CAPSTATUS =
+		RECORD
+			uiImageWidth                  : UINT;
+			uiImageHeight                 : UINT;
+			fLiveWindow                   : BOOL;
+			fOverlayWindow                : BOOL;
+			fScale                        : BOOL;
+			ptScroll                      : POINT;
+			fUsingDefaultPalette          : BOOL;
+			fAudioHardware                : BOOL;
+			fCapFileExists                : BOOL;
+			dwCurrentVideoFrame           : DWORD;
+			dwCurrentVideoFramesDropped   : DWORD;
+			dwCurrentWaveSamples          : DWORD;
+			dwCurrentTimeElapsedMS        : DWORD;
+			hPalCurrent                   : HPALETTE;
+			fCapturingNow                 : BOOL;
+			dwReturn                      : DWORD;
+			wNumVideoAllocated            : UINT;
+			wNumAudioAllocated            : UINT;
+		END;
+
+    LPCAPTUREPARMS       = POINTER TO CAPTUREPARMS;
+    PCAPTUREPARMS        = POINTER TO CAPTUREPARMS;
+    CAPTUREPARMS =
+		RECORD
+			dwRequestMicroSecPerFrame     : DWORD;
+			fMakeUserHitOKToCapture       : BOOL;
+			wPercentDropForError          : UINT;
+			fYield                        : BOOL;
+			dwIndexSize                   : DWORD;
+			wChunkGranularity             : UINT;
+			fUsingDOSMemory               : BOOL;
+			wNumVideoRequested            : UINT;
+			fCaptureAudio                 : BOOL;
+			wNumAudioRequested            : UINT;
+			vKeyAbort                     : UINT;
+			fAbortLeftMouse               : BOOL;
+			fAbortRightMouse              : BOOL;
+			fLimitEnabled                 : BOOL;
+			wTimeLimit                    : UINT;
+			fMCIControl                   : BOOL;
+			fStepMCIDevice                : BOOL;
+			dwMCIStartTime                : DWORD;
+			dwMCIStopTime                 : DWORD;
+			fStepCaptureAt2x              : BOOL;
+			wStepCaptureAverageFrames     : UINT;
+			dwAudioBufferSize             : DWORD;
+			fDisableWriteCache            : BOOL;
+			AVStreamMaster                : UINT;
+		END;
+
+PROCEDURE capSetCallbackOnError(hwnd : HWND; fpProc : CAPERRORCALLBACK) : BOOL;
+
+PROCEDURE capSetCallbackOnStatus(hwnd : HWND; fpProc : CAPSTATUSCALLBACK) : BOOL;
+
+PROCEDURE capSetCallbackOnYield(hwnd : HWND; fpProc : CAPYIELDCALLBACK) : BOOL;
+
+PROCEDURE capSetCallbackOnFrame(hwnd : HWND; fpProc : LPVOID) : BOOL;
+
+PROCEDURE capSetCallbackOnVideoStream(hwnd : HWND; fpProc : CAPVIDEOCALLBACK) : BOOL;
+
+PROCEDURE capSetCallbackOnWaveStream(hwnd : HWND; fpProc : CAPWAVECALLBACK) : BOOL;
+
+PROCEDURE capSetCallbackOnCapControl(hwnd : HWND; fpProc : CAPCONTROLCALLBACK) : BOOL;
+
+PROCEDURE capSetUserData(hwnd : HWND; lUser : LPARAM) : BOOL;
+
+PROCEDURE capGetUserData(hwnd : HWND) : UINT;
+
+PROCEDURE capDriverConnect(hwnd : HWND; i : WPARAM) : BOOL;
+
+PROCEDURE capDriverDisconnect(hwnd : HWND) : BOOL;
+
+<*/PUSH/HIGH*>
+PROCEDURE capDriverGetName(hwnd : HWND; VAR szName : ARRAY OF TCHAR) : BOOL;
+
+PROCEDURE capDriverGetVersion(hwnd : HWND; VAR szName : ARRAY OF TCHAR) : BOOL;
+<*/POP*>
+
+PROCEDURE capDriverGetCaps(hwnd : HWND; s : LPCAPDRIVERCAPS; wSize : WPARAM) : BOOL;
+
+PROCEDURE capFileSetCaptureFile(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+<*/PUSH/HIGH*>
+PROCEDURE capFileGetCaptureFile(hwnd : HWND; VAR szName : ARRAY OF TCHAR) : BOOL;
+<*/POP*>
+
+PROCEDURE capFileAlloc(hwnd : HWND; dwSize : DWORD) : BOOL;
+
+PROCEDURE capFileSaveAs(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+PROCEDURE capFileSetInfoChunk(hwnd : HWND; lpInfoChunk : LPCAPINFOCHUNK) : BOOL;
+
+PROCEDURE capFileSaveDIB(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+PROCEDURE capEditCopy(hwnd : HWND) : BOOL;
+
+PROCEDURE capSetAudioFormat(hwnd : HWND; s : LPWAVEFORMATEX; size : WPARAM) : BOOL;
+
+PROCEDURE capGetAudioFormat(hwnd : HWND; s : LPWAVEFORMATEX; size : WPARAM) : DWORD;
+
+PROCEDURE capGetAudioFormatSize(hwnd : HWND) : DWORD;
+
+PROCEDURE capDlgVideoFormat(hwnd : HWND) : BOOL;
+
+PROCEDURE capDlgVideoSource(hwnd : HWND) : BOOL;
+
+PROCEDURE capDlgVideoDisplay(hwnd : HWND) : BOOL;
+
+PROCEDURE capDlgVideoCompression(hwnd : HWND) : BOOL;
+
+PROCEDURE capGetVideoFormat(hwnd : HWND; s : ADDRESS; size : WPARAM) : DWORD;
+
+PROCEDURE capGetVideoFormatSize(hwnd : HWND) : DWORD;
+
+PROCEDURE capSetVideoFormat(hwnd : HWND; s : ADDRESS; size : WPARAM) : BOOL;
+
+
+PROCEDURE capPreview(hwnd : HWND; f : BOOL) : BOOL;
+
+PROCEDURE capPreviewRate(hwnd : HWND; wMS : WPARAM) : BOOL;
+
+PROCEDURE capOverlay(hwnd : HWND; f : BOOL) : BOOL;
+
+PROCEDURE capPreviewScale(hwnd : HWND; f : BOOL) : BOOL;
+
+PROCEDURE capGetStatus(hwnd : HWND; s : LPCAPSTATUS; wSize : WPARAM) : BOOL;
+
+PROCEDURE capSetScrollPos(hwnd : HWND; lpP : LPPOINT) : BOOL;
+
+PROCEDURE capGrabFrame(hwnd : HWND) : BOOL;
+
+PROCEDURE capGrabFrameNoStop(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureSequence(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureSequenceNoFile(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureStop(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureAbort(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureSingleFrameOpen(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureSingleFrameClose(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureSingleFrame(hwnd : HWND) : BOOL;
+
+PROCEDURE capCaptureGetSetup(hwnd : HWND; s : LPCAPTUREPARMS; wSize : WPARAM) : BOOL;
+
+PROCEDURE capCaptureSetSetup(hwnd : HWND; s : LPCAPTUREPARMS; wSize : WPARAM) : BOOL;
+
+PROCEDURE capSetMCIDeviceName(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+<*/PUSH/HIGH*>
+PROCEDURE capGetMCIDeviceName(hwnd : HWND; VAR szName : ARRAY OF TCHAR) : BOOL;
+<*/POP*>
+
+PROCEDURE capPaletteOpen(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+PROCEDURE capPaletteSave(hwnd : HWND; szName : ARRAY OF TCHAR) : BOOL;
+
+PROCEDURE capPalettePaste(hwnd : HWND) : BOOL;
+
+PROCEDURE capPaletteAuto(hwnd : HWND; iFrames : WPARAM; iColors : DWORD) : BOOL;
+
+PROCEDURE capPaletteManual(hwnd : HWND; fGrab : WPARAM; iColors : DWORD) : BOOL;
+
+CONST
+    AVSTREAMMASTER_AUDIO = 0;
+    AVSTREAMMASTER_NONE  = 1;
+
+    CONTROLCALLBACK_PREROLL     = 1;
+    CONTROLCALLBACK_CAPTURING   = 2;
+
+PROCEDURE capCreateCaptureWindowA(lpszWindowName : ARRAY OF ACHAR;
+                                  dwStyle : DWORD;
+                                  x : WINT;
+                                  y : WINT;
+                                  nWidth : WINT;
+                                  nHeight : WINT;
+                                  hwndParent : HWND;
+                                  nID : WINT) : HWND;
+
+PROCEDURE capGetDriverDescriptionA(wDriverIndex : UINT;
+                                   VAR lpszName : ARRAY OF ACHAR;
+                                   cbName : WINT;
+                                   VAR lpszVer : ARRAY OF ACHAR;
+                                   cbVer : WINT) : BOOL;
+
+PROCEDURE capCreateCaptureWindowW(lpszWindowName : ARRAY OF UCHAR;
+                                  dwStyle : DWORD;
+                                  x : WINT;
+                                  y : WINT;
+                                  nWidth : WINT;
+                                  nHeight : WINT;
+                                  hwndParent : HWND;
+                                  nID : WINT) : HWND;
+
+PROCEDURE capGetDriverDescriptionW(wDriverIndex : UINT;
+                                   VAR lpszName : ARRAY OF UCHAR;
+                                   cbName : WINT;
+                                   VAR lpszVer : ARRAY OF UCHAR;
+                                   cbVer : WINT) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE capCreateCaptureWindow = capCreateCaptureWindowW;
+
+PROCEDURE capGetDriverDescription = capGetDriverDescriptionW;
+%ELSE
+PROCEDURE capCreateCaptureWindow = capCreateCaptureWindowA;
+
+PROCEDURE capGetDriverDescription = capGetDriverDescriptionA;
+%END
+
+CONST
+    infotypeDIGITIZATION_TIME  = ORD('I') BOR
+                                (ORD('D') SHL 8) BOR
+                                (ORD('I') SHL 16) BOR
+                                (ORD('T') SHL 24);
+
+    infotypeSMPTE_TIME         = ORD('I') BOR
+                                (ORD('S') SHL 8) BOR
+                                (ORD('M') SHL 16) BOR
+                                (ORD('P') SHL 24);
+
+CONST
+    IDS_CAP_BEGIN        = 300;
+    IDS_CAP_END          = 301;
+
+    IDS_CAP_INFO         = 401;
+    IDS_CAP_OUTOFMEM     = 402;
+    IDS_CAP_FILEEXISTS   = 403;
+    IDS_CAP_ERRORPALOPEN = 404;
+    IDS_CAP_ERRORPALSAVE = 405;
+    IDS_CAP_ERRORDIBSAVE = 406;
+    IDS_CAP_DEFAVIEXT    = 407;
+    IDS_CAP_DEFPALEXT    = 408;
+    IDS_CAP_CANTOPEN     = 409;
+    IDS_CAP_SEQ_MSGSTART = 410;
+    IDS_CAP_SEQ_MSGSTOP  = 411;
+
+    IDS_CAP_VIDEDITERR          = 412;
+    IDS_CAP_READONLYFILE        = 413;
+    IDS_CAP_WRITEERROR          = 414;
+    IDS_CAP_NODISKSPACE         = 415;
+    IDS_CAP_SETFILESIZE         = 416;
+    IDS_CAP_SAVEASPERCENT       = 417;
+    IDS_CAP_DRIVER_ERROR        = 418;
+
+    IDS_CAP_WAVE_OPEN_ERROR     = 419;
+    IDS_CAP_WAVE_ALLOC_ERROR    = 420;
+    IDS_CAP_WAVE_PREPARE_ERROR  = 421;
+    IDS_CAP_WAVE_ADD_ERROR      = 422;
+    IDS_CAP_WAVE_SIZE_ERROR     = 423;
+
+    IDS_CAP_VIDEO_OPEN_ERROR    = 424;
+    IDS_CAP_VIDEO_ALLOC_ERROR   = 425;
+    IDS_CAP_VIDEO_PREPARE_ERROR = 426;
+    IDS_CAP_VIDEO_ADD_ERROR     = 427;
+    IDS_CAP_VIDEO_SIZE_ERROR    = 428;
+
+    IDS_CAP_FILE_OPEN_ERROR     = 429;
+    IDS_CAP_FILE_WRITE_ERROR    = 430;
+    IDS_CAP_RECORDING_ERROR     = 431;
+    IDS_CAP_RECORDING_ERROR2    = 432;
+    IDS_CAP_AVI_INIT_ERROR      = 433;
+    IDS_CAP_NO_FRAME_CAP_ERROR  = 434;
+    IDS_CAP_NO_PALETTE_WARN     = 435;
+    IDS_CAP_MCI_CONTROL_ERROR   = 436;
+    IDS_CAP_MCI_CANT_STEP_ERROR = 437;
+    IDS_CAP_NO_AUDIO_CAP_ERROR  = 438;
+    IDS_CAP_AVI_DRAWDIB_ERROR   = 439;
+    IDS_CAP_COMPRESSOR_ERROR    = 440;
+    IDS_CAP_AUDIO_DROP_ERROR    = 441;
+    IDS_CAP_STAT_LIVE_MODE      = 500;
+    IDS_CAP_STAT_OVERLAY_MODE   = 501;
+    IDS_CAP_STAT_CAP_INIT       = 502;
+    IDS_CAP_STAT_CAP_FINI       = 503;
+    IDS_CAP_STAT_PALETTE_BUILD  = 504;
+    IDS_CAP_STAT_OPTPAL_BUILD   = 505;
+    IDS_CAP_STAT_I_FRAMES       = 506;
+    IDS_CAP_STAT_L_FRAMES       = 507;
+    IDS_CAP_STAT_CAP_L_FRAMES   = 508;
+    IDS_CAP_STAT_CAP_AUDIO      = 509;
+    IDS_CAP_STAT_VIDEOCURRENT   = 510;
+    IDS_CAP_STAT_VIDEOAUDIO     = 511;
+    IDS_CAP_STAT_VIDEOONLY      = 512;
+    IDS_CAP_STAT_FRAMESDROPPED  = 513;
+
+PROCEDURE GetOpenFileNamePreviewA(VAR lpofn : OPENFILENAMEA) : BOOL;
+PROCEDURE GetSaveFileNamePreviewA(VAR lpofn : OPENFILENAMEA) : BOOL;
+
+PROCEDURE GetOpenFileNamePreviewW(VAR lpofn : OPENFILENAMEW) : BOOL;
+PROCEDURE GetSaveFileNamePreviewW(VAR lpofn : OPENFILENAMEW) : BOOL;
+
+%IF UNICODE %THEN
+PROCEDURE GetOpenFileNamePreview = GetOpenFileNamePreviewW;
+
+PROCEDURE GetSaveFileNamePreview = GetSaveFileNamePreviewW;
+%ELSE
+PROCEDURE GetOpenFileNamePreview = GetOpenFileNamePreviewA;
+
+PROCEDURE GetSaveFileNamePreview = GetSaveFileNamePreviewA;
+%END
+
+(*MACROS*)
+PROCEDURE ICDecompressEx(hic : HIC;
+                         dwFlags : DWORD;
+                         lpbiSrc : LPBITMAPINFOHEADER;
+                         lpSrc : LPVOID;
+                         xSrc : WINT;
+                         ySrc : WINT;
+                         dxSrc : WINT;
+                         dySrc : WINT;
+                         lpbiDst : LPBITMAPINFOHEADER;
+                         lpDst : LPVOID;
+                         xDst : WINT;
+                         yDst : WINT;
+                         dxDst : WINT;
+                         dyDst : WINT) : LRESULT;
+
+PROCEDURE ICDecompressExBegin(hic : HIC;
+                         dwFlags : DWORD;
+                         lpbiSrc : LPBITMAPINFOHEADER;
+                         lpSrc : LPVOID;
+                         xSrc : WINT;
+                         ySrc : WINT;
+                         dxSrc : WINT;
+                         dySrc : WINT;
+                         lpbiDst : LPBITMAPINFOHEADER;
+                         lpDst : LPVOID;
+                         xDst : WINT;
+                         yDst : WINT;
+                         dxDst : WINT;
+                         dyDst : WINT) : LRESULT;
+
+PROCEDURE ICDecompressExQuery(hic : HIC;
+                         dwFlags : DWORD;
+                         lpbiSrc : LPBITMAPINFOHEADER;
+                         lpSrc : LPVOID;
+                         xSrc : WINT;
+                         ySrc : WINT;
+                         dxSrc : WINT;
+                         dySrc : WINT;
+                         lpbiDst : LPBITMAPINFOHEADER;
+                         lpDst : LPVOID;
+                         xDst : WINT;
+                         yDst : WINT;
+                         dxDst : WINT;
+                         dyDst : WINT) : LRESULT;
+
+PROCEDURE ICDecompressExEnd(hic : HIC) : LRESULT;
+END VFW.

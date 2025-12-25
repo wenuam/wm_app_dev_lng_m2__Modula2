@@ -1,0 +1,65 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                         by ADW Software                                 *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE AreSee4;
+(* the encryption algorithm we can't mention by name since the name is trademarked. *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+TYPE
+    AreSee4;
+
+PROCEDURE Create(key : ARRAY OF BYTE; keySize : CARDINAL) : AreSee4;
+PROCEDURE Create2(key : ARRAY OF CHAR) : AreSee4;
+(*
+  create a new AreSee4 encryption object with the given key.
+  the returned object is ready to encrypt/decrpyt data.
+
+  Create
+  the number of bytes in the key is keySize.
+
+  Create2
+  like Create except it uses the CHAR type as its array element.
+  the key string cab be any length, including "".
+
+  the implementation may not use all of the bytes in the key.
+  the algorithm never uses more than 256 bytes for a key.
+
+   only one thread at a time can use an encryption object.
+*)
+
+PROCEDURE Destroy(VAR INOUT crypt : AreSee4);
+(* destroy a previously created encryption object *)
+
+PROCEDURE Reset(crypt : AreSee4);
+(* reset the encryption object to encrypt a new data stream.
+   you must reset the object before you encrypt/decrypt each unique data stream.
+*)
+
+PROCEDURE EnDeCrypt(crypt : AreSee4; input, output : ADDRESS; amount : CARDINAL);
+(*
+  encrypt/decrypt a block of data of size amount.
+  you can encrypt/decrypt a large data stream in multiple smaller pieces
+  using this call.
+  you can pass the same variable to both input and output should you so desire.
+
+  remember to reset the object before encryting/decrypting each unique data stream.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END AreSee4.

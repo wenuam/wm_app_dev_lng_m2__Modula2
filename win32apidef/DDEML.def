@@ -1,0 +1,494 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE DDEML;
+
+FROM WIN32 IMPORT
+    DWORD, HWND, UINT, WPARAM, LPARAM, SECURITY_QUALITY_OF_SERVICE,
+    BOOL, LPBYTE, HANDLE, WCHAR, UINT_PTR, DWORD_PTR, ULONG_PTR;
+
+FROM SYSTEM IMPORT
+    CAST;
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+TYPE
+    HCONVLIST            = POINTER TO RECORD END;
+    HCONV                = POINTER TO RECORD END;
+    HSZ                  = POINTER TO RECORD END;
+    HDDEDATA             = POINTER TO RECORD END;
+    HSZPAIR = RECORD
+          hszSvc         : HSZ;
+          hszTopic       : HSZ;
+    END;
+
+    PHSZPAIR             = POINTER TO HSZPAIR;
+    CONVCONTEXT = RECORD
+          cb             : UINT;
+          wFlags         : UINT;
+          wCountryID     : UINT;
+          iCodePage      : INTEGER;
+          dwLangID       : DWORD;
+          dwSecurity     : DWORD;
+          qos            : SECURITY_QUALITY_OF_SERVICE;
+    END;
+
+    PCONVCONTEXT         = POINTER TO CONVCONTEXT;
+    CONVINFO = RECORD
+          cb             : DWORD;
+          hUser          : DWORD_PTR;
+          hConvPartner   : HCONV;
+          hszSvcPartner  : HSZ;
+          hszServiceReq  : HSZ;
+          hszTopic       : HSZ;
+          hszItem        : HSZ;
+          wFmt           : UINT;
+          wType          : UINT;
+          wStatus        : UINT;
+          wConvst        : UINT;
+          wLastError     : UINT;
+          hConvList      : HCONVLIST;
+          ConvCtxt       : CONVCONTEXT;
+          hwnd           : HWND;
+          hwndPartner    : HWND;
+    END;
+
+    PCONVINFO            = POINTER TO CONVINFO;
+
+CONST
+    XST_NULL             = 0;
+    XST_INCOMPLETE       = 1;
+    XST_CONNECTED        = 2;
+    XST_INIT1            = 3;
+    XST_INIT2            = 4;
+    XST_REQSENT          = 5;
+    XST_DATARCVD         = 6;
+    XST_POKESENT         = 7;
+    XST_POKEACKRCVD      = 8;
+    XST_EXECSENT         = 9;
+    XST_EXECACKRCVD      = 10;
+    XST_ADVSENT          = 11;
+    XST_UNADVSENT        = 12;
+    XST_ADVACKRCVD       = 13;
+    XST_UNADVACKRCVD     = 14;
+    XST_ADVDATASENT      = 15;
+    XST_ADVDATAACKRCVD   = 16;
+    CADV_LATEACK         = 0FFFFh;
+    ST_CONNECTED         = 00001h;
+    ST_ADVISE            = 00002h;
+    ST_ISLOCAL           = 00004h;
+    ST_BLOCKED           = 00008h;
+    ST_CLIENT            = 00010h;
+    ST_TERMINATED        = 00020h;
+    ST_INLIST            = 00040h;
+    ST_BLOCKNEXT         = 00080h;
+    ST_ISSELF            = 00100h;
+    DDE_FACK             = 08000h;
+    DDE_FBUSY            = 04000h;
+    DDE_FDEFERUPD        = 04000h;
+    DDE_FACKREQ          = 08000h;
+    DDE_FRELEASE         = 02000h;
+    DDE_FREQUESTED       = 01000h;
+    DDE_FAPPSTATUS       = 000ffh;
+    DDE_FNOTPROCESSED    = 00000h;
+    DDE_FACKRESERVED = (BNOT(DDE_FACK BOR DDE_FBUSY BOR DDE_FAPPSTATUS));
+    DDE_FADVRESERVED = (BNOT(DDE_FACKREQ BOR DDE_FDEFERUPD));
+    DDE_FDATRESERVED = (BNOT(DDE_FACKREQ BOR DDE_FRELEASE BOR DDE_FREQUESTED));
+    DDE_FPOKRESERVED = (BNOT(DDE_FRELEASE));
+    MSGF_DDEMGR          = 08001h;
+    CP_WINANSI           = 1004;
+    CP_WINUNICODE        = 1200;
+    XTYPF_NOBLOCK        = 00002h;
+    XTYPF_NODATA         = 00004h;
+    XTYPF_ACKREQ         = 00008h;
+    XCLASS_MASK          = 0FC00h;
+    XCLASS_BOOL          = 01000h;
+    XCLASS_DATA          = 02000h;
+    XCLASS_FLAGS         = 04000h;
+    XCLASS_NOTIFICATION  = 08000h;
+    XTYP_ERROR           = ( 0000H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    XTYP_ADVDATA         = ( 0010H BOR XCLASS_FLAGS ) ;
+    XTYP_ADVREQ          = ( 0020H BOR XCLASS_DATA BOR XTYPF_NOBLOCK ) ;
+    XTYP_ADVSTART        = ( 0030H BOR XCLASS_BOOL ) ;
+    XTYP_ADVSTOP         = ( 0040H BOR XCLASS_NOTIFICATION ) ;
+    XTYP_EXECUTE         = ( 0050H BOR XCLASS_FLAGS ) ;
+    XTYP_CONNECT         = ( 0060H BOR XCLASS_BOOL BOR XTYPF_NOBLOCK ) ;
+    XTYP_CONNECT_CONFIRM = ( 0070H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    XTYP_XACT_COMPLETE   = ( 0080H BOR XCLASS_NOTIFICATION ) ;
+    XTYP_POKE            = ( 0090H BOR XCLASS_FLAGS ) ;
+    XTYP_REGISTER        = ( 00A0H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    XTYP_REQUEST         = ( 00B0H BOR XCLASS_DATA ) ;
+    XTYP_DISCONNECT      = ( 00C0H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    XTYP_UNREGISTER      = ( 00D0H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    XTYP_WILDCONNECT     = ( 00E0H BOR XCLASS_DATA BOR XTYPF_NOBLOCK ) ;
+    XTYP_MASK            = 000F0h;
+    XTYP_SHIFT           = 4;
+    TIMEOUT_ASYNC        = 0FFFFFFFFh;
+    QID_SYNC             = 0FFFFFFFFh;
+    SZDDESYS_TOPIC        = "System";
+    SZDDESYS_ITEM_TOPICS  = "Topics";
+    SZDDESYS_ITEM_SYSITEMS = "SysItems";
+    SZDDESYS_ITEM_RTNMSG  = "ReturnMessage";
+    SZDDESYS_ITEM_STATUS  = "Status";
+    SZDDESYS_ITEM_FORMATS = "Formats";
+    SZDDESYS_ITEM_HELP    = "Help";
+    SZDDE_ITEM_ITEMLIST   = "TopicItemList";
+
+TYPE
+
+PROCEDURE FNCALLBACK(wType : UINT;
+                     wFmt : UINT;
+                     hConv : HCONV;
+                     hsz1 : HSZ;
+                     hsz2 : HSZ;
+                     hData : HDDEDATA;
+                     dwData1 : ULONG_PTR;
+                     dwData2 : ULONG_PTR) : HDDEDATA;
+
+
+TYPE
+    PFNCALLBACK              = PROCEDURE(UINT,
+                                     UINT,
+                                     HCONV,
+                                     HSZ,
+                                     HSZ,
+                                     HDDEDATA,
+                                     ULONG_PTR,
+                                     ULONG_PTR) : HDDEDATA [EXPORT];
+
+CONST
+    CBR_BLOCK            = CAST(HDDEDATA, -1) (*0ffffffffh*);
+
+PROCEDURE DdeInitializeA(VAR pidInst : DWORD;
+                         pfnCallback : PFNCALLBACK;
+                         afCmd : DWORD;
+                         ulRes : DWORD) : UINT;
+
+PROCEDURE DdeInitializeW(VAR pidInst : DWORD;
+                         pfnCallback : PFNCALLBACK;
+                         afCmd : DWORD;
+                         ulRes : DWORD) : UINT;
+
+%IF UNICODE %THEN
+PROCEDURE DdeInitialize = DdeInitializeW;
+%ELSE
+PROCEDURE DdeInitialize = DdeInitializeA;
+%END
+
+CONST
+    CBF_FAIL_SELFCONNECTIONS= 000001000h;
+    CBF_FAIL_CONNECTIONS = 000002000h;
+    CBF_FAIL_ADVISES     = 000004000h;
+    CBF_FAIL_EXECUTES    = 000008000h;
+    CBF_FAIL_POKES       = 000010000h;
+    CBF_FAIL_REQUESTS    = 000020000h;
+    CBF_FAIL_ALLSVRXACTIONS= 00003f000h;
+    CBF_SKIP_CONNECT_CONFIRMS= 000040000h;
+    CBF_SKIP_REGISTRATIONS= 000080000h;
+    CBF_SKIP_UNREGISTRATIONS= 000100000h;
+    CBF_SKIP_DISCONNECTS = 000200000h;
+    CBF_SKIP_ALLNOTIFICATIONS= 0003c0000h;
+    APPCMD_CLIENTONLY    = 000000010h;
+    APPCMD_FILTERINITS   = 000000020h;
+    APPCMD_MASK          = 000000FF0h;
+    APPCLASS_STANDARD    = 000000000h;
+    APPCLASS_MASK        = 00000000Fh;
+
+PROCEDURE DdeUninitialize(idInst : DWORD) : BOOL;
+
+PROCEDURE DdeConnectList(idInst : DWORD;
+                         hszService : HSZ;
+                         hszTopic : HSZ;
+                         hConvList : HCONVLIST;
+                         pCC : PCONVCONTEXT) : HCONVLIST;
+
+PROCEDURE DdeQueryNextServer(hConvList : HCONVLIST;
+                             hConvPrev : HCONV) : HCONV;
+
+PROCEDURE DdeDisconnectList(hConvList : HCONVLIST) : BOOL;
+
+PROCEDURE DdeConnect(idInst : DWORD;
+                     hszService : HSZ;
+                     hszTopic : HSZ;
+                     pCC : PCONVCONTEXT) : HCONV;
+
+PROCEDURE DdeDisconnect(hConv : HCONV) : BOOL;
+
+PROCEDURE DdeReconnect(hConv : HCONV) : HCONV;
+
+PROCEDURE DdeQueryConvInfo(hConv : HCONV;
+                           idTransaction : DWORD;
+                           pConvInfo : PCONVINFO) : UINT;
+
+PROCEDURE DdeSetUserHandle(hConv : HCONV;
+                           id : DWORD;
+                           hUser : DWORD_PTR) : BOOL;
+
+PROCEDURE DdeAbandonTransaction(idInst : DWORD;
+                                hConv : HCONV;
+                                idTransaction : DWORD) : BOOL;
+
+PROCEDURE DdePostAdvise(idInst : DWORD;
+                        hszTopic : HSZ;
+                        hszItem : HSZ) : BOOL;
+
+PROCEDURE DdeEnableCallback(idInst : DWORD;
+                            hConv : HCONV;
+                            wCmd : UINT) : BOOL;
+
+PROCEDURE DdeImpersonateClient(hConv : HCONV) : BOOL;
+
+
+CONST
+    EC_ENABLEALL         = 0;
+    EC_ENABLEONE         = ST_BLOCKNEXT;
+    EC_DISABLE           = ST_BLOCKED;
+    EC_QUERYWAITING      = 2;
+
+PROCEDURE DdeNameService(idInst : DWORD;
+                         hsz1 : HSZ;
+                         hsz2 : HSZ;
+                         afCmd : UINT) : HDDEDATA;
+
+
+CONST
+    DNS_REGISTER         = 00001h;
+    DNS_UNREGISTER       = 00002h;
+    DNS_FILTERON         = 00004h;
+    DNS_FILTEROFF        = 00008h;
+
+PROCEDURE DdeClientTransaction(pData : LPBYTE;
+                               cbData : DWORD;
+                               hConv : HCONV;
+                               hszItem : HSZ;
+                               wFmt : UINT;
+                               wType : UINT;
+                               dwTimeout : DWORD;
+                               VAR pdwResult : DWORD) : HDDEDATA;
+
+PROCEDURE DdeCreateDataHandle(idInst : DWORD;
+                              pSrc : LPBYTE;
+                              cb : DWORD;
+                              cbOff : DWORD;
+                              hszItem : HSZ;
+                              wFmt : UINT;
+                              afCmd : UINT) : HDDEDATA;
+
+PROCEDURE DdeAddData(hData : HDDEDATA;
+                     pSrc : LPBYTE;
+                     cb : DWORD;
+                     cbOff : DWORD) : HDDEDATA;
+
+PROCEDURE DdeGetData(hData : HDDEDATA;
+                     pDst : LPBYTE;
+                     cbMax : DWORD;
+                     cbOff : DWORD) : DWORD;
+
+PROCEDURE DdeAccessData(hData : HDDEDATA;
+                        VAR pcbDataSize : DWORD) : LPBYTE;
+
+PROCEDURE DdeUnaccessData(hData : HDDEDATA) : BOOL;
+
+PROCEDURE DdeFreeDataHandle(hData : HDDEDATA) : BOOL;
+
+
+CONST
+    HDATA_APPOWNED       = 00001h;
+
+PROCEDURE DdeGetLastError(idInst : DWORD) : UINT;
+
+
+CONST
+    DMLERR_NO_ERROR      = 0;
+    DMLERR_FIRST         = 04000h;
+    DMLERR_ADVACKTIMEOUT = 04000h;
+    DMLERR_BUSY          = 04001h;
+    DMLERR_DATAACKTIMEOUT= 04002h;
+    DMLERR_DLL_NOT_INITIALIZED= 04003h;
+    DMLERR_DLL_USAGE     = 04004h;
+    DMLERR_EXECACKTIMEOUT= 04005h;
+    DMLERR_INVALIDPARAMETER= 04006h;
+    DMLERR_LOW_MEMORY    = 04007h;
+    DMLERR_MEMORY_ERROR  = 04008h;
+    DMLERR_NOTPROCESSED  = 04009h;
+    DMLERR_NO_CONV_ESTABLISHED= 0400ah;
+    DMLERR_POKEACKTIMEOUT= 0400bh;
+    DMLERR_POSTMSG_FAILED= 0400ch;
+    DMLERR_REENTRANCY    = 0400dh;
+    DMLERR_SERVER_DIED   = 0400eh;
+    DMLERR_SYS_ERROR     = 0400fh;
+    DMLERR_UNADVACKTIMEOUT= 04010h;
+    DMLERR_UNFOUND_QUEUE_ID= 04011h;
+    DMLERR_LAST          = 04011h;
+
+PROCEDURE DdeCreateStringHandleA(idInst : DWORD;
+                                 psz : ARRAY OF ACHAR;
+                                 iCodePage : INTEGER) : HSZ;
+
+PROCEDURE DdeCreateStringHandleW(idInst : DWORD;
+                                 psz : ARRAY OF UCHAR;
+                                 iCodePage : INTEGER) : HSZ;
+
+%IF UNICODE %THEN
+PROCEDURE DdeCreateStringHandle = DdeCreateStringHandleW;
+%ELSE
+PROCEDURE DdeCreateStringHandle = DdeCreateStringHandleA;
+%END
+
+PROCEDURE DdeQueryStringA(idInst : DWORD;
+                          hsz : HSZ;
+                          VAR psz : ARRAY OF ACHAR;
+                          cchMax : DWORD;
+                          iCodePage : INTEGER) : DWORD;
+
+PROCEDURE DdeQueryStringW(idInst : DWORD;
+                          hsz : HSZ;
+                          VAR psz : ARRAY OF UCHAR;
+                          cchMax : DWORD;
+                          iCodePage : INTEGER) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE DdeQueryString = DdeQueryStringW;
+%ELSE
+PROCEDURE DdeQueryString = DdeQueryStringA;
+%END
+
+PROCEDURE DdeFreeStringHandle(idInst : DWORD;
+                              hsz : HSZ) : BOOL;
+
+PROCEDURE DdeKeepStringHandle(idInst : DWORD;
+                              hsz : HSZ) : BOOL;
+
+PROCEDURE DdeCmpStringHandles(hsz1 : HSZ;
+                              hsz2 : HSZ) : INTEGER;
+
+
+TYPE
+    DDEML_MSG_HOOK_DATA = RECORD
+          uiLo           : UINT_PTR;
+          uiHi           : UINT_PTR;
+          cbData         : DWORD;
+          Data           : ARRAY [0..8 - 1] OF DWORD;
+    END;
+    PDDEML_MSG_HOOK_DATA = POINTER TO DDEML_MSG_HOOK_DATA;
+
+    MONMSGSTRUCT = RECORD
+          cb             : UINT;
+          hwndTo         : HWND;
+          dwTime         : DWORD;
+          hTask          : HANDLE;
+          wMsg           : UINT;
+          wParam         : WPARAM;
+          lParam         : LPARAM;
+          dmhd           : DDEML_MSG_HOOK_DATA;
+    END;
+    PMONMSGSTRUCT        = POINTER TO MONMSGSTRUCT;
+
+    MONCBSTRUCT = RECORD
+          cb             : UINT;
+          dwTime         : DWORD;
+          hTask          : HANDLE;
+          dwRet          : DWORD;
+          wType          : UINT;
+          wFmt           : UINT;
+          hConv          : HCONV;
+          hsz1           : HSZ;
+          hsz2           : HSZ;
+          hData          : HDDEDATA;
+          dwData1        : ULONG_PTR;
+          dwData2        : ULONG_PTR;
+          cc             : CONVCONTEXT;
+          cbData         : DWORD;
+          Data           : ARRAY [0..8 - 1] OF DWORD;
+    END;
+    PMONCBSTRUCT         = POINTER TO MONCBSTRUCT;
+
+    MONHSZSTRUCTA = RECORD
+          cb             : UINT;
+          fsAction       : BOOL;
+          dwTime         : DWORD;
+          hsz            : HSZ;
+          hTask          : HANDLE;
+          str            : ARRAY [0..1 - 1] OF ACHAR;
+    END;
+    PMONHSZSTRUCTA       = POINTER TO MONHSZSTRUCTA;
+
+    MONHSZSTRUCTW = RECORD
+          cb             : UINT;
+          fsAction       : BOOL;
+          dwTime         : DWORD;
+          hsz            : HSZ;
+          hTask          : HANDLE;
+          str            : ARRAY [0..1 - 1] OF WCHAR;
+    END;
+    PMONHSZSTRUCTW       = POINTER TO MONHSZSTRUCTW;
+
+%IF UNICODE %THEN
+    MONHSZSTRUCT         = MONHSZSTRUCTW;
+    PMONHSZSTRUCT        = PMONHSZSTRUCTW;
+%ELSE
+    MONHSZSTRUCT         = MONHSZSTRUCTA;
+    PMONHSZSTRUCT        = PMONHSZSTRUCTA;
+%END
+
+CONST
+    MH_CREATE            = 1;
+    MH_KEEP              = 2;
+    MH_DELETE            = 3;
+    MH_CLEANUP           = 4;
+
+TYPE
+    MONERRSTRUCT = RECORD
+          cb             : UINT;
+          wLastError     : UINT;
+          dwTime         : DWORD;
+          hTask          : HANDLE;
+    END;
+    PMONERRSTRUCT        = POINTER TO MONERRSTRUCT;
+
+    MONLINKSTRUCT = RECORD
+          cb             : UINT;
+          dwTime         : DWORD;
+          hTask          : HANDLE;
+          fEstablished   : BOOL;
+          fNoData        : BOOL;
+          hszSvc         : HSZ;
+          hszTopic       : HSZ;
+          hszItem        : HSZ;
+          wFmt           : UINT;
+          fServer        : BOOL;
+          hConvServer    : HCONV;
+          hConvClient    : HCONV;
+    END;
+    PMONLINKSTRUCT       = POINTER TO MONLINKSTRUCT;
+
+    MONCONVSTRUCT = RECORD
+          cb             : UINT;
+          fConnect       : BOOL;
+          dwTime         : DWORD;
+          hTask          : HANDLE;
+          hszSvc         : HSZ;
+          hszTopic       : HSZ;
+          hConvClient    : HCONV;
+          hConvServer    : HCONV;
+    END;
+    PMONCONVSTRUCT       = POINTER TO MONCONVSTRUCT;
+
+CONST
+    MAX_MONITORS         = 4;
+    APPCLASS_MONITOR     = 000000001h;
+    XTYP_MONITOR         = ( 00F0H BOR XCLASS_NOTIFICATION BOR XTYPF_NOBLOCK ) ;
+    MF_HSZ_INFO          = 001000000h;
+    MF_SENDMSGS          = 002000000h;
+    MF_POSTMSGS          = 004000000h;
+    MF_CALLBACKS         = 008000000h;
+    MF_ERRORS            = 010000000h;
+    MF_LINKS             = 020000000h;
+    MF_CONV              = 040000000h;
+    MF_MASK              = 0FF000000h;
+
+END DDEML.

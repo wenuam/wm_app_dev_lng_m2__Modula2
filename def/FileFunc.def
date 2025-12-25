@@ -1,0 +1,986 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE FileFunc;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+<*/VALIDVER:PROTECT*>
+(*<*/VERSION:PROTECT*>*)
+
+(*
+ FileFunc does not protect against multiple threads accessing the same
+ File data structure. The PROTECT version tag enables this, however
+ this still will not provide proper functionalitly for most applications
+ since one thread may need to do multiple writes before it is done,
+ another thread can then start reading.
+ what an application really needs is a mutex semaphore to protect
+ complete actions within their algorithm, not just single procedure calls
+ hence the reason the protect version tag is defaulted off
+*)
+
+<*/NOPACK*>
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS, ADRINT;
+
+FROM SysClock IMPORT
+    DateTime;
+
+%IF PROTECT %THEN
+FROM Threads IMPORT
+    CriticalSection;
+%END
+
+CONST
+    EOL                 = 36C;
+
+    (* This is the character used to separate directory names and file names
+       in a file specification.
+    *)
+    %IF Windows %THEN
+        PathSepChar         = '\';
+    %ELSIF UNIX %THEN
+        PathSepChar         = '/';
+    %ELSE
+        fix me
+    %END
+
+TYPE
+    (* these strings have room for the maximum data plus a null character *)
+
+    %IF Windows %THEN
+        FileSpecString  = ARRAY [0..260] OF CHAR;
+        NameString      = ARRAY [0..255] OF CHAR;
+    %ELSIF UNIX %THEN
+        FileSpecString  = ARRAY [0..1023] OF CHAR;
+        NameString      = ARRAY [0..255] OF CHAR;
+    %ELSE
+        fix me
+    %END
+
+    FileAttributes =
+        (
+            ReadOnly,
+            Hidden,
+            System,
+            Archive,
+
+            Compressed,
+            Encrypted,
+            Temporary,
+            Offline,     (* Indicates that the file data has been
+                            physically moved to offline storage. *)
+
+            Alias,       (* Unix link  *)
+            OwnerRead,   (* "Unix" permissions *)
+            OwnerWrite,
+            OwnerExec,
+            GroupRead,
+            GroupWrite,
+            GroupExec,
+            OtherRead,
+            OtherWrite,
+            OtherExec,
+
+
+            NormalFile,  (*regular files *)
+            Directory    (*self explanatory. a Directory *)
+        );
+    FileAttributeSet    = PACKEDSET OF FileAttributes;
+    (*
+     none of the above attributes are guaranteed to exist on a given
+     underlying file system except NormalFile and Directory.
+
+     On Unix systems the Hidden attribute is set on files with a
+     leading '.' character in the file name. This is the convension for
+     "Hidden" files.
+     You cannot set the Hidden attribute on Unix systems as this is
+     a pseudo attribute.
+
+     On Unix systems the ReadOnly attribute is set according to the
+     file permissions and taking into account the file owner and
+     the current user and group ids.
+     You cannot set the ReadOnly attribute on Unix systems as this is
+     a pseudo attribute. Use the permissions attributes.
+    *)
+
+    SearchEntry =
+        RECORD
+            (* returned information for you *)
+
+            size        : CARDINAL64;
+            attribute   : FileAttributeSet;
+            dt          : DateTime;(*this is local time *)
+            %IF Windows %OR UNIX %THEN
+            dtUTC       : DateTime;(*this is UTC time *)
+            %END
+            name        : NameString;
+
+            (* fields used for internal implementation *)
+
+            mayHave     : FileAttributeSet;
+            mustHave    : FileAttributeSet;
+        %IF PROTECT %THEN
+            critic      : CriticalSection;
+        %END
+        %IF Windows %THEN
+            findHandle  : ADDRESS;
+            reserved0   : CARDINAL;
+            reserved1   : CARDINAL;
+        %ELSIF UNIX %THEN
+            findHandle  : ADDRESS;
+            pattern     : FileSpecString;
+        %END
+        END;
+
+(*
+     the following record is used to contain the various components
+     of a file specification
+     The sizes of individual components are defined by the underlying
+     file system for the device accessed. The sizes declared here are
+     at least as big as necessary, but most likely larger
+     *)
+    FileNameParts =
+        RECORD
+            %IF Windows %THEN
+            drive       : NameString;
+            %ELSIF UNIX %THEN
+            drive       : ARRAY [0..0] OF CHAR;(*N/A*)
+            %ELSE
+                fix me
+            %END
+            path        : FileSpecString;
+            name        : NameString;
+            extension   : NameString;
+        END;
+
+    (*
+   .drive only has meaning on Miscorosft platforms
+       this is the device, it is either a logical drive letter or
+       a UNC server name and share.
+   .path = this is the path
+   .name = the file name  excluding the file extension
+   .extension = the file extension, this is everything  after the *last*
+       '.' character. On Unix systems this may actually be the full file
+       name since the convension there is to use a preceeding '.' to
+       mark hidden files and/or directories.
+    *)
+
+    FileLockTypes       = (SharedLock, ExclusiveLock);
+
+    FileTypes           = (
+                           FileTypeUnknown,
+                           FileTypeDisk,
+                           FileTypeChar,
+                           FileTypePipe
+                          );
+    (*
+     FileTypeChar is a data stream that cannot be repositioned
+     and is text oriented. Usually this is accessing the console.
+     This means input is comming from the keyboard, and output is going
+     to the screen.
+     FileTypePipe is a data stream that cannot be repositioned
+     and the data format is undefined.
+     FileTypeDisk should be obvious, some sort of floppy,harddisk,etc
+     *)
+
+    DeviceTypes         = (
+                           DeviceUnknown,
+                           DeviceFixedDisk,
+                           DeviceRemovable,
+                           DeviceRamdisk,
+                           DeviceRemote
+                          );
+
+    AccessModes         = (
+                           ReadOnlyDenyNone,
+                           ReadOnlyDenyWrite,
+                           ReadOnlyDenyAll,
+                           ReadWriteDenyNone,
+                           ReadWriteDenyWrite,
+                           ReadWriteDenyAll,
+                           WriteOnlyDenyNone,
+                           WriteOnlyDenyAll
+                          );
+    (*
+     These modes specify both an access mode and a file sharing mode
+     ReadOnly, ReadWrite and WriteOnly are the access mode for your
+     access to the file.
+     DenyNone, DenyWrite, DenyAll are the sharing mode for the file
+     DenyNone will allow everything to have full access to the file
+     DenyWrite will allow others to have read access to the file
+     DenyAll will allow nothing to access the file
+     The most common modes used are ReadOnlyDenyWrite, ReadWriteDenyAll,
+     and ReadWriteDenyNone.
+
+     On Unix systems file open "sharing" does not exist. This module simulates
+     this capability via record locking. There is no way to truely enforce
+     file open sharing on Unix systems.
+     *)
+
+    FileUseInfo         = (
+                           SequentialAccess,
+                           RandomAccess,
+                           WriteThrough,
+                           TemporaryFile
+                          );
+    FileUseInfoSet      = PACKEDSET OF FileUseInfo;
+    (*
+     these flags can be used to give additional instructions to
+     the operating system about how you will be using a file.
+     the operating system can thus possibly optimize the file access
+     given this additional information.
+     these are only suggestions and an operating system may not support
+     all or any of the suggestions.
+     SequentialAccess = the file is accessed linearly, or at least mostly
+                        in this manner. Under Win32 this flag has an
+                        interesting effect on file caching. It will
+                        cause the file to not be cached in the disk
+                        cache except for any read ahead caching
+                        the system does. Once you read past a certain
+                        point the cached data is removed from the cache
+                        which means that the second time you read the
+                        file it will not be in the cache.
+                        Thus for small/average files that are read
+                        often it is best to not use this attribute.
+     RandomAccess = the file is accessed in a random manner
+     WriteThrough = Data written to the file should be immediately written
+                    to the disk. The data can still be cached.
+                    This flag only has meaning on operating systems that
+                    implement write-back disk caches where the data
+                    written will be written to disk at some later point
+                    in time, thus allowing the system to optimize
+                    access to the disk.
+     TemporaryFile = the file is only temporary and will be deleted.
+     *)
+
+    CommonFileErrors    = (
+                           FileErrSuccess,
+                           FileErrFileNotFound,
+                           FileErrPathNotFound,
+                           FileErrNoHandles,
+                           FileErrAccessDenied,
+                           FileErrInvalidHandle,
+                           FileErrNotReady,
+                           FileErrWriteProtect,
+                           FileErrSharingOrLock,
+                           FileErrDiskFull,
+                           FileErrBrokenPipe,
+                           FileErrInterrupted,
+                           FileErrUnknown
+                          );
+    (*
+     these are common errors that can occur while accessing a file
+     The File record contains an error code but this code is operating
+     system dependent
+     use TranslateFileError to convert this code to one of these
+     errors
+     an error code of zero however always means FileErrSuccess
+     *)
+
+    File =
+        RECORD
+            status      : CARDINAL;
+            count       : CARDINAL;
+            bp          : CARDINAL;
+            be          : CARDINAL;
+            start       : CARDINAL64;
+            end         : CARDINAL64;
+            size        : CARDINAL;
+            buffer      : POINTER TO ARRAY [0..0] OF BYTE;(*any size allowed *)
+            handle      : ADRINT;
+            userData    : ADDRESS;
+            %IF PROTECT %THEN
+            critic      : CriticalSection;
+            %END
+            peekedChar  : CHAR;
+            mode        : AccessModes;
+            valid       : BOOLEAN;
+            dirty       : BOOLEAN;
+            eof         : BOOLEAN;
+            buffered    : BOOLEAN;
+            canPosition : BOOLEAN;
+            peeked      : BOOLEAN;
+        END;
+
+    (*
+     the only user fields in the above File record are
+
+        status          = the error state of the last operation
+                          0 = Success
+                              other errors vary by operating system
+        count           = used by the read and write procedures
+        handle          = the operating system file handle
+        eof             = EndOfFile: will be set after a read operation
+        userData        = you can use this field for anything you like
+
+     you can access other fields but do so at your own risk. those fields may
+     change in future implementations.
+*)
+
+CONST
+    InvalidHandle = -1;
+
+  (*
+     These constants are used with the mayHave and mustHave search
+     parameters of FindFirst
+
+     Use one of these with mustHave to search for
+       files only,
+       directories only,
+       files and directories
+    *)
+
+    MustHaveNormalFile  = FileAttributeSet{NormalFile};
+    MustHaveDirectory   = FileAttributeSet{Directory};
+    MustHaveNothing     = FileAttributeSet{};
+
+    (* use the following in mayHave *)
+
+    AllAttributes       = FileAttributeSet{MIN(FileAttributes)..MAX(FileAttributes)};
+    StdAttributes       = AllAttributes - FileAttributeSet{Hidden, System};
+
+    (* these will allow the use of the set + operator to compose a search
+     filter expression
+     example: StdAttributes + AddHidden *)
+
+    AddArchive          = FileAttributeSet{Archive};
+    AddReadOnly         = FileAttributeSet{ReadOnly};
+    AddHidden           = FileAttributeSet{Hidden};
+    AddSystem           = FileAttributeSet{System};
+    AddCompressed       = FileAttributeSet{Compressed};
+    AddTemporary        = FileAttributeSet{Temporary};
+    AddEncrypted        = FileAttributeSet{Encrypted};
+    AddOffline          = FileAttributeSet{Offline};
+    AddAlias            = FileAttributeSet{Alias};
+    AddNormalFile       = FileAttributeSet{NormalFile};
+    AddDirectory        = FileAttributeSet{Directory};
+
+    UnixPermissions     = FileAttributeSet{OwnerRead..OtherExec};
+    UnixExecPerm        = FileAttributeSet{OwnerExec,GroupExec,OtherExec};
+    UnixReadPerm        = FileAttributeSet{OwnerRead,GroupRead,OtherRead};
+    UnixWritePerm       = FileAttributeSet{OwnerWrite,GroupWrite,OtherWrite};
+
+PROCEDURE OpenFile(VAR OUT f : File; spec : ARRAY OF CHAR; mode : AccessModes);
+(*
+ open the file specified by spec, with the access mode specified by mode
+ the file must currently exist
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+ the file position is at the beginning of the file
+*)
+
+PROCEDURE OpenFileEx(VAR OUT f : File;
+                     spec : ARRAY OF CHAR;
+                     mode : AccessModes;
+                     useInfo : FileUseInfoSet);
+(* as OpenFile, with additional information in useInfo *)
+
+PROCEDURE CreateFile(VAR OUT f : File; spec : ARRAY OF CHAR);
+(*
+ create a file with the given file specification
+ the mode of the file is ReadWriteDenyAll
+ if the file already exists, then it is truncated to 0 bytes in size
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+ the file position is at the beginning of the file
+*)
+
+PROCEDURE CreateFileEx(VAR OUT f : File;
+                       spec : ARRAY OF CHAR;
+                       useInfo : FileUseInfoSet);
+(* as CreateFile, with additional information in useInfo *)
+
+PROCEDURE GetTempFileDirectory(VAR OUT spec : ARRAY OF CHAR);
+(* return the system temportary file directory. *)
+
+PROCEDURE MakeTempFileName(VAR INOUT spec : ARRAY OF CHAR);
+(*
+ creates a unique filename in the path given in spec.
+ if spec = "", then the file is placed in the system temp directory.
+ returns the resulting full file specification in spec.
+*)
+
+PROCEDURE CreateTempFile(VAR OUT f : File; VAR INOUT spec : ARRAY OF CHAR);
+(*
+ this is implemented as
+     MakeTempFileName(spec);
+     CreateFileEx(f, spec, FileUseInfoSet{TemporaryFile});
+*)
+
+PROCEDURE CreateTempFileEx(VAR OUT f : File; VAR INOUT spec : ARRAY OF CHAR; useInfo : FileUseInfoSet);
+(*
+ this is implemented as
+     MakeTempFileName(spec);
+     CreateFileEx(f, spec, useInfo+FileUseInfoSet{TemporaryFile});
+*)
+
+PROCEDURE OpenCreateFile(VAR OUT f : File; spec : ARRAY OF CHAR; mode : AccessModes);
+(*
+ open the file specified by spec, with the access mode specified by mode
+ if the file does not exist it is created
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE OpenCreateFileEx(VAR OUT f : File;
+                           spec : ARRAY OF CHAR;
+                           mode : AccessModes;
+                           useInfo : FileUseInfoSet);
+(* as OpenCreateFile, with additional information in useInfo *)
+
+PROCEDURE FakeFileOpen(VAR OUT f : File; handle : ADRINT; mode : AccessModes);
+(*
+ initializes the File record with proper inital values
+ handle = the operating system handle used to access the "file"
+ mode = the access modes
+ this call always succeeds
+ *)
+
+PROCEDURE CloseFile(VAR INOUT f : File);
+(*
+ closes the specified file
+ if the file was buffered and the buffer is "dirty", then contents
+ of the buffer are written to disk before closing the file
+*)
+
+PROCEDURE FileType(VAR INOUT f : File) : FileTypes;
+(*
+ returns the type of the file
+ for DiskFile you can use the file position and size functions
+*)
+
+PROCEDURE SetFileBuffer(VAR INOUT f : File; VAR OUT buf : ARRAY OF BYTE);
+(*
+ attach a buffer to a file
+ excellent for sequentially accessed files.
+ size of buffer is taken from the size of the ARRAY OF BYTE parameter
+ One a buffer is attached to a file all read/write calls go through
+ the file buffer. The disk is only accessed when the buffer is full for
+ writes or empty for reads.
+ For example, your code could read one byte at a time from the file but
+ the disk is accessed in chunks of the size of the buffer.
+ 1-64k are values to try. if you are writing files then larger is better.
+ this is because a fast HD writes reasonably large blocks in the same time
+ as smaller ones.
+ the best rule for a buffer size is to time your application with
+ some different buffer sizes to see what does best.
+ NOTE: Do not forget to consider any disk caches the file system may
+       have in testing file access performance.
+*)
+
+PROCEDURE RemoveFileBuffer(VAR INOUT f : File);
+(* flushes buffer to disk if necessary, then removes file buffer *)
+
+PROCEDURE FlushBuffers(VAR INOUT f : File; flushOs : BOOLEAN);
+(*
+ flushes any buffered data to disk
+ if flushOS = TRUE then the file is flushed out of any
+ OS buffers and or caches to disk, if the file system supports this
+ capability. *)
+
+PROCEDURE ReadBlock(VAR INOUT f : File; buf : ADDRESS; size : CARDINAL);
+(*
+ the amount to be read is passed in the size parameter
+ the data is read into buf
+ the file record count field contains the actual amount read
+ the file position is advanced by the actual amount read
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code  *)
+
+PROCEDURE WriteBlock(VAR INOUT f : File; buf : ADDRESS; size : CARDINAL);
+(*
+ the amount to be written is passed in the size parameter
+ the data is written from buf
+ the file record count field contains the actual amount written
+ the file position is advanced by the actual amount written
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE ReadChar(VAR INOUT f : File) : CHAR;
+(*
+ reads a single character
+
+ it returns the value EOL for the following character sequences
+ Carriage Return. CHR(13)
+ Line Feed. CHR(10)
+ Carriage Return, Line Feed. CHR(13)CHR(10)
+
+ the file position is advanced by the actual amount read
+
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE WriteChar(VAR INOUT f : File; ch : CHAR);
+(*
+ writes a single char
+
+ the value of the EOL is system dependent.
+ for DOS and Windows => Carriage return, line feed pairs.
+ for Unix => line feed.
+ the file position is advanced by one character, except if
+ EOL represents a multi character sequence. in this case the position
+ is advanced by the number of characters in the sequence.
+
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE PeekChar(VAR INOUT f : File) : CHAR;
+(*
+ same as ReadChar
+ except that the file position is not advanced
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE ReadLine(VAR INOUT f : File; VAR OUT str : ARRAY OF CHAR) : CARDINAL;
+(*
+ a convenience call.
+ this procedure reads a line of text from a file.
+ the EOL marker is consumed by this read.
+ if the line is longer than the passed string parameter
+ then the procedure returns leaving the remainder of the line
+ to be read on the next read.
+ the return value is the number of characters in the line.
+*)
+
+PROCEDURE WriteLine(VAR INOUT f : File; str : ARRAY OF CHAR);
+(*
+ a convenience call
+ implemented as
+    IF str[0] <> '' THEN
+        WriteBlock(f, str, LENGTH(str)*SIZE(CHAR));
+    END;
+    WriteChar(f, EOL);
+*)
+
+PROCEDURE LockFileRegion(VAR INOUT f : File;
+                         start, length : CARDINAL64;
+                         lockType : FileLockTypes;
+                         wait : BOOLEAN);
+(*
+ gives the process shared/exclusive access to the specified region of the file in question.
+ You should unlock after the critical file operations have been completed.
+ If you are using region locks you should not be using sharing access modes other than ...DenyNone.
+ multiple locking regions cannot overlap.
+ shared locks allow multiple processes to access the locked region of the file.
+ exclusive locks allow only one process access to the locked region of the file.
+ start = the starting offset in bytes of the region to be locked
+ length = the length in bytes of the region to be locked. length = 0 means the largest possible offset for the file.
+     therefore using start=0 and length=0 effectively locks the entire file even if the file length changes.
+ wait = TRUE then the call will wait for the lock to be aquired. otherwise the call returns immediately with an error
+     result in the lock could not be aquired.
+ f.status = 0 signifies success, otherwise it contains the operating system error code
+*)
+
+PROCEDURE UnlockFileRegion(VAR INOUT f : File; start, length : CARDINAL64);
+(*
+ unlocks a previously locked region of the file.
+ The region to unlock must correspond exactly to an existing locked region.
+ start = the starting offset in bytes of the locked region
+ length = the length in bytes of the region to be unlocked. length = 0 means the largest possible offset for the file.
+ f.status = 0 signifies success, otherwise it contains the operating system error code
+*)
+
+PROCEDURE SetFilePos(VAR INOUT f : File; pos : CARDINAL64);
+(*
+ pos is an absolute file position in bytes
+ position zero is the beginning of the file
+ f.status = 0 signifies success, otherwise it contains the operating system error code
+*)
+
+PROCEDURE GetFilePos(VAR INOUT f : File) : CARDINAL64;
+(*
+ returns an absolute position
+ position zero is the beginning of the file
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE MoveFilePos(VAR INOUT f : File; pos : INTEGER64);
+(*
+ moves the file position relative to the current position
+ position zero is the beginning of the file
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE TruncateFile(VAR INOUT f : File);
+(*
+ truncates the file size to the current file position
+ example
+    SetFilePos(f, newEnd);
+    TruncateFile(f);
+
+ f.status = 0 signifies success, otherwise it contains the
+ operating system error code
+*)
+
+PROCEDURE FileLength(VAR INOUT f : File) : CARDINAL64;
+(* size of the file in bytes *)
+
+PROCEDURE GetFileSizes(name : ARRAY OF CHAR; VAR actual, alloc : CARDINAL64);
+(*
+ actual, alloc are the size of the file in bytes
+ actual is the amount of data stored in the file
+ alloc includes system allocation overhead
+ such as sector/cluster granularity
+*)
+
+PROCEDURE TranslateFileError(f : File) : CommonFileErrors;
+(*
+ translates the OS dependent .status field for common errors
+ only a small common subset of errors is translated
+ if the error does not translate to to one of the errors in
+ CommonFileErrors then FileErrUnknown is returned
+*)
+
+PROCEDURE GetFileAttr(name : ARRAY OF CHAR; VAR OUT attr : FileAttributeSet) : BOOLEAN;
+(*
+ fetch the attributes of the file specified by name
+ returns true if the operation succeeded
+*)
+
+PROCEDURE SetFileAttr(name : ARRAY OF CHAR; attr : FileAttributeSet) : BOOLEAN;
+(*
+ set the attributes of the file specified by name with attr
+ not all attributes can be set by this call, as this is system
+ dependent. for example
+ only the "owner" of a file may be allowed to make this change.
+ returns true if the operation succeeded
+*)
+
+PROCEDURE GetFileDateTime(spec : ARRAY OF CHAR; VAR OUT dt : DateTime);
+PROCEDURE GetFileDateTimeUTC(spec : ARRAY OF CHAR; VAR OUT dt : DateTime);
+PROCEDURE GetFileDateTimes(spec : ARRAY OF CHAR;
+                           VAR OUT create, access, modify : DateTime;
+                           utc : BOOLEAN);
+(*
+ fetch the date time of the file specified in spec
+ the time is local time.
+ if the file does not exist, dt.year = 0
+
+ GetFileDateTimeUTC returns UTC time.
+
+ GetFileDateTimes returns the file creation time, last access time and last modification
+ time *IF* the file system supports the specified parameter.
+ If the file system does not support a given time parameter then the parameter time
+ will be the last modification time. utc = TRUE then the time retuned is UTC.
+*)
+
+PROCEDURE SetFileDateTime(spec : ARRAY OF CHAR; dt : DateTime) : BOOLEAN;
+PROCEDURE SetFileDateTimeUTC(spec : ARRAY OF CHAR; dt : DateTime) : BOOLEAN;
+PROCEDURE SetFileDateTimes(spec : ARRAY OF CHAR;
+                           create, access, modify : DateTime;
+                           utc : BOOLEAN) : BOOLEAN;
+(*
+ set the date time of the file specified in spec.
+ the dt parameter is local time.
+ sets "modified" time field
+ also sets the "accessed" time field if applicable
+ the system may not allow you to set the file date time.
+ this is a system dependent feature.
+ for example
+ only the "owner" of a file may be allowed to make this change.
+
+ SetFileDateTimeUTC assumes the dt parameter is UTC time.
+
+ SetFileDateTimes sets the file creation time, last access time and last modification
+ time *IF* the file system supports the specified parameter.
+ If the file system does not support a given time parameter then the parameter is
+ ignored.
+ if a given parameter has .year = 0, then that parameter is ignored.
+ utc = TRUE the the time parameters are assumed to be UTC times.
+
+*)
+
+PROCEDURE RenameFile(fromFile, toFile : ARRAY OF CHAR) : BOOLEAN;
+(*
+ change the name of a file
+ you can move a file from one directory to another on the same device
+ with this function.
+ the meaning of a device is somewhat dependent on the
+ underlying file system
+*)
+
+PROCEDURE DeleteFile(name : ARRAY OF CHAR) : BOOLEAN;
+(*
+ deletes the named file from the disk
+ returns TRUE if successful
+*)
+
+PROCEDURE FileExists(name : ARRAY OF CHAR) : BOOLEAN;
+(*
+ does the named file exists
+ returns TRUE if successful
+*)
+
+PROCEDURE CopyFile(source, dest : ARRAY OF CHAR) : BOOLEAN;
+(*
+ copy a file from source to dest
+ if dest already exists it will be overwritten
+*)
+
+PROCEDURE SetHandleCount(num : CARDINAL);
+(*
+ increases number of file handles available to a process
+ The number of file handles specifies how many files can be open
+ at any one point in time
+ some systems have a limit and some do not.
+ this call is then ignored on systems that do not have hard limits.
+ if the current limit is greater than the value being set, then this call
+ does not reduce the limit.
+*)
+
+PROCEDURE GetNextDir(list : ARRAY OF CHAR;
+                     sepChars : ARRAY OF CHAR;
+                     VAR INOUT i : CARDINAL;
+                     VAR OUT item : ARRAY OF CHAR) : BOOLEAN;
+(*
+ list is a series of strings separated by a a given set of character(s)
+ this list is a search path of directories
+ sepChars = the character(s) that separate the individual elements
+ the procedure starts search list at the position pointed to in "i"
+ "i" is incremented past the returned string upon return
+ item = the returned string extracted from list
+ a PathSepChar characeter is appended to the returned path if this character
+ is not already there
+ returns TRUE if a value is returned in item, otherwise FALSE
+ example of use
+
+    i := 0;
+    WHILE GetNextDir(path, i, dir) DO
+        ConstructFileName(name, dir, spec);
+         do something
+    END;
+*)
+
+PROCEDURE ParseFileName(pathname : ARRAY OF CHAR; VAR OUT parts : FileNameParts);
+(* splits file spec into the FileNameParts record
+   .drive only has meaning on Miscorosft platforms
+       this is the device, it is either a logical drive letter or
+       a UNC server name and share.
+   .path = this is the path
+   .name = the file name  excluding the file extension
+   .extension = the file extension, this is everything  after the *last*
+       '.' character. On Unix systems this may actually be the full file
+       name since the convension there is to use a preceeding '.' to
+       mark hidden files and/or directories.
+*)
+
+PROCEDURE ParseFileNameEx(path : ARRAY OF CHAR;
+                          VAR OUT parts : FileNameParts;
+                          list : ARRAY OF CHAR;
+                          sepChars : ARRAY OF CHAR);
+(*
+ like ParseFileName, but in addition
+ an extension is only considered a file extension if it is
+ contained within the list of extensions passed in the parameter list
+ where each item within the list is separated by one of the characters
+ is sepChars
+ if the extension is not in the list it is then appended to name field
+ this function obviously only makes sense on file systems where
+ a filename can contain more than one . character
+*)
+
+PROCEDURE AssembleParts(parts : FileNameParts; VAR OUT name : ARRAY OF CHAR);
+(* puts the file parts back together into a single string *)
+
+PROCEDURE ConstructFileName(pri, def : ARRAY OF CHAR; VAR OUT res : ARRAY OF CHAR);
+(*
+ pri = the primary file spec (device/path/name/extension)
+ def = the default file spec (device/path/name/extension)
+ the above can have all or none of various path components
+ anything pri does not have is supplied by def if it has the component
+ this function uses ParseFileName to split pri and def into their
+ respective components
+
+  ConstructFileName(FileName, '.mod', FileName);
+   supplies a default extension. The leading . is necessary
+  ConstructFileName(FileName, 'd:\dev\rtl\', FileName);
+   supplies a default device and/or path. The trailing PathSepChar is necessary
+   to signify that "rtl" is a directory name and not a file name.
+*)
+
+PROCEDURE ConstructFileNameEx(pri, def : ARRAY OF CHAR;
+                              VAR OUT res : ARRAY OF CHAR;
+                              list : ARRAY OF CHAR;
+                              sepChars : ARRAY OF CHAR);
+(* like ConstructFileName, however uses ParseFileNameEx to split
+ the primary and default parts *)
+
+PROCEDURE FindInPathList(fileName, pathList : ARRAY OF CHAR;
+                         sepChars : ARRAY OF CHAR;
+                         VAR OUT result : ARRAY OF CHAR;
+                         searchCurrent : BOOLEAN) : BOOLEAN;
+(*
+ searches a given path list for a file given in fileName
+ sepChars = the character(s) that separate the path elements
+ if the function returns TRUE then the fileSpec is returned in result
+ if searchCurrent = TRUE then the current directory is search first
+ if searchCurrent = FALSE then the current directory is not searched first
+*)
+
+PROCEDURE FindInOSPathList(fileName : ARRAY OF CHAR; VAR OUT result : ARRAY OF CHAR) : BOOLEAN;
+(*
+ searches the Operating system search path, "PATH", for a file
+ if TRUE then the fileSpec is returned in result
+ the current directory is always searched first
+*)
+
+PROCEDURE FileSpecIsAbsolute (spec : ARRAY OF CHAR) : BOOLEAN;
+(*
+ returns TRUE when spec is an absolute path, i.e. starts with a device or with a slash.
+*)
+
+PROCEDURE ExpandFileSpec(VAR INOUT spec : ARRAY OF CHAR);
+(*
+ if passed a relative file spec, this procedure returns
+ a complete unambiguous file spec which includes the device and path
+ otherwise the passed file spec is returned unchanged.
+*)
+
+PROCEDURE MakeFileSpecRelative (BasePath : ARRAY OF CHAR; VAR INOUT spec : ARRAY OF CHAR) : BOOLEAN;
+(*
+ A path transferred in spec is to be converted relative to BasePath.
+ If path in spec is already relative it is not changed and TRUE is returned.
+ If one of input paths is irregular, then nothing is changed and FALSE is returned.
+ If input paths are regular but are not in the same server or device,
+ nothing has been changed and FALSE is returned.
+ Otherwise spec is changed to a relative and TRUE is returned.
+*)
+
+PROCEDURE FindFirst(path : ARRAY OF CHAR;
+                    mayHave : FileAttributeSet;
+                    mustHave : FileAttributeSet;
+                    VAR OUT entry : SearchEntry) : BOOLEAN;
+(*
+ path specifies a device and directory where to search
+ wildcards can be and generally are used in path.
+ How wildcards are specified is filesystem dependent.
+ Generally the '*' character matches any number of characters and a
+ '?' character matches any single character.
+ if this procedure succeeds(returns TRUE), you must call FindClose when
+ you are done searching.
+ Example of use
+   This searches for all files, excluding file directories.
+    IF FindFirst("*", StdAttributes, MustHaveNormalFile, entry) THEN
+        REPEAT
+            ...
+        UNTIL NOT FindNext(entry);
+        FindClose(entry);
+    END;
+
+
+  mayHave - returned files will only have attributes within this set,
+            however they need not have all of the attributes.
+  mustHave - all returned files will have ALL the specified Attribute(s)
+
+  FindFirst combines mustHave into mayHave as a convenience.
+
+  NormalFile is assumed for mayHave if Directory is not present.
+
+  this API will not return the pseudo directories "." and "..", for filesystems and/or
+  operating systems that support such pseudo directories. it filters these out.
+*)
+
+PROCEDURE FindNext(VAR INOUT entry : SearchEntry) : BOOLEAN;
+(* find the next file in the search parameters given in FindFirst *)
+
+PROCEDURE FindClose(VAR INOUT entry : SearchEntry);
+(* terminates a FindFirst, FindNext sequence of operations *)
+
+PROCEDURE MakeDir(name : ARRAY OF CHAR) : BOOLEAN;
+(*
+ create a directory in the given location.
+ name can contain a device and path in the specification
+ all directories in the path up to the directory to be created must
+ already exist.
+ returns TRUE if successfull
+*)
+
+PROCEDURE CreateDirTree(fileSpec : ARRAY OF CHAR) : BOOLEAN;
+(*
+ makes sure every directory within the given path exists
+ if it does not, the necessary directories are created
+ returns TRUE if successfull
+ this procedure accepts file specifications and ignores the filename
+ this means that if you pass only a directory path a PatrhSepChar character
+ should be at the end of the string.
+ examples
+ CreateDirTree("\sbm2\mod\FileFile.MOD");
+ CreateDirTree("\sbm2\mod\");
+*)
+
+PROCEDURE DeleteDir(name : ARRAY OF CHAR) : BOOLEAN;
+(*
+ remove a directory
+ returns TRUE if successfull
+*)
+
+PROCEDURE DirExists(name : ARRAY OF CHAR) : BOOLEAN;
+(*
+ does the specified directory exist
+ returns TRUE if successfull
+*)
+
+PROCEDURE RenameDir(fromDir, toDir : ARRAY OF CHAR) : BOOLEAN;
+(*
+ rename a directory
+ you can move a file from one directory to another on the same device
+ with this function
+ the meaning of a device is somewhat dependent on the underlying system
+ returns TRUE if successfull
+*)
+
+PROCEDURE GetDefaultPath(VAR OUT path : ARRAY OF CHAR) : BOOLEAN;
+(*
+ gets the current default device and path
+ the operating system uses the default path to open files when
+ they are given a relative path
+ for example if \sbm2\def\ is the default path then
+ OpenFile(f, "FileFunc.DEF", ReadOnlyDenyWrite)
+  is the same as
+ OpenFile(f, "\sbm2\def\FileFunc.DEF", ReadOnlyDenyWrite)
+*)
+
+PROCEDURE SetDefaultPath(path : ARRAY OF CHAR) : BOOLEAN;
+(* sets the current default device and path *)
+
+PROCEDURE GetDeviceFreeSpace(spec : ARRAY OF CHAR) : CARDINAL32;
+(*
+ spec = file spec of any device, file or directory on the device
+ returns the amount of free space on the device.
+ the device can be a network share.
+ if the device has more free space than MAX(CARDINAL32) then
+ MAX(CARDINAL32) is returned
+*)
+
+PROCEDURE GetDeviceFreeSpaceEx(spec : ARRAY OF CHAR; VAR OUT allocGranularity : CARDINAL32) : LONGCARD;
+(*
+ spec = file spec of any device, file or directory on the device
+ returns the amount of free space on the device.
+ the device can be a network share.
+ allocGranularity contains the file allocation granularity of the device
+*)
+
+PROCEDURE GetDeviceType(spec : ARRAY OF CHAR) : DeviceTypes;
+(*
+ spec = file spec of any file or directory on the "device"
+ DOS can only determine remote and removable
+ Unix can only determine remote
+*)
+
+END FileFunc.

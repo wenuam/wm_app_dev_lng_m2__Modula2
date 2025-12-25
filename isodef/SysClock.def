@@ -1,0 +1,73 @@
+DEFINITION MODULE SysClock;
+(* =========================================
+            Definition Module from
+                  ISO Modula-2
+Draft Standard CD10515 by JTC1/SC22/WG13
+    Language and Module designs  1992 by
+BSI, D.J. Andrews, B.J. Cornelius, R. B. Henry
+R. Sutcliffe, D.P. Ward, and M. Woodman
+
+=========================================== *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* Facilities for accessing a system clock that
+   records the date and time of day
+*)
+
+<*/NOPACK*>
+
+CONST
+    maxSecondParts      = 999;(*implementation dependent value*)
+
+TYPE
+    Month       = [1..12];
+    Day         = [1..31];
+    Hour        = [0..23];
+    Min         = [0..59];
+    Sec         = [0..59];
+    Fraction    = [0..maxSecondParts];
+    UTCDiff     = [-780..720];
+
+    DateTime    =
+        RECORD
+			year            : CARDINAL;
+			month           : Month;
+			day             : Day;
+			hour            : Hour;
+			minute          : Min;
+			second          : Sec;
+			fractions       : Fraction; (* parts of a second *)
+			zone            : UTCDiff;  (* Time zone differential factor
+										   which is the number of minutes
+										   to add to local time to obtain
+										   UTC. *)
+			summerTimeFlag  : BOOLEAN;  (* interpretation depends on local
+										   usage *)
+        END;
+
+(* NOTE: the zone and summerTimeFlag fields are only supported on those *)
+(* operating systems that can provide this information *)
+(* On Win32 and Posix compliant Unix they are supported *)
+(* summerTimeFlag can means daylight savings time or not *)
+
+PROCEDURE CanGetClock() : BOOLEAN;
+(* Returns TRUE if a system clock can be read; FALSE otherwise *)
+
+PROCEDURE CanSetClock() : BOOLEAN;
+(* Returns TRUE if a system clock can be set; FALSE otherwise *)
+
+PROCEDURE IsValidDateTime(userData : DateTime) : BOOLEAN;
+(* Returns TRUE if the value of userData represents a valid date and time;
+   FALSE otherwise
+*)
+
+PROCEDURE GetClock(VAR userData : DateTime);
+(* If possible, assigns system date and time of day to userData *)
+
+PROCEDURE SetClock(userData : DateTime);
+(* If possible, sets the system clock to the values of userData *)
+
+END SysClock.

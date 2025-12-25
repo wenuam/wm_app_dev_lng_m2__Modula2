@@ -1,0 +1,203 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE WFExt;
+
+FROM WIN32 IMPORT
+    UINT, DWORD, FILETIME, BYTE, HMENU, HWND, LONG, WORD, HBITMAP,
+    LPTSTR, WINT;
+
+FROM WINUSER IMPORT
+    WM_USER;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+<*/NOPACK*>
+
+CONST
+    MENU_TEXT_LEN        = 40;
+
+    FMMENU_FIRST         = 1;
+    FMMENU_LAST          = 99;
+    FMEVENT_LOAD         = 100;
+    FMEVENT_UNLOAD       = 101;
+    FMEVENT_INITMENU     = 102;
+    FMEVENT_USER_REFRESH = 103;
+    FMEVENT_SELCHANGE    = 104;
+    FMEVENT_TOOLBARLOAD  = 105;
+    FMEVENT_HELPSTRING   = 106;
+    FMEVENT_HELPMENUITEM = 107;
+
+    FMFOCUS_DIR          = 1;
+    FMFOCUS_TREE         = 2;
+    FMFOCUS_DRIVES       = 3;
+    FMFOCUS_SEARCH       = 4;
+
+    FM_GETFOCUS           = WM_USER + 0200h;
+    FM_GETSELCOUNT        = WM_USER + 0202h;
+    FM_GETSELCOUNTLFN     = WM_USER + 0203h;
+    FM_REFRESH_WINDOWS    = WM_USER + 0206h;
+    FM_RELOAD_EXTENSIONS  = WM_USER + 0207h;
+
+    FM_GETDRIVEINFOA      = WM_USER + 0201h;
+    FM_GETFILESELA        = WM_USER + 0204h;
+    FM_GETFILESELLFNA     = WM_USER + 0205h;
+
+    FM_GETDRIVEINFOW      = WM_USER + 0211h;
+    FM_GETFILESELW        = WM_USER + 0214h;
+    FM_GETFILESELLFNW     = WM_USER + 0215h;
+
+%IF UNICODE %THEN
+    FM_GETDRIVEINFO       = FM_GETDRIVEINFOW;
+    FM_GETFILESEL         = FM_GETDRIVEINFOW;
+    FM_GETFILESELLFN      = FM_GETFILESELLFNW;
+%ELSE
+    FM_GETDRIVEINFO       = FM_GETDRIVEINFOA;
+    FM_GETFILESEL         = FM_GETDRIVEINFOA;
+    FM_GETFILESELLFN      = FM_GETFILESELLFNA;
+%END
+
+TYPE
+    FMS_GETFILESELA =
+		RECORD
+			ftTime         : FILETIME;
+			dwSize         : DWORD;
+			bAttr          : BYTE;
+			szName         : ARRAY [0..260 - 1] OF ACHAR;
+		END;
+    LPFMS_GETFILESELA    = POINTER TO FMS_GETFILESELA;
+
+    <*/PUSH/NOWARN:A*>
+    FMS_GETFILESELW =
+		RECORD
+			ftTime         : FILETIME;
+			dwSize         : DWORD;
+			bAttr          : BYTE;
+			szName         : ARRAY [0..260 - 1] OF UCHAR;
+		END;
+    LPFMS_GETFILESELW    = POINTER TO FMS_GETFILESELW;
+    <*/POP*>
+
+%IF UNICODE %THEN
+    FMS_GETFILESEL      = FMS_GETFILESELW;
+%ELSE
+    FMS_GETFILESEL      = FMS_GETFILESELA;
+%END
+    LPFMS_GETFILESEL    = POINTER TO FMS_GETFILESEL;
+
+    FMS_GETDRIVEINFOA =
+		RECORD
+			dwTotalSpace   : DWORD;
+			dwFreeSpace    : DWORD;
+			szPath         : ARRAY [0..260 - 1] OF ACHAR;
+			szVolume       : ARRAY [0..14 - 1] OF ACHAR;
+			szShare        : ARRAY [0..128 - 1] OF ACHAR;
+		END;
+    LPFMS_GETDRIVEINFOA  = POINTER TO FMS_GETDRIVEINFOA;
+
+    FMS_GETDRIVEINFOW =
+		RECORD
+			dwTotalSpace   : DWORD;
+			dwFreeSpace    : DWORD;
+			szPath         : ARRAY [0..260 - 1] OF UCHAR;
+			szVolume       : ARRAY [0..14 - 1] OF UCHAR;
+			szShare        : ARRAY [0..128 - 1] OF UCHAR;
+		END;
+    LPFMS_GETDRIVEINFOW  = POINTER TO FMS_GETDRIVEINFOW;
+
+%IF UNICODE %THEN
+    FMS_GETDRIVEINFO     = FMS_GETDRIVEINFOW;
+%ELSE
+    FMS_GETDRIVEINFO     = FMS_GETDRIVEINFOA;
+%END
+    LPFMS_GETDRIVEINFO   = POINTER TO FMS_GETDRIVEINFO;
+
+
+%IF AMD64 %THEN
+<*/PUSH/NOWARN:A*>
+%END
+    FMS_LOADA = RECORD
+          dwSize         : DWORD;
+          szMenuName     : ARRAY [0..MENU_TEXT_LEN - 1] OF ACHAR;
+          hMenu          : HMENU;
+          wMenuDelta     : UINT;
+    END;
+    LPFMS_LOADA          = POINTER TO FMS_LOADA;
+
+    FMS_LOADW = RECORD
+          dwSize         : DWORD;
+          szMenuName     : ARRAY [0..MENU_TEXT_LEN - 1] OF UCHAR;
+          hMenu          : HMENU;
+          wMenuDelta     : UINT;
+    END;
+    LPFMS_LOADW          = POINTER TO FMS_LOADW;
+%IF AMD64 %THEN
+<*/POP*>
+%END
+
+%IF UNICODE %THEN
+    FMS_LOAD     = FMS_LOADW;
+%ELSE
+    FMS_LOAD     = FMS_LOADA;
+%END
+    LPFMS_LOAD   = POINTER TO FMS_LOAD;
+
+    EXT_BUTTON = RECORD
+          idCommand      : WORD;
+          idsHelp        : WORD;
+          fsStyle        : WORD;
+    END;
+    LPEXT_BUTTON         = POINTER TO EXT_BUTTON;
+
+    <*/PUSH/NOWARN:A*>
+    FMS_TOOLBARLOAD = RECORD
+          dwSize         : DWORD;
+          lpButtons      : LPEXT_BUTTON;
+          cButtons       : WORD;
+          cBitmaps       : WORD;
+          idBitmap       : WORD;
+          hBitmap        : HBITMAP;
+    END;
+    <*/POP*>
+    LPFMS_TOOLBARLOAD    = POINTER TO FMS_TOOLBARLOAD;
+
+%IF AMD64 %THEN
+<*/PUSH/NOWARN:A*>
+%END
+    FMS_HELPSTRINGA = RECORD
+          idCommand      : WINT;
+          hMenu          : HMENU;
+          szHelp         : ARRAY [0..128 - 1] OF ACHAR;
+    END;
+    LPFMS_HELPSTRINGA    = POINTER TO FMS_HELPSTRINGA;
+
+    FMS_HELPSTRINGW = RECORD
+          idCommand      : WINT;
+          hMenu          : HMENU;
+          szHelp         : ARRAY [0..128 - 1] OF UCHAR;
+    END;
+    LPFMS_HELPSTRINGW    = POINTER TO FMS_HELPSTRINGW;
+%IF AMD64 %THEN
+<*/POP*>
+%END
+
+%IF UNICODE %THEN
+    FMS_HELPSTRING      = FMS_HELPSTRINGW;
+%ELSE
+    FMS_HELPSTRING      = FMS_HELPSTRINGA;
+%END
+    LPFMS_HELPSTRING    = POINTER TO FMS_HELPSTRING;
+
+TYPE
+    FM_EXT_PROC          = PROCEDURE (HWND, WORD, LONG) : DWORD;
+    FM_UNDELETE_PROC     = PROCEDURE (HWND, LPTSTR) : DWORD;
+
+%IF UNICODE %THEN
+PROCEDURE FMExtensionProcW(hwnd : HWND; wEvent : WORD; lParam : LONG) : LONG;
+%ELSE
+PROCEDURE FMExtensionProc(hwnd : HWND; wEvent : WORD; lParam : LONG) : LONG;
+%END
+END WFExt.

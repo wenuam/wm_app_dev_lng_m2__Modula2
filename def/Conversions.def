@@ -1,0 +1,122 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE Conversions;
+
+FROM SYSTEM IMPORT
+    ADRCARD, ADRINT;
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+PROCEDURE StringToInt(str : ARRAY OF CHAR;
+                      VAR INOUT pos : CARDINAL;
+                      VAR OUT num : INTEGER;
+                      VAR OUT done : BOOLEAN);
+(* Get an integer number from a string starting at position pos. *)
+(* pos is left pointing at the first character that is not part of the *)
+(* number. done signifies the success of the conversion *)
+(* Skips any leading spaces. *)
+
+PROCEDURE StrToInt(buf : ARRAY OF CHAR; VAR OUT num : INTEGER) : BOOLEAN;
+(* Convert an integer number from a string  *)
+(* Skips any leading spaces. *)
+
+PROCEDURE IntToString(num : ADRINT;
+                      size : CARDINAL;
+                      VAR OUT str : ARRAY OF CHAR;
+                      VAR INOUT pos : CARDINAL;
+                      VAR OUT done : BOOLEAN);
+(* Convert an integer number into a string starting at position *)
+(* pos.  pos is left pointing to the character following the number. *)
+(* done signifies the success of the conversion *)
+
+PROCEDURE IntToStr(num : ADRINT; VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* Convert an integer number to a string  *)
+
+PROCEDURE StringToCard(str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT num : CARDINAL;
+                       VAR OUT done : BOOLEAN);
+(* Get a cardinal number from a string starting at position pos. *)
+(* pos is left pointing at the first character that is not part of the *)
+(* number *)
+(* done signifies the success of the conversion *)
+(* Skips any leading spaces. *)
+
+PROCEDURE StrToCard(buf : ARRAY OF CHAR; VAR OUT num : CARDINAL) : BOOLEAN;
+(* Convert a string in buf to a cardinal *)
+(* Skips any leading spaces. *)
+
+PROCEDURE CardToString(num : ADRCARD;
+                       size : CARDINAL;
+                       VAR OUT str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT done : BOOLEAN);
+(* Convert a cardinal number into the string starting at position *)
+(* pos.  pos is left pointing to the character following the number. *)
+(* done signifies the success of the conversion *)
+
+PROCEDURE CardToStr(num : ADRCARD; VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* Convert a cardinal to a string *)
+
+PROCEDURE StrBaseToCard(str : ARRAY OF CHAR;
+                        base : CARDINAL;
+                        VAR OUT num : CARDINAL) : BOOLEAN;
+(* convert a string to a cardinal using the number base specified in base *)
+(* (base >= 2) AND (base <= 16) *)
+(* Skips any leading spaces. *)
+
+PROCEDURE CardBaseToStr(num : ADRCARD;
+                        base : CARDINAL;
+                        VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* convert a cardinal to a string using the number base specified in base *)
+(* (base >= 2) AND (base <= 16) *)
+
+PROCEDURE StringToLong(str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT num : LONGINT;
+                       VAR OUT done : BOOLEAN);
+(* Get an longint number from a string buf starting at position pos. *)
+(* pos is left pointing at the first character that is not part of the *)
+(* number. *)
+(* done signifies the success of the conversion *)
+(* Skips any leading spaces. *)
+
+PROCEDURE StrToLong(buf : ARRAY OF CHAR; VAR OUT num : LONGINT) : BOOLEAN;
+(* Convert a longint number from a string  *)
+(* Skips any leading spaces. *)
+
+PROCEDURE LongToString(num : LONGINT;
+                       size : CARDINAL;
+                       VAR OUT str : ARRAY OF CHAR;
+                       VAR INOUT pos : CARDINAL;
+                       VAR OUT done : BOOLEAN);
+(* Convert a longint number into the string starting at position *)
+(* pos.  pos is left pointing to the character following the number *)
+(* done signifies the success of the conversion *)
+
+PROCEDURE LongToStr(num : LONGINT; VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* Convert a longint to a string *)
+
+PROCEDURE StrBaseToLong(str : ARRAY OF CHAR;
+                        base : CARDINAL;
+                        VAR OUT num : LONGCARD) : BOOLEAN;
+(* convert a string to a longcard using the number base specified in base *)
+(* (base >= 2) AND (base <= 16) *)
+(* Skips any leading spaces. *)
+
+PROCEDURE LongBaseToStr(num : LONGCARD;
+                        base : CARDINAL;
+                        VAR OUT str : ARRAY OF CHAR) : BOOLEAN;
+(* convert a longcard to a string using the number base specified in base *)
+(* (base >= 2) AND (base <= 16) *)
+
+END Conversions.

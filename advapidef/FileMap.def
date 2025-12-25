@@ -1,0 +1,142 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                        Copyright (C) 2009                               *)
+(*                            by ADW Software                              *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE FileMap;
+<*/NOPACK*>
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* functions to manipulate memory mapped files *)
+
+FROM SYSTEM IMPORT
+    ADDRESS, ADRCARD, ADRINT;
+
+TYPE
+    MapMode             = (MapReadOnly, MapReadWrite);
+    FileMapResults      = (FileMapFailed, FileMapOpened, FileMapCreated);
+
+    MappedFile =
+        RECORD
+        status          : CARDINAL;     (* error code, OS depepdent *)
+        maxSize         : CARDINAL;     (* the maximum size of the map *)
+        mapStart        : CARDINAL;
+        mapLength       : CARDINAL;
+        mapPtr          : ADDRESS;
+        fileHandle      : ADRINT;
+        %IF Windows %THEN
+        mapHandle       : ADRINT;
+        %END
+        mode            : MapMode;
+        END;
+
+    (*
+     the only user fields in MappedFile are
+     .status  = the OS dependent error code, 0 = success
+     .maxSize = the maximum size of the mapping object
+     the others should not be touched, unless you need access to
+     the OS dependent data structures
+     *)
+
+PROCEDURE CreateFileMap(VAR OUT mf : MappedFile;
+                        fileName : ARRAY OF CHAR;
+                        mapName : ARRAY OF CHAR;
+                        mode : MapMode;
+                        maxSize : ADRCARD) : FileMapResults;
+(*
+ Opens or creates a file mapping object
+ if it exists the mapping object is opened, otherwise it is created
+ mapName is the name applied to the mapping object.
+ mapName can be an empty string, if this is the case the mapping object
+ cannot be shared with other processes.
+ on Unix systems the mapName is not used and is ignored.
+ fileName is the name of the actual file to be mapped
+ on Win32 the file is opened with exclusive access,
+ thus protecting the memory mapped data.
+ on Unix systems the file cannot be protected in this way.
+ mode is the mode of use for the mapping object.
+ maxSize is the maximum size for the mapping object.
+ if 0 is passed to maxSize, then the entire file will be mapped.
+ when this is the case the .maxSize field in the FileMap record
+ will have the actual file size, not zero as passed to the parameter.
+ otherwise the .maxSize field will reflect the maxSize parameter.
+ if you wish to increase the filesize, maxSize must reflect this
+
+ if you want to increase the file size after it has been mapped
+ you will have to close the file map, increase the file size
+ and then remap the file.
+
+ in Unix
+ FileMapOpened is never returned only FileMapCreated is returned on success.
+ fileName must always be a valid file name.
+
+ on Win32
+ fileName can be an empty string, in this case maxSize cannot be = 0.
+ maxSize space will be allocated in the OS swapping file.
+
+ Win32 <-> Unix portability
+ this api provides full Win32 functionality, which is a superset of Unix.
+ for code that functions identically on both platforms...
+  on Unix a memory mapped file is shared if two processes map the same file.
+  on Win32 this only happes if the same mapName is used with the same file.
+  therefore portable code should use the same mapName and map the same file.
+*)
+
+PROCEDURE CloseFileMap(VAR INOUT mf : MappedFile) : BOOLEAN;
+(*
+ closes the file mapping object
+ if a view is still open, it is closed before the FileMap is closed
+ if the mapping object had opened the file, the file is closed as well
+*)
+
+PROCEDURE MapFileView(VAR INOUT mf : MappedFile;
+                      start : ADRCARD;
+                      length : ADRCARD) : ADDRESS;
+(*
+ maps a portion of the file into the process address space
+ a pointer is returned for access to this region
+ NIL will be returned if the call fails for some reason
+ only one region can be mapped at a time
+
+ start = the starting position in the file to map
+ for WIN32 this address MUST be on a 64k boundary.
+ for Unix this must be on a processor page boundary.
+     portable code should use 64k.
+
+ length = the size in bytes of the file region to map.
+     if length = 0 the entire file from start is mapped.
+*)
+
+PROCEDURE MapFileViewEx(VAR INOUT mf : MappedFile;
+                        start : ADRCARD;
+                        length : ADRCARD;
+                        addr : ADDRESS) : BOOLEAN;
+(*
+ like MapFileView but you specify the address of the mapped view
+ returns TRUE if successful.
+ it is better programming practice to not depend on the address of
+ allocated memory, but this function may be necessary.
+ the operating system is free to refuse this request
+ and fail the operation with an error.
+*)
+
+PROCEDURE UnMapFileView(VAR INOUT mf : MappedFile) : BOOLEAN;
+(*
+ reverses the effect of MapFileView.
+ any changed file portions are written to disk.
+ you can now map another region of the file.
+*)
+
+PROCEDURE FlushMappedFile(VAR INOUT mf : MappedFile) : BOOLEAN;
+(*
+ updates any changed portions to the disk.
+ the file view is still active
+*)
+
+END FileMap.

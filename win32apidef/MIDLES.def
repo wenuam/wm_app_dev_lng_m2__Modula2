@@ -1,0 +1,141 @@
+(*
+* Copyright (c) 1985-2000, Microsoft Corp. All rights reserved.             *
+*)
+(* Conversion from Microsoft WIN32 SDK C source to Modula-2 source *)
+(* Copyright (c) 2009, ADW Software. All rights reserved. *)
+
+DEFINITION MODULE MIDLES;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+FROM WIN32 IMPORT
+    DWORD, WINT, BYTE, SHORT;
+
+FROM RPCCore IMPORT
+    RPC_STATUS, RPC_SYNTAX_IDENTIFIER, handle_t, PRPC_SYNTAX_IDENTIFIER,
+    size_t;
+
+FROM RPC IMPORT
+    PMIDL_STUB_MESSAGE, PMIDL_STUB_DESC, MIDL_STUB_MESSAGE,
+    PFORMAT_STRING;
+
+<*/CALLS:WINDOWSCALL/DLLDEF*>
+<*/NOHIGH*>
+
+TYPE
+    MIDL_ES_CODE        = (MES_ENCODE, MES_DECODE) BIG;
+    MIDL_ES_HANDLE_STYLE= (MES_INCREMENTAL_HANDLE,
+                           MES_FIXED_BUFFER_HANDLE,
+                           MES_DYNAMIC_BUFFER_HANDLE) BIG;
+
+
+    MIDL_ES_ALLOC        = PROCEDURE (ADDRESS, VAR ADDRESS, VAR WINT);
+
+    MIDL_ES_WRITE        = PROCEDURE (ADDRESS, ADDRESS, WINT);
+
+
+    MIDL_ES_READ         = PROCEDURE (ADDRESS, VAR ADDRESS, VAR WINT);
+
+    MIDL_ES_MESSAGE = RECORD
+          StubMsg        : MIDL_STUB_MESSAGE;
+          Operation      : MIDL_ES_CODE;
+          UserState      : ADDRESS;
+          MesVersion     : BYTE;
+          HandleStyle    : BYTE;
+          HandleFlags    : BYTE;
+          Reserve        : BYTE;
+          Alloc          : MIDL_ES_ALLOC;
+          Write          : MIDL_ES_WRITE;
+          Read           : MIDL_ES_READ;
+          Buffer         : ADDRESS;
+          BufferSize     : DWORD;
+          pDynBuffer     : POINTER TO ADDRESS;
+          pEncodedSize   : POINTER TO DWORD;
+          InterfaceId    : RPC_SYNTAX_IDENTIFIER;
+          ProcNumber     : DWORD;
+          AlienDataRep   : DWORD;
+          IncrDataSize   : DWORD;
+          ByteCount      : DWORD;
+    END;
+    PMIDL_ES_MESSAGE     = POINTER TO MIDL_ES_MESSAGE;
+
+    MIDL_ES_HANDLE       = PMIDL_ES_MESSAGE;
+
+
+PROCEDURE MesEncodeIncrementalHandleCreate(UserState : ADDRESS;
+                                           AllocFn : MIDL_ES_ALLOC;
+                                           WriteFn : MIDL_ES_WRITE;
+                                           VAR pHandle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesDecodeIncrementalHandleCreate(UserState : ADDRESS;
+                                           ReadFn : MIDL_ES_READ;
+                                           VAR pHandle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesIncrementalHandleReset(Handle : handle_t;
+                                    UserState : ADDRESS;
+                                    AllocFn : MIDL_ES_ALLOC;
+                                    WriteFn : MIDL_ES_WRITE;
+                                    ReadFn : MIDL_ES_READ;
+                                    Operation : MIDL_ES_CODE) : RPC_STATUS;
+
+PROCEDURE MesEncodeFixedBufferHandleCreate(pBuffer : ADDRESS;
+                                           BufferSize : DWORD;
+                                           VAR pEncodedSize : DWORD;
+                                           VAR pHandle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesEncodeDynBufferHandleCreate(VAR pBuffer : ADDRESS;
+                                         VAR pEncodedSize : DWORD;
+                                         VAR pHandle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesDecodeBufferHandleCreate(pBuffer : ADDRESS;
+                                      BufferSize : DWORD;
+                                      VAR pHandle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesBufferHandleReset(Handle : handle_t;
+                               HandleStyle : DWORD;
+                               Operation : MIDL_ES_CODE;
+                               VAR pBuffer : ADDRESS;
+                               BufferSize : DWORD;
+                               VAR pEncodedSize : DWORD) : RPC_STATUS;
+
+PROCEDURE MesHandleFree(Handle : handle_t) : RPC_STATUS;
+
+PROCEDURE MesInqProcEncodingId(Handle : handle_t;
+                               pInterfaceId : PRPC_SYNTAX_IDENTIFIER;
+                               VAR pProcNum : DWORD) : RPC_STATUS;
+
+PROCEDURE I_NdrMesMessageInit(a : PMIDL_STUB_MESSAGE);
+
+PROCEDURE NdrMesSimpleTypeAlignSize(a : handle_t) : size_t;
+
+PROCEDURE NdrMesSimpleTypeDecode(Handle : handle_t;
+                                  pObject : ADDRESS;
+                                 Size : SHORT);
+
+PROCEDURE NdrMesSimpleTypeEncode(Handle : handle_t;
+                                 pStubDesc : PMIDL_STUB_DESC;
+                                 pObject : ADDRESS;
+                                 Size : SHORT);
+
+PROCEDURE NdrMesTypeAlignSize(Handle : handle_t;
+                              pStubDesc : PMIDL_STUB_DESC;
+                              pFormatString : PFORMAT_STRING;
+                              pObject : ADDRESS) : size_t;
+
+PROCEDURE NdrMesTypeEncode(Handle : handle_t;
+                           pStubDesc : PMIDL_STUB_DESC;
+                           pFormatString : PFORMAT_STRING;
+                           pObject : ADDRESS);
+
+PROCEDURE NdrMesTypeDecode(Handle : handle_t;
+                           pStubDesc : PMIDL_STUB_DESC;
+                           pFormatString : PFORMAT_STRING;
+                           pObject : ADDRESS);
+
+PROCEDURE NdrMesProcEncodeDecode(Handle : handle_t;
+                                 pStubDesc : PMIDL_STUB_DESC;
+                                 pFormatString : PFORMAT_STRING)[VARIABLE, msCDECL];
+
+
+END MIDLES.

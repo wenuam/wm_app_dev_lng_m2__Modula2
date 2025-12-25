@@ -1,0 +1,73 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE TimeFunc;
+(* this module adds additional functionality to the ISO SysClock module. *)
+(* ISO does not allow the SysClock module to be extended, hence the *)
+(* existence of this module. *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+(* functions to comapare date times and convert from various *)
+(* formats for storing date times *)
+
+IMPORT SysClock;
+
+TYPE
+    DateTime    = SysClock.DateTime;
+    DayOfWeek   = (Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday);
+
+PROCEDURE GetDayOfWeek(dt : DateTime) : DayOfWeek;
+(* returns the day of the week for the given date in dt *)
+
+PROCEDURE CompareTime(left, right : DateTime) : INTEGER;
+(* returns
+   0 if left = right
+   -1 if left < right
+   1 if left > right
+*)
+
+PROCEDURE DateTimeEqual(left, right : DateTime) : BOOLEAN;
+(* returns TRUE if the two date times are equal *)
+
+PROCEDURE DateTimeGreater(left, right : DateTime) : BOOLEAN;
+(* returns TRUE if the left if greater than right *)
+
+PROCEDURE LocalTimeToUTCTime(VAR INOUT time : DateTime);
+(* convert local time to UTC(GMT) time *)
+(* this function only works if the zone field *)
+(* of the DateTime record is properly initialized *)
+
+PROCEDURE UTCTimeToLocalTime(VAR INOUT time : DateTime);
+(* convert UTC(GMT) time to local time *)
+(* this function only works if the zone field *)
+(* of the DateTime record is properly initialized *)
+
+PROCEDURE DateTimeToC(dt : DateTime; VAR OUT cdt : CARDINAL32);
+(* converts the Modula-2 date time format to the ANSI C format (unsigned) *)
+(* number of seconds since Jan 1 1970.
+   max date is 2106.
+   signed form has a max date of 2038
+*)
+
+PROCEDURE CToDateTime(cdt : CARDINAL32; VAR OUT dt : DateTime);
+(* converts the ANSI C format (unsigned) to the Modula-2 format *)
+(* number of seconds since Jan 1 1970.
+   max date is 2106.
+   signed form has a max date of 2038
+*)
+
+PROCEDURE DateTimeToDos(dt : DateTime; VAR OUT date, time : CARDINAL16);
+(* converts the Modula-2 date time format to the DOS FAT format *)
+
+PROCEDURE DosToDateTime(date, time : CARDINAL16; VAR OUT dt : DateTime);
+(* converts the DOS FAT date time format to the Modula-2 format *)
+
+END TimeFunc.

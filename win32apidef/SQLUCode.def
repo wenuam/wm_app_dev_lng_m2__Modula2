@@ -1,0 +1,360 @@
+DEFINITION MODULE SQLUCode;
+(*
+This module contains definitions gotten from Microsoft module sqlucode.h
+
+//-----------------------------------------------------------------------------
+// File:            sqlucode.h
+//
+// Copyright:       Copyright (c) Microsoft Corporation
+//
+// Contents:        This is the the unicode include for ODBC Core functions
+//
+//-----------------------------------------------------------------------------
+*)
+
+FROM SQLTypes IMPORT
+    SQLPOINTER, SQLSMALLINT, SQLUSMALLINT, SQLCHAR, SQLINTEGER, SQLUINTEGER,
+    SQLLEN, SQLULEN, SQLRETURN, SQLHANDLE, SQLHENV, SQLHDBC, SQLHSTMT, SQLHDESC, SQLHWND,
+    SQLWCHAR;
+
+<*IF NOT UNICODE THEN*>
+FROM SQLExt IMPORT
+    SQL_C_CHAR;
+<*END*>
+
+<*/CALLS:WINDOWSCALL/DLLDEF/NOHIGH*>
+<*/ALIGN:8/NOPACK*>
+
+CONST
+
+    SQL_WCHAR        =  -8;
+    SQL_WVARCHAR     =  -9;
+    SQL_WLONGVARCHAR = -10;
+    SQL_C_WCHAR      = SQL_WCHAR;
+
+    <*IF UNICODE THEN*>
+    SQL_C_TCHAR = SQL_C_WCHAR;
+    <*ELSE*>
+    SQL_C_TCHAR = SQL_C_CHAR;
+    <*END*>
+
+    SQL_SQLSTATE_SIZEW = 10;  (* size of SQLSTATE for unicode *)
+
+(* UNICODE versions *)
+
+<*IF Bits64 THEN*>
+PROCEDURE SQLColAttributeW (hstmt : SQLHSTMT; iCol : SQLUSMALLINT; iField : SQLUSMALLINT; pCharAttr : SQLPOINTER;
+    cbDescMax : SQLSMALLINT; VAR pcbCharAttr : SQLSMALLINT; VAR pNumAttr : SQLLEN) : SQLRETURN;
+<*ELSE*>
+PROCEDURE SQLColAttributeW (hstmt : SQLHSTMT; iCol : SQLUSMALLINT; iField : SQLUSMALLINT; pCharAttr : SQLPOINTER;
+    cbDescMax : SQLSMALLINT; VAR pcbCharAttr : SQLSMALLINT; pNumAttr : SQLPOINTER) : SQLRETURN;
+<*END*>
+
+PROCEDURE SQLColAttributesW (hstmt : SQLHSTMT; iCol : SQLUSMALLINT; fDescType : SQLUSMALLINT; rgbDesc : SQLPOINTER;
+    cbDescMax : SQLSMALLINT; VAR pcbDesc : ARRAY OF SQLSMALLINT; VAR pfDesc : SQLLEN) : SQLRETURN;
+
+PROCEDURE SQLConnectW (hdbc : SQLHDBC; szDSN : ARRAY OF SQLWCHAR; cchDSN : SQLSMALLINT;
+    szUID : ARRAY OF SQLWCHAR; cchUID : SQLSMALLINT; szAuthStr : ARRAY OF SQLWCHAR; cchAuthStr : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDescribeColW (hstmt : SQLHSTMT; iCol : SQLUSMALLINT;
+    VAR szColName : ARRAY OF SQLWCHAR; cchColNameMax : SQLSMALLINT; VAR ppchColName : SQLSMALLINT;
+    VAR pfSqlType : SQLSMALLINT; VAR pcbColDef : SQLULEN; VAR pibScale : SQLSMALLINT; VAR pfNullable : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLErrorW (henv : SQLHENV; hdbc : SQLHDBC; hstmt : SQLHSTMT; VAR wszSqlState : ARRAY (*[0..5]*) OF SQLWCHAR;
+    VAR pfNativeError : SQLINTEGER; VAR wszErrorMsg : ARRAY OF SQLWCHAR; cchErrorMsgMax : SQLSMALLINT;
+    VAR pcchErrorMsg : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLExecDirectW (hstmt : SQLHSTMT; szSqlStr : ARRAY OF SQLWCHAR; cbSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetConnectAttrW (hdbc : SQLHDBC; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER;
+    VAR pcbValue : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetCursorNameW (hstmt : SQLHSTMT;
+    VAR szCursor : ARRAY OF SQLWCHAR; cchCursorMax : SQLSMALLINT; VAR pcchCursor : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLSetDescFieldW (DescriptorHandle : SQLHDESC; RecNumber : SQLSMALLINT; FieldIdentifier : SQLSMALLINT;
+    Value : SQLPOINTER; BufferLength : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetDescFieldW (hdesc : SQLHDESC; iRecord : SQLSMALLINT; iField : SQLSMALLINT; rgbValue : SQLPOINTER;
+    cbBufferLength : SQLINTEGER; VAR StringLength : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetDescRecW (hdesc : SQLHDESC; iRecord : SQLSMALLINT;
+    VAR szName : ARRAY OF SQLWCHAR; cchNameMax : SQLSMALLINT; VAR pcchName : SQLSMALLINT;
+    VAR pfType : SQLSMALLINT; VAR pfSubType : SQLSMALLINT; VAR pLength : SQLLEN; VAR pPrecision : SQLSMALLINT;
+    VAR pScale : SQLSMALLINT; VAR pNullable : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetDiagFieldW (fHandleType : SQLSMALLINT; handle : SQLHANDLE; iRecord : SQLSMALLINT; iDiagField : SQLSMALLINT;
+    rgbDiagInfo : SQLPOINTER; cbBufferLength : SQLSMALLINT; VAR pcbStringLength : SQLSMALLINT) : SQLRETURN;
+
+TYPE
+    SqlStateStrW = ARRAY [0..4] OF SQLWCHAR;
+
+PROCEDURE SQLGetDiagRecW (fHandleType : SQLSMALLINT; handle : SQLHANDLE; iRecord : SQLSMALLINT;
+    VAR szSqlState : SqlStateStrW; VAR pfNativeError : SQLINTEGER;
+    VAR szErrorMsg : ARRAY OF SQLWCHAR; cchErrorMsgMax : SQLSMALLINT; VAR pcchErrorMsg : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLPrepareW (hstmt : SQLHSTMT; szSqlStr : ARRAY OF SQLWCHAR; cchSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLSetConnectAttrW (hdbc : SQLHDBC; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValue : SQLINTEGER);
+
+PROCEDURE SQLSetCursorNameW (hstmt : SQLHSTMT; szCursor : ARRAY OF SQLWCHAR; cchCursor : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLColumnsW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLWCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetConnectOptionW (hdbc : SQLHDBC; fOption : SQLUSMALLINT; pvParam : SQLPOINTER) : SQLRETURN;
+
+PROCEDURE SQLGetInfoW (hdbc : SQLHDBC; pInfoType : SQLUSMALLINT; rgbInfoValue : SQLPOINTER; cbInfoValueMax : SQLSMALLINT;
+    VAR pcbInfoValue : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetTypeInfoW (StatementHandle : SQLHSTMT; DataType : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLSetConnectOptionW (hdbc : SQLHDBC; fOption : SQLUSMALLINT; vParam : SQLULEN) : SQLRETURN;
+
+PROCEDURE SQLSpecialColumnsW (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT;
+    fScope : SQLUSMALLINT; fNullable : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLStatisticsW (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT;
+    fUnique : SQLUSMALLINT; fAccuracy : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLTablesW (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT;
+    szTableType  : ARRAY OF SQLWCHAR; cchTableType : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDataSourcesW (henv : SQLHENV; fDirection : SQLUSMALLINT;
+    VAR szDSN         : ARRAY OF SQLWCHAR; cchDSNMax         : SQLSMALLINT; VAR pcchDSN         : SQLSMALLINT;
+    VAR szDescription : ARRAY OF SQLWCHAR; cchDescriptionMax : SQLSMALLINT; VAR pcchDescription : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDriverConnectW (hdbc : SQLHDBC; hwnd : SQLHWND; szConnStrIn : ARRAY OF SQLWCHAR; cchConnStrIn : SQLSMALLINT;
+    VAR szConnStrOut : ARRAY OF SQLWCHAR; cchConnStrOutMax : SQLSMALLINT; VAR pcchConnStrOut : SQLSMALLINT;
+    fDriverCompletion : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLBrowseConnectW (hdbc : SQLHDBC; hwnd : SQLHWND; szConnStrIn : ARRAY OF SQLWCHAR; cchConnStrIn : SQLSMALLINT;
+    VAR szConnStrOut : ARRAY OF SQLWCHAR; cchConnStrOutMax : SQLSMALLINT; VAR pcchConnStrOut : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLColumnPrivilegesW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLWCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetStmtAttrW (hstmt : SQLHSTMT; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER;
+    VAR pcbValue : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLSetStmtAttrW (hstmt : SQLHSTMT; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER
+) : SQLRETURN;
+
+PROCEDURE SQLForeignKeysW (hstmt : SQLHSTMT;
+    szPkCatalogName : ARRAY OF SQLWCHAR; cchPkCatalogName : SQLSMALLINT;
+    szPkSchemaName  : ARRAY OF SQLWCHAR; cchPkSchemaName  : SQLSMALLINT;
+    szPkTableName   : ARRAY OF SQLWCHAR; cchPkTableName   : SQLSMALLINT;
+    szFkCatalogName : ARRAY OF SQLWCHAR; cchFkCatalogName : SQLSMALLINT;
+    szFkSchemaName  : ARRAY OF SQLWCHAR; cchFkSchemaName  : SQLSMALLINT;
+    szFkTableName   : ARRAY OF SQLWCHAR; cchFkTableName   : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLNativeSqlW (hdbc : SQLHDBC; szSqlStrIn : ARRAY OF SQLWCHAR; cchSqlStrIn : SQLSMALLINT;
+    VAR szSqlStr : ARRAY OF SQLWCHAR; cchSqlStrMax : SQLINTEGER; VAR pcchSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLPrimaryKeysW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLProcedureColumnsW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szProcName : ARRAY OF SQLWCHAR; cchProcName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLWCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLProceduresW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szProcName : ARRAY OF SQLWCHAR; cchProcName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLTablePrivilegesW (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLWCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLWCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLDriversW (henv : SQLHENV; fDirection : SQLUSMALLINT;
+    VAR szDriverDesc       : ARRAY OF SQLWCHAR; cchDriverDescMax : SQLSMALLINT; VAR pcchDriverDesc : SQLSMALLINT;
+    VAR szDriverAttributes : ARRAY OF SQLWCHAR; cchDriverAttrMax : SQLSMALLINT; VAR pcchDriverAttr : SQLSMALLINT) : SQLRETURN;
+
+(* ANSI versions *)
+
+<*IF Bits64 THEN*>
+PROCEDURE SQLColAttributeA (hstmt : SQLHSTMT; iCol : SQLUSMALLINT; iField : SQLUSMALLINT; pCharAttr : SQLPOINTER;
+    cbDescMax : SQLSMALLINT; VAR pcbCharAttr : SQLSMALLINT; VAR pNumAttr : SQLLEN) : SQLRETURN;
+<*ELSE*>
+PROCEDURE SQLColAttributeA (hstmt : SQLHSTMT; iCol : SQLUSMALLINT; iField : SQLUSMALLINT; pCharAttr : SQLPOINTER;
+    cbDescMax : SQLSMALLINT; VAR pcbCharAttr : SQLSMALLINT; pNumAttr : SQLPOINTER) : SQLRETURN;
+<*END*>
+
+PROCEDURE SQLConnectA (hdbc : SQLHDBC; szDSN : ARRAY OF SQLCHAR; cchDSN : SQLSMALLINT;
+    szUID : ARRAY OF SQLCHAR; cchUID : SQLSMALLINT; szAuthStr : ARRAY OF SQLCHAR; cchAuthStr : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDescribeColA (hstmt : SQLHSTMT; iCol : SQLUSMALLINT;
+    VAR szColName : ARRAY OF SQLCHAR; cchColNameMax : SQLSMALLINT; VAR ppchColName : SQLSMALLINT;
+    VAR pfSqlType : SQLSMALLINT; VAR pcbColDef : SQLULEN; VAR pibScale : SQLSMALLINT; VAR pfNullable : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLExecDirectA (hstmt : SQLHSTMT; szSqlStr : ARRAY OF SQLCHAR; cbSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetConnectAttrA (hdbc : SQLHDBC; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER;
+    VAR pcbValue : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetCursorNameA (hstmt : SQLHSTMT;
+    VAR szCursor : ARRAY OF SQLCHAR; cchCursorMax : SQLSMALLINT; VAR pcchCursor : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetDescFieldA (hdesc : SQLHDESC; iRecord : SQLSMALLINT; iField : SQLSMALLINT; rgbValue : SQLPOINTER;
+    cbBufferLength : SQLINTEGER; VAR StringLength : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLGetDescRecA (hdesc : SQLHDESC; iRecord : SQLSMALLINT;
+    VAR szName : ARRAY OF SQLCHAR; cchNameMax : SQLSMALLINT; VAR pcchName : SQLSMALLINT;
+    VAR pfType : SQLSMALLINT; VAR pfSubType : SQLSMALLINT; VAR pLength : SQLLEN; VAR pPrecision : SQLSMALLINT;
+    VAR pScale : SQLSMALLINT; VAR pNullable : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetDiagFieldA (fHandleType : SQLSMALLINT; handle : SQLHANDLE; iRecord : SQLSMALLINT; iDiagField : SQLSMALLINT;
+    rgbDiagInfo : SQLPOINTER; cbBufferLength : SQLSMALLINT; VAR pcbStringLength : SQLSMALLINT) : SQLRETURN;
+
+TYPE
+    SqlStateStrA = ARRAY [0..4] OF SQLCHAR;
+
+PROCEDURE SQLGetDiagRecA (fHandleType : SQLSMALLINT; handle : SQLHANDLE; iRecord : SQLSMALLINT;
+    VAR szSqlState : SqlStateStrA; VAR pfNativeError : SQLINTEGER;
+    VAR szErrorMsg : ARRAY OF SQLCHAR; cchErrorMsgMax : SQLSMALLINT; VAR pcchErrorMsg : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLPrepareA (hstmt : SQLHSTMT; szSqlStr : ARRAY OF SQLCHAR; cchSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLSetConnectAttrA (hdbc : SQLHDBC; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValue : SQLINTEGER);
+
+PROCEDURE SQLSetCursorNameA (hstmt : SQLHSTMT; szCursor : ARRAY OF SQLCHAR; cchCursor : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLColumnsA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetInfoA (hdbc : SQLHDBC; pInfoType : SQLUSMALLINT; rgbInfoValue : SQLPOINTER; cbInfoValueMax : SQLSMALLINT;
+    VAR pcbInfoValue : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetTypeInfoA (StatementHandle : SQLHSTMT; DataType : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLSpecialColumnsA (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName  : ARRAY OF SQLCHAR; cchSchemaName  : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT;
+    fScope : SQLUSMALLINT; fNullable : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLStatisticsA (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName  : ARRAY OF SQLCHAR; cchSchemaName  : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT;
+    fUnique : SQLUSMALLINT; fAccuracy : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLTablesA (hstmt : SQLHSTMT; fColType : SQLUSMALLINT;
+    szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName  : ARRAY OF SQLCHAR; cchSchemaName  : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT;
+    szTableType   : ARRAY OF SQLCHAR; cchTableType   : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDataSourcesA (henv : SQLHENV; fDirection : SQLUSMALLINT;
+    VAR szDSN         : ARRAY OF SQLCHAR; cchDSNMax         : SQLSMALLINT; VAR pcchDSN         : SQLSMALLINT;
+    VAR szDescription : ARRAY OF SQLCHAR; cchDescriptionMax : SQLSMALLINT; VAR pcchDescription : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDriverConnectA (hdbc : SQLHDBC; hwnd : SQLHWND; szConnStrIn : ARRAY OF SQLCHAR; cchConnStrIn : SQLSMALLINT;
+    VAR szConnStrOut : ARRAY OF SQLCHAR; cchConnStrOutMax : SQLSMALLINT; VAR pcchConnStrOut : SQLSMALLINT;
+    fDriverCompletion : SQLUSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLBrowseConnectA (hdbc : SQLHDBC; hwnd : SQLHWND; szConnStrIn : ARRAY OF SQLCHAR; cchConnStrIn : SQLSMALLINT;
+    VAR szConnStrOut : ARRAY OF SQLCHAR; cchConnStrOutMax : SQLSMALLINT; VAR pcchConnStrOut : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLColumnPrivilegesA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLGetStmtAttrA (hstmt : SQLHSTMT; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER;
+    VAR pcbValue : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLSetStmtAttrA (hstmt : SQLHSTMT; fAttribute : SQLINTEGER; rgbValue : SQLPOINTER; cbValueMax : SQLINTEGER
+) : SQLRETURN;
+
+PROCEDURE SQLForeignKeysA (hstmt : SQLHSTMT;
+    szPkCatalogName : ARRAY OF SQLCHAR; cchPkCatalogName : SQLSMALLINT;
+    szPkSchemaName  : ARRAY OF SQLCHAR; cchPkSchemaName  : SQLSMALLINT;
+    szPkTableName   : ARRAY OF SQLCHAR; cchPkTableName   : SQLSMALLINT;
+    szFkCatalogName : ARRAY OF SQLCHAR; cchFkCatalogName : SQLSMALLINT;
+    szFkSchemaName  : ARRAY OF SQLCHAR; cchFkSchemaName  : SQLSMALLINT;
+    szFkTableName   : ARRAY OF SQLCHAR; cchFkTableName   : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLNativeSqlA (hdbc : SQLHDBC; szSqlStrIn : ARRAY OF SQLCHAR; cchSqlStrIn : SQLSMALLINT;
+    VAR szSqlStr : ARRAY OF SQLCHAR; cchSqlStrMax : SQLINTEGER; VAR pcchSqlStr : SQLINTEGER) : SQLRETURN;
+
+PROCEDURE SQLPrimaryKeysA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLWCHAR; cchTableName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLProcedureColumnsA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szProcName : ARRAY OF SQLCHAR; cchProcName : SQLSMALLINT;
+    szColumnName : ARRAY OF SQLCHAR; cchColumnName : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLProceduresA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szProcName : ARRAY OF SQLCHAR; cchProcName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLTablePrivilegesA (hstmt : SQLHSTMT; szCatalogName : ARRAY OF SQLCHAR; cchCatalogName : SQLSMALLINT;
+    szSchemaName : ARRAY OF SQLCHAR; cchSchemaName : SQLSMALLINT; szTableName : ARRAY OF SQLCHAR; cchTableName : SQLSMALLINT
+) : SQLRETURN;
+
+PROCEDURE SQLDriversA (henv : SQLHENV; fDirection : SQLUSMALLINT;
+    VAR szDriverDesc       : ARRAY OF SQLCHAR; cchDriverDescMax : SQLSMALLINT; VAR pcchDriverDesc : SQLSMALLINT;
+    VAR szDriverAttributes : ARRAY OF SQLCHAR; cchDriverAttrMax : SQLSMALLINT; VAR pcchDriverAttr : SQLSMALLINT) : SQLRETURN;
+
+PROCEDURE SQLDescribeParamA (hstmt : SQLHSTMT; ipar : SQLUSMALLINT;
+    VAR pfSqlType : SQLSMALLINT; VAR pcbParamDef : SQLUINTEGER; VAR pibScale : SQLSMALLINT; VAR pfNullable : SQLSMALLINT
+) : SQLRETURN;
+
+(*
+//---------------------------------------------
+// Mapping macros for Unicode
+//---------------------------------------------
+*)
+
+<*IF UNICODE THEN *>
+CONST
+    SQLColAttribute     = SQLColAttributeW;
+    SQLColAttributes    = SQLColAttributesW;
+    SQLConnect          = SQLConnectW;
+    SQLDescribeCol      = SQLDescribeColW;
+    SQLError            = SQLErrorW;
+    SQLExecDirect       = SQLExecDirectW;
+    SQLGetConnectAttr   = SQLGetConnectAttrW;
+    SQLGetCursorName    = SQLGetCursorNameW;
+    SQLGetDescField     = SQLGetDescFieldW;
+    SQLGetDescRec       = SQLGetDescRecW;
+    SQLGetDiagField     = SQLGetDiagFieldW;
+    SQLGetDiagRec       = SQLGetDiagRecW;
+    SQLPrepare          = SQLPrepareW;
+    SQLSetConnectAttr   = SQLSetConnectAttrW;
+    SQLSetCursorName    = SQLSetCursorNameW;
+    SQLSetDescField     = SQLSetDescFieldW;
+    SQLSetStmtAttr      = SQLSetStmtAttrW;
+    SQLGetStmtAttr      = SQLGetStmtAttrW;
+    SQLColumns          = SQLColumnsW;
+    SQLGetConnectOption = SQLGetConnectOptionW;
+    SQLGetInfo          = SQLGetInfoW;
+    SQLGetTypeInfo      = SQLGetTypeInfoW;
+    SQLSetConnectOption = SQLSetConnectOptionW;
+    SQLSpecialColumns   = SQLSpecialColumnsW;
+    SQLStatistics       = SQLStatisticsW;
+    SQLTables           = SQLTablesW;
+    SQLDataSources      = SQLDataSourcesW;
+    SQLDriverConnect    = SQLDriverConnectW;
+    SQLBrowseConnect    = SQLBrowseConnectW;
+    SQLColumnPrivileges = SQLColumnPrivilegesW;
+    SQLForeignKeys      = SQLForeignKeysW;
+    SQLNativeSql        = SQLNativeSqlW;
+    SQLPrimaryKeys      = SQLPrimaryKeysW;
+    SQLProcedureColumns = SQLProcedureColumnsW;
+    SQLProcedures       = SQLProceduresW;
+    SQLTablePrivileges  = SQLTablePrivilegesW;
+    SQLDrivers          = SQLDriversW;
+<*END*>
+
+END SQLUCode.

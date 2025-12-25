@@ -1,0 +1,130 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                     Copyright (C) 2009                                  *)
+(*                          by ADW Software                                *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE Blowfish;
+(* implements the Blowfish encryption algorithm
+   ECB, CBC and CFB modes are supported.
+*)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    BlockSize   = 8;(* bytes *)
+    (* input data size for ECB and CBC modes must be an even multiple of this size.
+
+       in CFB mode the very last block of a complete data stream is allowed to be
+       smaller than the cipher block size.
+
+       a common block padding algorithm used in many standards is RFC 1423.
+       the CryptEncode module provides functions to pad an unpad data blocks using
+       this algorithm.
+    *)
+
+TYPE
+    Blowfish;
+
+    IV = (* initial vector for CBC and CFB modes *)
+    RECORD
+    CASE : BOOLEAN OF
+    FALSE: bytes        : ARRAY [0..BlockSize-1] OF CARDINAL8;|
+    TRUE: dwords        : ARRAY [0..(BlockSize/4)-1] OF CARDINAL32;
+    END;
+    END;
+
+PROCEDURE Create(key : ARRAY OF BYTE; keySize : CARDINAL) : Blowfish;
+PROCEDURE Create2(key : ARRAY OF CHAR) : Blowfish;
+(*
+  create a new Blowfish encryption object with the given key.
+  the returned object is ready to encrypt/decrypt data.
+
+  Create
+  the number of bytes in the key is keySize.
+
+  Create2
+  like Create except it uses the CHAR type as its array element.
+  the key string can be any length, including "".
+
+  only one thread at a time can use an encryption object, except for ECB mode.
+*)
+
+PROCEDURE Destroy(VAR INOUT crypt : Blowfish);
+(* destroy a previously created encryption object *)
+
+PROCEDURE ResetIV(crypt : Blowfish; iv : IV);
+(*
+   reset the encryption engine with the specific IV.
+   you only need use this call with the CBC and CFB encryption routines.
+   you must reset the IV before you encrypt/decrypt each unique
+   data stream.
+*)
+
+PROCEDURE EncryptECB(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE EncryptCBC(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE EncryptCFB(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+(*
+  encrypt a block of data of size amount in bytes.
+  you can encrypt a large data stream in multiple smaller pieces using this call.
+  you can pass the same variable to both input and output should you so desire.
+  this procedure expects the buffers have a minimum of 4-byte alignment.
+  amount must be an even multiple of the block size.
+
+  ECB = Electronic code book.
+        C[i] := Encrypt(P[i])
+  CBC = cipher block chaining.
+        C[i] := Encrypt(C[i-1] BXOR P[i])
+        You must have setup an IV via ResetIV to use CBC.
+  CFB = cipher feedback.
+        C[i] := Encrypt(C[i-1]) BXOR P[i]
+        You must have setup an IV via ResetIV to use CFB.
+        In CFB mode the data stream does not need to be an even multiple of
+        the block size. the very last "block" in the stream can be a partial block.
+        if you are processing a large stream in multiple smaller pieces (buffers),
+        all buffers must be an even multiple, except the very last one.
+*)
+
+PROCEDURE DecryptECB(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE DecryptCBC(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+PROCEDURE DecryptCFB(crypt : Blowfish; input, output : ADDRESS; amount : CARDINAL);
+(*
+  decrypt a block of data of size amount in bytes.
+  you can decrypt a large data stream in multiple smaller pieces using this call.
+  you can pass the same variable to both input and output should you so desire.
+  this procedure expects the buffers have a minimum of 4-byte alignment.
+  amount must be an even multiple of the block size.
+
+  ECB = Electronic code book.
+        P[i] := Decrypt(C[i])
+  CBC = cipher block chaining
+        P[i] := Decrypt(C[i]) BXOR C[i-1]
+        You must have setup an IV via ResetIV to use CBC.
+  CFB = cipher feedback.
+        P[i] := Encrypt(C[i-1]) BXOR C[i]
+        You must have setup an IV via ResetIV to use CFB.
+        In CFB mode the data stream does not need to be an even multiple of
+        the block size. the very last "block" in the stream can be a partial block.
+        if you are processing a large stream in multiple smaller pieces (buffers),
+        all buffers must be an even multiple, except the very last one.
+*)
+
+PROCEDURE IsWeak(crypt : Blowfish) : BOOLEAN;
+(*
+  returns true if the key is considered a weak key, therefore easier to crack.
+*)
+
+PROCEDURE SelfTest() : BOOLEAN;
+(*
+  returns TRUE if the implemented algorithm properly operates.
+  this call is only useful when porting this code to some other processor/compiler.
+*)
+
+END Blowfish.

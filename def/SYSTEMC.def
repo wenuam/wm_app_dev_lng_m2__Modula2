@@ -1,0 +1,193 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                             by ADW Software                             *)
+(*                                                                         *)
+(*                          All rights reserved.                           *)
+(*                                                                         *)
+(***************************************************************************)
+
+DEFINITION MODULE SYSTEMC;
+
+FROM SYSTEM IMPORT
+    ADDRESS;
+
+%IF AMD64 %THEN
+FROM SYSTEM IMPORT
+    ADRCARD, VA_LIST;
+%END
+
+TYPE
+%IF Bits32 %THEN
+    DoubleInt = INTEGER64;
+%ELSIF Bits64 %THEN
+    DoubleInt = INTEGER64;
+%ELSE
+    fix me
+%END
+
+%IF Windows %OR UNIX %THEN
+PROCEDURE STACKGROWTH(pages : CARDINAL)
+                            %IF IA32 %OR AMD64 %THEN
+                            [ALTERS()];
+                            %ELSE
+                            ;
+                            %END
+%END
+
+PROCEDURE MOVE(SOURCE, DEST : ADDRESS; COUNT : CARDINAL)
+                                %IF IA32 %OR AMD64 %THEN
+                                [PASS(SI, DI, CX), ALTERS(AX, CX, SI, DI)];
+                                %ELSE
+                                [LeftToRight];
+                                %END
+
+PROCEDURE MOVEBYTES(SOURCE : ADDRESS; SRC_LEN : CARDINAL;
+                    DEST : ADDRESS; DEST_LEN : CARDINAL)
+                                %IF IA32 %OR AMD64 %THEN
+			                    [PASS(SI,CX,DI,AX), ALTERS(AX,CX,SI,DI %IF AMD64 %THEN  ,DX %END)];
+                                %ELSE
+                                [LeftToRight];
+                                %END
+
+PROCEDURE COPYPAR3(source, dest : ADDRESS; amount : CARDINAL) [LeftToRight];
+
+PROCEDURE COPYOPENPARAM;
+
+%IF (%NOT IA32) %AND (%NOT AMD64) %THEN
+(*
+PROCEDURE LOADUA_WORDS;
+
+PROCEDURE LOADUA_WORDU;
+*)
+
+PROCEDURE LOADUA_DWORDS;
+
+PROCEDURE LOADUA_DWORDU;
+
+%IF Bits64 %THEN
+
+PROCEDURE LOADUA_QWORDS;
+
+PROCEDURE LOADUA_QWORDU;
+
+%END
+
+PROCEDURE LOADUA_LONG;
+
+PROCEDURE LOADUA_REAL4;
+
+PROCEDURE LOADUA_REAL8;
+
+(*
+PROCEDURE STOREUA_WORD;
+*)
+
+PROCEDURE STOREUA_DWORD;
+
+%IF Bits64 %THEN
+
+PROCEDURE STOREUA_QWORD;
+
+%END
+
+PROCEDURE STOREUA_LONG;
+
+PROCEDURE STOREUA_REAL4;
+
+PROCEDURE STOREUA_REAL8;
+
+PROCEDURE CALLUA;
+%END
+
+PROCEDURE LMUL(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE LMULCHECK(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+%IF Bits32 %THEN
+PROCEDURE LDIVIS(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE LDIVIU(RIGHT, LEFT : LONGCARD) : LONGCARD
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE LREMU(RIGHT, LEFT : LONGCARD) : LONGCARD
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+PROCEDURE LREMS(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE LDIVS(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE LMODS(RIGHT, LEFT : DoubleInt) : DoubleInt
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE DIVS(RIGHT, LEFT : INTEGER) : INTEGER
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+PROCEDURE MODS(RIGHT, LEFT : INTEGER) : INTEGER
+                            %IF IA32 %THEN
+                            [ALTERS(AX, DX)];
+                            %ELSE
+                            [LeftToRight];
+                            %END
+
+%ELSE
+
+PROCEDURE DIVS(RIGHT, LEFT : INTEGER64) : INTEGER64 [LeftToRight];
+
+PROCEDURE MODS(RIGHT, LEFT : INTEGER64) : INTEGER64 [LeftToRight];
+
+%END
+
+%IF %NOT AMD64 %THEN
+PROCEDURE TTRUNC ["SYSTEMC_TRUNC"] ();
+%END
+
+%IF AMD64 %THEN
+PROCEDURE VaArgInt(VAR INOUT valist : VA_LIST; typ : INTEGER) : ADRCARD [LeftToRight];
+
+PROCEDURE VaArgLongInt(VAR INOUT valist : VA_LIST; typ : INTEGER) : DoubleInt [LeftToRight];
+
+PROCEDURE VaArgReal(VAR INOUT valist : VA_LIST; typ : INTEGER) : LONGREAL [LeftToRight];
+%END
+
+END SYSTEMC.

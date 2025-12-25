@@ -1,0 +1,53 @@
+(***************************************************************************)
+(*                                                                         *)
+(*                           Copyright (C) 2009                            *)
+(*                               by ADW Software                           *)
+(*                                                                         *)
+(*                        All rights reserved.                             *)
+(*                                                                         *)
+(***************************************************************************)
+DEFINITION MODULE GenCRC;
+(* This module provides functions to generate a 32-bit CRC for a stream *)
+(* of BYTE input *)
+(* The CRC this module provides is the CCITT (ITU) CRC-32 and is compatible *)
+(* with the CRC used by zip software *)
+
+%IF DLL %THEN
+<*/EXPORTALL/PROPAGATEEXCEPTIONALL/COPYATTRIBUTES*>
+%END
+
+FROM SYSTEM IMPORT
+    BYTE, ADDRESS;
+
+CONST
+    CrcPrecondition     = 0FFFFFFFFh;
+(* this constant is the initial value of the CRC *)
+
+PROCEDURE CrcByte(b : BYTE; crc : CARDINAL32) : CARDINAL32;
+(* use this procedure to include a single byte in the CRC *)
+(* b = the BYTE to be included *)
+(* crc = the current CRC value *)
+(* the result is the new CRC value after inclusion of the BYTE *)
+
+PROCEDURE CrcBlock(data : ARRAY OF BYTE; crc : CARDINAL32) : CARDINAL32;
+(* use this procedure to include an array of bytes in the CRC *)
+(* data = the BYTEs to be included. the number of bytes is taken *)
+(*        from the HIGH bound of data *)
+(* crc = the current CRC value *)
+(* the result is the new CRC value after inclusion of the BYTEs *)
+
+PROCEDURE CrcBytes(data : ADDRESS; numBytes : CARDINAL; crc : CARDINAL32) : CARDINAL32;
+(* use this procedure to include an array of bytes in the CRC *)
+(* data = the BYTEs to be included. *)
+(* numBytes = the number of bytes. *)
+(* crc = the current CRC value *)
+(* the result is the new CRC value after inclusion of the BYTEs *)
+
+PROCEDURE CrcPostcondition(crc : CARDINAL32) : CARDINAL32;
+(* after all data has been included call this function with the *)
+(* CRC value and the result is your final CRC value *)
+
+PROCEDURE GenCRC(data : ADDRESS; numBytes : CARDINAL) : CARDINAL32;
+(* the result is the CRC of the BYTEs in data *)
+
+END GenCRC.
